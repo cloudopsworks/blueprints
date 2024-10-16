@@ -4,7 +4,7 @@
 #            Distributed Under Apache v2.0 License
 #
 name: Checkout Code & Blueprint here
-author: berahac
+author: cloudopsworks
 description: Checkout the code and blueprint for the current branch
 inputs:
   source_ref:
