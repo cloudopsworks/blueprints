@@ -1,0 +1,41 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Checkout Code & Blueprint here
+author: berahac
+description: Checkout the code and blueprint for the current branch
+inputs:
+  source_ref:
+    description: 'The branch or tag to checkout'
+    required: false
+    default: ${{ github.ref }}
+  blueprint_ref:
+    description: 'The branch or tag to checkout'
+    required: false
+    default: 'develop'
+outputs:
+    source_path:
+        description: 'The path to the source code'
+        value: 'source'
+    blueprint_path:
+        description: 'The path to the blueprint'
+        value: 'bp'
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.source_ref }}
+        fetch-tags: true
+        fetch-depth: 0
+        path: source
+
+    - name: Checkout Blueprint
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.blueprint_ref }}
+        fetch-depth: 1
+        path: bp
