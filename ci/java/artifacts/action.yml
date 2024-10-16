@@ -29,6 +29,7 @@ runs:
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs
+      working-directory: ${{ inputs.source_path }}
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.zipGlobs[]' ./.github/cloudopsworks-ci.yaml
@@ -36,6 +37,7 @@ runs:
     # Get pipeline conf exclude globs
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
+      working-directory: ${{ inputs.source_path }}
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.excludeGlobs[] | "!" + .' ./.github/cloudopsworks-ci.yaml
@@ -43,6 +45,7 @@ runs:
     # Perform of upload of artfiacts for java
     - name: Upload Artifacts to workflow
       uses: actions/upload-artifact@v4
+      working-directory: ${{ inputs.source_path }}
       with:
         name: ${{ inputs.artifacts_name }}
         path: |
@@ -55,6 +58,7 @@ runs:
     # Perform of upload of sources
     - name: Upload Sources to workflow
       uses: actions/upload-artifact@v4
+      working-directory: ${{ inputs.source_path }}
       with:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
