@@ -36,6 +36,7 @@ runs:
     - name: Checkout Blueprint
       uses: actions/checkout@v4
       with:
+        repository: 'cloudopsworks/blueprints'
         ref: ${{ inputs.blueprint_ref }}
         fetch-depth: 1
         path: bp
