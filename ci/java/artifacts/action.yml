@@ -55,7 +55,6 @@ runs:
     # Perform of upload of sources
     - name: Upload Sources to workflow
       uses: actions/upload-artifact@v4
-      working-directory: ${{ inputs.source_path }}
       with:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
