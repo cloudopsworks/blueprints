@@ -1,0 +1,30 @@
+environment: dev
+apigw_definitions:
+  - name: test
+    version: v2
+    mapping: test-apis/api/2.0
+    domain_name: apigw-dev.sample.com
+    file_name: test
+    stage_variables:  # comment out if not needed
+      - name: api_variable
+        value: api_value
+aws:
+  stage: dev
+  stage_only: false
+  stage_variables:
+    vpc_link_name: test-link-dev
+    endpoint_url: test-api.dev.sample.com
+  publish_bucket:
+    enabled: false
+    name: test-apigw-backup
+    prefix_path: test
+  authorizers:
+    - name: Lambda-Auth
+      authtype: lambda
+#      result_ttl_seconds: 10
+#      identity_source: method.request.header.Authorization
+#      type: request
+      lambda:
+        function: lambda-auth-dev
+        exec_role: lambda-auth-dev-lambda-exec-role
+tags: {}

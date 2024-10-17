@@ -21,9 +21,12 @@ outputs:
   is_pre_release:
     description: 'The pre-release flag'
     value: ${{ steps.workspace.outputs.isPreRelease }}
-  targetName:
+  package_name:
+    description: 'The release source name, usually the repository name'
+    value: ${{ steps.getowner.outputs.repo_name }}
+  release_name:
     description: 'The target name for the deployment'
-    value: ${{ steps.workspace.outputs.targetName }}
+    value: ${{ steps.workspace.outputs.targetName != '' && steps.workspace.outputs.targetName || steps.getowner.outputs.repo_name }}
   deployment_enabled:
     description: 'The deployment enabled flag'
     value: ${{ steps.workspace.outputs.isEnabled }}
@@ -63,9 +66,22 @@ outputs:
   container_enabled:
     description: 'The container enabled flag'
     value: ${{ steps.cloud_type.output.result == 'eks' || steps.cloud_type.output.result == 'aks' || steps.cloud_type.output.result == 'gke' || steps.cloud_type.output.result == 'kubernetes' }}
+  blue_green_enabled:
+    description: 'The blue-green deployment enabled flag'
+    value: ${{ steps.blue_green.output.result }}
 runs:
   using: 'composite'
   steps:
+    # Get the owner repo
+    - name: Get owner
+      id: getowner
+      shell: bash
+      run: |
+        repo_owner=`echo "$GITHUB_REPOSITORY" | cut -f 1 -d "/"`
+        repo_name=`echo "$GITHUB_REPOSITORY" | cut -f 2 -d "/"`
+        echo "owner=$repo_owner" >> $GITHUB_OUTPUT
+        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT
+
     # Get the deployments configuration
     - name: Get the deployments configuration
       id: deploy_conf
@@ -231,6 +247,13 @@ runs:
           fexist=true
         fi
         echo "result=$fexist" >> $GITHUB_OUTPUT
+
+    # Get the blue_green marker from the inputs-<environment>.yaml file
+    - name: Get Blue/Green Setting
+      id: blue_green
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.blue_green and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
 
     # Get the AWS Region value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for REGION

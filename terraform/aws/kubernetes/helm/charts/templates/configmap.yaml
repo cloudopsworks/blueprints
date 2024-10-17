@@ -1,0 +1,17 @@
+{{- if .Values.configMap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+{{- if .Values.service.name }}
+  name: {{ .Values.service.name }}
+{{- else }}
+  name: {{ template "fullname" . }}
+{{- end }}
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+data:
+  {{- range $key, $value := .Values.configMap.values }}
+  {{ $key }}: |-
+    {{ $value | nindent 4 }}
+  {{- end }}
+{{- end}}
