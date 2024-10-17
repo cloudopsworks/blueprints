@@ -112,6 +112,7 @@ runs:
 
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
+      shell: bash
       run: |
         cat > release.yaml << EOF 
         release:
@@ -123,6 +124,7 @@ runs:
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
+      shell: bash
       run: |
         cat > global-inputs.yaml << EOF
         environment: ${{ inputs.deployment_name }}
@@ -134,6 +136,7 @@ runs:
 
     - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
+      shell: bash
       run: |
         cat > state_conf.yaml << EOF
         ${{ inputs.terraform_state_conf }}
@@ -162,6 +165,7 @@ runs:
     - name: Terragrunt Plan
       id: plan
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
+      shell: bash
       run: terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
       continue-on-error: false
       env:
@@ -173,7 +177,7 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       if: ${{ ! inputs.unlock }}
       run: terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
-      continue-on-error: true
+      shell: bash
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
@@ -182,12 +186,14 @@ runs:
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       if: ${{ ! inputs.unlock }}
+      shell: bash
       run: tf-summarize tfplan.json
 
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       run: terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+      shell: bash
       continue-on-error: false
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
