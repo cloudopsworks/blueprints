@@ -1,0 +1,266 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Deploy Application AWS
+author: cloudopsworks
+description: Deploy Application to AWS
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  tofu_version:
+    description: 'The version of OpenTofu to use'
+    required: false
+    default: '1.7.1'
+  tg_version:
+    description: 'The version of Terragrunt to use'
+    required: false
+    default: '0.59.5'
+  tf_summarize_version:
+    description: 'The version of tf-summarize to use'
+    required: false
+    default: '0.3.10'
+  token:
+    description: 'The GitHub token'
+    required: true
+  cloud_type:
+    description: 'The cloud type'
+    required: true
+  aws_region:
+    description: 'The AWS region'
+    required: true
+  aws_sts_role_arn:
+    description: 'The AWS STS Role ARN'
+    required: true
+  aws_access_key_id:
+    description: 'The AWS access key ID'
+    required: true
+  aws_secret_access_key:
+    description: 'The AWS secret access key'
+    required: true
+  terraform_state_conf:
+    description: 'The Terraform state configuration'
+    required: true
+  unlock:
+    description: 'Unlock the state'
+    required: false
+    default: false
+  lock_id:
+    description: 'The lock ID'
+    required: false
+    default: ''
+  destroy:
+    description: 'Destroy the state'
+    required: false
+    default: false
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  qualifier:
+    description: 'The release qualifier'
+    required: false
+    default: ''
+  package_name:
+    description: 'The package name'
+    required: true
+  deployment_name:
+    description: 'The deployment name'
+    required: true
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'api_artifacts'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Terraform Plan prettifier
+      uses: kishaningithub/setup-tf-summarize@v2
+      with:
+        github-token: ${{ inputs.token }}
+        tf-summarize-version: v${{ inputs.tf_summarize_version }}
+
+    - name: Setup OpenTofu
+      id: setup_opentofu
+      uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_version: ${{ inputs.tofu_version }}
+        tofu_wrapper: false
+
+    - name: Setup Terragrunt v${{ inputs.tg_version }}
+      shell: bash
+      run: |
+        sudo wget -q -O /bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/v${{ inputs.tg_version }}/terragrunt_linux_amd64"
+        sudo chmod +x /bin/terragrunt
+        terragrunt -v
+
+    - name: Copy configurations
+      shell: bash
+      run: |
+        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/inputs.yaml
+        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/
+
+    - name: Copy Values Bundle
+      if: ${{ inputs.target_cloud_type == 'beanstalk' || inputs.target_cloud_type == 'lambda' }}
+      shell: bash
+      run: |
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        cp -pfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+
+    - name: Create Hash value for values bundle
+      if: ${{ inputs.target_cloud_type == 'beanstalk' || inputs.target_cloud_type == 'lambda' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum > .values_hash_${{ steps.release_name.outputs.result }}
+
+    - name: Copy Values Bundle
+      if: ${{ inputs.target_cloud_type == 'kubernetes' }}
+      shell: bash
+      run: |
+        cp -pf ${{ inputs.source_path }}/.github/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/helm-values.yaml
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        if [ -d ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ]; then
+          cp -pfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        else
+          echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
+          touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
+        fi
+
+    - name: Generate release.yaml
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        cat > release.yaml << EOF 
+        release:
+          name: ${{ inputs.release_name }}
+          source:
+            name: ${{ inputs.package_name }}
+            version: ${{ inputs.release_version }}
+        EOF
+
+    - name: Insert release.qualifier data into release.yaml
+      if: ${{ inputs.qualifier != '' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      shell: bash
+      run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
+
+    - name: Insert bucket name & bucket path for beanstalk & lambda
+      if: ${{ inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        yq e -i '.bucket_path = "${{ steps.release_name.outputs.result }}/${{ inputs.release_version }}/${{ steps.release_name.outputs.result }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
+        yq e -i '.version_label = "${{ steps.release_name.outputs.result }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
+
+    - name: Generate Global Inputs global-inputs.yaml
+      working-directory: ${{ inputs.blueprint_path }}/aws
+      shell: bash
+      run: |
+        cat > global-inputs.yaml << EOF
+        environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
+        release_name: ${{ steps.release_name.outputs.result }}
+        default:
+          region: ${{ inputs.aws_region }}
+          sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+        EOF
+
+    - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
+      working-directory: ${{ inputs.blueprint_path }}/aws
+      shell: bash
+      run: |
+        cat > state_conf.yaml << EOF
+        ${{ inputs.terraform_state_conf }}
+        EOF
+
+    - name: Determine Plan Action
+      uses: actions/github-script@v7
+      id: plan_action
+      with:
+        script: |
+          const is_destroy = ${{ inputs.destroy }};
+          const is_unlock = ${{ inputs.unlock }};
+          if (is_destroy) {
+            core.setOutput('value', 'plan -destroy -no-color -input=false')
+            console.log('destroy');
+          } else {
+            if (is_unlock) {
+              core.setOutput('value', 'force-unlock -force ${{ inputs.lock_id }}')
+              console.log('unlock');
+            } else {
+              core.setOutput('value', 'plan -no-color -input=false')
+              console.log('apply');
+            }
+          }
+
+    - name: Terragrunt Plan
+      id: plan
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      run: terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        HELM_CREDS_USER: ${{ inputs.aws_access_key_id }}
+        HELM_CREDS_PASSWORD: ${{ inputs.aws_secret_access_key }}
+        HELM_EXPERIMENTAL_OCI: "1"
+        GITHUB_API_TOKEN: ${{ secrets.token }}
+
+    - name: Terragrunt Plan to JSON
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      if: ${{ ! inputs.unlock }}
+      run: terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        GITHUB_API_TOKEN: ${{ inputs.token }}
+
+    - name: TF Summarize of JSON file
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      if: ${{ ! inputs.unlock }}
+      run: tf-summarize tfplan.json
+
+    - name: Restore Pipeline Artifacts
+      uses: actions/download-artifact@v4
+      if: ${{ inputs.artifacts_name != '' }}
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
+
+    - name: Generate Bundle ZipFile
+      if: ${{ inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda' }}
+      id: bundle
+      uses: ${{ inputs.blueprint_path }}/cd/deploy/app/pack
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: 'aws'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        package_name: ${{ inputs.package_name }}
+        aws_access_key_id: ${{ inputs.aws_access_key_id }}
+        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
+        aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+
+    - name: Terragrunt Apply
+      id: apply
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      run: terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+      continue-on-error: false
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        HELM_CREDS_USER: ${{ secrets.AZURE_SERVICE_ID }}
+        HELM_CREDS_PASSWORD: ${{ secrets.AZURE_SERVICE_SECRET }}
+        HELM_EXPERIMENTAL_OCI: "1"
+        GITHUB_API_TOKEN: ${{ secrets.token }}

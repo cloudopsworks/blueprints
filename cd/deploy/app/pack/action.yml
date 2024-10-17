@@ -1,0 +1,160 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Zip Packaging for Uploading
+author:  cloudopsworks
+description: Zip Packaging for Uploading
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  cloud:
+    description: 'The target cloud'
+    required: true
+  cloud_type:
+    description: 'The target cloud type'
+    required: true
+  aws_access_key_id:
+    description: 'AWS Access Key ID'
+    required: true
+  aws_secret_access_key:
+    description: 'AWS Secret Access Key'
+    required: true
+  aws_sts_role_arn:
+    description: 'AWS STS Role ARN'
+    required: true
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  package_name:
+    description: 'The package name'
+    required: true
+outputs:
+  dest_zip_path:
+    description: 'Destination ZIP path'
+    value: ${{ steps.dest_zip.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get Bucket Name from inputs-${{ inputs.environment }}.yaml
+      id: versions_bucket
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.versions_bucket' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Get Bucket Name form release.yaml
+      id: bucket_path
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.bucket_path' release.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Get Java  Stack from inputs-${{ inputs.environment }}.yaml
+      id: java_stack
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.beanstalk.solution_stack | test("(?i:.*java.*)")' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Get Node Stack from inputs-${{ inputs.environment }}.yaml
+      id: node_stack
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.beanstalk.solution_stack | test("(?i:.*node.*)")' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Create temp_dir
+      id: temp_dir
+      shell: bash
+      run: |
+        temp_dir=$(mktemp -d)
+        echo "result=$temp_dir" >> $GITHUB_OUTPUT
+
+    - name: DEBUG
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        pwd
+        ls -ltR
+
+    - name: Copy NodeJS Application Release
+      working-directory: ${{ steps.temp_dir.outputs.result }}
+      if: ${{ steps.node_stack.outputs.result == 'true' }}
+      shell: bash
+      run: |
+        tar -xf ${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/*.tar 
+
+    - name: Copy .env into for NodeJS
+      if: ${{ steps.node_stack.outputs.result == 'true' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        [ -f values/.env ] && cp -pf values/.env ${{ steps.temp_dir.outputs.result }}
+
+    - name: Copy Java Application Release
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
+      if: ${{ steps.java_stack.outputs.result == 'true' }}
+      shell: bash
+      run: |
+        cp -p ./*.jar ${{ steps.temp_dir.outputs.result }}/app.jar
+
+    - name: Copy Application Release
+      if: ${{ steps.java_stack.outputs.result != 'true' && steps.node_stack.outputs.result != 'true' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
+      shell: bash
+      run: |
+        cp -vpr ./* ${{ steps.temp_dir.outputs.result }}
+
+    - name: Copy values/ into temp dir
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/values
+      shell: bash
+      run: |
+        cp -vpfR . ${{ steps.temp_dir.outputs.result }}
+
+    - name: Default Procfile for Java
+      if: ${{ steps.java_stack.outputs.result == 'true' }}
+      working-directory: ${{ steps.temp_dir.outputs.result }}
+      shell: bash
+      run: |
+        [ ! -f Procfile ] && echo 'web: java -XX:MaxRAMPercentage=65 $JAVA_OPTS -jar app.jar' > Procfile
+
+    ## Generate ZIP and push to bucket
+    - name: Generate ZIP and report filename
+      working-directory: ${{ steps.temp_dir.outputs.result }}
+      id: dest_zip
+      shell: bash
+      run: |
+        tmp_dir=$(mktemp -d)
+        zip -1 -q -y -r $tmp_dir/app.zip .
+        echo "result=$tmp_dir/app.zip" >> $GITHUB_OUTPUT
+
+    - name: Upload to S3
+      working-directory: ${{ steps.temp_dir.outputs.result }}
+      shell: bash
+      run: |
+        TEMP_ROLE=$(aws sts assume-role --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "${ROLE_SESSION_NAME:-AssumingRole}")
+        AWS_ACCESS_KEY_ID=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')
+        AWS_SECRET_ACCESS_KEY=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')
+        AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
+        aws s3 cp ${{ steps.dest_zip.outputs.result }} s3://${{ steps.versions_bucket.outputs.result }}/${{ steps.bucket_path.outputs.result }}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        ASSUME_ROLE_ARN: ${{ inputs.aws_sts_role_arn }}
+        ROLE_SESSION_NAME: s3-upload-pipeline
