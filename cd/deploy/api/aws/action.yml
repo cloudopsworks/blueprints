@@ -69,15 +69,14 @@ inputs:
   deployment_name:
     description: 'The deployment name'
     required: true
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'api_artifacts'
 
 runs:
   using: 'composite'
   steps:
-    # Get Pipeline Config
-    - name: Get Pipeline Config
-      id: config
-      uses: ./${{ inputs.blueprint_path }}/ci/config
-
     - name: Terraform Plan prettifier
       uses: kishaningithub/setup-tf-summarize@v2
       with:
@@ -105,11 +104,11 @@ runs:
         cp -pf ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/inputs-apis.yaml
         cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/inputs-global.yaml
 
-    - name: Copy API Files Bundle
-      shell: bash
-      run: |
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/apigw/apifiles/
-        cp -pfR source/apifiles/* ${{ inputs.blueprint_path }}/terraform/aws/apigw/apifiles/
+    - name: Download API Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: ${{ inputs.blueprint_path }}/terraform/aws/apigw/apifiles/
 
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
@@ -127,7 +126,7 @@ runs:
       run: |
         cat > global-inputs.yaml << EOF
         environment: ${{ inputs.deployment_name }}
-        release_name: ${{ steps.release_name.outputs.value }}
+        release_name: ${{ inputs.release_name }}
         default:
           region: ${{ inputs.aws_region != '' && inputs.aws_region }}
           sts_role_arn: ${{ inputs.aws_sts_role_arn != '' && inputs.aws_sts_role_arn }}

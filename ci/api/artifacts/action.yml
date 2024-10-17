@@ -19,6 +19,7 @@ inputs:
         description: 'The name of the artifacts to save'
         required: false
         default: 'api_artifacts'
+
 runs:
   using: 'composite'
   steps:
