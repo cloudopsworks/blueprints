@@ -206,6 +206,7 @@ runs:
     - name: Terragrunt Plan
       id: plan
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      shell: bash
       run: terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
@@ -218,6 +219,7 @@ runs:
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       if: ${{ ! inputs.unlock }}
+      shell: bash
       run: terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
@@ -227,6 +229,7 @@ runs:
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       if: ${{ ! inputs.unlock }}
+      shell: bash
       run: tf-summarize tfplan.json
 
     - name: Restore Pipeline Artifacts
@@ -255,6 +258,7 @@ runs:
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      shell: bash
       run: terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
       continue-on-error: false
       env:
