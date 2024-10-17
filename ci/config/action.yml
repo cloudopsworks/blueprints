@@ -216,7 +216,6 @@ runs:
           core.setOutput('deploymentName', deploymentName);
           
           return outputV;
-        github-token: ${{ secrets.token }}
 
     # Check the specific environment vars/input-*.yaml exists if not: hard fail
     - name: Check specific environment file exists
@@ -239,7 +238,7 @@ runs:
       if: steps.cloud.outputs.result == 'AWS'
       uses: mikefarah/yq@master
       with:
-        cmd: yq -I=0 '.aws.region // "${{ vars.DEPLOYMENT_AWS_REGION }}"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+        cmd: yq -I=0 '.aws.region // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
 
     # Get the AWS STS Role ARN value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for STS Role ARN
@@ -247,7 +246,7 @@ runs:
       if: steps.cloud.outputs.result == 'AWS'
       uses: mikefarah/yq@master
       with:
-        cmd: yq -I=0 '.aws.sts_role_arn // "${{ vars.DEPLOYMENT_AWS_STS_ROLE_ARN }}"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+        cmd: yq -I=0 '.aws.sts_role_arn // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
 
     # Get the Azure RG value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for Azure RG
