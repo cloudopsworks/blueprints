@@ -23,6 +23,12 @@ inputs:
     description: 'The name of the sources to save'
     required: false
     default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  github_token:
+    description: 'The github token to use for the build'
+    required: true
 
 runs:
   using: 'composite'
@@ -136,8 +142,8 @@ runs:
       shell: bash
       run: make version
       env:
-        GITHUB_ACTOR: ${{ inputs.BOT_USER }}
-        GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
 
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
@@ -154,8 +160,8 @@ runs:
         MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
         mvn --batch-mode --update-snapshots clean package
       env:
-        GITHUB_ACTOR: ${{ inputs.BOT_USER }}
-        GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
 
     # Deploy release to Maven Repository (defaults to Github repo)
     - name: Deploy to Maven Repo
@@ -166,5 +172,5 @@ runs:
         MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
         mvn --batch-mode deploy
       env:
-        GITHUB_ACTOR: ${{ inputs.BOT_USER }}
-        GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
