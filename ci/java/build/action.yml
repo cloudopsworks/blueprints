@@ -127,6 +127,13 @@ runs:
         echo "owner=$repo_owner" >> $GITHUB_OUTPUT
         echo "repo_name=$repo_name" >> $GITHUB_OUTPUT
 
+    # Setup Java JDK for builds
+    - name: Set JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: "${{ steps.java_version.outputs.result }}"
+        distribution: "${{ steps.java_dist.outputs.result }}"
+
     # Cache all maven packages
     - name: Cache Maven packages
       uses: actions/cache@v4
