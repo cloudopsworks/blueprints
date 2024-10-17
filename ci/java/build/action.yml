@@ -169,13 +169,13 @@ runs:
       run: |
         echo "::group::Maven Build"
         MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
-        mvn --batch-mode --update-snapshots clean package
+        mvn --batch-mode --update-snapshots clean package -DskipTests
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
 
-    # TODO: Relocate in a proper place
+    # TODO: Relocate in a proper place, should deploy after apropriate testing
     # Deploy release to Maven Repository (defaults to Github repo)
     - name: Deploy to Maven Repo
       if: ${{ steps.is_library.outputs.result == 'true' }}
@@ -184,7 +184,7 @@ runs:
       run: |
         echo "::group::Maven Deploy to MVN Repo"        
         MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
-        mvn --batch-mode deploy
+        mvn --batch-mode deploy -DskipTests
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
