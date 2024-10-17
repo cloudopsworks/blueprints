@@ -147,7 +147,10 @@ runs:
     - name: Version SET
       working-directory: ${{ inputs.source_path }}
       shell: bash
-      run: make version
+      run: |
+        echo "::group::Maven Version SET"
+        make version
+        echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
@@ -164,20 +167,25 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
+        echo "::group::Maven Build"
         MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
         mvn --batch-mode --update-snapshots clean package
+        echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
 
+    # TODO: Relocate in a proper place
     # Deploy release to Maven Repository (defaults to Github repo)
     - name: Deploy to Maven Repo
       if: ${{ steps.is_library.outputs.result == 'true' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
+        echo "::group::Maven Deploy to MVN Repo"        
         MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
         mvn --batch-mode deploy
+        echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
