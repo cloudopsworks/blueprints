@@ -107,10 +107,9 @@ runs:
     # Get from global inputs the custom Maven Options
     - name: Get Maven options
       id: maven_opts
-      working-directory: ${{ inputs.source_path }}
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.maven_options // ""' ./.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get the owner repo
     - name: Get owner
