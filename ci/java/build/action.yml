@@ -29,7 +29,34 @@ inputs:
   github_token:
     description: 'The github token to use for the build'
     required: true
-
+outputs:
+  java_version:
+    description: 'The Java version to use for the build'
+    value: ${{ steps.java_version.outputs.result }}
+  java_dist:
+    description: 'The Java distribution to use for the build'
+    value: ${{ steps.java_dist.outputs.result }}
+  java_image_variant:
+    description: 'The Java image variant to use for the build'
+    value: ${{ steps.java_image_variant.outputs.result }}
+  has_preview:
+    description: 'The preview enabled flag'
+    value: ${{ steps.has_preview.outputs.result }}
+  sonarqube_enabled:
+    description: 'The Sonarqube enabled flag'
+    value: ${{ steps.sonarqube_enabled.outputs.result }}
+  dtrack_enabled:
+    description: 'The DependencyTrack enabled flag'
+    value: ${{ steps.dtrack_enabled.outputs.result }}
+  dtrack_project_type:
+    description: 'The DependencyTrack project type'
+    value: ${{ steps.dtrack_project_type.outputs.result }}
+  snyk_enabled:
+    description: 'The Snyk enabled flag'
+    value: ${{ steps.snyk_enabled.outputs.result }}
+  semgrep_enabled:
+    description: 'The Semgrep enabled flag'
+    value: ${{ steps.semgrep_enabled.outputs.result }}
 runs:
   using: 'composite'
   steps:
@@ -60,13 +87,6 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.preview.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # Get if this is a library project
-    - name: Get pipeline preview enabled
-      id: is_library
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.isLibrary and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get Sonarqube Configuration is enabled
     - name: Get Pipeline conf Sonarqube is Enabled
@@ -175,17 +195,3 @@ runs:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
 
-    # TODO: Relocate in a proper place, should deploy after apropriate testing
-    # Deploy release to Maven Repository (defaults to Github repo)
-    - name: Deploy to Maven Repo
-      if: ${{ steps.is_library.outputs.result == 'true' }}
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        echo "::group::Maven Deploy to MVN Repo"        
-        MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
-        mvn --batch-mode deploy -DskipTests
-        echo "::endgroup::"
-      env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.github_token }}

@@ -1,0 +1,42 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Save API Artifacts
+author: cloudopsworks
+description: Save API artifacts to the artifacts store
+inputs:
+    source_path:
+        description: 'The path to the source code'
+        required: false
+        default: 'source'
+    blueprint_path:
+        description: 'The path to the blueprint'
+        required: false
+        default: 'bp'
+    artifacts_name:
+        description: 'The name of the artifacts to save'
+        required: false
+        default: 'api_artifacts'
+runs:
+  using: 'composite'
+  steps:
+    # Get api_files_dir from inputs-global.yaml
+    - name: Get api_files_dir
+      id: api_files_dir
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.api_files_dir // "apifiles"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Perform upload of api files
+    - name: 'Upload ApiFiles from ${{ steps.api_files_dir.outputs.result }}/'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: |
+          ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/*.json
+          ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/*.yml
+          ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/*.yaml
+      retention-days: 1
+      compression-level: '3' #mid-fast

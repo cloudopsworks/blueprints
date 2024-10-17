@@ -1,0 +1,55 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Deploy Java Component
+author: cloudopsworks
+description: Deploy Java component to Maven repository
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+runs:
+  using: 'composite'
+  steps:
+    # Get if this is a library project
+    - name: Get pipeline preview enabled
+      id: is_library
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.isLibrary and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Maven Options
+    - name: Get Maven options
+      id: maven_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Deploy release to Maven Repository (defaults to Github repo)
+    - name: Deploy to Maven Repo
+      if: ${{ steps.is_library.outputs.result == 'true' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Maven Deploy to MVN Repo"        
+        MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
+        mvn --batch-mode deploy -DskipTests
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}

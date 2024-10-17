@@ -63,4 +63,4 @@ runs:
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
         include-hidden-files: true
-        compression-level: '1' #fast
+        compression-level: '3' #mid-fast
