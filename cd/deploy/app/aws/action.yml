@@ -51,7 +51,7 @@ inputs:
   unlock:
     description: 'Unlock the state'
     required: false
-    default: false
+    default: 'false'
   lock_id:
     description: 'The lock ID'
     required: false
@@ -59,7 +59,7 @@ inputs:
   destroy:
     description: 'Destroy the state'
     required: false
-    default: false
+    default: 'false'
   release_name:
     description: 'The release name'
     required: true
@@ -221,7 +221,7 @@ runs:
 
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      if: ${{ ! inputs.unlock }}
+      if: ${{ inputs.unlock != 'true' }}
       shell: bash
       run: terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
       env:
@@ -231,7 +231,7 @@ runs:
 
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      if: ${{ ! inputs.unlock }}
+      if: ${{ inputs.unlock != 'true' }}
       shell: bash
       run: tf-summarize tfplan.json
 
