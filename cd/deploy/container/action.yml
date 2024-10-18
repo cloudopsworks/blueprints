@@ -57,6 +57,10 @@ runs:
       with:
         name: docker-image
 
+    - name: dump
+      shell: bash
+      run: echo "${{ toJSON(inputs) }}"
+
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
@@ -94,7 +98,7 @@ runs:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
         aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
         role-to-assume: ${{ inputs.aws_sts_role_arn }}
-        role-session-name: ${{ inputs.repository_name }}-build
+        role-session-name: ${{ github.repository_id }}-build
         aws-region: ${{ inputs.aws_region }}
 
     - name: Docker Login AWS
