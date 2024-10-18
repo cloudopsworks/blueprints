@@ -150,21 +150,29 @@ runs:
         zip -1 -q -y -r $tmp_dir/app.zip .
         echo "result=$tmp_dir/app.zip" >> $GITHUB_OUTPUT
 
+    - name: Temporary STS Assume Role
+      id: sts
+      shell: bash
+      run: |
+        TEMP_ROLE=$(aws sts assume-role --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "${ROLE_SESSION_NAME:-AssumingRole}")
+        echo aws_access_key_id=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId') >> GITHUB_OUTPUT
+        echo aws_secret_access_key=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey') >> GITHUB_OUTPUT
+        echo aws_session_token=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken') >> GITHUB_OUTPUT
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        ASSUME_ROLE_ARN: ${{ inputs.aws_sts_role_arn }}
+        ROLE_SESSION_NAME: s3-upload-pipeline
+
     - name: Upload to S3
       working-directory: ${{ steps.temp_dir.outputs.result }}
       shell: bash
       run: |
         echo "::group::Uploading to S3"
-        AWS_ACCESS_KEY_ID=${{ inputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY=${{ inputs.aws_secret_access_key }}
-        TEMP_ROLE=$(aws sts assume-role --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "${ROLE_SESSION_NAME:-AssumingRole}")
-        echo "${TEMP_ROLE}"
-        AWS_ACCESS_KEY_ID=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')
-        AWS_SECRET_ACCESS_KEY=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')
-        AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
         aws s3 cp ${{ steps.dest_zip.outputs.result }} s3://${{ steps.versions_bucket.outputs.result }}/${{ steps.bucket_path.outputs.result }}
         echo "::endgroup::"
       env:
-        ASSUME_ROLE_ARN: ${{ inputs.aws_sts_role_arn }}
-        ROLE_SESSION_NAME: s3-upload-pipeline
+        AWS_ACCESS_KEY_ID: ${{ steps.sts.outputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ steps.sts.outputs.aws_secret_access_key }}
+        AWS_SESSION_TOKEN: ${{ steps.sts.outputs.aws_session_token }}
         AWS_REGION: ${{ inputs.aws_region }}
