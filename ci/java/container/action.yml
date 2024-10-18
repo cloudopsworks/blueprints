@@ -80,8 +80,8 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        cp ${{ inputs.blueprint_path }}/ci/container/blueprints/docker/java/* .
-        cp ${{ inputs.blueprint_path }}/ci/container/blueprints/docker/java/.dockerignore .
+        cp ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* .
+        cp ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore .
 
     # Java version image settings (adopt is deprecated)
     - name: Set output with Java Version
