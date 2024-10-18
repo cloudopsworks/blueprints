@@ -82,7 +82,7 @@ inputs:
   artifacts_name:
     description: 'The name of the artifacts to save'
     required: false
-    default: 'api_artifacts'
+    default: 'build_artifacts'
 
 runs:
   using: 'composite'
@@ -114,21 +114,21 @@ runs:
         cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/
 
     - name: Copy Values Bundle
-      if: ${{ inputs.target_cloud_type == 'beanstalk' || inputs.target_cloud_type == 'lambda' }}
+      if: ${{ inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda' }}
       shell: bash
       run: |
         mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
         cp -pfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
 
     - name: Create Hash value for values bundle
-      if: ${{ inputs.target_cloud_type == 'beanstalk' || inputs.target_cloud_type == 'lambda' }}
+      if: ${{ inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
       run: |
-        find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum > .values_hash_${{ steps.release_name.outputs.result }}
+        find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum > .values_hash_${{ inputs.release_name }}
 
     - name: Copy Values Bundle
-      if: ${{ inputs.target_cloud_type == 'kubernetes' }}
+      if: ${{ inputs.cloud_type == 'kubernetes' }}
       shell: bash
       run: |
         cp -pf ${{ inputs.source_path }}/.github/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/helm-values.yaml
@@ -163,8 +163,8 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
       run: |
-        yq e -i '.bucket_path = "${{ steps.release_name.outputs.result }}/${{ inputs.release_version }}/${{ steps.release_name.outputs.result }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
-        yq e -i '.version_label = "${{ steps.release_name.outputs.result }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
+        yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
+        yq e -i '.version_label = "${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/aws
@@ -172,7 +172,7 @@ runs:
       run: |
         cat > global-inputs.yaml << EOF
         environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
-        release_name: ${{ steps.release_name.outputs.result }}
+        release_name: ${{ inputs.release_name }}
         default:
           region: ${{ inputs.aws_region }}
           sts_role_arn: ${{ inputs.aws_sts_role_arn }}
