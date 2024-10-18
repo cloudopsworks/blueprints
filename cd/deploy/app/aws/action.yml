@@ -210,7 +210,10 @@ runs:
       id: plan
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
-      run: terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
+      run: |
+        echo "::group::Terragrunt Plan"
+        terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
+        echo "::endgroup::"
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
@@ -223,7 +226,10 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' }}
       shell: bash
-      run: terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
+      run: |
+        echo "::group::Terragrunt Plan to JSON"
+        terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
+        echo "::endgroup::"
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
@@ -233,7 +239,10 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' }}
       shell: bash
-      run: tf-summarize tfplan.json
+      run: |
+        echo "::group::TF Summarize of JSON file"
+        tf-summarize tfplan.json
+        echo "::endgroup::"
 
     - name: Restore Pipeline Artifacts
       uses: actions/download-artifact@v4
@@ -264,7 +273,10 @@ runs:
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
-      run: terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+      run: |
+        echo "::group::Terragrunt Apply"
+        terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+        echo "::endgroup::"
       continue-on-error: false
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}

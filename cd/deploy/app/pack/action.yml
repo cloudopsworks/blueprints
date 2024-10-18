@@ -92,13 +92,13 @@ runs:
         temp_dir=$(mktemp -d)
         echo "result=$temp_dir" >> $GITHUB_OUTPUT
 
-    - name: DEBUG
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        pwd
-        ls -ltR
-
+#    - name: DEBUG
+#      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+#      shell: bash
+#      run: |
+#        pwd
+#        ls -ltR
+#
     - name: Copy NodeJS Application Release
       working-directory: ${{ steps.temp_dir.outputs.result }}
       if: ${{ steps.node_stack.outputs.result == 'true' }}
@@ -154,11 +154,13 @@ runs:
       working-directory: ${{ steps.temp_dir.outputs.result }}
       shell: bash
       run: |
+        echo "::group::Uploading to S3"
         TEMP_ROLE=$(aws sts assume-role --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "${ROLE_SESSION_NAME:-AssumingRole}")
-        export AWS_ACCESS_KEY_ID=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')
-        export AWS_SECRET_ACCESS_KEY=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')
-        export AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
+        AWS_ACCESS_KEY_ID=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')
+        AWS_SECRET_ACCESS_KEY=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')
+        AWS_SESSION_TOKEN=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')
         aws s3 cp ${{ steps.dest_zip.outputs.result }} s3://${{ steps.versions_bucket.outputs.result }}/${{ steps.bucket_path.outputs.result }}
+        echo "::endgroup::"
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
