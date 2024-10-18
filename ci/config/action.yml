@@ -65,10 +65,14 @@ outputs:
     value: ${{ steps.is_library.outputs.result }}
   container_enabled:
     description: 'The container enabled flag'
-    value: ${{ steps.cloud_type.output.result == 'eks' || steps.cloud_type.output.result == 'aks' || steps.cloud_type.output.result == 'gke' || steps.cloud_type.output.result == 'kubernetes' }}
+    value: ${{ steps.cloud_type.output.result == 'eks' || steps.cloud_type.output.result == 'aks' || steps.cloud_type.output.result == 'gke' || steps.cloud_type.output.result == 'kubernetes' || steps.has_preview.output.result == 'true' }}
   blue_green_enabled:
     description: 'The blue-green deployment enabled flag'
     value: ${{ steps.blue_green.output.result }}
+  has_preview:
+    description: 'The preview enabled flag'
+    value: ${{ steps.has_preview.outputs.result }}
+
 runs:
   using: 'composite'
   steps:
@@ -297,3 +301,10 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq -I=0 '.isLibrary and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get preview enabled
+    - name: Get pipeline preview enabled
+      id: has_preview
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.preview.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml

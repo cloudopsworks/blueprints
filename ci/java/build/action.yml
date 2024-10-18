@@ -39,9 +39,6 @@ outputs:
   java_image_variant:
     description: 'The Java image variant to use for the build'
     value: ${{ steps.java_image_variant.outputs.result }}
-  has_preview:
-    description: 'The preview enabled flag'
-    value: ${{ steps.has_preview.outputs.result }}
   sonarqube_enabled:
     description: 'The Sonarqube enabled flag'
     value: ${{ steps.sonarqube_enabled.outputs.result }}
@@ -83,13 +80,6 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.java.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # Get preview enabled
-    - name: Get pipeline preview enabled
-      id: has_preview
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.preview.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get Sonarqube Configuration is enabled
     - name: Get Pipeline conf Sonarqube is Enabled
