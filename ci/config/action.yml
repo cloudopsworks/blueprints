@@ -65,10 +65,10 @@ outputs:
     value: ${{ steps.is_library.outputs.result }}
   container_enabled:
     description: 'The container enabled flag'
-    value: ${{ steps.cloud_type.output.result == 'eks' || steps.cloud_type.output.result == 'aks' || steps.cloud_type.output.result == 'gke' || steps.cloud_type.output.result == 'kubernetes' || steps.has_preview.output.result == 'true' }}
+    value: ${{ steps.cloud_type.outputs.result == 'eks' || steps.cloud_type.outputs.result == 'aks' || steps.cloud_type.outputs.result == 'gke' || steps.cloud_type.outputs.result == 'kubernetes' || steps.has_preview.outputs.result == 'true' }}
   blue_green_enabled:
     description: 'The blue-green deployment enabled flag'
-    value: ${{ steps.blue_green.output.result }}
+    value: ${{ steps.blue_green.outputs.result }}
   has_preview:
     description: 'The preview enabled flag'
     value: ${{ steps.has_preview.outputs.result }}
