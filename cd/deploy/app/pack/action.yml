@@ -163,6 +163,7 @@ runs:
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
         ASSUME_ROLE_ARN: ${{ inputs.aws_sts_role_arn }}
         ROLE_SESSION_NAME: s3-upload-pipeline
+        AWS_REGION: ${{ inputs.aws_region }}
 
     - name: Upload to S3
       working-directory: ${{ steps.temp_dir.outputs.result }}
