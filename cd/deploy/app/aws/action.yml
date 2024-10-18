@@ -242,7 +242,7 @@ runs:
     - name: Generate Bundle ZipFile
       if: ${{ inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda' }}
       id: bundle
-      uses: ${{ inputs.blueprint_path }}/cd/deploy/app/pack
+      uses: ./bp/cd/deploy/app/pack
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
@@ -262,9 +262,9 @@ runs:
       run: terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
       continue-on-error: false
       env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        HELM_CREDS_USER: ${{ secrets.AZURE_SERVICE_ID }}
-        HELM_CREDS_PASSWORD: ${{ secrets.AZURE_SERVICE_SECRET }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_access_key_id }}
+        HELM_CREDS_USER: ${{ inputs.aws_access_key_id }}
+        HELM_CREDS_PASSWORD: ${{ inputs.aws_access_key_id }}
         HELM_EXPERIMENTAL_OCI: "1"
         GITHUB_API_TOKEN: ${{ secrets.token }}
