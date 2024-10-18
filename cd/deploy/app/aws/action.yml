@@ -275,7 +275,6 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Apply"
-        TF_LOG=DEBUG
         terragrunt --terragrunt-non-interactive --terragrunt-log-level debug apply -no-color plan.tfplan
         echo "::endgroup::"
       continue-on-error: false
@@ -286,3 +285,5 @@ runs:
         HELM_CREDS_PASSWORD: ${{ inputs.aws_access_key_id }}
         HELM_EXPERIMENTAL_OCI: "1"
         GITHUB_API_TOKEN: ${{ inputs.token }}
+        TF_LOG: DEBUG
+
