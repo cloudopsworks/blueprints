@@ -39,5 +39,5 @@ runs:
           ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/*.json
           ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/*.yml
           ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/*.yaml
-      retention-days: 1
-      compression-level: '3' #mid-fast
+        retention-days: 1
+        compression-level: '3' #mid-fast
