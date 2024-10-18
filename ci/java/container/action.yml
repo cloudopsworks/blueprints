@@ -77,11 +77,10 @@ runs:
 
     # Copy Dockerfile from blueprint to current dir
     - name: Copy Dockerfile Java App
-      working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        cp ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* .
-        cp ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore .
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore ${{ inputs.source_path }}/
 
     # Java version image settings (adopt is deprecated)
     - name: Set output with Java Version
