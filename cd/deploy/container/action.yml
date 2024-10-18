@@ -6,7 +6,18 @@
 name: Push Docker Image
 author: cloudopsworks
 description: Push Docker Image to registry
-inputs: 
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  environment:
+    description: 'The environment to use for the build'
+    required: true
   cloud:
     description: 'The target cloud'
     required: true
