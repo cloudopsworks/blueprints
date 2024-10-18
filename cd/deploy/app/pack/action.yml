@@ -156,9 +156,9 @@ runs:
       run: |
         TEMP_ROLE=$(aws sts assume-role --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "${ROLE_SESSION_NAME:-AssumingRole}")
         echo "${TEMP_ROLE}"
-        echo "aws_access_key_id=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')" >> GITHUB_OUTPUT
-        echo "aws_secret_access_key=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')" >> GITHUB_OUTPUT
-        echo "aws_session_token=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')" >> GITHUB_OUTPUT
+        echo "aws_access_key_id=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')" >> $GITHUB_OUTPUT
+        echo "aws_secret_access_key=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')" >> $GITHUB_OUTPUT
+        echo "aws_session_token=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')" >> $GITHUB_OUTPUT
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
