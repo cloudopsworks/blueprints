@@ -258,6 +258,7 @@ runs:
         aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
         aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
         environment: ${{ inputs.environment }}
+        aws_region: ${{ inputs.aws_region }}
 
     - name: Terragrunt Apply
       id: apply
