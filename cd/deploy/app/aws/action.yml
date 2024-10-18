@@ -275,8 +275,8 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Apply"
-        ls -lR
-        terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+        TF_LOG=DEBUG
+        terragrunt --terragrunt-non-interactive --terragrunt-log-level debug apply -no-color plan.tfplan
         echo "::endgroup::"
       continue-on-error: false
       env:
