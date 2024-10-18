@@ -251,23 +251,23 @@ runs:
         name: ${{ inputs.artifacts_name }}
         path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
 
-    - name: Generate Bundle ZipFile
-      if: ${{ (inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda') && inputs.unlock != 'true' && inputs.destroy != 'true' }}
-      id: bundle
-      uses: ./bp/cd/deploy/app/pack
-      with:
-        source_path: ${{ inputs.source_path }}
-        blueprint_path: ${{ inputs.blueprint_path }}
-        cloud: 'aws'
-        cloud_type: ${{ inputs.cloud_type }}
-        release_name: ${{ inputs.release_name }}
-        release_version: ${{ inputs.release_version }}
-        package_name: ${{ inputs.package_name }}
-        aws_access_key_id: ${{ inputs.aws_access_key_id }}
-        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
-        aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
-        environment: ${{ inputs.environment }}
-        aws_region: ${{ inputs.aws_region }}
+#    - name: Generate Bundle ZipFile
+#      if: ${{ (inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda') && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+#      id: bundle
+#      uses: ./bp/cd/deploy/app/pack
+#      with:
+#        source_path: ${{ inputs.source_path }}
+#        blueprint_path: ${{ inputs.blueprint_path }}
+#        cloud: 'aws'
+#        cloud_type: ${{ inputs.cloud_type }}
+#        release_name: ${{ inputs.release_name }}
+#        release_version: ${{ inputs.release_version }}
+#        package_name: ${{ inputs.package_name }}
+#        aws_access_key_id: ${{ inputs.aws_access_key_id }}
+#        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
+#        aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+#        environment: ${{ inputs.environment }}
+#        aws_region: ${{ inputs.aws_region }}
 
     - name: Terragrunt Apply
       id: apply
