@@ -57,10 +57,6 @@ runs:
       with:
         name: docker-image
 
-    - name: dump
-      shell: bash
-      run: echo "${{ toJSON(inputs) }}"
-
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
