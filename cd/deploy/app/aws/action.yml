@@ -167,7 +167,7 @@ runs:
         yq e -i '.version_label = "${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
-      working-directory: ${{ inputs.blueprint_path }}/aws
+      working-directory: ${{ inputs.blueprint_path }}/terrform/aws
       shell: bash
       run: |
         cat > global-inputs.yaml << EOF
@@ -179,7 +179,7 @@ runs:
         EOF
 
     - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
-      working-directory: ${{ inputs.blueprint_path }}/aws
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws
       shell: bash
       run: |
         cat > state_conf.yaml << EOF
