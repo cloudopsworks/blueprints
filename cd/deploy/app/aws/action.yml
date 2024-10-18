@@ -134,7 +134,7 @@ runs:
         cp -pf ${{ inputs.source_path }}/.github/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/helm-values.yaml
         mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
         if [ -d ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ]; then
-          cp -pfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+          cp -pfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/ ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
         else
           echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
           touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
