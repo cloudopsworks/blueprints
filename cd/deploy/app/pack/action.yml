@@ -39,6 +39,9 @@ inputs:
   package_name:
     description: 'The package name'
     required: true
+  environment:
+    description: 'The environment'
+    required: true
 outputs:
   dest_zip_path:
     description: 'Destination ZIP path'
