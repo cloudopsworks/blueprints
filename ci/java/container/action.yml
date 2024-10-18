@@ -196,7 +196,7 @@ runs:
           ${{ steps.java_version_image_name.outputs.result }}
           ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
         push: false
-        context: .
+        context: ${{ inputs.source_path }}
         tags: |
           ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ inputs.semver }}
         outputs: type=docker,dest=docker-image.tar
