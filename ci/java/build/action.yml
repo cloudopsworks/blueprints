@@ -57,6 +57,9 @@ outputs:
   semgrep_enabled:
     description: 'The Semgrep enabled flag'
     value: ${{ steps.semgrep_enabled.outputs.result }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
 runs:
   using: 'composite'
   steps:
@@ -180,7 +183,7 @@ runs:
       id: semver
       shell: bash
       run: |
-        echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
 
     # Build the code!
     - name: Build Code
