@@ -252,7 +252,7 @@ runs:
         path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
 
     - name: Generate Bundle ZipFile
-      if: ${{ inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda' }}
+      if: ${{ (inputs.cloud_type == 'beanstalk' || inputs.cloud_type == 'lambda') && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       id: bundle
       uses: ./bp/cd/deploy/app/pack
       with:
@@ -275,6 +275,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Apply"
+        ls -lR
         terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
         echo "::endgroup::"
       continue-on-error: false
