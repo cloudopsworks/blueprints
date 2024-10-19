@@ -26,7 +26,7 @@ inputs:
   bot_user:
     description: 'The bot user to use for the build'
     required: true
-  github_token:
+  token:
     description: 'The github token to use for the build'
     required: true
 outputs:
@@ -166,7 +166,7 @@ runs:
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
@@ -186,5 +186,5 @@ runs:
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
