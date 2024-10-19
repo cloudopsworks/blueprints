@@ -112,14 +112,14 @@ runs:
       id: apis_enabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.apis.enabled // false' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get the automatic setting from .github/cloudopsworks-ci.yaml as plain text
     - name: Get Automatic Setting
       id: automatic
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.cd.automatic // false' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.cd.automatic and true' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
 
     # Set the appropriate workspace from what is configured from the deploy_conf step
     # Result is stored as JSON with the format found on the cd.deployments section on .github/cloudopsworks-ci.yaml

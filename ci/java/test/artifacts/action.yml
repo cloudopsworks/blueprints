@@ -1,0 +1,45 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Upload Java Test Artifacts
+author: cloudopsworks
+description: Upload Java Test Artifacts (depends on test/verify & build)
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    # Upload test artifacts:
+    - name: Upload Test Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: test_artifacts
+        if-no-files-found: 'warn'
+        path: |
+          ${{ inputs.source_path }}/target/surefire-reports/**
+          ${{ inputs.source_path }}/target/failsafe-reports/**
+          ${{ inputs.source_path }}/target/jacoco.exec
+          ${{ inputs.source_path }}/target/jacoco.xml
+          ${{ inputs.source_path }}/target/jacoco.csv
+          ${{ inputs.source_path }}/target/jacoco.html
+          ${{ inputs.source_path }}/target/jacoco.json
+          ${{ inputs.source_path }}/target/site/jacoco/**
+          ${{ inputs.source_path }}/*.sarif
+
+

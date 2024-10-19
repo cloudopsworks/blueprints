@@ -39,21 +39,6 @@ outputs:
   java_image_variant:
     description: 'The Java image variant to use for the build'
     value: ${{ steps.java_image_variant.outputs.result }}
-  sonarqube_enabled:
-    description: 'The Sonarqube enabled flag'
-    value: ${{ steps.sonarqube_enabled.outputs.result }}
-  dtrack_enabled:
-    description: 'The DependencyTrack enabled flag'
-    value: ${{ steps.dtrack_enabled.outputs.result }}
-  dtrack_project_type:
-    description: 'The DependencyTrack project type'
-    value: ${{ steps.dtrack_project_type.outputs.result }}
-  snyk_enabled:
-    description: 'The Snyk enabled flag'
-    value: ${{ steps.snyk_enabled.outputs.result }}
-  semgrep_enabled:
-    description: 'The Semgrep enabled flag'
-    value: ${{ steps.semgrep_enabled.outputs.result }}
   semver:
     description: 'The semver version'
     value: ${{ steps.semver.outputs.result }}
@@ -81,41 +66,6 @@ runs:
       with:
         cmd: yq e '.java.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    # Get Sonarqube Configuration is enabled
-    - name: Get Pipeline conf Sonarqube is Enabled
-      id: sonarqube_enabled
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.sonarqube.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # Get DependencyTrack Configuration is enabled
-    - name: Get Pipeline conf DependencyTrack is Enabled
-      id: dtrack_enabled
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dependencyTrack.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # Get DependencyTrack project type configuration, default is null
-    - name: Get Pipeline conf DependencyTrack Project type
-      id: dtrack_project_type
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dependencyTrack.type // "Application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # Get Snyk Configuration is enabled
-    - name: Get Pipeline conf Snyk is Enabled
-      id: snyk_enabled
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.snyk.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # Get Semgrep Configuration is enabled
-    - name: Get Pipeline conf Semgrep is Enabled
-      id: semgrep_enabled
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.semgrep.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
     # Get the Package name from pom.xml (in the form of groupId.artifactId)
     - name: Get Package name
       id: package_name
@@ -129,16 +79,6 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # Get the owner repo
-    - name: Get owner
-      id: getowner
-      shell: bash
-      run: |
-        repo_owner=`echo "$GITHUB_REPOSITORY" | cut -f 1 -d "/"`
-        repo_name=`echo "$GITHUB_REPOSITORY" | cut -f 2 -d "/"`
-        echo "owner=$repo_owner" >> $GITHUB_OUTPUT
-        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT
 
     # Setup Java JDK for builds
     - name: Set JDK
