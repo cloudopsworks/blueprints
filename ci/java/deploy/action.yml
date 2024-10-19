@@ -23,6 +23,13 @@ inputs:
     description: 'The name of the sources to save'
     required: false
     default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+
 runs:
   using: 'composite'
   steps:
@@ -52,4 +59,4 @@ runs:
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GITHUB_TOKEN: ${{ inputs.token }}
