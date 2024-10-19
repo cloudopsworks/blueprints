@@ -101,7 +101,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        VAL=$(yq e '.preview.domain' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        VAL=$(yq e '.preview.domain' .github/vars/inputs-global.yaml)
         echo "result=$VAL" >> $GITHUB_OUTPUT
 
     - name: Terraform Plan prettifier
