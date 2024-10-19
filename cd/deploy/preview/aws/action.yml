@@ -3,9 +3,9 @@
 #            On GitHub: https://github.com/cloudopsworks
 #            Distributed Under Apache v2.0 License
 #
-name: Deploy Application AWS
+name: Deploy Preview Application AWS
 author: cloudopsworks
-description: Deploy Application to AWS
+description: Deploy Preview Application AWS
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -83,10 +83,27 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
+  container_registry:
+    description: 'The container registry'
+    required: true
+  pull_request_name:
+    description: 'The pull request name'
+    required: true
+  cluster_name:
+    description: 'The Kubernetes cluster name'
+    required: true
 
 runs:
   using: 'composite'
   steps:
+    - name: Get Preview Domain
+      id: preview_domain
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        VAL=$(yq e '.preview.domain' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
     - name: Terraform Plan prettifier
       uses: kishaningithub/setup-tf-summarize@v2
       with:
@@ -110,68 +127,51 @@ runs:
     - name: Copy configurations
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/inputs.yaml
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/
+        cp -pf ${{ inputs.source_path }}/.github/vars/preview/inputs.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs-global.yaml
+        yq e '.helm_values_overrides += { "image.repository": "${{ inputs.container_registry }}/${{ github.repository }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.host": "${{ inputs.release_name }}-${{ inputs.pull_request_name }}.${{ steps.preview_domain.outputs.result }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.rules[0].host": "${{ inputs.release_name }}-${{ inputs.pull_request_name }}.${{ steps.preview_domain.outputs.result }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.annotations.cert-manager\\.io/cluster-issuer":"letsencrypt-prod" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/ssl-redirect":"true" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.tls.secretName":"${{ inputs.release_name }}-${{ inputs.pull_request_name }}-tls"}' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.tls.enabled":true}' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.namespace_annotations += { "field.cattle.io/projectId": "${{ inputs.RANCHER_PROJECT_ID }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.container_registry = "${{ inputs.container_registry }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.cluster_name = "${{ inputs.cluster_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.namespace = "${{ inputs.release_name }}-${{ inputs.pull_request_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.create_namespace = true' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
 
     - name: Copy Values Bundle
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
       shell: bash
       run: |
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
-        cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
-
-    - name: Create Hash value for values bundle
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum > .values_hash_${{ inputs.release_name }}
-
-    - name: Copy Values Bundle
-      if: ${{ contains(fromJSON('["kubernetes","k8s","eks"]'), inputs.cloud_type) }}
-      shell: bash
-      run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/helm-values.yaml
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
-        if [ -d ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ]; then
-          cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        cp -pf ${{ inputs.source_path }}/.github/vars/preview/values.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/helm-values.yaml
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/
+        if [ -d ${{ inputs.source_path }}/.github/vars/preview/values ]; then
+          cp -pfR ${{ inputs.source_path }}/.github/vars/preview/values/ ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/
         else
-          echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
-          touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
+          echo "No values found for ${{ inputs.source_path }}/.github/vars/preview/values, skipping..."
+          touch ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/.empty
         fi
 
     - name: Generate release.yaml
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
       shell: bash
       run: |
         cat > release.yaml << EOF 
         release:
-          name: ${{ inputs.release_name }}
+          name: preview
           source:
             name: ${{ inputs.package_name }}
             version: ${{ inputs.release_version }}
         EOF
-
-    - name: Insert release.qualifier data into release.yaml
-      if: ${{ inputs.qualifier != '' }}
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      shell: bash
-      run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
-
-    - name: Insert bucket name & bucket path for beanstalk & lambda
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
-        yq e -i '.version_label = "${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
       shell: bash
       run: |
         cat > global-inputs.yaml << EOF
-        environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
+        environment: preview/${{ inputs.pull_request_name }}
         release_name: ${{ inputs.release_name }}
         default:
           region: ${{ inputs.aws_region }}
@@ -208,7 +208,7 @@ runs:
 
     - name: Terragrunt Plan
       id: plan
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
@@ -223,7 +223,7 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
     - name: Terragrunt Plan to JSON
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
       if: ${{ inputs.unlock != 'true' }}
       shell: bash
       run: |
@@ -236,7 +236,7 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
     - name: TF Summarize of JSON file
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
       if: ${{ inputs.unlock != 'true' }}
       shell: bash
       run: |
@@ -244,34 +244,9 @@ runs:
         tf-summarize tfplan.json
         echo "::endgroup::"
 
-    - name: Restore Pipeline Artifacts
-      uses: actions/download-artifact@v4
-      if: ${{ inputs.artifacts_name != '' }}
-      with:
-        name: ${{ inputs.artifacts_name }}
-        path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
-
-    - name: Generate Bundle ZipFile - Upload S3
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' }}
-      id: bundle
-      uses: ./bp/cd/deploy/app/pack
-      with:
-        source_path: ${{ inputs.source_path }}
-        blueprint_path: ${{ inputs.blueprint_path }}
-        cloud: 'aws'
-        cloud_type: ${{ inputs.cloud_type }}
-        release_name: ${{ inputs.release_name }}
-        release_version: ${{ inputs.release_version }}
-        package_name: ${{ inputs.package_name }}
-        aws_access_key_id: ${{ inputs.aws_access_key_id }}
-        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
-        aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
-        environment: ${{ inputs.environment }}
-        aws_region: ${{ inputs.aws_region }}
-
     - name: Terragrunt Apply
       id: apply
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
       shell: bash
       run: |
         echo "::group::Terragrunt Apply"

@@ -1,0 +1,50 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Git-Ops Slash Commands Processing
+author: cloudopsworks
+description: Process Git-Ops Slash Commands
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Slash Command Dispatch
+      if: ${{ !github.event.issue.pull_request }}
+      uses: peter-evans/slash-command-dispatch@v4
+      with:
+        token: ${{ inputs.token }}
+        commands: |
+          deploy
+          promote
+          rebuild
+          cleanup
+          cleanup-previews
+          release
+          release-latest
+          smoke-test
+          retry
+          help
+        static-args: |
+          author=${{ github.actor }}
+          issue_number=${{ github.event.issue.number }}
+          issue_repository=${{ github.repository }}
+
+    - name: Slash Command Dispatch Pull-Request
+      if: ${{ github.event.issue.pull_request }}
+      uses: peter-evans/slash-command-dispatch@v4
+      with:
+        token: ${{ inputs.token }}
+        commands: |
+          approved
+          approve
+          lgtm
+          cancel
+          retry
+          help
+        static-args: |
+          author=${{ github.actor }}
+          pull_request=true
+          pull_request_number=${{ github.event.issue.number }}
+
