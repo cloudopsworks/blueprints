@@ -6,6 +6,10 @@
 name: Git-Ops Slash Commands Processing
 author: cloudopsworks
 description: Process Git-Ops Slash Commands
+inputs:
+  token:
+    description: 'The GitHub token'
+    required: true
 
 runs:
   using: 'composite'
