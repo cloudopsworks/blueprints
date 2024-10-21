@@ -73,7 +73,7 @@ runs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        token: ${{ secrets.token }}
+        token: ${{ inputs.token }}
         file: CHANGELOG.md
         name: "Release ${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
