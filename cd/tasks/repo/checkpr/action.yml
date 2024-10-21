@@ -57,7 +57,7 @@ runs:
       uses: actions/github-script@v7
       if: ${{ startsWith(github.head_ref,'release/') }}
       with:
-        github-token: ${{secrets.token}}
+        github-token: ${{ inputs.token }}
         script: |
           // Retrieve the list of github milestones, add the milestone that matches with rel_name to the PR only
           // if the milestone does exist, if the milestone does not exist, create it and add it to the PR
@@ -92,7 +92,7 @@ runs:
     - uses: actions/github-script@v7
       if: ${{ steps.check_automatic.outputs.result == 'true' || (github.ref_name == 'develop' && startsWith(github.head_ref,'release/')) }}
       with:
-        github-token: ${{secrets.token}}
+        github-token: ${{ inputs.token }}
         script: |
           // Set the approved labels and the automatic-environment label
           github.rest.issues.addLabels({
@@ -105,7 +105,7 @@ runs:
     - uses: actions/github-script@v7
       if: ${{ steps.check_automatic.outputs.result != 'true' && ! (github.ref_name == 'develop' && startsWith(github.head_ref,'release/')) }}
       with:
-        github-token: ${{secrets.token}}
+        github-token: ${{ inputs.token }}
         script: |
           const reviewers_json=JSON.parse('${{ steps.reviewers.outputs.result }}')
           const reviewers_count=${{ steps.reviewers_count.outputs.result }}
