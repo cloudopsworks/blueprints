@@ -90,7 +90,7 @@ runs:
           });
 
     - uses: actions/github-script@v7
-      if: ${{ steps.check_automatic.outputs.result == 'true' || (github.head_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
+      if: ${{ steps.check_automatic.outputs.result == 'true' || (github.base_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
       with:
         github-token: ${{ inputs.token }}
         script: |
@@ -103,7 +103,7 @@ runs:
           });
 
     - uses: actions/github-script@v7
-      if: ${{ steps.check_automatic.outputs.result != 'true' && ! (github.head_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
+      if: ${{ steps.check_automatic.outputs.result != 'true' && ! (github.base_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
       with:
         github-token: ${{ inputs.token }}
         script: |
