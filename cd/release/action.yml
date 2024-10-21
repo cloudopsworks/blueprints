@@ -54,6 +54,7 @@ runs:
       id: previous_tag
       shell: bash
       run: |
+        pwd
         name=$(git --no-pager tag --sort=creatordate --merged ${{ steps.normalize.outputs.result }} | egrep -v "alpha|beta" | tail -2 | head -1)
         echo "previousTag: $name"
         echo "tag=$name" >> $GITHUB_OUTPUT
