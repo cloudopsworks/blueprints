@@ -1,0 +1,84 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Git-Ops Approved Command
+author: cloudopsworks
+description: Process Git-Ops Approved Command
+inputs:
+  token:
+    description: 'The GitHub token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const pull_request = '${{ github.event.client_payload.slash_command.args.named.pull_request }}'
+          const pull_request_number = '${{ github.event.client_payload.slash_command.args.named.pull_request_number }}'
+          const author = '${{ github.event.client_payload.slash_command.args.named.author }}'
+          
+          const {data: thepull} = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pull_request_number
+          })
+          
+          if ( ! thepull.mergeable ) {
+            console.log('NOT Mergeable');
+            return 0;
+          } 
+          
+          const output = `Approval Requested for Pull request.
+          Pull request mergeable?: \`${thepull.mergeable}\`
+          Approved by: \`${author}\`
+          
+          *Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.tf_actions_working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
+          
+          const {data: reviewers} = await github.rest.pulls.listRequestedReviewers({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pull_request_number
+          });
+          
+          const {data: reviews} = await github.rest.pulls.listReviews({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pull_request_number
+          });
+          
+          var is_approved = false;
+          
+          for (const aReview of reviews ) {
+            if( aReview.user.login === author && aReview.state === 'APPROVED' ) {
+              is_approved = true;
+              break;
+            }
+          }
+          
+          for (const aUser of reviewers.users ) {
+            if( aUser.login === author ) {
+              is_approved = true;
+              break;
+            }
+          }
+          
+          if ( is_approved ) {
+            github.rest.issues.createComment({
+              issue_number: pull_request_number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+          
+            github.rest.issues.addLabels({
+              issue_number: pull_request_number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['approved']
+            });
+          }
