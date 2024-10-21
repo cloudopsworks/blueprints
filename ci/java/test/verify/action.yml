@@ -21,7 +21,10 @@ inputs:
   token:
     description: 'The github token to use for the build'
     required: true
-
+  dtrack_project_type:
+    description: 'The Dependency Track project type'
+    required: false
+    default: 'library'
 runs:
     using: 'composite'
     steps:
@@ -39,7 +42,7 @@ runs:
         run: |
           echo "::group::Maven Build"
           MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
-          mvn --batch-mode --update-snapshots verify
+          mvn --batch-mode --update-snapshots install -DprojectType=${{ inputs.dtrack_project_type }}
           echo "::endgroup::"
         env:
           GITHUB_ACTOR: ${{ inputs.bot_user }}

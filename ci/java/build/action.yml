@@ -42,6 +42,9 @@ outputs:
   semver:
     description: 'The semver version'
     value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
 runs:
   using: 'composite'
   steps:
