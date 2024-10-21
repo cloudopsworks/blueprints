@@ -15,6 +15,10 @@ inputs:
     description: 'The branch or tag to checkout'
     required: false
     default: 'v1'
+  token:
+    description: 'The GitHub token'
+    required: false
+    default: ''
 outputs:
   source_path:
     description: 'The path to the source code'
@@ -27,11 +31,23 @@ runs:
   steps:
     - name: Checkout Source Code
       uses: actions/checkout@v4
+      if: ${{ inputs.token == '' }}
       with:
         ref: ${{ inputs.source_ref }}
         fetch-tags: true
         fetch-depth: 0
         path: source
+
+    - name: Checkout Source Code w/PAT
+      uses: actions/checkout@v4
+      if: ${{ inputs.token != '' }}
+      with:
+        token: ${{ inputs.token }}
+        ref: ${{ inputs.source_ref }}
+        fetch-tags: true
+        fetch-depth: 0
+        path: source
+
 
     - name: Checkout Blueprint
       uses: actions/checkout@v4
