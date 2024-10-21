@@ -7,6 +7,12 @@ name: Release Workflow for Github
 author: cloudopsworks
 description: Release Workflow for Github
 inputs:
+  source_path:
+    description: 'The path to the source code'
+    value: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    value: 'bp'
   ref_name:
     description: 'The reference name'
     required: true
@@ -44,6 +50,7 @@ runs:
 
     # Changelog generation
     - name: Get previous tag
+      working-directory: ${{ inputs.source_path }}
       id: previous_tag
       shell: bash
       run: |
@@ -77,5 +84,5 @@ runs:
         file: CHANGELOG.md
         name: "Release ${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
-        prerelease: ${{ inputs.pre_release }}
+        prerelease: ${{ inputs.is_pre_release }}
         files: ${{ inputs.files_globs }}
