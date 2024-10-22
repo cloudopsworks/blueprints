@@ -178,7 +178,7 @@ runs:
     - name: Package.JSON - REPO auto link
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -oj -i '.repository.type="git"|.repository.url="${{ github.repositoryUrl }}"' {{ inputs.source_path }}/package.json
+        cmd: yq e -oj -i '.repository.type="git"|.repository.url="${{ github.repositoryUrl }}"' ${{ inputs.source_path }}/package.json
     
     # Build the code!
     - name: Install Dependencies
