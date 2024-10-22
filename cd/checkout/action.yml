@@ -14,7 +14,7 @@ inputs:
   blueprint_ref:
     description: 'The branch or tag to checkout'
     required: false
-    default: 'v1'
+    default: 'v5'
   token:
     description: 'The GitHub token'
     required: false

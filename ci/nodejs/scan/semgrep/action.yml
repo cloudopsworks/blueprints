@@ -2,10 +2,10 @@
 # (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
 #            On GitHub: https://github.com/cloudopsworks
 #            Distributed Under Apache v2.0 License
-# TODO: complete this module
-name: Snyk code Scanning Java
+#
+name: Semgrep code Scanning Java
 author: cloudopsworks
-description: This action scans the Java code using Snyk
+description: This action scans the Java code using Semgrep
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -15,8 +15,8 @@ inputs:
     description: 'The path to the blueprint'
     required: false
     default: 'bp'
-  snyk_token:
-    description: 'The Snyk token'
+  semgrep_token:
+    description: 'The Semgrep token'
     required: true
   bot_user:
     description: 'The bot user'
@@ -28,11 +28,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Snyk Code Scanning
-      id: snyk
+    - name: Semgrep Code Scanning
+      id: semgrep
       env:
-        SNYK_TOKEN: ${{ inputs.snyk_token }}
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "TBD"
+        semgrep --config=p/nodejs . --json > semgrep.json
+        semgrep ci --sarif-output=semgrep.sarif

@@ -3,9 +3,9 @@
 #            On GitHub: https://github.com/cloudopsworks
 #            Distributed Under Apache v2.0 License
 #
-name: Save Artifacts
+name: Save Java Artifacts
 author: cloudopsworks
-description: Save artifacts to the artifacts store
+description: Save Java artifacts to the artifacts store
 inputs:
   source_path:
     description: 'The path to the source code'
