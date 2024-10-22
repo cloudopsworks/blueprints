@@ -55,7 +55,7 @@ runs:
   steps:
     - name: Get Bucket Config
       id: bucket_config
-      uses: ./${{ inputs.blueprint_path }}/cd/deploy/app/pack/bucket-config
+      uses: ./bp/cd/deploy/app/pack/bucket-config
       with:
         blueprint_path: ${{ inputs.blueprint_path }}
         cloud: ${{ inputs.cloud }}
@@ -64,7 +64,7 @@ runs:
 
     - name: Stack Retrieval
       id: stack
-      uses: ./${{ inputs.blueprint_path }}/cd/deploy/app/pack/stack-config
+      uses: ./bp/cd/deploy/app/pack/stack-config
       with:
         blueprint_path: ${{ inputs.blueprint_path }}
         cloud: ${{ inputs.cloud }}
@@ -128,7 +128,7 @@ runs:
 
     - name: Generate Procfile for ElasticBeanstalk
       if: ${{ inputs.cloud_type == 'beanstalk' }}
-      uses: ${{ inputs.blueprint_path }}/cd/deploy/app/pack/procfile
+      uses: ./bp/cd/deploy/app/pack/procfile
       with:
         temp_dir: ${{ steps.temp_dir.outputs.result }}
         java_stack: ${{ steps.stack.outputs.java_stack }}
