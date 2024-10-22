@@ -1,0 +1,38 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Procfile creation for ElasticBeanstalk
+author: cloudopsworks
+description: Create Procfile for ElasticBeanstalk
+inputs:
+  temp_dir:
+    description: 'The path to the blueprint'
+    required: true
+  java_stack:
+    description: 'The Java stack'
+    required: true
+  node_stack:
+    description: 'The Node stack'
+    required: true
+  python_stack:
+    description: 'The Python stack'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Default Procfile for NodeJS
+      if: ${{ inputs.node_stack == 'true' }}
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        [ ! -f Procfile ] && echo 'web: npm run start' > Procfile
+
+    - name: Default Procfile for Java
+      if: ${{ inputs.java_stack == 'true' }}
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        [ ! -f Procfile ] && echo 'web: java -XX:MaxRAMPercentage=65 $JAVA_OPTS -jar app.jar' > Procfile

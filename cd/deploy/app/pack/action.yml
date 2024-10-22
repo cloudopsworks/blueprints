@@ -53,37 +53,23 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Get Bucket Name from inputs-${{ inputs.environment }}.yaml
-      id: versions_bucket
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        VAL=$(yq eval '.versions_bucket' inputs.yaml)
-        echo "result=$VAL" >> $GITHUB_OUTPUT
+    - name: Get Bucket Config
+      id: bucket_config
+      uses: ${{ inputs.blueprint_path }}/cd/deploy/app/pack/bucket-config
+      with:
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: ${{ inputs.cloud }}
+        cloud_type: ${{ inputs.cloud_type }}
+        environment: ${{ inputs.environment }}
 
-    - name: Get Bucket Name form release.yaml
-      id: bucket_path
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        VAL=$(yq eval '.bucket_path' release.yaml)
-        echo "result=$VAL" >> $GITHUB_OUTPUT
-
-    - name: Get Java  Stack from inputs-${{ inputs.environment }}.yaml
-      id: java_stack
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        VAL=$(yq eval '.beanstalk.solution_stack | test("(?i:.*java.*)")' inputs.yaml)
-        echo "result=$VAL" >> $GITHUB_OUTPUT
-
-    - name: Get Node Stack from inputs-${{ inputs.environment }}.yaml
-      id: node_stack
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        VAL=$(yq eval '.beanstalk.solution_stack | test("(?i:.*node.*)")' inputs.yaml)
-        echo "result=$VAL" >> $GITHUB_OUTPUT
+    - name: Stack Retrieval
+      id: stack
+      uses: ${{ inputs.blueprint_path }}/cd/deploy/app/pack/stack-config
+      with:
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: ${{ inputs.cloud }}
+        cloud_type: ${{ inputs.cloud_type }}
+        environment: ${{ inputs.environment }}
 
     - name: Create temp_dir
       id: temp_dir
@@ -101,27 +87,34 @@ runs:
 #
     - name: Copy NodeJS Application Release
       working-directory: ${{ steps.temp_dir.outputs.result }}
-      if: ${{ steps.node_stack.outputs.result == 'true' }}
+      if: ${{ steps.stack.outputs.node_stack == 'true' }}
       shell: bash
       run: |
         tar -xf ${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/*.tar 
 
     - name: Copy .env into for NodeJS
-      if: ${{ steps.node_stack.outputs.result == 'true' }}
+      if: ${{ steps.stack.outputs.node_stack == 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
         [ -f values/.env ] && cp -pf values/.env ${{ steps.temp_dir.outputs.result }}
 
+    - name: Copy Python Application Release
+      working-directory: ${{ steps.temp_dir.outputs.result }}
+      if: ${{ steps.stack.outputs.python_stack == 'true' }}
+      shell: bash
+      run: |
+        tar -zxf ${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/*.tar.gz
+
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
-      if: ${{ steps.java_stack.outputs.result == 'true' }}
+      if: ${{ steps.stack.outputs.java_stack == 'true' }}
       shell: bash
       run: |
         cp -p ./*.jar ${{ steps.temp_dir.outputs.result }}/app.jar
 
     - name: Copy Application Release
-      if: ${{ steps.java_stack.outputs.result != 'true' && steps.node_stack.outputs.result != 'true' }}
+      if: ${{ steps.stack.outputs.java_stack != 'true' && steps.stack.outputs.node_stack != 'true' && steps.stack.outputs.python_stack != 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
       shell: bash
       run: |
@@ -133,12 +126,14 @@ runs:
       run: |
         cp -vpfR . ${{ steps.temp_dir.outputs.result }}
 
-    - name: Default Procfile for Java
-      if: ${{ steps.java_stack.outputs.result == 'true' }}
-      working-directory: ${{ steps.temp_dir.outputs.result }}
-      shell: bash
-      run: |
-        [ ! -f Procfile ] && echo 'web: java -XX:MaxRAMPercentage=65 $JAVA_OPTS -jar app.jar' > Procfile
+    - name: Generate Procfile for ElasticBeanstalk
+      if: ${{ inputs.cloud_type == 'beanstalk' }}
+      uses: ${{ inputs.blueprint_path }}/cd/deploy/app/pack/procfile
+      with:
+        temp_dir: ${{ steps.temp_dir.outputs.result }}
+        java_stack: ${{ steps.stack.outputs.java_stack }}
+        node_stack: ${{ steps.stack.outputs.node_stack }}
+        python_stack: ${{ steps.stack.outputs.python_stack }}
 
     ## Generate ZIP and push to bucket
     - name: Generate ZIP and report filename
@@ -170,7 +165,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Uploading to S3"
-        aws s3 cp ${{ steps.dest_zip.outputs.result }} s3://${{ steps.versions_bucket.outputs.result }}/${{ steps.bucket_path.outputs.result }}
+        aws s3 cp ${{ steps.dest_zip.outputs.result }} s3://${{ steps.bucket_config.outputs.versions_bucket }}/${{ steps.bucket_config.outputs.bucket_path }}
         echo "::endgroup::"
       env:
         AWS_ACCESS_KEY_ID: ${{ steps.sts.outputs.aws_access_key_id }}
