@@ -1,0 +1,89 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Release Workflow for Github
+author: cloudopsworks
+description: Release Workflow for Github
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    value: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    value: 'bp'
+  ref_name:
+    description: 'The reference name'
+    required: true
+  release_tag:
+    description: 'The release tag'
+    required: true
+  is_pre_release:
+    description: 'The pre-release flag'
+    required: false
+    default: 'false'
+  files_globs:
+    description: 'The files globs to include in the release'
+    required: false
+    default: |
+        target/*.zip
+        target/*.tgz
+  token:
+    description: 'The github token to use for the release'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Normalize version Tag
+      id: normalize
+      uses: actions/github-script@v7
+      with:
+        result-encoding: string
+        script: |
+          const relTag = '${{ inputs.release_tag }}'
+          var release = relTag;
+          if ( !relTag.startsWith('v') ) {
+            release = 'v' + relTag; 
+          }
+          return release;
+
+    # Changelog generation
+    - name: Get previous tag
+      working-directory: ${{ inputs.source_path }}
+      id: previous_tag
+      shell: bash
+      run: |
+        pwd
+        name=$(git --no-pager tag --sort=creatordate --merged ${{ steps.normalize.outputs.result }} | egrep -v "alpha|beta" | tail -2 | head -1)
+        echo "previousTag: $name"
+        echo "tag=$name" >> $GITHUB_OUTPUT
+
+    - name: Changelog Generation
+      uses: requarks/changelog-action@v1
+      id: changelog
+      with:
+        token: ${{ inputs.token }}
+        fromTag: ${{ steps.normalize.outputs.result }}
+        toTag: ${{ steps.previous_tag.outputs.tag }}
+        writeToFile: true
+        includeInvalidCommits: true
+        excludeTypes: 'build,docs,style'
+
+    - name: Upload artifact to workflow run
+      uses: actions/upload-artifact@v4
+      with:
+        name: changelog
+        retention-days: 1
+        overwrite: true
+        path: CHANGELOG.md
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        token: ${{ inputs.token }}
+        file: CHANGELOG.md
+        name: "Release ${{ steps.normalize.outputs.result }}"
+        tag_name: ${{ steps.normalize.outputs.result }}
+        prerelease: ${{ inputs.is_pre_release }}
+        files: ${{ inputs.files_globs }}

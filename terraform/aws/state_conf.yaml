@@ -1,0 +1,5 @@
+s3:
+  bucket: 'BUCKET_NAME'
+  region: 'AWS_REGION'
+  kms_key_id: 'KMS_KEY_ID'
+  dynamodb_table: 'DYNAMODB_TABLE_NAME'

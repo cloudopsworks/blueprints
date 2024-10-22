@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    draft: {{ default "draft-app" .Values.draft }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+{{- if .Values.annotations }}
+  annotations:
+  {{- range $pkey, $pval := .Values.annotations }}
+    {{ $pkey }}: {{ quote $pval }}
+  {{- end }}
+{{- end }}
+spec:
+  strategy:
+    type: Recreate
+    #rollingUpdate:
+    #  maxSurge: 1
+    #  maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: {{ template "fullname" . }}
+{{- if .Values.hpa.enabled }}
+{{- else }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+  template:
+    metadata:
+      labels:
+        draft: {{ default "draft-app" .Values.draft }}
+        app: {{ template "fullname" . }}
+{{- if .Values.podAnnotations }}
+      annotations:
+{{ toYaml .Values.podAnnotations | indent 8 }}
+{{- end }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+{{- range $pkey, $pval := .Values.env }}
+        - name: {{ $pkey }}
+          value: {{ quote $pval }}
+{{- end }}
+        envFrom:
+{{- if .Values.envFrom }}
+{{ toYaml .Values.envFrom | indent 10 }}
+{{- end }}
+{{- if .Values.injectEnvFrom }}
+{{ toYaml .Values.injectEnvFrom | indent 10 }}
+{{- end }}
+        ports:
+        - containerPort: {{ .Values.service.internalPort }}
+        livenessProbe:
+          httpGet:
+            scheme: {{ .Values.livenessProbe.scheme }}
+            path: {{ .Values.probePath }}
+{{- if .Values.livenessProbe.port }}
+            port: {{ .Values.livenessProbe.port }}
+{{- else }}
+            port: {{ .Values.service.internalPort }}
+{{- end }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+        readinessProbe:
+          httpGet:
+            scheme: {{ .Values.readinessProbe.scheme }}
+            path: {{ .Values.probePath }}
+{{- if .Values.readinessProbe.port }}
+            port: {{ .Values.readinessProbe.port }}
+{{- else }}
+            port: {{ .Values.service.internalPort }}
+{{- end }}
+          periodSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+{{- if .Values.startupProbe.enabled }}
+        startupProbe:
+          httpGet:
+            scheme: {{ .Values.startupProbe.scheme }}
+            path: {{ .Values.probePath }}
+{{- if .Values.startupProbe.port }}
+            port: {{ .Values.startupProbe.port }}
+{{- else }}
+            port: {{ .Values.service.internalPort }}
+{{- end }}
+          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+          failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+{{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
+        volumeMounts: 
+          {{- if .Values.additionalVolumeMounts }}
+{{ toYaml .Values.additionalVolumeMounts | indent 10 }}
+          {{- end }}
+          {{- if .Values.injectedVolumeMounts }}
+{{ toYaml .Values.injectedVolumeMounts | indent 10 }}
+          {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+      {{- end }}
+{{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+{{- end }}
+{{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+{{- end }}
+      volumes:
+        {{- if .Values.additionalVolumes }}
+{{ toYaml .Values.additionalVolumes | indent 8 }}
+        {{- end }}
+        {{- if .Values.injectedVolumes }}
+{{ toYaml .Values.injectedVolumes | indent 8 }}
+        {{- end }}

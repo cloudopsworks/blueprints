@@ -1,0 +1,41 @@
+name: 'auto-readme'
+
+on:
+  # Open a PR to update README (as necessary)
+  pull_request: 
+    types: 
+      - opened
+      - synchronize
+      - reopened
+
+  # Update README nightly
+  schedule:
+    - cron:  '0 0 * * *'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: readme/update
+        shell: bash
+        env:
+          GITHUB_TOKEN: "${{ secrets.BOT_TOKEN }}"
+        run: |
+          make init
+          make readme/deps
+          make readme
+      - name: Create Pull Request
+        uses: cloudopsworks/create-pull-request@v4
+        with: 
+          labels: automated pr
+        env:
+          token: ${{ secrets.BOT_TOKEN }}
+          commit-message: Update README.md
+          title: Automatic Update of README.md
+          body: |-
+            This is an auto-generated PR which updates the `README.md` from the `README.yaml` 
+            using the [`cloudopsworks/tronador`](https://github.com/cloudopsworks/tronador).
+          branch: github-actions/auto-readme
+          #branch-suffix: none

@@ -1,0 +1,310 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Get Configuration Values
+author: cloudopsworks
+description: Get configuration values for the workflow from the source vars
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+outputs:
+  environment:
+    description: 'The environment to use for the build'
+    value: ${{ steps.workspace.outputs.workspace }}
+  is_release:
+    description: 'The release flag'
+    value: ${{ steps.workspace.outputs.isRelease }}
+  is_pre_release:
+    description: 'The pre-release flag'
+    value: ${{ steps.workspace.outputs.isPreRelease }}
+  package_name:
+    description: 'The release source name, usually the repository name'
+    value: ${{ steps.getowner.outputs.repo_name }}
+  release_name:
+    description: 'The target name for the deployment'
+    value: ${{ steps.workspace.outputs.targetName != '' && steps.workspace.outputs.targetName || steps.getowner.outputs.repo_name }}
+  deployment_enabled:
+    description: 'The deployment enabled flag'
+    value: ${{ steps.workspace.outputs.isEnabled }}
+  has_qualifier:
+    description: 'The qualifier flag, set when doing version tagging with deploy-[qualifier]'
+    value: ${{ steps.workspace.outputs.hasQualifier }}
+  deployment_name:
+    description: 'The deployment name,  composed of branch and environment'
+    value: ${{ steps.workspace.outputs.deploymentName }}
+  cloud:
+    description: 'Target cloud deployment, uppercase, AWS, GCP, AZURE'
+    value: ${{ steps.cloud.outputs.result }}
+  cloud_type:
+    description: 'Target cloud deployment type, lowercase, k8s, ecs, aks, beanstalk, kubernetes, lambda'
+    value: ${{ steps.cloud_type.outputs.result }}
+  apis_enabled:
+    description: 'The APIs enabled flag'
+    value: ${{ steps.apis_enabled.outputs.result }}
+  is_automatic:
+    description: 'The automatic setting flag'
+    value: ${{ steps.is_automatic.outputs.result }}
+  aws_region:
+    description: 'The AWS Region value, only on AWS deployment'
+    value: ${{ steps.aws_region.outputs.result }}
+  aws_sts_role_arn:
+    description: 'The AWS STS Role ARN value, only on AWS deployment'
+    value: ${{ steps.aws_sts_role_arn.outputs.result }}
+  azure_resource_group:
+    description: 'The Azure Resource Group value, only on Azure deployment'
+    value: ${{ steps.azure_rg.outputs.result }}
+  runner_set:
+    description: 'The runner set for the build'
+    value: ${{ steps.runner_set_env.outputs.result != '' && steps.runner_set_env.outputs.result || steps.runner_set.outputs.result }}
+  is_library:
+    description: 'The library build flag'
+    value: ${{ steps.is_library.outputs.result }}
+  container_enabled:
+    description: 'The container enabled flag'
+    value: ${{ steps.cloud_type.outputs.result == 'eks' || steps.cloud_type.outputs.result == 'aks' || steps.cloud_type.outputs.result == 'gke' || steps.cloud_type.outputs.result == 'kubernetes' || steps.has_preview.outputs.result == 'true' }}
+  blue_green_enabled:
+    description: 'The blue-green deployment enabled flag'
+    value: ${{ steps.blue_green.outputs.result }}
+  has_preview:
+    description: 'The preview enabled flag'
+    value: ${{ steps.has_preview.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Get the owner repo
+    - name: Get owner
+      id: getowner
+      shell: bash
+      run: |
+        repo_owner=`echo "$GITHUB_REPOSITORY" | cut -f 1 -d "/"`
+        repo_name=`echo "$GITHUB_REPOSITORY" | cut -f 2 -d "/"`
+        echo "owner=$repo_owner" >> $GITHUB_OUTPUT
+        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT
+
+    # Get the deployments configuration
+    - name: Get the deployments configuration
+      id: deploy_conf
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # Get the cloud entry from .github/vars/inputs-global.yaml as plain text
+    - name: Get Cloud Entry
+      id: cloud
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.cloud' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]'
+
+    # Get the cloud type from github/vars/inputs-global.yaml as plain text
+    - name: Get Cloud Type
+      id: cloud_type
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.cloud_type' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get the apis enabled from .github/cloudopsworks-ci.yaml as plain text
+    - name: Get APIs Enabled
+      id: apis_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get the automatic setting from .github/cloudopsworks-ci.yaml as plain text
+    - name: Get Automatic Setting
+      id: automatic
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.cd.automatic and true' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # Set the appropriate workspace from what is configured from the deploy_conf step
+    # Result is stored as JSON with the format found on the cd.deployments section on .github/cloudopsworks-ci.yaml
+    - name: Set the appropriate workspace
+      id: workspace
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const deployments = JSON.parse('${{ steps.deploy_conf.outputs.result }}');
+          const head = '${{ github.head_ref }}';
+          const base = '${{ github.base_ref }}';
+          const ref = '${{ github.ref_name }}';
+          var branch = base !== '' ? base : ref;
+          
+          var environment = '';
+          var isRelease = false;
+          var isPreRelease = false;
+          var targetName = '';
+          var isEnabled = true;
+          var hasQualifier = false;
+          var deploymentName = '';
+          
+          if ( branch.startsWith('support') ) {
+            const oneMatch = deployments.support.find( ({ match }) => branch.match(new RegExp('support/'+match,'g')) );
+            environment = oneMatch.env;
+            targetName = oneMatch.targetName;
+          } else if ( branch.startsWith('release') ) {
+            isPreRelease = true;
+            isEnabled = (deployments.test['enabled'] == null ? true : (deployments.test['enabled'] === 'true'));
+            environment = deployments.test.env;
+            if ( 'targetName' in deployments.test ) {
+              targetName = deployments.test.targetName;
+            }
+            deploymentName = `test/${environment}`;
+          } else if ( branch === 'develop' ) {
+            isEnabled = (deployments.develop['enabled'] == null ? true : (deployments.develop['enabled'] === 'true'));
+            environment = deployments.develop.env;
+            if ( 'targetName' in deployments.develop ) {
+              targetName = deployments.develop.targetName;
+            }
+            deploymentName = `develop/${environment}`;
+          } else {
+            // This semver structure is obtained as per specification https://semver.org/ & https://regex101.com/r/vkijKf/1/
+            semver = branch.match(/^v(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?/);
+            if ( semver != null ) {
+              const pre = semver['groups']['prerelease'];
+              const buildmeta = semver['groups']['buildmetadata'];
+              // buildmeta format is deploy-XXXX.yyy.zzz
+              // the metasuffix should be the deploy- prefix
+              if ( pre != null && buildmeta != null) {
+                const metasuffix = buildmeta.match(/deploy-(?<data>.*)/);
+                isEnabled = (deployments.prerelease['enabled'] == null ? true : (deployments.prerelease['enabled'] === 'true'));
+                isPreRelease = true;
+                hasQualifier = true;
+                environment = deployments.prerelease.targets[metasuffix.groups.data].env;
+                if ( 'targetName' in deployments.prerelease.targets[metasuffix.groups.data] ) {
+                  targetName = deployments.prerelease.targets[metasuffix.groups.data].targetName;
+                }
+                deploymentName = `prerelease/${buildmeta}/${environment}`;
+              } else if ( pre != null ) {
+                isEnabled = (deployments.prerelease['enabled'] == null ? true : (deployments.prerelease['enabled'] === 'true'));
+                // Regular expression to match following semver pattern: v1.0.2-alpha.10-uoiretu834u
+                isPreRelease = true;
+                environment = deployments.prerelease.env;
+                if ( 'targetName' in deployments.prerelease ) {
+                  targetName = deployments.prerelease.targetName;
+                }
+                deploymentName = `prerelease/${environment}`;
+              } else if ( buildmeta != null ) {
+                const metasuffix = buildmeta.match(/deploy-(?<data>.*)/);
+                isRelease = true;
+                hasQualifier = true;
+                environment = deployments.release.targets[metasuffix.groups.data].env;
+                if ( 'targetName' in deployments.release.targets[metasuffix.groups.data] ) {
+                  targetName = deployments.release.targets[metasuffix.groups.data].targetName;
+                }
+                deploymentName = `release/${buildmeta}/${environment}`;
+              } else {
+                isRelease = true;
+                environment = deployments.release.env;
+                if ( 'targetName' in deployments.release ) {
+                  targetName = deployments.release.targetName;
+                }
+                deploymentName = `release/${environment}`;
+              }
+            } else if ( branch === 'master' || branch === 'main' ) {
+              isRelease = true;
+              environment = deployments.release.env;
+              if ( 'targetName' in deployments.release ) {
+                targetName = deployments.release.targetName;
+              }
+              deploymentName = `release/${environment}`;
+            } else {
+              core.setFailed('Branch not supported');
+            }
+          }
+          
+          const outputV = { 
+            environment: environment, 
+            isPreRelease: isPreRelease, 
+            isRelease: isRelease,
+            targetName: targetName,
+            isEnabled: isEnabled,
+            hasQualifier: hasQualifier,
+            deploymentName: deploymentName
+          }; 
+          core.setOutput('workspace', environment);
+          core.setOutput('workspace_upper', environment.toUpperCase());
+          core.setOutput('isRelease', isRelease);
+          core.setOutput('isPreRelease', isPreRelease);
+          core.setOutput('targetName', targetName);
+          core.setOutput('isEnabled', isEnabled);
+          core.setOutput('hasQualifier', hasQualifier);
+          core.setOutput('deploymentName', deploymentName);
+          
+          return outputV;
+
+    # Check the specific environment vars/input-*.yaml exists if not: hard fail
+    - name: Check specific environment file exists
+      id: check_env_file
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        fexist=false
+        if [ ! -f .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml ]; then
+          echo "File .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml does not exist"
+          exit 100
+        else
+          fexist=true
+        fi
+        echo "result=$fexist" >> $GITHUB_OUTPUT
+
+    # Get the blue_green marker from the inputs-<environment>.yaml file
+    - name: Get Blue/Green Setting
+      id: blue_green
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.blue_green and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+
+    # Get the AWS Region value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for REGION
+      id: aws_region
+      if: steps.cloud.outputs.result == 'AWS'
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.aws.region // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+
+    # Get the AWS STS Role ARN value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for STS Role ARN
+      id: aws_sts_role_arn
+      if: steps.cloud.outputs.result == 'AWS'
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.aws.sts_role_arn // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+
+    # Get the Azure RG value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for Azure RG
+      id: azure_rg
+      if: steps.cloud.outputs.result == 'AZURE'
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+
+    - name: Get the Runner Set for this build
+      id: runner_set
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.runner_set // "ubuntu-latest"' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get the Runner Set for the environment
+      if: steps.check_env_file.outputs.result == 'true'
+      id: runner_set_env
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+
+    - name: Get if the build is for library
+      id: is_library
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.isLibrary and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get preview enabled
+    - name: Get pipeline preview enabled
+      id: has_preview
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.preview.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml

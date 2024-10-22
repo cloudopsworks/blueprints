@@ -1,0 +1,111 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Push Docker Image
+author: cloudopsworks
+description: Push Docker Image to registry
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+  cloud:
+    description: 'The target cloud'
+    required: true
+  aws_region:
+    description: 'The AWS Region'
+    required: false
+    default: ''
+  aws_sts_role_arn:
+    description: 'The AWS STS Role ARN'
+    required: false
+    default: ''
+  aws_access_key_id:
+    description: 'The AWS Access Key ID'
+    required: false
+    default: ''
+  aws_secret_access_key:
+    description: 'The AWS Secret Access Key'
+    required: false
+    default: ''
+  azure_service_id:
+    description: 'The Azure Service ID'
+    required: false
+    default: ''
+  azure_service_secret:
+    description: 'The Azure Service Secret'
+    required: false
+    default: ''
+  default_registry_address:
+    description: 'The default registry'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download Docker Image
+      uses: actions/download-artifact@v4
+      with:
+        name: docker-image
+
+    # Recover the docker_registry value from the environment file
+    - name: Get Docker Registry value if set into the ENV file
+      id: docker_registry
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+
+    #
+    # Docker Build login Azure
+    - name: Docker Login Azure
+      env:
+        TARGET: ${{ inputs.cloud }}
+      if: ${{ inputs.cloud == 'AZURE' }}
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ steps.docker_registry.outputs.result }}
+        username: ${{ inputs.azure_service_id }}
+        password: ${{ inputs.azure_service_secret }}
+    #
+    # Docker Build login AWS
+    - name: Configure AWS Credentials
+      if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn == '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws_access_key_id }}
+        aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
+        aws-region: ${{ inputs.aws_region }}
+
+    #
+    # Docker Build login AWS - w/Assume Role
+    - name: Configure AWS Credentials with Assume Role
+      if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn != '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws_access_key_id }}
+        aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
+        role-to-assume: ${{ inputs.aws_sts_role_arn }}
+        role-session-name: ${{ github.repository_id }}-build
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Docker Login AWS
+      if: ${{  inputs.cloud == 'AWS' }}
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ steps.docker_registry.outputs.result }}
+
+    - name: Push Docker image from tar
+      shell: bash
+      run: |
+        docker image load --input docker-image.tar
+        docker image push --all-tags ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
+

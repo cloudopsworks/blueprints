@@ -1,0 +1,133 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Check and label Pull Requests
+author: cloudopsworks
+description: This action checks the Pull Request and labels it
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/labeler@v5
+      with:
+        repo-token: ${{ inputs.token }}
+        configuration-path: '${{ inputs.source_path }}/.github/labeler.yml'
+
+    - name: test
+      shell: bash
+      run:
+        echo "REF=${{ github.ref }}"
+        echo "REF_NAME=${{ github.ref_name }}"
+        echo "HEAD_REF=${{ github.head_ref }}"
+        echo "BASE_REF=${{ github.base_ref }}"
+
+    - name: Get Automatic Environment
+      id: check_automatic
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.cd.automatic' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    - name: Get Reviewers count
+      id: reviewers_count
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.config.requiredReviewers' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    - name: Get Reviewers list
+      id: reviewers
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -o=json -I=0 '[.config.reviewers[] | select(. != "${{ github.event.pull_request.user.login }}") ]' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    - name: Assign Milestone to the PR
+      uses: actions/github-script@v7
+      if: ${{ startsWith(github.head_ref,'release/') }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          // Retrieve the list of github milestones, add the milestone that matches with rel_name to the PR only
+          // if the milestone does exist, if the milestone does not exist, create it and add it to the PR
+          const rel_name = '${{ github.head_ref }}';
+          const rel_version = rel_name.replace('release/','');
+          
+          const mil_list = await github.rest.issues.listMilestones({
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          });
+          var mil_number = 0;
+          for ( const mil of mil_list.data ) {
+            if ( mil.title === rel_version ) {
+              mil_number = mil.number;
+            }
+          }
+          if ( mil_number == 0 ) {
+            const mil = await github.rest.issues.createMilestone({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: rel_version
+            });
+            mil_number = mil.data.number;
+          }
+          github.rest.issues.update({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            milestone: mil_number
+          });
+
+    - uses: actions/github-script@v7
+      if: ${{ steps.check_automatic.outputs.result == 'true' || (github.base_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          // Set the approved labels and the automatic-environment label
+          github.rest.issues.addLabels({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: ['approved', 'automatic-environment']
+          });
+
+    - uses: actions/github-script@v7
+      if: ${{ steps.check_automatic.outputs.result != 'true' && ! (github.base_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const reviewers_json=JSON.parse('${{ steps.reviewers.outputs.result }}')
+          const reviewers_count=${{ steps.reviewers_count.outputs.result }}
+          const actor = '${{ github.event.pull_request.user.login }}'
+          
+          var reviewers = []
+          for ( const rev of reviewers_json ) {
+            if ( actor !== rev ) {
+              reviewers.push(rev)
+            }
+          }
+          
+          github.rest.pulls.requestReviewers({
+            pull_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            reviewers: reviewers
+          })
+          
+          github.rest.issues.addLabels({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: ['approval-required','review-required']
+          })

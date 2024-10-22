@@ -1,0 +1,133 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Build Java Sources
+author: cloudopsworks
+description: Build Java sources and save artifacts
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+outputs:
+  java_version:
+    description: 'The Java version to use for the build'
+    value: ${{ steps.java_version.outputs.result }}
+  java_dist:
+    description: 'The Java distribution to use for the build'
+    value: ${{ steps.java_dist.outputs.result }}
+  java_image_variant:
+    description: 'The Java image variant to use for the build'
+    value: ${{ steps.java_image_variant.outputs.result }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
+runs:
+  using: 'composite'
+  steps:
+    # Get pipeline conf java version Defaults to 21
+    - name: Get pipeline Java version
+      id: java_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.java.version // "21"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf java dist defaults to temurin (adopt is deprecated)
+    - name: Get pipeline Java dist
+      id: java_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.java.dist // "temurin"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf java image variant defaults to alpine
+    - name: Get pipeline Java image variant
+      id: java_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.java.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get the Package name from pom.xml (in the form of groupId.artifactId)
+    - name: Get Package name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -oy '.project.groupId + "." + .project.artifactId' ${{ inputs.source_path }}/pom.xml
+
+    # Get from global inputs the custom Maven Options
+    - name: Get Maven options
+      id: maven_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Setup Java JDK for builds
+    - name: Set JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: "${{ steps.java_version.outputs.result }}"
+        distribution: "${{ steps.java_dist.outputs.result }}"
+
+    # Cache all maven packages
+    - name: Cache Maven packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Maven Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+    # Build the code!
+    - name: Build Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Maven Build"
+        MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
+        mvn --batch-mode --update-snapshots clean package -DskipTests
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+

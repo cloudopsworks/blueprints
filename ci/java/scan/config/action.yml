@@ -1,0 +1,81 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Code Scan Configuration
+author: cloudopsworks
+description: Code Scan Configuration
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+outputs:
+  sonarqube_enabled:
+    description: 'The Sonarqube enabled flag'
+    value: ${{ steps.sonarqube_enabled.outputs.result }}
+  dtrack_enabled:
+    description: 'The DependencyTrack enabled flag'
+    value: ${{ steps.dtrack_enabled.outputs.result }}
+  dtrack_project_type:
+    description: 'The DependencyTrack project type'
+    value: ${{ steps.dtrack_project_type.outputs.result }}
+  snyk_enabled:
+    description: 'The Snyk enabled flag'
+    value: ${{ steps.snyk_enabled.outputs.result }}
+  semgrep_enabled:
+    description: 'The Semgrep enabled flag'
+    value: ${{ steps.semgrep_enabled.outputs.result }}
+  apis_enabled:
+    description: 'The APIs enabled flag'
+    value: ${{ steps.apis_enabled.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Get Sonarqube Configuration is enabled
+    - name: Get Pipeline conf Sonarqube is Enabled
+      id: sonarqube_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.sonarqube.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get DependencyTrack Configuration is enabled
+    - name: Get Pipeline conf DependencyTrack is Enabled
+      id: dtrack_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dependencyTrack.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get DependencyTrack project type configuration, default is null
+    - name: Get Pipeline conf DependencyTrack Project type
+      id: dtrack_project_type
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dependencyTrack.type // "Application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get Snyk Configuration is enabled
+    - name: Get Pipeline conf Snyk is Enabled
+      id: snyk_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.snyk.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get Semgrep Configuration is enabled
+    - name: Get Pipeline conf Semgrep is Enabled
+      id: semgrep_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.semgrep.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get the apis enabled from .github/cloudopsworks-ci.yaml as plain text
+    - name: Get APIs Enabled
+      id: apis_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml

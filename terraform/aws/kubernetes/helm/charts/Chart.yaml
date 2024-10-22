@@ -1,0 +1,7 @@
+apiVersion: v2
+description: A Helm chart for Kubernetes
+icon: https://raw.githubusercontent.com/cloudopsworks/base-app-template/master/images/kubernetes.png
+type: application
+name: helm
+version: 0.1.0
+appVersion: 0.1.0

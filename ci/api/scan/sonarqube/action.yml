@@ -1,0 +1,48 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Sonarqube Scan Apis
+author: cloudopsworks
+description: This action scans the API code using Sonarqube
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  sonarqube_url:
+    description: 'The Sonarqube URL'
+    required: true
+  sonarqube_token:
+    description: 'The Sonarqube token'
+    required: true
+  sonarqube_project_key:
+    description: 'The Sonarqube project key'
+    required: true
+  semver:
+    description: 'The Semver version'
+    required: true
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Apis Sonar Scan
+      uses: sonarsource/sonarqube-scan-action@v2
+      env:
+        SONAR_TOKEN: ${{ inputs.sonarqube_url }}
+        SONAR_HOST_URL: ${{ inputs.sonarqube_token }}
+      with:
+        projectBaseDir: ${{ inputs.source_path }}/apifiles/
+        args: >
+          -Dsonar.projectKey=${{ inputs.sonarqube_project_key }}
+          -Dsonar.projectVersion=${{ inputs.semver }}
+          -Dsonar.branch.name=openapi
+          -Dsonar.language=openapi

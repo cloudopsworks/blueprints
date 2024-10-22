@@ -35,3 +35,10 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Idea
+.idea/
+
+# CloudOpsWorks Tronador
+.tronador
+tronador/

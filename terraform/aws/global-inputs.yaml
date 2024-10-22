@@ -1,0 +1,7 @@
+#Global inputs for all terraform modules
+environment: sample
+release_name: sample
+#AWS IAM ROLE required variables for running terraform
+default:
+  region: <AWS_REGION>
+  sts_role_arn: arn:aws:iam::<ACCOUNT_ID>:role/TerraformAccessRole
