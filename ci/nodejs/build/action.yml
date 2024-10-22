@@ -168,11 +168,11 @@ runs:
         echo "::endgroup::"
 
     - name: Version Capture
-      id: semver
       working-directory: ${{ inputs.source_path }}
+      id: semver
       shell: bash
       run: |
-        echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
     
     # Edit package.json in order to include repository for automatic linking
     - name: Package.JSON - REPO auto link
