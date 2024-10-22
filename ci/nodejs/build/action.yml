@@ -96,7 +96,7 @@ runs:
       id: package_name
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -oj -r '.name' package.json
+        cmd: yq e -oj -r '.name' ${{ inputs.source_path }}/package.json
 
     # get from global inputs extra env vars from : node_extra_env entry
     - name: Get Optional Env Vars
