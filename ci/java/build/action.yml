@@ -45,6 +45,7 @@ outputs:
   package_name:
     description: 'The package name'
     value: ${{ steps.package_name.outputs.result }}
+
 runs:
   using: 'composite'
   steps:

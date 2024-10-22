@@ -41,5 +41,6 @@ runs:
           ${{ inputs.source_path }}/target/jacoco.json
           ${{ inputs.source_path }}/target/site/jacoco/**
           ${{ inputs.source_path }}/*.sarif
+          ${{ inputs.source_path }}/bom.xml
 
 
