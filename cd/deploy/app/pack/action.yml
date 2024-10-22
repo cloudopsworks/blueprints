@@ -55,7 +55,7 @@ runs:
   steps:
     - name: Get Bucket Config
       id: bucket_config
-      uses: ${{ inputs.blueprint_path }}/cd/deploy/app/pack/bucket-config
+      uses: ./${{ inputs.blueprint_path }}/cd/deploy/app/pack/bucket-config
       with:
         blueprint_path: ${{ inputs.blueprint_path }}
         cloud: ${{ inputs.cloud }}
@@ -64,7 +64,7 @@ runs:
 
     - name: Stack Retrieval
       id: stack
-      uses: ${{ inputs.blueprint_path }}/cd/deploy/app/pack/stack-config
+      uses: ./${{ inputs.blueprint_path }}/cd/deploy/app/pack/stack-config
       with:
         blueprint_path: ${{ inputs.blueprint_path }}
         cloud: ${{ inputs.cloud }}
