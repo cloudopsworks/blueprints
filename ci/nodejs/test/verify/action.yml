@@ -44,5 +44,5 @@ runs:
       uses: CycloneDX/gh-node-module-generatebom@v1
       with:
         path: ${{ inputs.source_path }}
-        output: "${{ inputs.source_path }}/bom/bom.xml"
+        output: "${{ inputs.source_path }}/bom.xml"
 
