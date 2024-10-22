@@ -23,13 +23,13 @@ inputs:
 outputs:
   java_stack:
     description: 'The Java stack'
-    value: ${{ steps.java_stack_eb.outputs.result == '' && steps.java_stack_eb.outputs.result || steps.java_stack_lambda.outputs.result }}
+    value: ${{ steps.java_stack_eb.outputs.result != '' && steps.java_stack_eb.outputs.result || steps.java_stack_lambda.outputs.result }}
   node_stack:
     description: 'The Node stack'
-    value: ${{ steps.node_stack_eb.outputs.result == '' && steps.node_stack_eb.outputs.result || steps.node_stack_lambda.outputs.result }}
+    value: ${{ steps.node_stack_eb.outputs.result != '' && steps.node_stack_eb.outputs.result || steps.node_stack_lambda.outputs.result }}
   python_stack:
     description: 'The Python stack'
-    value: ${{ steps.python_stack_eb.outputs.result == '' && steps.python_stack_eb.outputs.result || steps.python_stack_lambda.outputs.result }}
+    value: ${{ steps.python_stack_eb.outputs.result != '' && steps.python_stack_eb.outputs.result || steps.python_stack_lambda.outputs.result }}
 
 runs:
   using: 'composite'
