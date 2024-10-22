@@ -1,0 +1,15 @@
+name: auto-assign
+on:
+  pull_request: 
+    types: 
+      - opened
+      - reopened
+
+jobs:
+  reviewers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: cloudopsworks/auto-assign@v1.2.1
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: '.github/auto-assign.yml'
