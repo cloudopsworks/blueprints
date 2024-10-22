@@ -115,6 +115,7 @@ runs:
 
     # if custom_run_command is non empty then need to override the startup.sh scripts with new content, write the file in-place
     - name: Set custom run command
+      working-directory: ${{ inputs.source_path }}
       if: ${{ steps.custom_run_command.outputs.result != '' }}
       shell: bash
       run: |
