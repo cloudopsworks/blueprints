@@ -3,9 +3,9 @@
 #            On GitHub: https://github.com/cloudopsworks
 #            Distributed Under Apache v2.0 License
 #
-name: Sonarqube Scan Java
+name: Sonarqube Scan NodeJS
 author: cloudopsworks
-description: This action scans the Java code using Sonarqube
+description: This action scans the Node.js code using Sonarqube
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -46,7 +46,11 @@ runs:
         args: >
           -Dsonar.projectKey=${{ inputs.sonarqube_project_key }}
           -Dsonar.projectVersion=${{ inputs.semver }}
-          -Dsonar.sources=src/main/java
-          -Dsonar.java.binaries=target/classes
-          -Dsonar.language=java
-    #            -Dsonar.branch.name=${{ github.ref_name }}
+          -Dsonar.sources=.
+          -Dsonar.sourceEncoding=UTF-8
+          -Dsonar.language=javascript
+          -Dsonar.exclusions=node_modules/**,coverage/**,test/**,tests/**,charts/**,tronador/**,dist/**,build/**
+          -Dsonar.tests=.
+          -Dsonar.test.inclusions=**/*.test.js,**/*.spec.js
+          -Dsonar.test.exclusions=node_modules/**,coverage/**,test/**,tests/**
+#            -Dsonar.branch.name=${{ github.ref }}

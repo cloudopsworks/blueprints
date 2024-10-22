@@ -3,9 +3,11 @@
 #            On GitHub: https://github.com/cloudopsworks
 #            Distributed Under Apache v2.0 License
 #
-name: Generate Containerized Java Application
+name: Generate Containerized Node.js Application
 author: cloudopsworks
-description: Generate a containerized Java application
+description: |
+  This action generates a containerized Node.js application.
+  It is intended to be used in a CI/CD pipeline
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -18,14 +20,14 @@ inputs:
   semver:
     description: 'The semver version to use for the build'
     required: true
-  java_version:
-    description: 'The Java version to use for the build'
+  node_version:
+    description: 'The Node.js version to use for the build'
     required: true
-  java_dist:
-    description: 'The Java distribution to use for the build'
+  node_dist:
+    description: 'The Node.js distribution to use for the build'
     required: true
-  java_image_variant:
-    description: 'The Java image variant to use for the build'
+  node_image_variant:
+    description: 'The Node.js image variant to use for the build'
     required: true
   environment:
     description: 'The environment to use for the build'
@@ -79,47 +81,40 @@ runs:
     - name: Copy Dockerfile Java App
       shell: bash
       run: |
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* ${{ inputs.source_path }}/
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/nodejs/* ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/nodejs/.dockerignore ${{ inputs.source_path }}/
 
-    # Java version image settings (adopt is deprecated)
-    - name: Set output with Java Version
-      id: java_version_image_name
+    # for non front end projects nodejs version is set by parameter, defaults to 20
+    - name: Set output with node Version
+      if: inputs.front_end == false
+      id: node_version_image_name
       shell: bash
       run: |
-        if [ "${{ inputs.java_version }}" != "" ] ; then
-          case "${{ inputs.java_dist }}" in
-            adopt)
-              echo "result=IMAGE_NAME=adoptopenjdk:${{ inputs.java_version }}-${{ inputs.java_image_variant }}" >> $GITHUB_OUTPUT
+        if [ "${{ inputs.node_version }}" != "" ] ; then
+          case "${{ inputs.node_image_variant }}" in
+            alpine*)
+              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
               ;;
-            zulu)
-              case "${{ inputs.java_image_variant }}" in
-                debian)
-                  echo "result=IMAGE_NAME=azul/zulu-openjdk-debian:${{ inputs.java_version }}" >> $GITHUB_OUTPUT
-                  ;;
-                centos)
-                  echo "result=IMAGE_NAME=azul/zulu-openjdk-centos:${{ inputs.java_version }}" >> $GITHUB_OUTPUT
-                  ;;
-                standard|std|slim)
-                  echo "result=IMAGE_NAME=azul/zulu-openjdk:${{ inputs.java_version }}" >> $GITHUB_OUTPUT
-                  ;;
-                *)
-                  echo "result=IMAGE_NAME=azul/zulu-openjdk-alpine:${{ inputs.java_version }}" >> $GITHUB_OUTPUT
-                  ;;
-              esac
+            bookworn*)
+              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
               ;;
-            corretto)
-              echo "result=IMAGE_NAME=amazoncorretto:${{ inputs.java_version }}-${{ inputs.java_image_variant }}" >> $GITHUB_OUTPUT
+            bullseye*)
+              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
+              ;;
+            current*)
+              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
+              ;;
+            slim)
+              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
               ;;
             *)
-              echo "result=IMAGE_NAME=eclipse-temurin:${{ inputs.java_version }}-${{ inputs.java_image_variant }}" >> $GITHUB_OUTPUT
+              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}" >> $GITHUB_OUTPUT
               ;;
           esac
         fi
 
     # if custom_run_command is non empty then need to override the startup.sh scripts with new content, write the file in-place
     - name: Set custom run command
-      working-directory: ${{ inputs.source_path }}
       if: ${{ steps.custom_run_command.outputs.result != '' }}
       shell: bash
       run: |
@@ -127,7 +122,7 @@ runs:
         cat > ./startup.sh << EOF
         #!/bin/sh
         
-        # Startup the Java App (custom command)
+        # Startup the nodejs Server (custom command)
         cd /app/webapp
         ${{ steps.custom_run_command.outputs.result }}
         EOF
@@ -176,7 +171,7 @@ runs:
       uses: docker/build-push-action@v5
       with:
         build-args: |
-          ${{ steps.java_version_image_name.outputs.result }}
+          ${{ steps.node_version_image_name.outputs.result }}
           ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
         push: false
         context: ${{ inputs.source_path }}
@@ -193,7 +188,7 @@ runs:
       uses: docker/build-push-action@v5
       with:
         build-args: |
-          ${{ steps.java_version_image_name.outputs.result }}
+          ${{ steps.node_version_image_name.outputs.result }}
           ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
         push: false
         context: ${{ inputs.source_path }}

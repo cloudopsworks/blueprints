@@ -1,0 +1,120 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Save NodeJS Artifacts
+author: cloudopsworks
+description: Save NodeJS Artifacts to the artifacts store
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+
+runs:
+  using: 'composite'
+  steps:
+    # Get pipeline conf
+    - name: Get pipeline zip packaging globs
+      id: zip_globs
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # Get pipeline conf exclude globs
+    - name: Get pipeline zip packaging exclude globs
+      id: exclude_globs
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # Get pipeline conf for TAR
+    - name: Get pipeline zip packaging globs for TAR
+      id: zip_globs_line
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml | tr '\n' ' '
+
+    # Get pipeline conf exclude globs (RAW) for TAR
+    - name: Get pipeline zip packaging exclude globs (RAW)
+      id: raw_exclude_globs
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # TODO: make this passed by param
+    # get from global inputs the setting if it is frontend target
+    - name: Get Front-End Setting
+      id: front_end
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.frontend and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # TODO: make this passed by param
+    # get from global inputs the path where to find the node build result
+    - name: Get Node Build Dir
+      id: node_build_dir
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.node_build_dir // "./build"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # The problem with NodeJS are the symlinks, so we need first to create a TAR file
+    # with including the zip_globs and excluding the exclude_globs with -X option
+    # -X options needs an input file so we need to create a temporary file
+    - name: Create TAR file
+      id: tar_file
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        TMP_DIR=$(mktemp -d)
+        echo "${{ steps.raw_exclude_globs.outputs.result }}" > /tmp/exclude_globs.txt
+        tar -cf $TMP_DIR/node_artifacts.tar --exclude-from=/tmp/exclude_globs.txt --ignore-failed-read --exclude-vcs ${{ steps.zip_globs_line }}
+        echo "artifact=$TMP_DIR/node_artifacts.tar" >> $GITHUB_OUTPUT
+
+    # Perform of upload of artfiacts only if not front_end
+    - name: Upload Artifacts to workflow
+      if: ${{ steps.front_end.outputs.result != 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: ${{ steps.tar_file.outputs.artifact }}
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '1' #fast
+
+    # Perform the node_build packaging right from the build directory
+    - name: Upload Build result
+      uses: actions/upload-artifact@v4
+      if: steps.front_end.outputs.result == 'true'
+      with:
+        name: node_build_artifact
+        path: ${{ steps.node_build_dir.outputs.result }}/**
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '1' #fast
+
+    # Perform of upload of sources
+    - name: Upload Sources to workflow
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.sources_artifacts_name }}
+        path: |
+          **
+          !${{ steps.node_build_dir.outputs.result }}/**
+          ${{ steps.exclude_globs.outputs.result }}
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '1' #fast

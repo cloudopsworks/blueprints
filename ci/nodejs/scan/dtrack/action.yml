@@ -3,9 +3,9 @@
 #            On GitHub: https://github.com/cloudopsworks
 #            Distributed Under Apache v2.0 License
 #
-name: Dependency Track Scan Java
+name: Dependency Track Scan
 author: cloudopsworks
-description: This action scans the Java code using Dependency Track
+description: This action scans the Node.js code using Dependency Track
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -16,23 +16,23 @@ inputs:
     required: false
     default: 'bp'
   dtrack_url:
-      description: 'The Dependency Track URL'
-      required: true
+    description: 'The Dependency Track URL'
+    required: true
   dtrack_token:
-      description: 'The Dependency Track token'
-      required: true
+    description: 'The Dependency Track token'
+    required: true
   dtrack_project_key:
-      description: 'The Dependency Track project key'
-      required: true
+    description: 'The Dependency Track project key'
+    required: true
   semver:
-      description: 'The Semver version'
-      required: true
+    description: 'The Semver version'
+    required: true
   token:
-      description: 'The Github token'
-      required: true
+    description: 'The Github token'
+    required: true
 
 runs:
-  # TODO: DUPLICATE CODE with nodejs/dtrack/action.yml
+  # TODO: DUPLICATE CODE with java/dtrack/action.yml
   using: 'composite'
   steps:
     # SBOM upload
