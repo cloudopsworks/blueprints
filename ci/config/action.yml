@@ -51,12 +51,18 @@ outputs:
   aws_region:
     description: 'The AWS Region value, only on AWS deployment'
     value: ${{ steps.aws_region.outputs.result }}
-  aws_sts_role_arn:
+  build_aws_sts_role_arn:
+    description: 'The AWS STS Role ARN value, only on AWS build'
+    value: ${{ steps.build_aws_sts_role_arn.outputs.result }}
+  deploy_aws_sts_role_arn:
     description: 'The AWS STS Role ARN value, only on AWS deployment'
-    value: ${{ steps.aws_sts_role_arn.outputs.result }}
-  azure_resource_group:
+    value: ${{ steps.deploy_aws_sts_role_arn.outputs.result }}
+  build_azure_resource_group:
+    description: 'The Azure Resource Group value, only on Azure build'
+    value: ${{ steps.build_azure_rg.outputs.result }}
+  deploy_azure_resource_group:
     description: 'The Azure Resource Group value, only on Azure deployment'
-    value: ${{ steps.azure_rg.outputs.result }}
+    value: ${{ steps.deploy_azure_rg.outputs.result }}
   runner_set:
     description: 'The runner set for the build'
     value: ${{ steps.runner_set_env.outputs.result != '' && steps.runner_set_env.outputs.result || steps.runner_set.outputs.result }}
@@ -289,22 +295,40 @@ runs:
         RET=$(yq -I=0 '.aws.region // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the AWS STS Role ARN value from the inputs-<environment>.yaml file
-    - name: Set the appropriate values for STS Role ARN
-      id: aws_sts_role_arn
+    # Get the AWS Build STS Role ARN value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for STS Role ARN (Build)
+      id: build_aws_sts_role_arn
       if: steps.cloud.outputs.result == 'AWS'
       shell: bash
       run: |
-        RET=$(yq -I=0 '.aws.sts_role_arn // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the Azure RG value from the inputs-<environment>.yaml file
-    - name: Set the appropriate values for Azure RG
-      id: azure_rg
+    # Get the AWS Deployment STS Role ARN value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for STS Role ARN (Deploy)
+      id: deploy_aws_sts_role_arn
+      if: steps.cloud.outputs.result == 'AWS'
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Azure Build RG value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for Azure RG (Build)
+      id: build_azure_rg
       if: steps.cloud.outputs.result == 'AZURE'
       shell: bash
       run: |
-        RET=$(yq -I=0 '.azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.azure.build_resource_group // .azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Azure Deploy RG value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for Azure RG (Deploy)
+      id: deploy_azure_rg
+      if: steps.cloud.outputs.result == 'AZURE'
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.azure.deploy_resource_group // .azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get the Runner Set for this build
