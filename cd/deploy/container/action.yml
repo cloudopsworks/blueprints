@@ -128,4 +128,4 @@ runs:
       shell: bash
       if: steps.docker_daemon.outputs.docker_daemon != 'true'
       run: |
-        skopeo copy --all docker-archive://docker-image.tar docker://${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
+        skopeo copy --all docker-archive:docker-image.tar docker://${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
