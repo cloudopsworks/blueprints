@@ -20,15 +20,6 @@ inputs:
   semver:
     description: 'The semver version to use for the build'
     required: true
-  node_version:
-    description: 'The Node.js version to use for the build'
-    required: true
-  node_dist:
-    description: 'The Node.js distribution to use for the build'
-    required: true
-  node_image_variant:
-    description: 'The Node.js image variant to use for the build'
-    required: true
   environment:
     description: 'The environment to use for the build'
     required: true
@@ -77,40 +68,27 @@ runs:
       with:
         cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Get pipeline conf image variant defaults to alpine
+    - name: Get pipeline image variant
+      id: docker_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.docker_image // "node:20-alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Copy Dockerfile from blueprint to current dir
-    - name: Copy Dockerfile Java App
+    - name: Copy Dockerfile Template Docker
       shell: bash
       run: |
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/nodejs/* ${{ inputs.source_path }}/
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/nodejs/.dockerignore ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/docker/* ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/docker/.dockerignore ${{ inputs.source_path }}/
 
     # for non front end projects nodejs version is set by parameter, defaults to 20
     - name: Set output with node Version
-      if: inputs.front_end == false
-      id: node_version_image_name
+      id: docker_image_name
       shell: bash
       run: |
-        if [ "${{ inputs.node_version }}" != "" ] ; then
-          case "${{ inputs.node_image_variant }}" in
-            alpine*)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
-              ;;
-            bookworn*)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
-              ;;
-            bullseye*)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
-              ;;
-            current*)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
-              ;;
-            slim)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}" >> $GITHUB_OUTPUT
-              ;;
-          esac
+        if [ "${{ steps.docker_image_variant.outputs.result }}" != "" ] ; then
+          echo "result=IMAGE_NAME=${{ steps.docker_image_variant.outputs.result }}" >> $GITHUB_OUTPUT
         fi
 
     # if custom_run_command is non empty then need to override the startup.sh scripts with new content, write the file in-place
@@ -123,10 +101,11 @@ runs:
         cat > ./startup.sh << EOF
         #!/bin/sh
         
-        # Startup the nodejs Server (custom command)
+        # Startup (custom command)
         cd /app/webapp
         ${{ steps.custom_run_command.outputs.result }}
         EOF
+        echo "ENTRYPOINT [\"/app/webapp/startup.sh\"]" >> Dockerfile
         cat ./startup.sh
 
     # make a multiline replacement in the Dockerfile from inputs.docker_inline the string to replace is #<DOCKER-INJECTION-POINT> sed should use different delinmiter than /
@@ -173,7 +152,7 @@ runs:
       uses: docker/build-push-action@v5
       with:
         build-args: |
-          ${{ steps.node_version_image_name.outputs.result }}
+          ${{ steps.docker_image_name.outputs.result }}
           ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
         push: false
         context: ${{ inputs.source_path }}
@@ -190,7 +169,7 @@ runs:
       uses: docker/build-push-action@v5
       with:
         build-args: |
-          ${{ steps.node_version_image_name.outputs.result }}
+          ${{ steps.docker_image_name.outputs.result }}
           ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
         push: false
         context: ${{ inputs.source_path }}

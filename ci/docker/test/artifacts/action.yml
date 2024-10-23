@@ -3,9 +3,9 @@
 #            On GitHub: https://github.com/cloudopsworks
 #            Distributed Under Apache v2.0 License
 #
-name: Upload Java Test Artifacts
+name: Upload Docker Test Artifacts
 author: cloudopsworks
-description: Upload Java Test Artifacts (depends on test/verify & build)
+description: Upload Docker Test Artifacts (depends on test/verify & build)
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -32,15 +32,14 @@ runs:
         name: test_artifacts
         if-no-files-found: 'warn'
         path: |
-          ${{ inputs.source_path }}/target/surefire-reports/**
-          ${{ inputs.source_path }}/target/failsafe-reports/**
-          ${{ inputs.source_path }}/target/jacoco.exec
-          ${{ inputs.source_path }}/target/jacoco.xml
-          ${{ inputs.source_path }}/target/jacoco.csv
-          ${{ inputs.source_path }}/target/jacoco.html
-          ${{ inputs.source_path }}/target/jacoco.json
-          ${{ inputs.source_path }}/target/site/jacoco/**
+          ${{ inputs.source_path }}/coverage/**
+          ${{ inputs.source_path }}/test-results.xml
+          ${{ inputs.source_path }}/**/jacoco.exec
+          ${{ inputs.source_path }}/**/jacoco.xml
+          ${{ inputs.source_path }}/**/jacoco.csv
+          ${{ inputs.source_path }}/**/jacoco.html
+          ${{ inputs.source_path }}/**/jacoco.json
+          ${{ inputs.source_path }}/**/site/jacoco/**
           ${{ inputs.source_path }}/*.sarif
           ${{ inputs.source_path }}/bom.xml
           ${{ inputs.source_path }}/trivy-report.json
-

@@ -42,3 +42,4 @@ runs:
             ${{ inputs.source_path }}/**/site/jacoco/**
             ${{ inputs.source_path }}/*.sarif
             ${{ inputs.source_path }}/bom.xml
+            ${{ inputs.source_path }}/trivy-report.json
