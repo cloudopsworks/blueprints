@@ -1,0 +1,104 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Build NodeJS Sources
+author: cloudopsworks
+description: Build NodeJS sources and save artifacts
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+outputs:
+  node_version:
+    description: 'The NodeJS version to use for the build'
+    value: ${{ steps.node_version.outputs.result }}
+  node_dist:
+    description: 'The NodeJS distribution to use for the build'
+    value: ${{ steps.node_dist.outputs.result }}
+  node_image_variant:
+    description: 'The NodeJS image variant to use for the build'
+    value: ${{ steps.node_image_variant.outputs.result }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Get pipeline conf node version
+    - name: Get pipeline node version
+      id: node_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.node.version // "20"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf node dist
+    - name: Get pipeline node dist
+      id: node_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.node.dist // "adopt"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get Package Name from package.json
+    - name: Get package Name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -oj -r '.name' ${{ inputs.source_path }}/package.json
+
+    # Setup Node JS for builds with version provided
+    - name: Set Node Version
+      uses: actions/setup-node@v4
+      with:
+        node-version: "${{ steps.node_version.outputs.result }}"
+        check-latest: true
+        token: ${{ inputs.token }}
+
+    # Cache all NPM packages
+    - name: Cache NPM packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json','**/npm-shrinkwrap.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Node Version SET"
+        make version
+        echo "::endgroup::"
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
