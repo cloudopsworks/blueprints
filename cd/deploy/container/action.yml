@@ -60,9 +60,11 @@ runs:
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+        
 
     #
     # Docker Build login Azure
