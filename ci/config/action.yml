@@ -29,7 +29,7 @@ outputs:
     value: ${{ steps.workspace.outputs.targetName != '' && steps.workspace.outputs.targetName || steps.getowner.outputs.repo_name }}
   deployment_enabled:
     description: 'The deployment enabled flag'
-    value: ${{ steps.workspace.outputs.isEnabled }}
+    value: ${{ steps.deployment_disabled.outputs.result == 'false' }}
   has_qualifier:
     description: 'The qualifier flag, set when doing version tagging with deploy-[qualifier]'
     value: ${{ steps.workspace.outputs.hasQualifier }}
@@ -121,6 +121,7 @@ runs:
       with:
         cmd: yq e '.cd.automatic and true' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
 
+    # TODO: deprecate isEnabled output and parsing
     # Set the appropriate workspace from what is configured from the deploy_conf step
     # Result is stored as JSON with the format found on the cd.deployments section on .github/cloudopsworks-ci.yaml
     - name: Set the appropriate workspace
@@ -308,3 +309,10 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.preview.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get if deployment is disabled:
+    - name: Get deployment disabled for the environment
+      id: deployment_disabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.disable_deploy and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
