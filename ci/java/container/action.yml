@@ -138,6 +138,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
+        echo "Injecting Dockerfile content..."
         DOCKERFILE=Dockerfile
         TEMP_FILE=$(mktemp)
         INJECTION_POINT="#<DOCKER-INJECTION-POINT>"
@@ -198,6 +199,7 @@ runs:
         push: false
         context: ${{ inputs.source_path }}
         tags: |
+          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:latest-${{ inputs.environment }}
           ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ inputs.semver }}
         outputs: type=docker,dest=docker-image.tar
 
