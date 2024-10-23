@@ -310,7 +310,7 @@ runs:
       if: steps.cloud.outputs.result == 'AWS'
       shell: bash
       run: |
-        RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.aws.deploy_sts_role_arn // .aws.sts_role_arn  // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Azure Build RG value from the inputs-<environment>.yaml file
