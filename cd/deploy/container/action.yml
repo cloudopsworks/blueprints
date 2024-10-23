@@ -57,6 +57,13 @@ runs:
       with:
         name: docker-image
 
+    - name: Set Skopeo Binary
+      shell: bash
+      run: |
+        echo "::group::Set Skopeo Binary"
+        sudo apt install -y skopeo 
+        echo "::endgroup::"
+
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
@@ -64,7 +71,6 @@ runs:
       run: |
         RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
-        
 
     #
     # Docker Build login Azure
@@ -105,9 +111,21 @@ runs:
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
 
+    - name: Check Docker Daemon
+      id: docker_daemon
+      shell: bash
+      run: |
+        [ -S /var/run/docker.sock ] && echo "true" || echo "false"
+
     - name: Push Docker image from tar
       shell: bash
+      if: steps.docker_daemon.outputs.docker_daemon == 'true'
       run: |
         docker image load --input docker-image.tar
         docker image push --all-tags ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
 
+    - name: Push Docker image from tar using Skopeo
+      shell: bash
+      if: steps.docker_daemon.outputs.docker_daemon != 'true'
+      run: |
+        skopeo copy --all docker-archive://docker-image.tar docker://${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
