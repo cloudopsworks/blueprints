@@ -1,0 +1,188 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Generate Containerized Node.js Application
+author: cloudopsworks
+description: |
+  This action generates a containerized Node.js application.
+  It is intended to be used in a CI/CD pipeline
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  semver:
+    description: 'The semver version to use for the build'
+    required: true
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+  is_release:
+    description: 'The release flag'
+    required: true
+  default_registry_address:
+    description: 'The default registry'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    # Recover the docker_registry value from the environment file
+    - name: Get Docker Registry value if set into the ENV file
+      id: docker_registry
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+
+    # get from global inputs the docker inline specification as text
+    - name: Get Docker Inline Setting
+      id: docker_inline
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.docker_inline // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # get from global inputs docker arguments, also as text
+    - name: Get Docker Arguments
+      id: docker_args_global
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # get from environmental inputs the docker arguments will override the one set on docker_args,also as text
+    - name: Get Docker Arguments for ${{ inputs.environment }}
+      id: docker_args_env
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+
+    # get custom_run_command from global inputs
+    - name: Get Custom Run Command
+      id: custom_run_command
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf image variant defaults to alpine
+    - name: Get pipeline image variant
+      id: docker_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.docker_image // "node:20-alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Copy Dockerfile from blueprint to current dir
+    - name: Copy Dockerfile Template Docker
+      shell: bash
+      run: |
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/docker/* ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/docker/.dockerignore ${{ inputs.source_path }}/
+
+    # for non front end projects nodejs version is set by parameter, defaults to 20
+    - name: Set output with node Version
+      id: docker_image_name
+      shell: bash
+      run: |
+        if [ "${{ steps.docker_image_variant.outputs.result }}" != "" ] ; then
+          echo "result=IMAGE_NAME=${{ steps.docker_image_variant.outputs.result }}" >> $GITHUB_OUTPUT
+        fi
+
+    # if custom_run_command is non empty then need to override the startup.sh scripts with new content, write the file in-place
+    - name: Set custom run command
+      working-directory: ${{ inputs.source_path }}
+      if: ${{ steps.custom_run_command.outputs.result != '' }}
+      shell: bash
+      run: |
+        echo "Creation of custom startup.sh script..."
+        cat > ./startup.sh << EOF
+        #!/bin/sh
+        
+        # Startup (custom command)
+        cd /app/webapp
+        ${{ steps.custom_run_command.outputs.result }}
+        EOF
+        echo "ENTRYPOINT [\"/app/webapp/startup.sh\"]" >> Dockerfile
+        cat ./startup.sh
+
+    # make a multiline replacement in the Dockerfile from inputs.docker_inline the string to replace is #<DOCKER-INJECTION-POINT> sed should use different delinmiter than /
+    - name: Dockerfile Injection
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "Injecting Dockerfile content..."
+        DOCKERFILE=Dockerfile
+        TEMP_FILE=$(mktemp)
+        INJECTION_POINT="#<DOCKER-INJECTION-POINT>"
+        while IFS= read -r line; do
+          if [[ "$line" =~ $INJECTION_POINT ]]; then
+            # Insert the content of input at the injection point
+            echo "${{ steps.docker_inline.outputs.result }}"
+          else
+            # Print the current line
+            echo "$line"
+          fi
+        done < "$DOCKERFILE" > "$TEMP_FILE"
+        mv "$TEMP_FILE" "$DOCKERFILE"
+        cat "$DOCKERFILE"
+
+    #
+    # Build-X run
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: SemVer split
+      id: semvers
+      shell: bash
+      run: |
+        VER_NUM="${{ inputs.semver }}"
+        VER_MAJOR=$(echo $VER_NUM | cut -f1 -d.)
+        VER_MINOR=$(echo $VER_NUM | cut -f2 -d.)
+        VER_PATCH=$(echo $VER_NUM | cut -f3 -d.)
+        echo "major=${VER_MAJOR}" >> $GITHUB_OUTPUT
+        echo "minor=${VER_MINOR}" >> $GITHUB_OUTPUT
+        echo "patch=${VER_PATCH}" >> $GITHUB_OUTPUT
+
+    # Build docker version latest release
+    - name: Docker Build Release
+      if:  inputs.is_release == 'true'
+      uses: docker/build-push-action@v5
+      with:
+        build-args: |
+          ${{ steps.docker_image_name.outputs.result }}
+          ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
+        push: false
+        context: ${{ inputs.source_path }}
+        tags: |
+          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:latest
+          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ inputs.semver }}
+          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ steps.semvers.outputs.major }}
+          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}
+        outputs: type=docker,dest=docker-image.tar
+
+    # Build docker version but is not latest release
+    - name: Docker Build Non-Release
+      if: ${{ inputs.is_release != 'true' }}
+      uses: docker/build-push-action@v5
+      with:
+        build-args: |
+          ${{ steps.docker_image_name.outputs.result }}
+          ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
+        push: false
+        context: ${{ inputs.source_path }}
+        tags: |
+          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ inputs.semver }}
+        outputs: type=docker,dest=docker-image.tar
+
+    # Upload the docker image to the artifact store
+    - name: Upload Docker Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-image
+        path: docker-image.tar
+        retention-days: 1
+        compression-level: '1'
+        overwrite: true
