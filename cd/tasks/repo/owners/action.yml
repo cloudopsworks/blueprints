@@ -313,7 +313,7 @@ runs:
               `;
             }
           
-            var run_context = ['plan / on-pr'];
+            var run_context = ['check-pr'];
             if ( is_iac ) {
               run_context = 'plan';
             }
