@@ -19,7 +19,7 @@ USER root
 
 # Copy the application configuarion as per the application
 # Build process must ensure output jar is unique for each build
-COPY target/*.jar /app/webapp/app.jar
+#<JAVA-INJECTION-POINT>
 
 # Stage 2: Customized configuation injection occurs at command line
 FROM base AS customized

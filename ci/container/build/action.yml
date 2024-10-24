@@ -40,7 +40,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "Injecting Dockerfile content..."
+        echo "::group::Injecting Dockerfile content..."
         DOCKERFILE=Dockerfile
         TEMP_FILE=$(mktemp)
         INJECTION_POINT="#<DOCKER-INJECTION-POINT>"
@@ -55,6 +55,7 @@ runs:
         done < "$DOCKERFILE" > "$TEMP_FILE"
         mv "$TEMP_FILE" "$DOCKERFILE"
         cat "$DOCKERFILE"
+        echo "::endgroup::"
 
     #
     # Build-X setup
