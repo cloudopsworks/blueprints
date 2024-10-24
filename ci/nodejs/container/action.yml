@@ -138,5 +138,6 @@ runs:
         docker_inline: ${{ steps.docker_inline.outputs.result }}
         docker_image_name: ${{ steps.docker_image_name.outputs.result }}
         docker_args: ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
+        environment: ${{ inputs.environment }}
 
 
