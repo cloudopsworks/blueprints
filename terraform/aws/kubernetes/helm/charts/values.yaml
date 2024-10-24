@@ -61,21 +61,21 @@ resources:
   requests:
     cpu: 400m
     memory: 512Mi
-probePath: /
-livenessProbe:
+probe:
+  type: http
   scheme: HTTP
+  path: /
+livenessProbe:
   initialDelaySeconds: 5
   periodSeconds: 10
   successThreshold: 1
   timeoutSeconds: 1
 readinessProbe:
-  scheme: HTTP
   failureThreshold: 5
   periodSeconds: 10
   successThreshold: 1
   timeoutSeconds: 1
 startupProbe:
-  scheme: HTTP
   enabled: false
   initialDelaySeconds: 30
   failureThreshold: 30

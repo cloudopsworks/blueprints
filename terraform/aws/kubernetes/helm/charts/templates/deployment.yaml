@@ -53,39 +53,78 @@ spec:
         ports:
         - containerPort: {{ .Values.service.internalPort }}
         livenessProbe:
+{{- if .Values.probe.type eq "http" }}
           httpGet:
-            scheme: {{ .Values.livenessProbe.scheme }}
+            scheme: {{ .Values.probe.scheme }}
             path: {{ .Values.probePath }}
-{{- if .Values.livenessProbe.port }}
-            port: {{ .Values.livenessProbe.port }}
+{{- if .Values.probe.port }}
+            port: {{ .Values.probe.port }}
 {{- else }}
             port: {{ .Values.service.internalPort }}
+{{- end }}
+{{- else if .Values.probe.type eq "tcp" }}
+          tcpSocket:
+{{- if .Values.probe.port }}
+            port: {{ .Values.probe.port }}
+{{- else }}
+            port: {{ .Values.service.internalPort }}
+{{- end }}
+{{- else if .Values.probe.type eq "command" }}
+          exec:
+            command:
+              {{ toYaml .Values.probe.command | indent 14 }}
 {{- end }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           successThreshold: {{ .Values.livenessProbe.successThreshold }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
         readinessProbe:
+{{- if .Values.probe.type eq "http" }}
           httpGet:
-            scheme: {{ .Values.readinessProbe.scheme }}
+            scheme: {{ .Values.probe.scheme }}
             path: {{ .Values.probePath }}
-{{- if .Values.readinessProbe.port }}
-            port: {{ .Values.readinessProbe.port }}
+{{- if .Values.probe.port }}
+            port: {{ .Values.probe.port }}
 {{- else }}
             port: {{ .Values.service.internalPort }}
+{{- end }}
+{{- else if .Values.probe.type eq "tcp" }}
+          tcpSocket:
+{{- if .Values.probe.port }}
+            port: {{ .Values.probe.port }}
+{{- else }}
+            port: {{ .Values.service.internalPort }}
+{{- end }}
+{{- else if .Values.probe.type eq "command" }}
+          exec:
+            command:
+              {{ toYaml .Values.probe.command | indent 14 }}
 {{- end }}
           periodSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
 {{- if .Values.startupProbe.enabled }}
         startupProbe:
+{{- if .Values.probe.type eq "http" }}
           httpGet:
-            scheme: {{ .Values.startupProbe.scheme }}
+            scheme: {{ .Values.probe.scheme }}
             path: {{ .Values.probePath }}
-{{- if .Values.startupProbe.port }}
-            port: {{ .Values.startupProbe.port }}
+{{- if .Values.probe.port }}
+            port: {{ .Values.probe.port }}
 {{- else }}
             port: {{ .Values.service.internalPort }}
+{{- end }}
+{{- else if .Values.probe.type eq "tcp" }}
+          tcpSocket:
+{{- if .Values.probe.port }}
+            port: {{ .Values.probe.port }}
+{{- else }}
+            port: {{ .Values.service.internalPort }}
+{{- end }}
+{{- else if .Values.probe.type eq "command" }}
+          exec:
+            command:
+              {{ toYaml .Values.probe.command | indent 14 }}
 {{- end }}
           initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
           failureThreshold: {{ .Values.startupProbe.failureThreshold }}
