@@ -124,8 +124,16 @@ runs:
         docker image load --input docker-image.tar
         docker image push --all-tags ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
 
+    - name: Get Image Tags
+      id: tags
+      if: steps.docker_daemon.outputs.docker_daemon != 'true'
+      shell: bash
+      run: |
+        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker://" + . + " "')
+        echo "result=$LIST" >> $GITHUB_OUTPUT
+
     - name: Push Docker image from tar using Skopeo
       shell: bash
       if: steps.docker_daemon.outputs.docker_daemon != 'true'
       run: |
-        skopeo copy --all docker-archive:docker-image.tar docker://${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
+        skopeo copy --all docker-archive:docker-image.tar ${{ steps.tags.outputs.result }}
