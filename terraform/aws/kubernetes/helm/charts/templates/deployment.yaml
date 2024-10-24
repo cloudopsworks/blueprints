@@ -53,7 +53,7 @@ spec:
         ports:
         - containerPort: {{ .Values.service.internalPort }}
         livenessProbe:
-{{- if .Values.probe.type eq "http" }}
+{{- if eq .Values.probe.type "http" }}
           httpGet:
             scheme: {{ .Values.probe.scheme }}
             path: {{ .Values.probePath }}
@@ -62,14 +62,14 @@ spec:
 {{- else }}
             port: {{ .Values.service.internalPort }}
 {{- end }}
-{{- else if .Values.probe.type eq "tcp" }}
+{{- else if eq .Values.probe.type "tcp" }}
           tcpSocket:
 {{- if .Values.probe.port }}
             port: {{ .Values.probe.port }}
 {{- else }}
             port: {{ .Values.service.internalPort }}
 {{- end }}
-{{- else if .Values.probe.type eq "command" }}
+{{- else if eq .Values.probe.type "command" }}
           exec:
             command:
               {{ toYaml .Values.probe.command | indent 14 }}
@@ -79,7 +79,7 @@ spec:
           successThreshold: {{ .Values.livenessProbe.successThreshold }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
         readinessProbe:
-{{- if .Values.probe.type eq "http" }}
+{{- if eq .Values.probe.type "http" }}
           httpGet:
             scheme: {{ .Values.probe.scheme }}
             path: {{ .Values.probePath }}
@@ -88,14 +88,14 @@ spec:
 {{- else }}
             port: {{ .Values.service.internalPort }}
 {{- end }}
-{{- else if .Values.probe.type eq "tcp" }}
+{{- else if eq .Values.probe.type "tcp" }}
           tcpSocket:
 {{- if .Values.probe.port }}
             port: {{ .Values.probe.port }}
 {{- else }}
             port: {{ .Values.service.internalPort }}
 {{- end }}
-{{- else if .Values.probe.type eq "command" }}
+{{- else if eq .Values.probe.type "command" }}
           exec:
             command:
               {{ toYaml .Values.probe.command | indent 14 }}
@@ -105,7 +105,7 @@ spec:
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
 {{- if .Values.startupProbe.enabled }}
         startupProbe:
-{{- if .Values.probe.type eq "http" }}
+{{- if eq .Values.probe.type "http" }}
           httpGet:
             scheme: {{ .Values.probe.scheme }}
             path: {{ .Values.probePath }}
@@ -114,14 +114,14 @@ spec:
 {{- else }}
             port: {{ .Values.service.internalPort }}
 {{- end }}
-{{- else if .Values.probe.type eq "tcp" }}
+{{- else if eq .Values.probe.type "tcp" }}
           tcpSocket:
 {{- if .Values.probe.port }}
             port: {{ .Values.probe.port }}
 {{- else }}
             port: {{ .Values.service.internalPort }}
 {{- end }}
-{{- else if .Values.probe.type eq "command" }}
+{{- else if eq .Values.probe.type "command" }}
           exec:
             command:
               {{ toYaml .Values.probe.command | indent 14 }}
