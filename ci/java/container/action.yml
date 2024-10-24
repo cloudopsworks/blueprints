@@ -97,7 +97,7 @@ runs:
             if [ -n "$JARDEP" ]; then
               echo "COPY $JARDEP /app/webapp/app.jar"
             else
-              echo "COPY libs/* /app/webapp/libs"
+              echo "COPY target/libs/* /app/webapp/libs"
               echo "COPY target/*.jar /app/webapp/app.jar"
             fi
             echo "${{ inputs.docker_inline }}"
