@@ -1,0 +1,121 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Build Docker Container with BuildX
+author: cloudopsworks
+description: Build Docker container with BuildX
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  semver:
+    description: 'The semver version'
+    required: true
+  docker_registry:
+    description: 'The docker registry'
+    required: true
+  docker_image_name:
+    description: 'The docker image name'
+    required: true
+  docker_args:
+    description: 'The docker build arguments'
+    required: false
+    default: ''
+  environment:
+    description: 'The environment'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    # make a multiline replacement in the Dockerfile from inputs.docker_inline the string to replace is #<DOCKER-INJECTION-POINT> sed should use different delinmiter than /
+    - name: Dockerfile Injection
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "Injecting Dockerfile content..."
+        DOCKERFILE=Dockerfile
+        TEMP_FILE=$(mktemp)
+        INJECTION_POINT="#<DOCKER-INJECTION-POINT>"
+        while IFS= read -r line; do
+          if [[ "$line" =~ $INJECTION_POINT ]]; then
+            # Insert the content of input at the injection point
+            echo "${{ inputs.docker_inline }}"
+          else
+            # Print the current line
+            echo "$line"
+          fi
+        done < "$DOCKERFILE" > "$TEMP_FILE"
+        mv "$TEMP_FILE" "$DOCKERFILE"
+        cat "$DOCKERFILE"
+
+    #
+    # Build-X setup
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: SemVer split
+      id: semvers
+      shell: bash
+      run: |
+        VER_NUM="${{ inputs.semver }}"
+        VER_MAJOR=$(echo $VER_NUM | cut -f1 -d.)
+        VER_MINOR=$(echo $VER_NUM | cut -f2 -d.)
+        VER_PATCH=$(echo $VER_NUM | cut -f3 -d.)
+        echo "major=${VER_MAJOR}" >> $GITHUB_OUTPUT
+        echo "minor=${VER_MINOR}" >> $GITHUB_OUTPUT
+        echo "patch=${VER_PATCH}" >> $GITHUB_OUTPUT
+
+    # Generate Docker Image names and Tags:
+    - name: Docker Image names
+      id: docker_tags
+      shell: bash
+      run: |
+        if [[ "${{ inputs.is_release }}" == 'true' ]]; then
+          TAGS="${{ inputs.docker_registry }}/${{ github.repository }}:latest
+        ${{ inputs.docker_registry }}/${{ github.repository }}:${{ inputs.semver }}
+        ${{ inputs.docker_registry }}/${{ github.repository }}:${{ steps.semvers.outputs.major }}
+        ${{ inputs.docker_registry }}/${{ github.repository }}:${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}"
+           echo "${{ inputs.semver }}\n${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}\n${{ steps.semvers.outputs.major }}" > docker_tags.list
+        else
+          TAGS="${{ inputs.docker_registry }}/${{ github.repository }}:latest-${{ inputs.environment }}
+        ${{ inputs.docker_registry }}/${{ github.repository }}:${{ inputs.semver }}"
+          echo "${{ inputs.semver }}\nlatest-${{ inputs.environment }}" > docker_tags.list
+        fi
+        echo "$TAGS" > docker_repository_tags.list
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        echo "$TAGS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    # Build docker version latest release
+    - name: Docker Build Release
+      uses: docker/build-push-action@v5
+      with:
+        build-args: |
+          ${{ inputs.docker_image_name }}
+          ${{ inputs.docker_args }}
+        push: false
+        context: ${{ inputs.source_path }}
+        tags: |
+          ${{ steps.docker_tags.outputs.result }}
+        outputs: type=docker,dest=docker-image.tar
+
+    # Upload the docker image to the artifact store
+    - name: Upload Docker Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-image
+        path: |
+          docker-image.tar
+          docker_repository_tags.list
+          docker_tags.list
+        retention-days: 1
+        compression-level: '1'
+        overwrite: true
