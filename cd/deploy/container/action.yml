@@ -66,7 +66,7 @@ runs:
         OS=$(uname -s)
         ARCH=$(uname -m)
         curl -sL "https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_${OS}_${ARCH}.tar.gz" > go-containerregistry.tar.gz
-        tar -zxvf go-containerregistry.tar.gz -C /usr/local/bin/ crane
+        sudo tar -zxvf go-containerregistry.tar.gz -C /usr/local/bin/ crane
         echo "::endgroup::"
 
     # Recover the docker_registry value from the environment file
