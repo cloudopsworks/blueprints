@@ -138,7 +138,7 @@ runs:
       if: steps.docker_daemon.outputs.docker_daemon != 'true'
       shell: bash
       run: |
-        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker://" + .' | tr '\n' ' ')
+        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker:" + .' | tr '\n' ' ')
         echo "Skopeo List: \"$LIST\""
         echo "result=$LIST" >> $GITHUB_OUTPUT
 
@@ -146,4 +146,6 @@ runs:
       shell: bash
       if: steps.docker_daemon.outputs.docker_daemon != 'true'
       run: |
+        echo "::group::Push Docker image from tar using Skopeo"
         skopeo copy --all docker-archive:docker-image.tar ${{ steps.tags.outputs.result }}
+        echo "::endgroup::"
