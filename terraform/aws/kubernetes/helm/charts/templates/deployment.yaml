@@ -39,9 +39,8 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
-{{- range $pkey, $pval := .Values.env }}
-        - name: {{ $pkey }}
-          value: {{ quote $pval }}
+{{- if .Values.env }}
+{{ toYaml .Values.env | indent 10 }}
 {{- end }}
         envFrom:
 {{- if .Values.envFrom }}
@@ -72,7 +71,7 @@ spec:
 {{- else if eq .Values.probe.type "command" }}
           exec:
             command:
-              {{ toYaml .Values.probe.command | indent 14 }}
+{{ toYaml .Values.probe.command | indent 14 }}
 {{- end }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
@@ -98,7 +97,7 @@ spec:
 {{- else if eq .Values.probe.type "command" }}
           exec:
             command:
-              {{ toYaml .Values.probe.command | indent 14 }}
+{{ toYaml .Values.probe.command | indent 14 }}
 {{- end }}
           periodSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
@@ -124,7 +123,7 @@ spec:
 {{- else if eq .Values.probe.type "command" }}
           exec:
             command:
-              {{ toYaml .Values.probe.command | indent 14 }}
+{{ toYaml .Values.probe.command | indent 14 }}
 {{- end }}
           initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
           failureThreshold: {{ .Values.startupProbe.failureThreshold }}
