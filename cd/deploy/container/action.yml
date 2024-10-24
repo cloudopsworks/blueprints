@@ -132,7 +132,7 @@ runs:
       if: steps.docker_daemon.outputs.docker_daemon != 'true'
       shell: bash
       run: |
-        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker://" + . + " "')
+        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker://" + .' | tr '\n' '')
         echo "Skopeo List: \"$LIST\""
         echo "result=$LIST" >> $GITHUB_OUTPUT
 
