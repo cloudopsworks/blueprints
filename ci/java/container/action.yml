@@ -93,7 +93,7 @@ runs:
         while IFS= read -r line; do
           if [[ "$line" =~ $INJECTION_POINT ]]; then
             # Insert the content of input at the injection point depending on conditions
-            JARDEP=$(ls target/*with-dependencies.jar 2>/dev/null)
+            JARDEP=$(find target -name "*with-dependencies.jar" | head -1)
             if [ -n "$JARDEP" ]; then
               echo "COPY $JARDEP /app/webapp/app.jar"
             else
