@@ -133,6 +133,7 @@ runs:
       shell: bash
       run: |
         LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker://" + . + " "')
+        echo "Skopeo List: \"$LIST\""
         echo "result=$LIST" >> $GITHUB_OUTPUT
 
     - name: Push Docker image from tar using Skopeo
