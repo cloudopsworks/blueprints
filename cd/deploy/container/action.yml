@@ -57,21 +57,17 @@ runs:
       with:
         name: docker-image
 
-    - name: Set Skopeo Binary
+    - name: Set Crane Binary
       shell: bash
       working-directory: /tmp
       run: |
-        echo "::group::Set Skopeo Binary"
-        echo 'deb http://download.opensuse.org/repositories/home:/alvistack/xUbuntu_22.04/ /' | sudo tee /etc/apt/sources.list.d/home:alvistack.list
-        curl -fsSL https://download.opensuse.org/repositories/home:alvistack/xUbuntu_22.04/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/home_alvistack.gpg > /dev/null
-        sudo apt update
-        sudo apt install -y skopeo
+        echo "::group::Set Crane Binary"
+        VERSION=$(curl -s "https://api.github.com/repos/google/go-containerregistry/releases/latest" | jq -r '.tag_name')
+        OS=$(uname -s)
+        ARCH=$(uname -m)
+        curl -sL "https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_${OS}_${ARCH}.tar.gz" > go-containerregistry.tar.gz
+        tar -zxvf go-containerregistry.tar.gz -C /usr/local/bin/ crane
         echo "::endgroup::"
-#        sudo apt install -y golang-github-containers-common
-#        wget http://http.us.debian.org/debian/pool/main/s/skopeo/skopeo_1.16.1+ds1-1+b1_amd64.deb
-#        wget http://ftp.us.debian.org/debian/pool/main/g/gpgme1.0/libgpgme11t64_1.23.2-5_amd64.deb
-#        sudo dpkg -i /tmp/skopeo_1.16.1+ds1-1+b1_amd64.deb
-#        sudo dpkg -i /tmp/libgpgme11t64_1.23.2-5_amd64.deb
 
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
@@ -133,19 +129,20 @@ runs:
         docker image load --input docker-image.tar
         docker image push --all-tags ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
 
-    - name: Get Image Tags
-      id: tags
-      if: steps.docker_daemon.outputs.docker_daemon != 'true'
-      shell: bash
-      run: |
-        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker:" + .' | tr '\n' ' ')
-        echo "Skopeo List: \"$LIST\""
-        echo "result=$LIST" >> $GITHUB_OUTPUT
+#    - name: Get Image Tags
+#      id: tags
+#      if: steps.docker_daemon.outputs.docker_daemon != 'true'
+#      shell: bash
+#      run: |
+#        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker:" + .' | tr '\n' ' ')
+#        echo "Skopeo List: \"$LIST\""
+#        echo "result=$LIST" >> $GITHUB_OUTPUT
 
     - name: Push Docker image from tar using Skopeo
       shell: bash
       if: steps.docker_daemon.outputs.docker_daemon != 'true'
       run: |
-        echo "::group::Push Docker image from tar using Skopeo"
-        skopeo copy --all docker-archive:docker-image.tar ${{ steps.tags.outputs.result }}
+        echo "::group::Push Docker image from tar using Crane"
+        #skopeo copy --all docker-archive:docker-image.tar ${{ steps.tags.outputs.result }}
+        crane copy docker-image.tar ${{ steps.docker_registry.outputs.result }}/${{ github.repository }} --all-tags
         echo "::endgroup::"
