@@ -34,10 +34,26 @@ outputs:
   apis_enabled:
     description: 'The APIs enabled flag'
     value: ${{ steps.apis_enabled.outputs.result }}
+  project_key:
+    description: 'The release source name, usually the repository name'
+    value: ${{ steps.getowner.outputs.repo_name }}
+  project_owner:
+    description: 'The release source owner, usually the repository owner'
+    value: ${{ steps.project_owner.outputs.result != '' && steps.project_owner.outputs.result || steps.getowner.outputs.owner }}
 
 runs:
   using: 'composite'
   steps:
+    # Get the owner repo
+    - name: Get owner
+      id: getowner
+      shell: bash
+      run: |
+        repo_owner=`echo "$GITHUB_REPOSITORY" | cut -f 1 -d "/"`
+        repo_name=`echo "$GITHUB_REPOSITORY" | cut -f 2 -d "/"`
+        echo "owner=$repo_owner" >> $GITHUB_OUTPUT
+        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT        
+
     # Get Sonarqube Configuration is enabled
     - name: Get Pipeline conf Sonarqube is Enabled
       id: sonarqube_enabled
