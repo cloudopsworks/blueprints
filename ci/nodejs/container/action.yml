@@ -125,9 +125,11 @@ runs:
         
         # Startup the nodejs Server (custom command)
         cd /app/webapp
-        ${{ steps.custom_run_command.outputs.result }}
+        $CUSTOM_RUN_COMMAND
         EOF
         cat ./startup.sh
+      env:
+        CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
 
     # Run Generalized Docker Build & Upload Artifact
     - name: Generalized Docker Build

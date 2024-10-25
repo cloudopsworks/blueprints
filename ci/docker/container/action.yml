@@ -103,10 +103,12 @@ runs:
         
         # Startup (custom command)
         cd /app/webapp
-        ${{ steps.custom_run_command.outputs.result }}
+        $CUSTOM_RUN_COMMAND
         EOF
         echo "ENTRYPOINT [\"/app/webapp/startup.sh\"]" >> Dockerfile
         cat ./startup.sh
+      env:
+        CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
 
     # Run Generalized Docker Build & Upload Artifact
     - name: Generalized Docker Build
