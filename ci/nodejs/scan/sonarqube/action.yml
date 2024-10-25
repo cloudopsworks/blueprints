@@ -100,5 +100,5 @@ runs:
           -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.test.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.language=javascript
-          -Dsonar.branch.name=${{ steps.branch_disabled.outputs.result == 'true' && '' || github.ref }}
           -Dsonar.sourceEncoding=UTF-8
+          ${{ steps.branch_disabled.outputs.result != 'true' && format('-Dsonar.branch.name={0}',github.ref_name) || ' ' }}
