@@ -34,19 +34,86 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Get Sonar sources form inputs-global.yaml
+      id: source_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonar.sources_path // "src/"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar binaries from inputs-global.yaml
+      id: binaries_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonar.binaries_path // "target/classes"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar libraries from inputs-global.yaml
+      id: libraries_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonar.libraries_path // "target/libs/**/*.jar"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar tests from inputs-global.yaml (defaults to source_path)
+      id: tests_path
+      uses: mikefarah/yq@master
+      with:
+          cmd: yq e -I=0 '.sonar.tests_path // "${{ steps.source_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar test binaries from inputs-global.yaml
+      id: test_binaries_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonar.tests_binaries // "target/test-classes"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar test inclusions from inputs-global.yaml
+      id: test_inclusions_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonar.tests_inclusions // "${{ steps.tests_path.outputs.result }}/**/test/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar test libraries from inputs-global.yaml
+      id: test_libraries_path
+      uses: mikefarah/yq@master
+      with:
+          cmd: yq e -I=0 '.sonar.tests_libraries // "${{ steps.libraries_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar extra exclusions from inputs-global.yaml
+      id: extra_exclusions_paths
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonar.extra_exclusions // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar exclusions from inputs-global.yaml
+      id: exclusions_paths
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonar.exclusions // "target/**,"${{ steps.tests_path.outputs.result }}/**/test/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get if sonar branch setting is disabled
+      id: branch_disabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonar.branch_disabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # TODO: enable branch.name must buy Developer/Pro plan
     # Scan the code
     - name: Sonar Scan
       uses: sonarsource/sonarqube-scan-action@v2
       env:
-        SONAR_TOKEN: ${{ inputs.sonarqube_url }}
-        SONAR_HOST_URL: ${{ inputs.sonarqube_token }}
+        SONAR_TOKEN: ${{ inputs.sonarqube_token }}
+        SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
       with:
         projectBaseDir: ${{ inputs.source_path }}
         args: >
           -Dsonar.projectKey=${{ inputs.sonarqube_project_key }}
           -Dsonar.projectVersion=${{ inputs.semver }}
-          -Dsonar.sources=src/main/java
-          -Dsonar.java.binaries=target/classes
+          -Dsonar.sources=${{ steps.source_path.outputs.result }}
+          -Dsonar.java.binaries=${{ steps.binaries_path.outputs.result }}
+          -Dsonar.java.libraries=${{ steps.libraries_path.outputs.result }}
+          -Dsonar.tests=${{ steps.tests_path.outputs.result }}
+          -Dsonar.test.binaries=${{ steps.test_binaries_path.outputs.result }}
+          -Dsonar.test.inclusions=${{ steps.test_inclusions_path.outputs.result }}
+          -Dsonar.java.test.libraries=${{ steps.test_libraries_path.outputs.result }}
+          -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
+          -Dsonar.test.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.language=java
-    #            -Dsonar.branch.name=${{ github.ref_name }}
+          -Dsonar.branch.name=${{ steps.branch_disabled.outputs.result == 'true' && '' || github.ref }}

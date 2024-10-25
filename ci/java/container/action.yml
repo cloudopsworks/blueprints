@@ -82,6 +82,34 @@ runs:
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* ${{ inputs.source_path }}/
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore ${{ inputs.source_path }}/
 
+    - name: Dockerfile Java Specific Injection
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Injecting Java content in Dockerfile..."
+        DOCKERFILE=Dockerfile
+        TEMP_FILE=$(mktemp)
+        INJECTION_POINT="#<JAVA-INJECTION-POINT>"
+        while IFS= read -r line; do
+          if [[ "$line" =~ $INJECTION_POINT ]]; then
+            # Insert the content of input at the injection point depending on conditions
+            JARDEP=$(find target -name "*with-dependencies.jar" | head -1)
+            if [ -n "$JARDEP" ]; then
+              echo "COPY $JARDEP /app/webapp/app.jar"
+            else
+              echo "COPY target/libs/* /app/webapp/libs/"
+              echo "COPY target/*.jar /app/webapp/app.jar"
+            fi
+            echo "${{ inputs.docker_inline }}"
+          else
+            # Print the current line
+            echo "$line"
+          fi
+        done < "$DOCKERFILE" > "$TEMP_FILE"
+        mv "$TEMP_FILE" "$DOCKERFILE"
+        cat "$DOCKERFILE"
+        echo "::endgroup::"
+
     # Java version image settings (adopt is deprecated)
     - name: Set output with Java Version
       id: java_version_image_name
@@ -129,84 +157,21 @@ runs:
         
         # Startup the Java App (custom command)
         cd /app/webapp
-        ${{ steps.custom_run_command.outputs.result }}
+        $CUSTOM_RUN_COMMAND
         EOF
         cat ./startup.sh
+      env:
+        CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
 
-    # make a multiline replacement in the Dockerfile from inputs.docker_inline the string to replace is #<DOCKER-INJECTION-POINT> sed should use different delinmiter than /
-    - name: Dockerfile Injection
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        DOCKERFILE=Dockerfile
-        TEMP_FILE=$(mktemp)
-        INJECTION_POINT="#<DOCKER-INJECTION-POINT>"
-        while IFS= read -r line; do
-          if [[ "$line" =~ $INJECTION_POINT ]]; then
-            # Insert the content of input at the injection point
-            echo "${{ steps.docker_inline.outputs.result }}"
-          else
-            # Print the current line
-            echo "$line"
-          fi
-        done < "$DOCKERFILE" > "$TEMP_FILE"
-        mv "$TEMP_FILE" "$DOCKERFILE"
-        cat "$DOCKERFILE"
-
-    #
-    # Build-X run
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: SemVer split
-      id: semvers
-      shell: bash
-      run: |
-        VER_NUM="${{ inputs.semver }}"
-        VER_MAJOR=$(echo $VER_NUM | cut -f1 -d.)
-        VER_MINOR=$(echo $VER_NUM | cut -f2 -d.)
-        VER_PATCH=$(echo $VER_NUM | cut -f3 -d.)
-        echo "major=${VER_MAJOR}" >> $GITHUB_OUTPUT
-        echo "minor=${VER_MINOR}" >> $GITHUB_OUTPUT
-        echo "patch=${VER_PATCH}" >> $GITHUB_OUTPUT
-
-    # Build docker version latest release
-    - name: Docker Build Release
-      if:  inputs.is_release == 'true'
-      uses: docker/build-push-action@v5
+    # Run Generalized Docker Build & Upload Artifact
+    - name: Generalized Docker Build
+      uses: ./bp/ci/container/build
       with:
-        build-args: |
-          ${{ steps.java_version_image_name.outputs.result }}
-          ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
-        push: false
-        context: ${{ inputs.source_path }}
-        tags: |
-          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:latest
-          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ inputs.semver }}
-          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ steps.semvers.outputs.major }}
-          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}
-        outputs: type=docker,dest=docker-image.tar
+        semver: ${{ inputs.semver }}
+        docker_registry: ${{ steps.docker_registry.outputs.result }}
+        docker_inline: ${{ steps.docker_inline.outputs.result }}
+        docker_image_name: ${{ steps.docker_image_name.outputs.result }}
+        docker_args: ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
+        environment: ${{ inputs.environment }}
 
-    # Build docker version but is not latest release
-    - name: Docker Build Non-Release
-      if: ${{ inputs.is_release != 'true' }}
-      uses: docker/build-push-action@v5
-      with:
-        build-args: |
-          ${{ steps.java_version_image_name.outputs.result }}
-          ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
-        push: false
-        context: ${{ inputs.source_path }}
-        tags: |
-          ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:${{ inputs.semver }}
-        outputs: type=docker,dest=docker-image.tar
 
-    # Upload the docker image to the artifact store
-    - name: Upload Docker Image
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-image
-        path: docker-image.tar
-        retention-days: 1
-        compression-level: '1'
-        overwrite: true

@@ -57,12 +57,25 @@ runs:
       with:
         name: docker-image
 
+    - name: Set Crane Binary
+      shell: bash
+      working-directory: /tmp
+      run: |
+        echo "::group::Set Crane Binary"
+        VERSION=$(curl -s "https://api.github.com/repos/google/go-containerregistry/releases/latest" | jq -r '.tag_name')
+        OS=$(uname -s)
+        ARCH=$(uname -m)
+        curl -sL "https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_${OS}_${ARCH}.tar.gz" > go-containerregistry.tar.gz
+        sudo tar -zxvf go-containerregistry.tar.gz -C /usr/local/bin/ crane
+        echo "::endgroup::"
+
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     #
     # Docker Build login Azure
@@ -103,9 +116,38 @@ runs:
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
 
+    - name: Check Docker Daemon
+      id: docker_daemon
+      shell: bash
+      run: echo "result=$([ -S /var/run/docker.sock ] && echo 'true' || echo 'false')"
+
     - name: Push Docker image from tar
       shell: bash
+      if: steps.docker_daemon.outputs.docker_daemon == 'true'
       run: |
         docker image load --input docker-image.tar
         docker image push --all-tags ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
 
+#    - name: Get Image Tags
+#      id: tags
+#      if: steps.docker_daemon.outputs.docker_daemon != 'true'
+#      shell: bash
+#      run: |
+#        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker:" + .' | tr '\n' ' ')
+#        echo "Skopeo List: \"$LIST\""
+#        echo "result=$LIST" >> $GITHUB_OUTPUT
+
+    - name: Push Docker image from tar using Skopeo
+      shell: bash
+      if: steps.docker_daemon.outputs.docker_daemon != 'true'
+      run: |
+        echo "::group::Push Docker image from tar using Crane"
+        #skopeo copy --all docker-archive:docker-image.tar ${{ steps.tags.outputs.result }}
+        TAG=$(head -1 docker-tags.list)
+        crane push docker-image.tar ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:$TAG
+        for atag in $(cat docker-tags.list); do
+          if [ "$atag" != "$TAG" ]; then
+            crane tag ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:$TAG $atag
+          fi
+        done
+        echo "::endgroup::"

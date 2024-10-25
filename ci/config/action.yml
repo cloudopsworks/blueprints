@@ -51,12 +51,18 @@ outputs:
   aws_region:
     description: 'The AWS Region value, only on AWS deployment'
     value: ${{ steps.aws_region.outputs.result }}
-  aws_sts_role_arn:
+  build_aws_sts_role_arn:
+    description: 'The AWS STS Role ARN value, only on AWS build'
+    value: ${{ steps.build_aws_sts_role_arn.outputs.result }}
+  deploy_aws_sts_role_arn:
     description: 'The AWS STS Role ARN value, only on AWS deployment'
-    value: ${{ steps.aws_sts_role_arn.outputs.result }}
-  azure_resource_group:
+    value: ${{ steps.deploy_aws_sts_role_arn.outputs.result }}
+  build_azure_resource_group:
+    description: 'The Azure Resource Group value, only on Azure build'
+    value: ${{ steps.build_azure_rg.outputs.result }}
+  deploy_azure_resource_group:
     description: 'The Azure Resource Group value, only on Azure deployment'
-    value: ${{ steps.azure_rg.outputs.result }}
+    value: ${{ steps.deploy_azure_rg.outputs.result }}
   runner_set:
     description: 'The runner set for the build'
     value: ${{ steps.runner_set_env.outputs.result != '' && steps.runner_set_env.outputs.result || steps.runner_set.outputs.result }}
@@ -76,6 +82,20 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Install runner-tools
+      working-directory: /tmp
+      shell: bash
+      run: |
+        echo "::group::Install runner-tools"
+        (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y))
+        sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+        sudo apt install -y gh jq curl zip unzip python3 python3-pip
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip -qo awscliv2.zip
+        which aws || sudo ./aws/install
+        which aws && sudo ./aws/install --update
+        echo "::endgroup::"
+
     # Get the owner repo
     - name: Get owner
       id: getowner
@@ -84,42 +104,47 @@ runs:
         repo_owner=`echo "$GITHUB_REPOSITORY" | cut -f 1 -d "/"`
         repo_name=`echo "$GITHUB_REPOSITORY" | cut -f 2 -d "/"`
         echo "owner=$repo_owner" >> $GITHUB_OUTPUT
-        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT
+        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT        
 
     # Get the deployments configuration
     - name: Get the deployments configuration
       id: deploy_conf
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+      shell: bash
+      run: |
+        RET=$(yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the cloud entry from .github/vars/inputs-global.yaml as plain text
     - name: Get Cloud Entry
       id: cloud
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.cloud' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]'
+      shell: bash
+      run: |
+        RET=$(yq e '.cloud' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the cloud type from github/vars/inputs-global.yaml as plain text
     - name: Get Cloud Type
       id: cloud_type
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.cloud_type' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      shell: bash
+      run: |
+        RET=$(yq e '.cloud_type' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the apis enabled from .github/cloudopsworks-ci.yaml as plain text
     - name: Get APIs Enabled
       id: apis_enabled
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      shell: bash
+      run: |
+        RET=$(yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the automatic setting from .github/cloudopsworks-ci.yaml as plain text
     - name: Get Automatic Setting
       id: automatic
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.cd.automatic and true' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+      shell: bash
+      run: |
+        RET=$(yq e '.cd.automatic and true' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # TODO: deprecate isEnabled output and parsing
     # Set the appropriate workspace from what is configured from the deploy_conf step
@@ -256,63 +281,90 @@ runs:
     # Get the blue_green marker from the inputs-<environment>.yaml file
     - name: Get Blue/Green Setting
       id: blue_green
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.blue_green and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.blue_green and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the AWS Region value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for REGION
       id: aws_region
       if: steps.cloud.outputs.result == 'AWS'
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.aws.region // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.aws.region // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the AWS STS Role ARN value from the inputs-<environment>.yaml file
-    - name: Set the appropriate values for STS Role ARN
-      id: aws_sts_role_arn
+    # Get the AWS Build STS Role ARN value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for STS Role ARN (Build)
+      id: build_aws_sts_role_arn
       if: steps.cloud.outputs.result == 'AWS'
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.aws.sts_role_arn // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the Azure RG value from the inputs-<environment>.yaml file
-    - name: Set the appropriate values for Azure RG
-      id: azure_rg
+    # Get the AWS Deployment STS Role ARN value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for STS Role ARN (Deploy)
+      id: deploy_aws_sts_role_arn
+      if: steps.cloud.outputs.result == 'AWS'
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.aws.deploy_sts_role_arn // .aws.sts_role_arn  // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Azure Build RG value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for Azure RG (Build)
+      id: build_azure_rg
       if: steps.cloud.outputs.result == 'AZURE'
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.azure.build_resource_group // .azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Azure Deploy RG value from the inputs-<environment>.yaml file
+    - name: Set the appropriate values for Azure RG (Deploy)
+      id: deploy_azure_rg
+      if: steps.cloud.outputs.result == 'AZURE'
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.azure.deploy_resource_group // .azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get the Runner Set for this build
       id: runner_set
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.runner_set // "ubuntu-latest"' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.runner_set // "ubuntu-latest"' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get the Runner Set for the environment
       if: steps.check_env_file.outputs.result == 'true'
       id: runner_set_env
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get if the build is for library
       id: is_library
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.isLibrary and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.isLibrary and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get preview enabled
     - name: Get pipeline preview enabled
       id: has_preview
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.preview.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      shell: bash
+      run: |
+        RET=$(yq e '.preview.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get if deployment is disabled:
     - name: Get deployment disabled for the environment
       id: deployment_disabled
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.disable_deploy and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.disable_deploy and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
