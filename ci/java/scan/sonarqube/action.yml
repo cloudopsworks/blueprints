@@ -114,5 +114,6 @@ runs:
           -Dsonar.test.inclusions=${{ steps.test_inclusions_path.outputs.result }}
           -Dsonar.java.test.libraries=${{ steps.test_libraries_path.outputs.result }}
           -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
+          -Dsonar.test.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.language=java
           -Dsonar.branch.name=${{ steps.branch_disabled.outputs.result == 'true' && '' || github.ref }}
