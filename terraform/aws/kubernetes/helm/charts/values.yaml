@@ -47,6 +47,7 @@ canary:
   host: acme.com
 
 service:
+  enabled: true
   #name: SERVICE_NAME
   type: ClusterIP
   externalPort: 80
