@@ -54,6 +54,14 @@ runs:
         echo "owner=$repo_owner" >> $GITHUB_OUTPUT
         echo "repo_name=$repo_name" >> $GITHUB_OUTPUT        
 
+    # Get repository_owner from inputs-global.yaml as project_owner id
+    - name: Get Project Owner
+      id: project_owner
+      shell: bash
+      run: |
+        RET=$(yq e '.repository_owner' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
     # Get Sonarqube Configuration is enabled
     - name: Get Pipeline conf Sonarqube is Enabled
       id: sonarqube_enabled
