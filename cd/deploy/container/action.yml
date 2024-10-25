@@ -48,6 +48,12 @@ inputs:
   default_registry_address:
     description: 'The default registry'
     required: true
+  project_key:
+    description: 'The project name as key'
+    required: true
+  project_owner:
+    description: 'The project owner'
+    required: true
 
 runs:
   using: 'composite'
@@ -126,7 +132,7 @@ runs:
       if: steps.docker_daemon.outputs.docker_daemon == 'true'
       run: |
         docker image load --input docker-image.tar
-        docker image push --all-tags ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}
+        docker image push --all-tags ${{ steps.docker_registry.outputs.result }}/${{ inputs.project_owner }}/${{ inputs.project_key }}
 
 #    - name: Get Image Tags
 #      id: tags
@@ -144,10 +150,10 @@ runs:
         echo "::group::Push Docker image from tar using Crane"
         #skopeo copy --all docker-archive:docker-image.tar ${{ steps.tags.outputs.result }}
         TAG=$(head -1 docker-tags.list)
-        crane push docker-image.tar ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:$TAG
+        crane push docker-image.tar ${{ steps.docker_registry.outputs.result }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:$TAG
         for atag in $(cat docker-tags.list); do
           if [ "$atag" != "$TAG" ]; then
-            crane tag ${{ steps.docker_registry.outputs.result }}/${{ github.repository }}:$TAG $atag
+            crane tag ${{ steps.docker_registry.outputs.result }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:$TAG $atag
           fi
         done
         echo "::endgroup::"

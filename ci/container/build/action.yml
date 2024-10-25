@@ -31,6 +31,12 @@ inputs:
   environment:
     description: 'The environment'
     required: true
+  project_key:
+    description: 'The project name key'
+    required: true
+  project_owner:
+    description: 'The project owner'
+    required: true
 
 runs:
   using: 'composite'
@@ -80,16 +86,16 @@ runs:
       shell: bash
       run: |
         if [[ "${{ inputs.is_release }}" == 'true' ]]; then
-          TAGS="${{ inputs.docker_registry }}/${{ github.repository }}:latest
-        ${{ inputs.docker_registry }}/${{ github.repository }}:${{ inputs.semver }}
-        ${{ inputs.docker_registry }}/${{ github.repository }}:${{ steps.semvers.outputs.major }}
-        ${{ inputs.docker_registry }}/${{ github.repository }}:${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}"
+          TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest
+        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}
+        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ steps.semvers.outputs.major }}
+        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}"
            echo "${{ inputs.semver }}
         ${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}
         ${{ steps.semvers.outputs.major }}" > docker-tags.list
         else
-          TAGS="${{ inputs.docker_registry }}/${{ github.repository }}:latest-${{ inputs.environment }}
-        ${{ inputs.docker_registry }}/${{ github.repository }}:${{ inputs.semver }}"
+          TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest-${{ inputs.environment }}
+        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}"
           echo "${{ inputs.semver }}
         latest-${{ inputs.environment }}" > docker-tags.list
         fi

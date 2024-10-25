@@ -24,6 +24,9 @@ outputs:
   project_key:
     description: 'The release source name, usually the repository name'
     value: ${{ steps.getowner.outputs.repo_name }}
+  project_owner:
+    description: 'The release source owner, usually the repository owner'
+    value: ${{ steps.project_owner.outputs.result != '' && steps.project_owner.outputs.result || steps.getowner.outputs.owner }}
   release_name:
     description: 'The target name for the deployment'
     value: ${{ steps.workspace.outputs.targetName != '' && steps.workspace.outputs.targetName || steps.getowner.outputs.repo_name }}
@@ -105,6 +108,14 @@ runs:
         repo_name=`echo "$GITHUB_REPOSITORY" | cut -f 2 -d "/"`
         echo "owner=$repo_owner" >> $GITHUB_OUTPUT
         echo "repo_name=$repo_name" >> $GITHUB_OUTPUT        
+
+    # Get repository_owner from inputs-global.yaml as project_owner id
+    - name: Get Project Owner
+      id: project_owner
+      shell: bash
+      run: |
+        RET=$(yq e '.repository_owner' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the deployments configuration
     - name: Get the deployments configuration
