@@ -92,6 +92,9 @@ inputs:
   cluster_name:
     description: 'The Kubernetes cluster name'
     required: true
+  rancher_project_id:
+    description: 'The Rancher project ID'
+    required: true
 
 runs:
   using: 'composite'
@@ -136,7 +139,7 @@ runs:
         yq e '.helm_values_overrides += { "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/ssl-redirect":"true" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.helm_values_overrides += { "ingress.tls.secretName":"${{ inputs.release_name }}-${{ inputs.pull_request_name }}-tls"}' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.helm_values_overrides += { "ingress.tls.enabled":true}' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.namespace_annotations += { "field.cattle.io/projectId": "${{ inputs.RANCHER_PROJECT_ID }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.namespace_annotations += { "field.cattle.io/projectId": "${{ inputs.rancher_project_id }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.container_registry = "${{ inputs.container_registry }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.cluster_name = "${{ inputs.cluster_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.namespace = "${{ inputs.release_name }}-${{ inputs.pull_request_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
