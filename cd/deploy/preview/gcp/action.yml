@@ -70,7 +70,7 @@ inputs:
     description: 'The release qualifier'
     required: false
     default: ''
-  package_name:
+  project_key:
     description: 'The package name'
     required: true
   deployment_name:
@@ -165,7 +165,7 @@ runs:
         release:
           name: preview
           source:
-            name: ${{ inputs.package_name }}
+            name: ${{ inputs.project_key }}
             version: ${{ inputs.release_version }}
         EOF
 

@@ -21,7 +21,7 @@ outputs:
   is_pre_release:
     description: 'The pre-release flag'
     value: ${{ steps.workspace.outputs.isPreRelease }}
-  package_name:
+  project_key:
     description: 'The release source name, usually the repository name'
     value: ${{ steps.getowner.outputs.repo_name }}
   release_name:

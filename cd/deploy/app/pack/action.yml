@@ -39,7 +39,7 @@ inputs:
   release_version:
     description: 'The release version'
     required: true
-  package_name:
+  project_key:
     description: 'The package name'
     required: true
   environment:

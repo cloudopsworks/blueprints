@@ -70,7 +70,7 @@ inputs:
     description: 'The release qualifier'
     required: false
     default: ''
-  package_name:
+  project_key:
     description: 'The package name'
     required: true
   deployment_name:
@@ -148,7 +148,7 @@ runs:
         release:
           name: ${{ inputs.release_name }}
           source:
-            name: ${{ inputs.package_name }}
+            name: ${{ inputs.project_key }}
             version: ${{ inputs.release_version }}
         EOF
 
@@ -262,7 +262,7 @@ runs:
         cloud_type: ${{ inputs.cloud_type }}
         release_name: ${{ inputs.release_name }}
         release_version: ${{ inputs.release_version }}
-        package_name: ${{ inputs.package_name }}
+        project_key: ${{ inputs.project_key }}
         aws_access_key_id: ${{ inputs.aws_access_key_id }}
         aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
         aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
