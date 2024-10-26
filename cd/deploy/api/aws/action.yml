@@ -63,7 +63,7 @@ inputs:
   release_version:
     description: 'The release version'
     required: true
-  package_name:
+  project_key:
     description: 'The package name'
     required: true
   deployment_name:
@@ -121,7 +121,7 @@ runs:
         release:
           name: ${{ inputs.release_name }}
           source:
-            name: ${{ inputs.package_name }}
+            name: ${{ inputs.project_key }}
             version: ${{ inputs.release_version }}
         EOF
 

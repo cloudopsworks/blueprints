@@ -38,49 +38,49 @@ runs:
       id: source_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonar.sources_path // "."' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.sources_path // "."' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar libraries from inputs-global.yaml
       id: libraries_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonar.libraries_path // "**/node_modules/**"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.libraries_path // "**/node_modules/**"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar tests from inputs-global.yaml (defaults to source_path)
       id: tests_path
       uses: mikefarah/yq@master
       with:
-          cmd: yq e -I=0 '.sonar.tests_path // "${{ steps.source_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+          cmd: yq e -I=0 '.sonarqube.tests_path // "${{ steps.source_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar test inclusions from inputs-global.yaml
       id: test_inclusions_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonar.tests_inclusions // "**/*.test.js,**/*.spec.js"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.tests_inclusions // "**/*.test.js,**/*.spec.js"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar test libraries from inputs-global.yaml
       id: test_libraries_path
       uses: mikefarah/yq@master
       with:
-          cmd: yq e -I=0 '.sonar.tests_libraries // "${{ steps.libraries_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+          cmd: yq e -I=0 '.sonarqube.tests_libraries // "${{ steps.libraries_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar extra exclusions from inputs-global.yaml
       id: extra_exclusions_paths
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonar.extra_exclusions // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.extra_exclusions // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar exclusions from inputs-global.yaml
       id: exclusions_paths
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonar.exclusions // "node_modules/**,coverage/**,test/**,tests/**,charts/**,tronador/**,dist/**,build/**"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.exclusions // "node_modules/**,coverage/**,test/**,tests/**,charts/**,tronador/**,dist/**,build/**"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get if sonar branch setting is disabled
       id: branch_disabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonar.branch_disabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.branch_disabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # TODO: enable branch.name must buy Developer/Pro plan
     # Scan the code
@@ -100,5 +100,5 @@ runs:
           -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.test.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.language=javascript
-          -Dsonar.branch.name=${{ steps.branch_disabled.outputs.result == 'true' && '' || github.ref }}
           -Dsonar.sourceEncoding=UTF-8
+          ${{ steps.branch_disabled.outputs.result != 'true' && format('-Dsonar.branch.name={0}',github.ref_name) || ' ' }}

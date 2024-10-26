@@ -38,6 +38,12 @@ inputs:
   default_registry_address:
     description: 'The default registry'
     required: true
+  project_key:
+    description: 'The project name key'
+    required: true
+  project_owner:
+    description: 'The project owner'
+    required: true
 
 runs:
   using: 'composite'
@@ -141,5 +147,7 @@ runs:
         docker_image_name: ${{ steps.docker_image_name.outputs.result }}
         docker_args: ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
         environment: ${{ inputs.environment }}
+        project_key: ${{ inputs.project_key }}
+        project_owner: ${{ inputs.project_owner }}
 
 
