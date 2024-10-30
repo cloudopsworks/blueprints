@@ -37,4 +37,6 @@ runs:
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
+      with:
+        scanMetadataReportFile: ${{ inputs.source_path }}/target/sonar/report-task.txt
 
