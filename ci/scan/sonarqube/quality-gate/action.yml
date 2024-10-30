@@ -27,6 +27,10 @@ inputs:
   fail_on_quality_gate:
     description: 'Fail on Quality Gate status'
     required: true
+outputs:
+  quality_gate_status:
+    description: 'The Quality Gate status'
+    value: ${{ steps.sonarqube_quality_gate_status.outputs.quality_gate_status }}
 
 runs:
   using: 'composite'
@@ -38,4 +42,3 @@ runs:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
 
-    -
