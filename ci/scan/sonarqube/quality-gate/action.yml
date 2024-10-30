@@ -33,7 +33,7 @@ runs:
   using: 'composite'
   steps:
     - name: Sonar Scan Quality Gate Status
-      uses: sonarsource/sonarqube-quality-gate-action@v1
+      uses: sonarsource/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
