@@ -32,13 +32,13 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - run: ls -lRa .
-      shell: bash
+#    - run: ls -lRa .
+#      shell: bash
     - name: Sonar Scan Quality Gate Status
       uses: sonarsource/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
       with:
-        scanMetadataReportFile: ${{ inputs.source_path }}/target/sonar/report-task.txt
+        scanMetadataReportFile: ${{ inputs.source_path }}/.scannerwork/report-task.txt
 
