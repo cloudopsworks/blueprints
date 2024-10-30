@@ -24,9 +24,6 @@ inputs:
   sonarqube_token:
     description: 'The Sonarqube token'
     required: true
-  fail_on_quality_gate:
-    description: 'Fail on Quality Gate status'
-    required: true
 outputs:
   quality_gate_status:
     description: 'The Quality Gate status'
@@ -36,7 +33,6 @@ runs:
   using: 'composite'
   steps:
     - name: Sonar Scan Quality Gate Status
-      if: inputs.fail_on_quality_gate == 'true'
       uses: sonarsource/sonarqube-quality-gate-action@v1
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
