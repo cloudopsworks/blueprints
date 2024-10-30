@@ -42,7 +42,7 @@ outputs:
     value: ${{ steps.project_owner.outputs.result != '' && steps.project_owner.outputs.result || steps.getowner.outputs.owner }}
   runner_set:
     description: 'The runner set for the build'
-    value: ${{ steps.runner_set_env.outputs.result != '' && steps.runner_set_env.outputs.result || steps.runner_set.outputs.result }}
+    value: ${{ steps.runner_set_env.outputs.result }}
 
 runs:
   using: 'composite'
@@ -107,16 +107,9 @@ runs:
       with:
         cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    - name: Get the Runner Set for the environment
-      id: runner_set_env
-      shell: bash
-      run: |
-        RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
-        echo "result=$RET" >> $GITHUB_OUTPUT
-
     - name: Get the Runner Set for this build
       id: runner_set
       shell: bash
       run: |
-        RET=$(yq -I=0 '.runner_set // "${{ steps.runner_set_env.outputs.result }}"' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
