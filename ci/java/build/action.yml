@@ -54,6 +54,7 @@ runs:
       run: |
         which make || sudo apt-get install -y make
         which gh || sudo apt-get install -y gh
+        which mvn || sudo apt-get install -y maven
     # Get pipeline conf java version Defaults to 21
     - name: Get pipeline Java version
       id: java_version
