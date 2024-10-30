@@ -42,7 +42,7 @@ outputs:
     value: ${{ steps.project_owner.outputs.result != '' && steps.project_owner.outputs.result || steps.getowner.outputs.owner }}
   runner_set:
     description: 'The runner set for the build'
-    value: ${{ steps.runner_set_env.outputs.result }}
+    value: ${{ steps.runner_set.outputs.result }}
 
 runs:
   using: 'composite'
