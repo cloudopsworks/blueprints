@@ -107,17 +107,16 @@ runs:
       with:
         cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    - name: Get the Runner Set for this build
-      id: runner_set
-      shell: bash
-      run: |
-        RET=$(yq -I=0 '.runner_set // "ubuntu-latest"' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
-        echo "result=$RET" >> $GITHUB_OUTPUT
-
     - name: Get the Runner Set for the environment
-      if: steps.check_env_file.outputs.result == 'true'
       id: runner_set_env
       shell: bash
       run: |
         RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    - name: Get the Runner Set for this build
+      id: runner_set
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.runner_set // "${{ steps.runner_set_env.outputs.result }}"' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
