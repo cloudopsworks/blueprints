@@ -32,6 +32,8 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - run: ls -ltR ${{ inputs.source_path }}
+      shell: bash
     - name: Sonar Scan Quality Gate Status
       uses: sonarsource/sonarqube-quality-gate-action@master
       env:
