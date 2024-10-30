@@ -40,6 +40,12 @@ outputs:
   project_owner:
     description: 'The release source owner, usually the repository owner'
     value: ${{ steps.project_owner.outputs.result != '' && steps.project_owner.outputs.result || steps.getowner.outputs.owner }}
+  runner_set:
+    description: 'The runner set for the build'
+    value: ${{ steps.runner_set.outputs.result }}
+  fail_on_quality_gate:
+    description: 'The fail on quality gate flag'
+    value: ${{ steps.fail_on_quality_gate.outputs.result }}
 
 runs:
   using: 'composite'
@@ -68,6 +74,13 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.sonarqube.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get Sonarqube Fail on Quality gate setting
+    - name: Get Fail On Quality Gate
+      id: fail_on_quality_gate
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.sonarqube.fail_on_quality_gate and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get DependencyTrack Configuration is enabled
     - name: Get Pipeline conf DependencyTrack is Enabled
@@ -103,3 +116,10 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get the Runner Set for this build
+      id: runner_set
+      shell: bash
+      run: |
+        RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
