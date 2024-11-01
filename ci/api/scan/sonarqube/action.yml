@@ -37,12 +37,13 @@ runs:
     - name: Apis Sonar Scan
       uses: sonarsource/sonarqube-scan-action@v2
       env:
-        SONAR_TOKEN: ${{ inputs.sonarqube_url }}
-        SONAR_HOST_URL: ${{ inputs.sonarqube_token }}
+        SONAR_TOKEN: ${{ inputs.sonarqube_token }}
+        SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
       with:
-        projectBaseDir: ${{ inputs.source_path }}/apifiles/
+        projectBaseDir: ${{ inputs.source_path }}
         args: >
           -Dsonar.projectKey=${{ inputs.sonarqube_project_key }}
           -Dsonar.projectVersion=${{ inputs.semver }}
+          -Dsonar.sources=apifiles/
           -Dsonar.branch.name=openapi
           -Dsonar.language=openapi
