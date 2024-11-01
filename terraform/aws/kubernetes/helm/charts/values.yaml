@@ -65,7 +65,7 @@ resources:
 probe:
   type: http
   scheme: HTTP
-  path: /
+  path: /healthz
 livenessProbe:
   initialDelaySeconds: 5
   periodSeconds: 10

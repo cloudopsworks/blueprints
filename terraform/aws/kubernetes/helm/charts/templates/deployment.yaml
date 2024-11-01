@@ -55,7 +55,7 @@ spec:
 {{- if eq .Values.probe.type "http" }}
           httpGet:
             scheme: {{ .Values.probe.scheme }}
-            path: {{ .Values.probePath }}
+            path: {{ .Values.probe.path }}
 {{- if .Values.probe.port }}
             port: {{ .Values.probe.port }}
 {{- else }}
@@ -81,7 +81,7 @@ spec:
 {{- if eq .Values.probe.type "http" }}
           httpGet:
             scheme: {{ .Values.probe.scheme }}
-            path: {{ .Values.probePath }}
+            path: {{ .Values.probe.path }}
 {{- if .Values.probe.port }}
             port: {{ .Values.probe.port }}
 {{- else }}
@@ -107,7 +107,7 @@ spec:
 {{- if eq .Values.probe.type "http" }}
           httpGet:
             scheme: {{ .Values.probe.scheme }}
-            path: {{ .Values.probePath }}
+            path: {{ .Values.probe.path }}
 {{- if .Values.probe.port }}
             port: {{ .Values.probe.port }}
 {{- else }}
