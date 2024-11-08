@@ -49,6 +49,15 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Check tools and install
+      shell: bash
+      run: |
+        echo "::group::Check Tools"
+        which make || sudo apt-get install -y make
+        which gh || sudo apt-get install -y gh
+        which mvn || sudo apt-get install -y maven
+        echo "::endgroup::"
+
     # Get pipeline conf node version
     - name: Get pipeline node version
       id: node_version
@@ -166,6 +175,9 @@ runs:
         echo "::group::Node Version SET"
         make version
         echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
@@ -188,6 +200,9 @@ runs:
         echo "::group::NPM Install"
         ${{ steps.node_extra_env.outputs.result }} ${{ steps.install_command.outputs.result }}
         echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
     # Build the code! build target MUST be defined in package.json
     - name: Run NPM Build
