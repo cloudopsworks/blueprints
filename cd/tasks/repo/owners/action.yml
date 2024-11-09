@@ -765,12 +765,6 @@ runs:
       with:
         cmd: yq -i '.on.workflow_dispatch.inputs.destroyedDeploymentName.options = ${{ steps.envs.outputs.env_list }}' ${{ inputs.source_path }}/.github/workflows/environment-destroy.yml
 
-    - name: Modify environment-destroy.yml with env_env_list
-      if: ${{ steps.repo_type.outputs.result == 'sourcecode' }}
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_env_list }}' ${{ inputs.source_path }}/.github/workflows/environment-destroy.yml
-    
     # Modify deploy YML wit yq command in order to insert the output from terragrunt_folders script
     # into the deploy.yml file on the yaml address: on.workflow_dispatch.inputs.working_directory.options
     - name: Modify environment-unlock.yml with env_list
@@ -779,12 +773,6 @@ runs:
       with:
         cmd: yq -i '.on.workflow_dispatch.inputs.unlockDeploymentName.options = ${{ steps.envs.outputs.env_list }}' ${{ inputs.source_path }}/.github/workflows/environment-unlock.yml
 
-    - name: Modify environment-destroy.yml with env_env_list
-      if: ${{ steps.repo_type.outputs.result == 'sourcecode' }}
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_env_list }}' ${{ inputs.source_path }}/.github/workflows/environment-unlock.yml
-    
     # Push the change to the repository using plain git commands
     - name: Push Deploy Workflow
       continue-on-error: true
