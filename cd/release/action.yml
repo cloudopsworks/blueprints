@@ -62,6 +62,7 @@ runs:
     - name: Changelog Generation
       uses: requarks/changelog-action@v1
       id: changelog
+      continue-on-error: true
       with:
         token: ${{ inputs.token }}
         fromTag: ${{ steps.normalize.outputs.result }}
