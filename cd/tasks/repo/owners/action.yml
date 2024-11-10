@@ -748,14 +748,15 @@ runs:
           const env_env_ordered_list = Array.from(new Set(env_env_list));
           core.setOutput('env_list', JSON.stringify(env_key_ordered_list));
           core.setOutput('env_env_list', JSON.stringify(env_env_ordered_list));
-    
-    # Modify deploy YML wit yq command in order to insert the output from terragrunt_folders script
-    # into the deploy.yml file on the yaml address: on.workflow_dispatch.inputs.working_directory.options
-    - name: Modify deploy.yml with Environment List
-      if: ${{ steps.repo_type.outputs.result == 'iac' }}
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_list }}' ${{ inputs.source_path }}/.github/workflows/deploy.yml
+
+# IAC repositories may not need this:
+#    # Modify deploy YML wit yq command in order to insert the output from terragrunt_folders script
+#    # into the deploy.yml file on the yaml address: on.workflow_dispatch.inputs.working_directory.options
+#    - name: Modify deploy.yml with Environment List
+#      if: ${{ steps.repo_type.outputs.result == 'iac' }}
+#      uses: mikefarah/yq@master
+#      with:
+#        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_env_list }}' ${{ inputs.source_path }}/.github/workflows/deploy.yml
     
     # Modify deploy YML wit yq command in order to insert the output from terragrunt_folders script
     # into the deploy.yml file on the yaml address: on.workflow_dispatch.inputs.working_directory.options
