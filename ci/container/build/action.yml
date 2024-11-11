@@ -80,7 +80,7 @@ runs:
           if [[ "${{ inputs.custom_usergroup }}" != "" ]]; then
             echo 'RUN ${{ inputs.custom_usergroup }}'
           else
-            echo 'RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \\'
+            echo 'RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \'
             echo '    && adduser --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME'
           fi
         else
