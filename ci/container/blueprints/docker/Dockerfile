@@ -26,9 +26,9 @@ WORKDIR /app
 FROM customized AS final
 
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
-RUN [ -f /usr/sbin/addgroup ] && addgroup --gid $GROUP_ID --system $GROUP_NAME \
+RUN "[ -f /usr/sbin/addgroup ]" && addgroup --gid $GROUP_ID --system $GROUP_NAME \
  && adduser  --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME
-RUN [ -f /usr/sbin/groupadd ] && groupadd --gid $GROUP_ID --system $GROUP_NAME \
+RUN "[ -f /usr/sbin/groupadd ]" && groupadd --gid $GROUP_ID --system $GROUP_NAME \
  && adduser  --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME
 # Run chown regardess of the previous step
 RUN chown -R $USER_NAME:$GROUP_NAME /app/webapp/
