@@ -10,8 +10,8 @@ ARG NGINX_ERROR_LOG_LEVEL=warn
 ARG NGINX_ERROR_LOG_PATH="/var/log/nginx/error.log"
 ARG NGINX_ACCESS_LOG_TYPE=json
 ARG NGINX_ACCESS_LOG_PATH="/var/log/nginx/access.log"
-ARG USER_ID=2000
-ARG GROUP_ID=2001
+ARG USER_ID=10001
+ARG GROUP_ID=10001
 ARG USER_NAME=webapp
 ARG GROUP_NAME=webapp
 ARG ADDGROUP=addgroup
@@ -42,7 +42,7 @@ FROM customized AS final
 
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
 RUN $ADDGROUP --gid $GROUP_ID --system $GROUP_NAME \
-    && adduser  --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME \
+    && adduser --uid $USER_ID --system --gid $GROUP_ID --home /app/webapp $USER_NAME \
     && chown -R $USER_NAME:$GROUP_NAME /usr/share/nginx/html \
     && chown -R $USER_NAME:$GROUP_NAME /app/webapp/
 
