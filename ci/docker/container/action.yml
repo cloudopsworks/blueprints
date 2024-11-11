@@ -77,6 +77,13 @@ runs:
       with:
         cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Get custom_usergroup Line item from configuration
+    - name: Get Custom Usergroup
+      id: custom_usergroup
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Get pipeline conf image variant defaults to alpine
     - name: Get pipeline image variant
       id: docker_image_variant
@@ -131,4 +138,4 @@ runs:
         environment: ${{ inputs.environment }}
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}
-        image_variant: ${{ inputs.image_variant }}
+        custom_usergroup: ${{ steps.custom_usergroup.outputs.result }}

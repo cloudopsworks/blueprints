@@ -28,6 +28,10 @@ inputs:
     description: 'The docker build arguments'
     required: false
     default: ''
+  docker_inline:
+    description: 'The docker inline content'
+    required: false
+    default: ''
   environment:
     description: 'The environment'
     required: true
