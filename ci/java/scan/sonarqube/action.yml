@@ -50,7 +50,7 @@ runs:
       id: libraries_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.libraries_path // "target/libs/**/*.jar"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.libraries_path // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar tests from inputs-global.yaml (defaults to source_path)
       id: tests_path
