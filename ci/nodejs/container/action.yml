@@ -149,5 +149,4 @@ runs:
         environment: ${{ inputs.environment }}
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}
-
-
+        image_variant: ${{ inputs.node_image_variant }}

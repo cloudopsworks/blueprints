@@ -35,6 +35,9 @@ inputs:
   project_owner:
     description: 'The project owner'
     required: true
+  image_variant:
+    description: 'The image variant to use for the build'
+    required: true
 
 runs:
   using: 'composite'
@@ -128,5 +131,4 @@ runs:
         environment: ${{ inputs.environment }}
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}
-
-
+        image_variant: ${{ inputs.image_variant }}

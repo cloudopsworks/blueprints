@@ -37,6 +37,9 @@ inputs:
   project_owner:
     description: 'The project owner'
     required: true
+  custom_usergroup:
+    description: 'The image variant'
+    required: true
 
 runs:
   using: 'composite'
@@ -58,6 +61,32 @@ runs:
             # Print the current line
             echo "$line"
           fi
+        done < "$DOCKERFILE" > "$TEMP_FILE"
+        mv "$TEMP_FILE" "$DOCKERFILE"
+        cat "$DOCKERFILE"
+        echo "::endgroup::"
+
+    - name: Image Variant user/group injection
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Injecting Image Variant user/group creation..."
+        DOCKERFILE=Dockerfile
+        TEMP_FILE=$(mktemp)
+        INJECTION_POINT="#<USERGROUP-INJECTION-POINT>"
+        while IFS= read -r line; do
+        if [[ "$line" =~ $INJECTION_POINT ]]; then
+          # Insert the content of input at the injection point
+          if [[ "${{ inputs.custom_usergroup }}" != "" ]]; then
+            echo 'RUN ${{ inputs.custom_usergroup }}'
+          else
+            echo 'RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \\'
+            echo '    && adduser --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME'
+          fi
+        else
+            # Print the current line
+            echo "$line"
+        fi
         done < "$DOCKERFILE" > "$TEMP_FILE"
         mv "$TEMP_FILE" "$DOCKERFILE"
         cat "$DOCKERFILE"

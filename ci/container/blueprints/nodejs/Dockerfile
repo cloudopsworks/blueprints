@@ -10,7 +10,6 @@ ARG USER_ID=10001
 ARG GROUP_ID=10001
 ARG USER_NAME=webapp
 ARG GROUP_NAME=webapp
-ARG ADDGROUP=addgroup
 
 ## Stage 1: Create NGINX configuration
 USER root
@@ -27,8 +26,9 @@ WORKDIR /app
 FROM customized AS final
 
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
-RUN $ADDGROUP --gid $GROUP_ID --system $GROUP_NAME \
-    && adduser --uid $USER_ID --system --gid $GROUP_ID --home /app/webapp $USER_NAME
+#RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \
+#    && adduser --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME
+#<USERGROUP-INJECTION-POINT>
 # Run chown regardess of the previous step
 RUN chown -R $USER_NAME:$GROUP_NAME /app/webapp/
 
