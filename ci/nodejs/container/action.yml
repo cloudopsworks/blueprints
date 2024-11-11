@@ -83,6 +83,13 @@ runs:
       with:
         cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Get custom_usergroup Line item from configuration
+    - name: Get Custom Usergroup
+      id: custom_usergroup
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Copy Dockerfile from blueprint to current dir
     - name: Copy Dockerfile Java App
       shell: bash
@@ -149,5 +156,4 @@ runs:
         environment: ${{ inputs.environment }}
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}
-
-
+        custom_usergroup: ${{ steps.custom_usergroup.outputs.result }}
