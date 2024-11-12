@@ -55,7 +55,6 @@ runs:
         echo "::group::Check Tools"
         which make || sudo apt-get install -y make
         which gh || sudo apt-get install -y gh
-        which mvn || sudo apt-get install -y maven
         echo "::endgroup::"
 
     # Get pipeline conf java version Defaults to 21
@@ -99,6 +98,12 @@ runs:
       with:
         java-version: "${{ steps.java_version.outputs.result }}"
         distribution: "${{ steps.java_dist.outputs.result }}"
+
+    # Setup Maven for builds
+    - name: Set up Maven
+      uses: stCarolas/setup-maven@v5
+      with:
+        maven-version: 3.9.9
 
     # Cache all maven packages
     - name: Cache Maven packages
