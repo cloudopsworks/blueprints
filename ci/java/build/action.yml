@@ -99,6 +99,12 @@ runs:
         java-version: "${{ steps.java_version.outputs.result }}"
         distribution: "${{ steps.java_dist.outputs.result }}"
 
+    # Setup Maven for builds
+    - name: Set up Maven
+      uses: stCarolas/setup-maven@v5
+      with:
+        maven-version: 3.9.9
+
     # Cache all maven packages
     - name: Cache Maven packages
       uses: actions/cache@v4
