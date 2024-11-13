@@ -41,13 +41,13 @@ runs:
       id: xcode_schemes
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.xcode.schemes' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 -o=j '.xcode.schemes' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Xcode SDK list with yq
       id: xcode_sdks
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.xcode.sdks' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 -o=j '.xcode.sdks' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Xcode Configuration for the build
       id: xcode_configuration
@@ -59,7 +59,7 @@ runs:
       id: xcode_destinations
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.xcode.destinations' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 -o=j '.xcode.destinations' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get xcode_dev_team ID from inputs-global.yaml with yq
       id: xcode_dev_team
