@@ -96,7 +96,7 @@ runs:
       run: |
         echo "::group::XCode Build"
         xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
-          -archivepath arch/${{ inputs.project_key }}.xcarchive \
+          -archivePath arch/${{ inputs.project_key }}.xcarchive \
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' \
