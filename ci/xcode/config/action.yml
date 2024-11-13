@@ -39,37 +39,49 @@ runs:
   steps:
     - name: Xcode Scheme list with yq
       id: xcode_schemes
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 -o=j '.xcode.schemes' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e -I=0 -o=j '.xcode.schemes' .github/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Xcode SDK list with yq
       id: xcode_sdks
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 -o=j '.xcode.sdks' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e -I=0 -o=j '.xcode.sdks' .github/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Xcode Configuration for the build
       id: xcode_configuration
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.xcode.configuration' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.configuration' .github/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get xcode_destinations from inputs-global.yaml with yq
       id: xcode_destinations
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 -o=j '.xcode.destinations' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e -I=0 -o=j '.xcode.destinations' .github/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get xcode_dev_team ID from inputs-global.yaml with yq
       id: xcode_dev_team
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.xcode.dev_team' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.dev_team' .github/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get xcode product bundle ID from inputs-global.yaml with yq
       id: xcode_product_bundle
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.xcode.product_bundle' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.product_bundle' .github/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
 
