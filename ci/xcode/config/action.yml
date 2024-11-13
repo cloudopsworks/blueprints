@@ -1,0 +1,75 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Get Configuration Values for Xcode Build
+author: cloudopsworks
+description: Get Configuration Values for Xcode Build
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+outputs:
+  xcode_schemes:
+    description: 'The XCode schemes to use for the build'
+    value: ${{ steps.xcode_schemes.outputs.result }}
+  xcode_sdks:
+    description: 'The XCode SDKs to use for the build'
+    value: ${{ steps.xcode_sdks.outputs.result }}
+  xcode_configuration:
+    description: 'The XCode configuration to use for the build'
+    value: ${{ steps.xcode_configuration.outputs.result }}
+  xcode_destinations:
+    description: 'The XCode destinations to use for the build'
+    value: ${{ steps.xcode_destinations.outputs.result }}
+  xcode_dev_team:
+    description: 'The XCode development team to use for the build'
+    value: ${{ steps.xcode_dev_team.outputs.result }}
+  xcode_product_bundle:
+    description: 'The XCode product bundle to use for the build'
+    value: ${{ steps.xcode_product_bundle.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Xcode Scheme list with yq
+      id: xcode_schemes
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.xcode.schemes' ./${{ inputs.source_path }}/.github/inputs-global.yaml
+
+    - name: Xcode SDK list with yq
+      id: xcode_sdks
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.xcode.sdks' ./${{ inputs.source_path }}/.github/inputs-global.yaml
+
+    - name: Xcode Configuration for the build
+      id: xcode_configuration
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.xcode.configuration' ./${{ inputs.source_path }}/.github/inputs-${{ inputs.environment }}.yaml
+
+    - name: Get xcode_destinations from inputs-global.yaml with yq
+      id: xcode_destinations
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.xcode.destinations' ./${{ inputs.source_path }}/.github/inputs-global.yaml
+
+    - name: Get xcode_dev_team ID from inputs-global.yaml with yq
+      id: xcode_dev_team
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.xcode.dev_team' ./${{ inputs.source_path }}/.github/inputs-global.yaml
+
+    - name: Get xcode product bundle ID from inputs-global.yaml with yq
+      id: xcode_product_bundle
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.xcode.product_bundle' ./${{ inputs.source_path }}/.github/inputs-global.yaml
+

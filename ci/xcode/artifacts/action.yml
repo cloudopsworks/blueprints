@@ -1,0 +1,67 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Save Xcode Artifacts
+author: cloudopsworks
+description: Save Xcode artifacts to the artifacts store
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+
+runs:
+  using: 'composite'
+  steps:
+    # Get pipeline conf
+    - name: Get pipeline zip packaging globs
+      id: zip_globs
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # Get pipeline conf exclude globs
+    - name: Get pipeline zip packaging exclude globs
+      id: exclude_globs
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # Perform of upload of artfiacts for java
+    - name: Upload Artifacts to workflow
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: |
+          ${{ steps.zip_globs.outputs.result }}
+          ${{ steps.exclude_globs.outputs.result }}
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '1' #fast
+
+    # Perform of upload of sources
+    - name: Upload Sources to workflow
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.sources_artifacts_name }}
+        path: |
+          ${{ inputs.source_path }}/**
+          !${{ inputs.source_path }}/target/**
+          ${{ steps.exclude_globs.outputs.result }}
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '3' #mid-fast
