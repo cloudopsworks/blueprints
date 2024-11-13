@@ -23,6 +23,10 @@ inputs:
     description: 'The name of the sources to save'
     required: false
     default: 'source_artifacts'
+  project_key:
+    description: 'The release source name, usually the repository name'
+    required: true
+
   bot_user:
     description: 'The bot user to use for the build'
     required: true
@@ -92,7 +96,7 @@ runs:
       run: |
         echo "::group::XCode Build"
         xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
-          -achivepath arch/${{ inputs.artifacts_name }}.xcarchive \
+          -archivepath arch/${{ inputs.project_key }}.xcarchive \
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' \
