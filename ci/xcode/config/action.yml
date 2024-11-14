@@ -33,7 +33,9 @@ outputs:
   xcode_product_bundle:
     description: 'The XCode product bundle to use for the build'
     value: ${{ steps.xcode_product_bundle.outputs.result }}
-
+  xcode_extra_args:
+    description: 'The XCode extra arguments to use for the build'
+    value: ${{ steps.xcode_extra_args.outputs.result }}
 runs:
   using: 'composite'
   steps:
@@ -83,5 +85,13 @@ runs:
       shell: bash
       run: |
         OUT=$(yq e '.xcode.product_bundle' .github/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: get xcode extra args from inputs-global.yaml with yq
+      id: xcode_extra_args
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.extra_args' .github/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
