@@ -26,12 +26,14 @@ inputs:
   project_key:
     description: 'The release source name, usually the repository name'
     required: true
-
   bot_user:
     description: 'The bot user to use for the build'
     required: true
   token:
     description: 'The github token to use for the build'
+    required: true
+  xcode_version:
+    description: 'The XCode version to use for the build'
     required: true
   xcode_scheme:
     description: 'The XCode scheme to use for the build'
@@ -105,6 +107,13 @@ runs:
       run: |
         echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
 
+    - name: Select XCODE version from github macos runner
+      shell: bash
+      run: |
+        echo "::group::XCode Version SET"
+        sudo xcode-select -s /Applications/Xcode_${{ inputs.xcode_version }}.app
+        echo "::endgroup::"
+
     - name: Install the Apple certificate and provisioning profile - Mobile Platforms
       working-directory: ${{ inputs.source_path }}
       shell: bash
@@ -131,6 +140,22 @@ runs:
         # import certificate to keychain
         security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
+
+    - name: Set Provissioning Profile - Xcode >= 16
+      if: ${{ startsWith(inputs.xcode_version, '16') }}
+      shell: bash
+      run: |
+        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+
+        # apply provisioning profile
+        mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
+        cp $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles          
+
+    - name: Set Provissioning Profile - Xcode < 16
+      if: ${{ ! startsWith(inputs.xcode_version, '16') }}
+      shell: bash
+      run: |
+        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
