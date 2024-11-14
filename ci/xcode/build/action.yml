@@ -149,7 +149,7 @@ runs:
           -destination '${{ inputs.xcode_destination }}' \
           DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
           PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
-          MARKETING_VERSION=${{ steps.semver.outputs.result }} \
+          MARKETING_VERSION=${{ steps.semver.outputs.result }} ${{ inputs.xcode_extra_args }} \
           clean archive
         echo "::endgroup::"
       env:
