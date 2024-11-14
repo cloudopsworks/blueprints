@@ -36,6 +36,7 @@ outputs:
   xcode_extra_args:
     description: 'The XCode extra arguments to use for the build'
     value: ${{ steps.xcode_extra_args.outputs.result }}
+
 runs:
   using: 'composite'
   steps:
