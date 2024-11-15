@@ -282,8 +282,7 @@ runs:
       run: |
         fexist=false
         if [ ! -f .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml ]; then
-          echo "File .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml does not exist"
-          exit 100
+          echo "::warning::File .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml does not exist. Most configurations will not be available."
         else
           fexist=true
         fi
@@ -293,6 +292,7 @@ runs:
     - name: Get Blue/Green Setting
       id: blue_green
       shell: bash
+      if: steps.check_env_file.outputs.result == 'true'
       run: |
         RET=$(yq -I=0 '.blue_green and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
@@ -300,7 +300,7 @@ runs:
     # Get the AWS Region value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for REGION
       id: aws_region
-      if: steps.cloud.outputs.result == 'AWS'
+      if: ${{ steps.cloud.outputs.result == 'AWS' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       run: |
         RET=$(yq -I=0 '.aws.region // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
@@ -309,7 +309,7 @@ runs:
     # Get the AWS Build STS Role ARN value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for STS Role ARN (Build)
       id: build_aws_sts_role_arn
-      if: steps.cloud.outputs.result == 'AWS'
+      if: ${{ steps.cloud.outputs.result == 'AWS' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       run: |
         RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
@@ -318,7 +318,7 @@ runs:
     # Get the AWS Deployment STS Role ARN value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for STS Role ARN (Deploy)
       id: deploy_aws_sts_role_arn
-      if: steps.cloud.outputs.result == 'AWS'
+      if: ${{ steps.cloud.outputs.result == 'AWS' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       run: |
         RET=$(yq -I=0 '.aws.deploy_sts_role_arn // .aws.sts_role_arn  // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
@@ -327,7 +327,7 @@ runs:
     # Get the Azure Build RG value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for Azure RG (Build)
       id: build_azure_rg
-      if: steps.cloud.outputs.result == 'AZURE'
+      if: ${{ steps.cloud.outputs.result == 'AZURE' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       run: |
         RET=$(yq -I=0 '.azure.build_resource_group // .azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
@@ -336,7 +336,7 @@ runs:
     # Get the Azure Deploy RG value from the inputs-<environment>.yaml file
     - name: Set the appropriate values for Azure RG (Deploy)
       id: deploy_azure_rg
-      if: steps.cloud.outputs.result == 'AZURE'
+      if: ${{ steps.cloud.outputs.result == 'AZURE' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       run: |
         RET=$(yq -I=0 '.azure.deploy_resource_group // .azure.resource_group // "no-resource-group"' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
@@ -353,6 +353,7 @@ runs:
       if: steps.check_env_file.outputs.result == 'true'
       id: runner_set_env
       shell: bash
+      if: steps.check_env_file.outputs.result == 'true'
       run: |
         RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
@@ -376,6 +377,7 @@ runs:
     - name: Get deployment disabled for the environment
       id: deployment_disabled
       shell: bash
+      if: steps.check_env_file.outputs.result == 'true'
       run: |
         RET=$(yq -I=0 '.disable_deploy and true' ${{ inputs.source_path }}/.github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
