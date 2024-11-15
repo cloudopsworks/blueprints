@@ -350,7 +350,6 @@ runs:
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get the Runner Set for the environment
-      if: steps.check_env_file.outputs.result == 'true'
       id: runner_set_env
       shell: bash
       if: steps.check_env_file.outputs.result == 'true'
