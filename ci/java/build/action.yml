@@ -53,6 +53,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Check Tools"
+        sudo apt-get update
         which make || sudo apt-get install -y make
         which gh || sudo apt-get install -y gh
         echo "::endgroup::"
