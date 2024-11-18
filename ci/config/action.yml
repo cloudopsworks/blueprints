@@ -397,3 +397,12 @@ runs:
       run: |
         RET=$(yq -I=0 '.disable_deploy and true' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get if is automatic environment:
+    - name: Get is Automatic environment
+      id: is_automatic
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -I=0 '.cd.automatc and true' .github/cloudopsworks-ci.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
