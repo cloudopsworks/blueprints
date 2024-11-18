@@ -1,0 +1,196 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Build Java Sources
+author: cloudopsworks
+description: Build Java sources and save artifacts
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  project_key:
+    description: 'The release source name, usually the repository name'
+    required: true
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+  xcode_version:
+    description: 'The XCode version to use for the build'
+    required: true
+  xcode_scheme:
+    description: 'The XCode scheme to use for the build'
+    required: true
+  xcode_sdk:
+    description: 'The XCode SDK to use for the build'
+    required: true
+  xcode_configuration:
+    description: 'The XCode configuration to use for the build'
+    required: true
+  xcode_destination:
+    description: 'The XCode destination to use for the build'
+    required: true
+  xcode_dev_team:
+    description: 'The XCode development team to use for the build'
+    required: true
+  xcode_product_bundle:
+    description: 'The XCode product bundle to use for the build'
+    required: true
+  xcode_extra_args:
+    description: 'The XCode extra arguments to use for the build'
+    required: false
+    default: ''
+  build_certificate_b64:
+    description: 'The base64 encoded certificate to use for the build'
+    required: true
+  build_certificate_pass:
+    description: 'The password for the certificate'
+    required: true
+  build_provision_profile_b64:
+    description: 'The base64 encoded provision profile to use for the build'
+    required: true
+  keychain_password:
+    description: 'The keychain password to use for the build'
+    required: true
+outputs:
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check tools and install
+      shell: bash
+      run: |
+        echo "::group::Check Tools"
+        which make || sudo apt-get install -y make
+        which gh || sudo apt-get install -y gh
+        echo "::endgroup::"
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::XCode Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+    - name: Select XCODE version from github macos runner
+      shell: bash
+      run: |
+        echo "::group::XCode Version SET"
+        sudo xcode-select -s /Applications/Xcode_${{ inputs.xcode_version }}.app
+        echo "::endgroup::"
+
+    - name: Install the Apple certificate and provisioning profile - Mobile Platforms
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      #if: ${{ !startsWith(inputs.xcode_sdk, 'macosx') }}
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ inputs.build_certificate_b64 }}
+        P12_PASSWORD: ${{ inputs.build_certificate_pass }}
+        BUILD_PROVISION_PROFILE_BASE64: ${{ inputs.build_provision_profile_b64 }}
+        KEYCHAIN_PASSWORD: ${{ inputs.keychain_password }}
+      run: |
+        CERTIFICATE_PATH=$RUNNER_TEMP/cert.p12
+        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+        
+        # import certificate and provisioning profile from secrets
+        echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+        echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+        # create temporary keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+    - name: Set Provissioning Profile - Xcode >= 16
+      if: ${{ startsWith(inputs.xcode_version, '16') }}
+      shell: bash
+      run: |
+        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+
+        # apply provisioning profile
+        mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
+        cp $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles          
+
+    - name: Set Provissioning Profile - Xcode < 16
+      if: ${{ ! startsWith(inputs.xcode_version, '16') }}
+      shell: bash
+      run: |
+        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+
+        # apply provisioning profile
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles          
+
+    # Build the code!
+    - name: Build Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::XCode Build"
+        xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
+          -archivePath arch/${{ inputs.project_key }}.xcarchive \
+          -sdk ${{ inputs.xcode_sdk }} \
+          -configuration ${{ inputs.xcode_configuration }} \
+          -destination '${{ inputs.xcode_destination }}' \
+          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
+          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
+          MARKETING_VERSION=${{ steps.semver.outputs.result }} ${{ inputs.xcode_extra_args }} \
+          clean archive
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Export IPA
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::XCode Export IPA"
+        xcodebuild -exportArchive \
+          -archivePath arch/${{ inputs.artifacts_name }}.xcarchive \
+          -exportPath build/${{ inputs.artifacts_name }} \
+          -exportOptionsPlist build/ExportOptions.plist
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
