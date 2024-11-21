@@ -69,7 +69,7 @@ runs:
       id: node_build_dir
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.node_build_dir // "./build"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.node_build_dir // "build"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # The problem with NodeJS are the symlinks, so we need first to create a TAR file
     # with including the zip_globs and excluding the exclude_globs with -X option
