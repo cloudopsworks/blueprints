@@ -29,6 +29,9 @@ inputs:
   token:
     description: 'The github token to use for the build'
     required: true
+  environment:
+    description: 'The environment to use for the build'
+    required: true
 outputs:
   node_version:
     description: 'The NodeJS version to use for the build'
