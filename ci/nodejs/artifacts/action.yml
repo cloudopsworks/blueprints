@@ -101,7 +101,7 @@ runs:
       if: steps.front_end.outputs.result == 'true'
       with:
         name: node_build_artifact
-        path: ${{ steps.node_build_dir.outputs.result }}/**
+        path: ${{ inputs.source_path }}/${{ steps.node_build_dir.outputs.result }}/**
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
@@ -112,8 +112,8 @@ runs:
       with:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
-          **
-          !${{ steps.node_build_dir.outputs.result }}/**
+          ${{ inputs.source_path }}/**
+          !${{ inputs.source_path }}/${{ steps.node_build_dir.outputs.result }}/**
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
         include-hidden-files: true
