@@ -112,7 +112,7 @@ runs:
     # for non front end projects nodejs version is set by parameter, defaults to 20
     - name: Set output with node Version
       if: ${{ inputs.front_end != 'true' }}
-      id: node_version_image_name
+      id: docker_image_name
       shell: bash
       run: |
         if [ "${{ inputs.node_version }}" != "" ] ; then
@@ -163,7 +163,7 @@ runs:
         semver: ${{ inputs.semver }}
         docker_registry: ${{ steps.docker_registry.outputs.result }}
         docker_inline: ${{ steps.docker_inline.outputs.result }}
-        docker_image_name: ${{ steps.node_version_image_name.outputs.result }}
+        docker_image_name: ${{ steps.docker_image_name.outputs.result }}
         docker_args: ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
         environment: ${{ inputs.environment }}
         project_key: ${{ inputs.project_key }}
