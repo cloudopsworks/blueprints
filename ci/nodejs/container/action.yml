@@ -44,6 +44,9 @@ inputs:
   project_owner:
     description: 'The project owner'
     required: true
+  front_end:
+    description: 'The front end flag'
+    required: true
 
 runs:
   using: 'composite'
@@ -90,8 +93,17 @@ runs:
       with:
         cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    # Copy Dockerfile from blueprint to current dir
-    - name: Copy Dockerfile Java App
+    # Copy Dockerfile from front-end blueprint to current dir
+    - name: Copy Dockerfile Front-End App
+      if: ${{ inputs.front_end == 'true' }}
+      shell: bash
+      run: |
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/frontend/* ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/frontend/.dockerignore ${{ inputs.source_path }}/
+
+    # Copy Dockerfile from node.js blueprint to current dir
+    - name: Copy Dockerfile Node.js App
+      if: ${{ inputs.front_end != 'true' }}
       shell: bash
       run: |
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/nodejs/* ${{ inputs.source_path }}/
@@ -99,7 +111,7 @@ runs:
 
     # for non front end projects nodejs version is set by parameter, defaults to 20
     - name: Set output with node Version
-      if: inputs.front_end == false
+      if: ${{ inputs.front_end != 'true' }}
       id: node_version_image_name
       shell: bash
       run: |
