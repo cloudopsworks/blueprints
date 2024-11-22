@@ -69,7 +69,7 @@ runs:
       id: node_build_dir
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.node_build_dir // "./build"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.node_build_dir // "build"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # The problem with NodeJS are the symlinks, so we need first to create a TAR file
     # with including the zip_globs and excluding the exclude_globs with -X option
@@ -100,8 +100,8 @@ runs:
       uses: actions/upload-artifact@v4
       if: steps.front_end.outputs.result == 'true'
       with:
-        name: node_build_artifact
-        path: ${{ steps.node_build_dir.outputs.result }}/**
+        name: ${{ inputs.artifacts_name }}
+        path: ${{ inputs.source_path }}/${{ steps.node_build_dir.outputs.result }}/**
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
@@ -112,8 +112,8 @@ runs:
       with:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
-          **
-          !${{ steps.node_build_dir.outputs.result }}/**
+          ${{ inputs.source_path }}/**
+          !${{ inputs.source_path }}/${{ steps.node_build_dir.outputs.result }}/**
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
         include-hidden-files: true
