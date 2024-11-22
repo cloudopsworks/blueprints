@@ -32,6 +32,11 @@ inputs:
   environment:
     description: 'The environment to use for the build'
     required: true
+  has_preview:
+    description: 'The preview flag will process only for preview builds'
+    required: false
+    default: 'false'
+
 outputs:
   node_version:
     description: 'The NodeJS version to use for the build'
@@ -51,6 +56,7 @@ outputs:
   front_end:
     description: 'The front end flag'
     value: ${{ steps.front_end.outputs.result }}
+
 runs:
   using: 'composite'
   steps:
@@ -120,9 +126,17 @@ runs:
       with:
         cmd: yq e -I=0 '.node_extra_env // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '\n' ' ' | sed 's/.$//'
 
-
-    # get from global inputs extra env vars from specific build environment: node_extra_env entry
+    # get from  inputs extra env vars from preview config: node_extra_env entry
     - name: Get Optional Env Vars - ${{ inputs.environment }}
+      if: ${{ inputs.has_preview == 'true' }}
+      id: node_extra_env
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/preview/inputs.yaml | tr '\n' ' ' | sed 's/.$//'
+
+    # get from inputs extra env vars from specific build environment: node_extra_env entry
+    - name: Get Optional Env Vars - ${{ inputs.environment }}
+      if: ${{ inputs.has_preview != 'true' }}
       id: node_extra_env
       uses: mikefarah/yq@master
       with:
