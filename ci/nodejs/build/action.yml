@@ -5,7 +5,7 @@
 #
 name: Build NodeJS Sources
 author: cloudopsworks
-description: Build NodeJS sources and save artifacts
+description: Build NodeJS sources and save artifacts, requires ci/nodejs/config/action.yml
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -36,6 +36,15 @@ inputs:
     description: 'The preview flag will process only for preview builds'
     required: false
     default: 'false'
+  install_command:
+    description: 'The install command'
+    required: true
+  build_command:
+    description: 'The build command'
+    required: true
+  node_extra_env:
+    description: 'The extra environment variables'
+    required: true
 
 outputs:
   node_version:
@@ -53,23 +62,10 @@ outputs:
   package_name:
     description: 'The package name'
     value: ${{ steps.package_name.outputs.result }}
-  front_end:
-    description: 'The front end flag'
-    value: ${{ steps.front_end.outputs.result }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Check tools and install
-      shell: bash
-      run: |
-        echo "::group::Check Tools"
-        sudo apt-get update
-        which make || sudo apt-get install -y make
-        which gh || sudo apt-get install -y gh
-        which mvn || sudo apt-get install -y maven
-        echo "::endgroup::"
-
     # Get pipeline conf node version
     - name: Get pipeline node version
       id: node_version
@@ -119,62 +115,6 @@ runs:
       with:
         cmd: yq e -oj -r '.name' ${{ inputs.source_path }}/package.json
 
-    # get from global inputs extra env vars from : node_extra_env entry
-    - name: Get Optional Env Vars
-      id: node_extra_env_global
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.node_extra_env // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '\n' ' ' | sed 's/.$//'
-
-    # get from  inputs extra env vars from preview config: node_extra_env entry
-    - name: Get Optional Env Vars - ${{ inputs.environment }}
-      if: ${{ inputs.has_preview == 'true' }}
-      id: node_extra_env_preview
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/preview/inputs.yaml | tr '\n' ' ' | sed 's/.$//'
-
-    # get from inputs extra env vars from specific build environment: node_extra_env entry
-    - name: Get Optional Env Vars - ${{ inputs.environment }}
-      if: ${{ inputs.has_preview != 'true' }}
-      id: node_extra_env_env
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml | tr '\n' ' ' | sed 's/.$//'
-
-    - name: Set Optional node_extra_env from properly calulated origin
-      id: node_extra_env
-      shell: bash
-      run: echo 'result=${{ steps.node_extra_env_preview.outputs.result != '' && steps.node_extra_env_preview.outputs.result || steps.node_extra_env_env.outputs.result }}' >> $GITHUB_OUTPUT
-
-    # Get from global inputs if there is custom node install command
-    - name: Get Custom Install Command
-      id: install_command
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.custom_install_command // "npm install --omit=dev"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # Get from global inputs if there is custom node build command
-    - name: Get Custom Install Command
-      id: build_command
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.custom_build_command // "npm run build --if-present"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # get from global inputs the path where to find the node build result
-    - name: Get Node Build Dir
-      id: node_build_dir
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.node_build_dir // "./build"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
-    # get from global inputs the setting if it is frontend target
-    - name: Get Front-End Setting
-      id: front_end
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.frontend and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
     # Setup Node JS for builds with version provided
     - name: Set Node Version
       uses: actions/setup-node@v4
@@ -223,7 +163,7 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Install"
-        ${{ steps.node_extra_env.outputs.result }} ${{ steps.install_command.outputs.result }}
+        ${{ inputs.node_extra_env }} ${{ inputs.install_command }}
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -235,5 +175,5 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Build"
-        ${{ steps.node_extra_env.outputs.result }} ${{ steps.build_command.outputs.result }}
+        ${{ inputs.node_extra_env }} ${{ inputs.build_command }}
         echo "::endgroup::"

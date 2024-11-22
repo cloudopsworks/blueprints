@@ -25,6 +25,9 @@ inputs:
     description: 'The Dependency Track project type'
     required: false
     default: 'library'
+  node_extra_env:
+    description: 'The extra environment variables'
+    required: true
 
 runs:
   using: 'composite'
@@ -34,7 +37,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        CI=true DISPLAY=:99 npm test --if-present
+        CI=true DISPLAY=:99 ${{ inputs.node_extra_env }} npm test --if-present
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
