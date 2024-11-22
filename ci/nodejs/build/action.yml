@@ -129,7 +129,7 @@ runs:
     # get from  inputs extra env vars from preview config: node_extra_env entry
     - name: Get Optional Env Vars - ${{ inputs.environment }}
       if: ${{ inputs.has_preview == 'true' }}
-      id: node_extra_env
+      id: node_extra_env_preview
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/preview/inputs.yaml | tr '\n' ' ' | sed 's/.$//'
@@ -137,10 +137,14 @@ runs:
     # get from inputs extra env vars from specific build environment: node_extra_env entry
     - name: Get Optional Env Vars - ${{ inputs.environment }}
       if: ${{ inputs.has_preview != 'true' }}
-      id: node_extra_env
+      id: node_extra_env_env
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml | tr '\n' ' ' | sed 's/.$//'
+
+    - name: Set Optional node_extra_env from properly calulated origin
+      id: node_extra_env
+      run: echo "result=${{ steps.node_extra_env_preview.outputs.result != '' && steps.node_extra_env_preview.outputs.result || steps.node_extra_env_env.outputs.result }}" >> $GITHUB_OUTPUT
 
     # Get from global inputs if there is custom node install command
     - name: Get Custom Install Command
