@@ -145,7 +145,7 @@ runs:
     - name: Set Optional node_extra_env from properly calulated origin
       id: node_extra_env
       shell: bash
-      run: echo "result=${{ steps.node_extra_env_preview.outputs.result != '' && steps.node_extra_env_preview.outputs.result || steps.node_extra_env_env.outputs.result }}" >> $GITHUB_OUTPUT
+      run: echo 'result=${{ steps.node_extra_env_preview.outputs.result != '' && steps.node_extra_env_preview.outputs.result || steps.node_extra_env_env.outputs.result }}' >> $GITHUB_OUTPUT
 
     # Get from global inputs if there is custom node install command
     - name: Get Custom Install Command
