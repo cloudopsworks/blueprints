@@ -154,7 +154,7 @@ runs:
         cp -pf ${{ inputs.source_path }}/.github/vars/preview/values.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/helm-values.yaml
         mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/
         if [ -d ${{ inputs.source_path }}/.github/vars/preview/values ]; then
-          cp -pfR ${{ inputs.source_path }}/.github/vars/preview/values/ ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/
+          cp -vpfR ${{ inputs.source_path }}/.github/vars/preview/values/. ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/
         else
           echo "No values found for ${{ inputs.source_path }}/.github/vars/preview/values, skipping..."
           touch ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/.empty
