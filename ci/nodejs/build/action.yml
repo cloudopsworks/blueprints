@@ -29,9 +29,6 @@ inputs:
   token:
     description: 'The github token to use for the build'
     required: true
-  environment:
-    description: 'The environment to use for the build'
-    required: true
   has_preview:
     description: 'The preview flag will process only for preview builds'
     required: false
