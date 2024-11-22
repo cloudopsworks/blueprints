@@ -100,7 +100,7 @@ runs:
       uses: actions/upload-artifact@v4
       if: steps.front_end.outputs.result == 'true'
       with:
-        name: node_build_artifact
+        name: ${{ inputs.artifacts_name }}
         path: ${{ inputs.source_path }}/${{ steps.node_build_dir.outputs.result }}/**
         retention-days: 1
         include-hidden-files: true
