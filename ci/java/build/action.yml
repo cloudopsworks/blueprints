@@ -115,11 +115,6 @@ runs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - run: |
-        echo "M2 Settings"
-        cat ~/.m2/settings.xml
-      shell: bash
-
     # Versioning SET
     - name: Version SET
       working-directory: ${{ inputs.source_path }}
