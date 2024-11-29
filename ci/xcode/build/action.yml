@@ -165,6 +165,9 @@ runs:
     - name: Build Code
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::XCode Build"
         xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
@@ -172,14 +175,11 @@ runs:
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' \
-          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
-          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
-          MARKETING_VERSION=${{ steps.semver.outputs.result }} ${{ inputs.xcode_extra_args }} \
           clean archive
         echo "::endgroup::"
-      env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+#          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
+#          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
+#          MARKETING_VERSION=${{ steps.semver.outputs.result }} ${{ inputs.xcode_extra_args }} \
 
     - name: Export IPA
       working-directory: ${{ inputs.source_path }}
