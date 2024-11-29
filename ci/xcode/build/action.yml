@@ -127,8 +127,8 @@ runs:
         BUILD_PROVISION_PROFILE_BASE64: ${{ inputs.build_provision_profile_b64 }}
         KEYCHAIN_PASSWORD: ${{ inputs.keychain_password }}
       run: |
-        CERTIFICATE_PATH=$RUNNER_TEMP/cert.p12
-        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
         
         # import certificate and provisioning profile from secrets
@@ -148,7 +148,7 @@ runs:
       if: ${{ startsWith(inputs.xcode_version, '16') }}
       shell: bash
       run: |
-        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+        PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
@@ -158,7 +158,7 @@ runs:
       if: ${{ ! startsWith(inputs.xcode_version, '16') }}
       shell: bash
       run: |
-        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+        PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
