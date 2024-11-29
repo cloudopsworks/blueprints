@@ -178,11 +178,12 @@ runs:
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' \
+          ${{ inputs.xcode_extra_args }} \
           clean archive
         echo "::endgroup::"
 #          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
 #          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
-#          MARKETING_VERSION=${{ steps.semver.outputs.result }} ${{ inputs.xcode_extra_args }} \
+#          MARKETING_VERSION=${{ steps.semver.outputs.result }}
 
     - name: Export IPA
       working-directory: ${{ inputs.source_path }}
