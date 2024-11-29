@@ -69,6 +69,9 @@ inputs:
   keychain_password:
     description: 'The keychain password to use for the build'
     required: true
+  build_export_options_plist:
+    description: 'The export options plist to use for the build'
+    required: true
 outputs:
   semver:
     description: 'The semver version'
@@ -184,13 +187,16 @@ runs:
     - name: Export IPA
       working-directory: ${{ inputs.source_path }}
       shell: bash
-      run: |
-        echo "::group::XCode Export IPA"
-        xcodebuild -exportArchive \
-          -archivePath arch/${{ inputs.artifacts_name }}.xcarchive \
-          -exportPath build/${{ inputs.artifacts_name }} \
-          -exportOptionsPlist build/ExportOptions.plist
-        echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        EXPORT_OPTIONS_PLIST: ${{ inputs.build_export_options_plist }}
+      run: |
+        echo "::group::XCode Export IPA"
+        EXPORT_OPTS_PATH=$RUNNER_TEMP/ExportOptions.plist
+        echo -n "$EXPORT_OPTIONS_PLIST" | base64 --decode -o $EXPORT_OPTS_PATH
+        xcodebuild -exportArchive \
+          -archivePath arch/${{ inputs.artifacts_name }}.xcarchive \
+          -exportPath build/${{ inputs.artifacts_name }} \
+          -exportOptionsPlist $EXPORT_OPTS_PATH
+        echo "::endgroup::"
