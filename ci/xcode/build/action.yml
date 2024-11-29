@@ -177,8 +177,7 @@ runs:
           -archivePath arch/${{ inputs.project_key }}.xcarchive \
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
-          -destination '${{ inputs.xcode_destination }}' \
-          ${{ inputs.xcode_extra_args }} \
+          -destination '${{ inputs.xcode_destination }}' ${{ inputs.xcode_extra_args }} \
           clean archive
         echo "::endgroup::"
 #          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
