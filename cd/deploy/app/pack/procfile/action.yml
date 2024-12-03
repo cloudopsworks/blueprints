@@ -35,4 +35,4 @@ runs:
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
       run: |
-        [ ! -f Procfile ] && echo 'web: java -XX:MaxRAMPercentage=65 $JAVA_OPTS -jar app.jar' > Procfile
+        [ ! -f Procfile ] && echo 'web: java $JAVA_OPTS -jar app.jar' > Procfile

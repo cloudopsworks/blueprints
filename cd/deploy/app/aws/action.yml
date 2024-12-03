@@ -272,6 +272,7 @@ runs:
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      if: ${{ inputs.unlock != 'true' }}
       shell: bash
       run: |
         echo "::group::Terragrunt Apply"
