@@ -1,3 +1,5 @@
+{{- if not .Values.schedule }}
+{{- if not .Values.job }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -158,3 +160,12 @@ spec:
         {{- if .Values.injectedVolumes }}
 {{ toYaml .Values.injectedVolumes | indent 8 }}
         {{- end }}
+{{- if .Values.serviceAccount.name }}
+      serviceAccount: {{ .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+{{- else }}
+      serviceAccount: {{ template "fullname" . }}
+      serviceAccountName: {{ template "fullname" . }}
+{{- end }}
+{{- end }}
+{{- end }}

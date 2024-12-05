@@ -114,3 +114,10 @@ configMap:
 secret:
   enabled: false
   values: {}
+
+# Service Account
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  #annotations: {}
+  #name: (optional)
