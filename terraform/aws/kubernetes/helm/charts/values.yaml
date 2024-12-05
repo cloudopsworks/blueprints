@@ -121,3 +121,9 @@ serviceAccount:
   create: false
   #annotations: {}
   #name: (optional)
+
+job:
+  enabled: false
+
+cronjob:
+  enabled: false

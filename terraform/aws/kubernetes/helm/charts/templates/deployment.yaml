@@ -1,5 +1,5 @@
-{{- if not .Values.schedule }}
-{{- if not .Values.job }}
+{{- if not .Values.cronjob.enabled }}
+{{- if not .Values.job.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
