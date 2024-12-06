@@ -1,7 +1,7 @@
+{{- if .Values.job.enabled }}
 {{- if not .Values.cronjob.enabled }}
-{{- if not .Values.job.enabled }}
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
   name: {{ template "fullname" . }}
   labels:
@@ -12,17 +12,9 @@ metadata:
     {{- toYaml . | indent 4 }}
   {{- end }}
 spec:
-  strategy:
-    type: Recreate
-    #rollingUpdate:
-    #  maxSurge: 1
-    #  maxUnavailable: 0
   selector:
     matchLabels:
       app: {{ template "fullname" . }}
-  {{- if not .Values.hpa.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
   template:
     metadata:
       labels:
@@ -130,7 +122,7 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | indent 12 }}
-        volumeMounts: 
+        volumeMounts:
           {{- if .Values.additionalVolumeMounts }}
             {{- toYaml .Values.additionalVolumeMounts | indent 10 }}
           {{- end }}
