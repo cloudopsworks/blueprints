@@ -7,10 +7,14 @@ image:
   tag: dev
   pullPolicy: IfNotPresent
 
-#extra annotations
+# Deployment Strategy
+strategy:
+  type: Replace
+
+# Extra annotations
 annotations: {}
 
-#extra pod annotations
+# Extra pod annotations
 podAnnotations: {}
 
 # define environment variables here as a map of key: value
