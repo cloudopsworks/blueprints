@@ -9,7 +9,7 @@ image:
 
 # Deployment Strategy
 strategy:
-  type: Replace
+  type: Recreate
 
 # Extra annotations
 annotations: {}
