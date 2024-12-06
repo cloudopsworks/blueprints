@@ -9,7 +9,7 @@ metadata:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
   {{- with .Values.annotations }}
   annotations:
-    {{- toYaml . | indent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   selector:
@@ -22,7 +22,7 @@ spec:
         app: {{ template "fullname" . }}
       {{- with .Values.podAnnotations }}
       annotations:
-        {{- toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
       containers:
@@ -31,14 +31,16 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         {{- with .Values.env }}
         env:
-          {{- toYaml . | indent 10 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
+        {{- if or .Values.envFrom .Values.injectEnvFrom }}
         envFrom:
         {{- with .Values.envFrom }}
-          {{- toYaml . | indent 10 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
         {{- with .Values.injectEnvFrom }}
-          {{- toYaml . | indent 10 }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         {{- end }}
         ports:
         - containerPort: {{ .Values.service.internalPort }}
@@ -62,7 +64,7 @@ spec:
           {{- else if eq .Values.probe.type "command" }}
           exec:
             command:
-            {{- toYaml .Values.probe.command | indent 14 }}
+              {{- toYaml .Values.probe.command | nindent 14 }}
           {{- end }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
@@ -88,7 +90,7 @@ spec:
           {{- else if eq .Values.probe.type "command" }}
           exec:
             command:
-            {{- toYaml .Values.probe.command | indent 14 }}
+            {{- toYaml .Values.probe.command | nindent 14 }}
           {{- end }}
           periodSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
@@ -114,20 +116,20 @@ spec:
           {{- else if eq .Values.probe.type "command" }}
           exec:
             command:
-            {{- toYaml .Values.probe.command | indent 14 }}
+            {{- toYaml .Values.probe.command | nindent 14 }}
           {{- end }}
           initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
           failureThreshold: {{ .Values.startupProbe.failureThreshold }}
           periodSeconds: {{ .Values.startupProbe.periodSeconds }}
         {{- end }}
         resources:
-          {{- toYaml .Values.resources | indent 12 }}
+          {{- toYaml .Values.resources | nindent 12 }}
         volumeMounts:
           {{- if .Values.additionalVolumeMounts }}
-            {{- toYaml .Values.additionalVolumeMounts | indent 10 }}
+            {{- toYaml .Values.additionalVolumeMounts | nindent 10 }}
           {{- end }}
           {{- if .Values.injectedVolumeMounts }}
-            {{- toYaml .Values.injectedVolumeMounts | indent 10 }}
+            {{- toYaml .Values.injectedVolumeMounts | nindent 10 }}
           {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.affinity }}
@@ -144,10 +146,10 @@ spec:
       {{- end }}
       volumes:
         {{- if .Values.additionalVolumes }}
-          {{- toYaml .Values.additionalVolumes | indent 8 }}
+          {{- toYaml .Values.additionalVolumes | nindent 8 }}
         {{- end }}
         {{- if .Values.injectedVolumes }}
-          {{- toYaml .Values.injectedVolumes | indent 8 }}
+          {{- toYaml .Values.injectedVolumes | nindent 8 }}
         {{- end }}
       {{- if .Values.serviceAccount.create }}
       {{- if .Values.serviceAccount.name }}
