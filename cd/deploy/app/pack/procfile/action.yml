@@ -28,11 +28,22 @@ runs:
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
       run: |
-        [ ! -f Procfile ] && echo 'web: npm run start' > Procfile
+        if [ ! -f Procfile ] ; then
+          echo 'web: npm run start' > Procfile
+          echo '::warning::Procfile created with default content'
+        else
+          echo '::notice::Procfile already exists, will use provided'
+        fi
 
     - name: Default Procfile for Java
       if: ${{ inputs.java_stack == 'true' }}
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
       run: |
-        [ ! -f Procfile ] && echo 'web: java $JAVA_OPTS -jar app.jar' > Procfile
+        if [ ! -f Procfile ] ; then
+          echo 'web: java $JAVA_OPTS -jar app.jar' > Procfile
+          echo '::warning::Procfile created with default content'
+        else
+          echo '::notice::Procfile already exists, will use provided.'
+        fi
+
