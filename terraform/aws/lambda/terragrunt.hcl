@@ -27,9 +27,13 @@ inputs = {
     environment_type  = local.local_vars.environment
   }
   namespace        = local.local_vars.environment
+  versions_bucket  = local.local_vars.versions_bucket
+  logs_bucket      = try(local.local_vars.logs_bucket, "")
   repository_owner = local.base_vars.repository_owner
   lambda           = local.local_vars.lambda
   release          = local.release_vars.release
+  bucket_path      = local.release_vars.bucket_path
+  version_label    = local.release_vars.version_label
   absolute_path    = get_terragrunt_dir()
   extra_tags       = try(local.local_vars.tags, {})
 }
