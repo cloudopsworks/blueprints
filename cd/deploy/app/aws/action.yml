@@ -128,7 +128,8 @@ runs:
       run: |
         hash=$(find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum)
         echo "$hash" > .values_hash_${{ inputs.release_name }}
-        echo "result=$hash" >> $GITHUB_OUTPUT
+        short_hash=$(echo $hash | cut -c1-10)
+        echo "result=$short_hash" >> $GITHUB_OUTPUT
 
     - name: Copy Values Bundle
       if: ${{ contains(fromJSON('["kubernetes","k8s","eks"]'), inputs.cloud_type) }}
