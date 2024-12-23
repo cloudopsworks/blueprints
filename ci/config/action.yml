@@ -221,7 +221,7 @@ runs:
                 if ( 'targetName' in deployments.prerelease.targets[metasuffix.groups.data] ) {
                   targetName = deployments.prerelease.targets[metasuffix.groups.data].targetName;
                 }
-                deploymentName = `prerelease/${buildmeta}/${environment}`;
+                deploymentName = `prerelease/${metasuffix.groups.data}/${environment}`;
               } else if ( pre != null ) {
                 isEnabled = (deployments.prerelease['enabled'] == null ? true : (deployments.prerelease['enabled'] === 'true'));
                 // Regular expression to match following semver pattern: v1.0.2-alpha.10-uoiretu834u
@@ -239,7 +239,7 @@ runs:
                 if ( 'targetName' in deployments.release.targets[metasuffix.groups.data] ) {
                   targetName = deployments.release.targets[metasuffix.groups.data].targetName;
                 }
-                deploymentName = `release/${buildmeta}/${environment}`;
+                deploymentName = `release/${metasuffix.groups.data}/${environment}`;
               } else {
                 isRelease = true;
                 environment = deployments.release.env;
