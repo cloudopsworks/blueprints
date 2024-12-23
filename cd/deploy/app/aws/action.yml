@@ -121,11 +121,14 @@ runs:
         cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
 
     - name: Create Hash value for values bundle
+      id: hash_value
       if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
       run: |
-        find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum > .values_hash_${{ inputs.release_name }}
+        hash=$(find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum)
+        echo "$hash" > .values_hash_${{ inputs.release_name }}
+        echo "result=$hash" >> $GITHUB_OUTPUT
 
     - name: Copy Values Bundle
       if: ${{ contains(fromJSON('["kubernetes","k8s","eks"]'), inputs.cloud_type) }}
