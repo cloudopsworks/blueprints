@@ -37,7 +37,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        CI=true DISPLAY=:99 ${{ inputs.node_extra_env }} npm test --if-present
+        CI=true DISPLAY=:99 ${{ inputs.node_extra_env }} npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
