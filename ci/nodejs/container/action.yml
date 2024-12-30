@@ -112,7 +112,7 @@ runs:
     # for non front end projects nodejs version is set by parameter, defaults to 20
     - name: Set output with node Version
       if: ${{ inputs.front_end != 'true' }}
-      id: node_version_image_name
+      id: docker_image_name
       shell: bash
       run: |
         if [ "${{ inputs.node_version }}" != "" ] ; then

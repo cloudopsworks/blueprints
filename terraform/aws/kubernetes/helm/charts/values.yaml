@@ -7,14 +7,30 @@ image:
   tag: dev
   pullPolicy: IfNotPresent
 
-#extra annotations
+# Deployment Strategy
+strategy:
+  type: Recreate
+
+# Extra annotations
 annotations: {}
+
+# Extra pod annotations
+podAnnotations: {}
 
 # define environment variables here as a map of key: value
 env: []
 
+# define environment variables to set from ConfigMap / Secret
+envFrom: []
+
+# define environment variables to be injected from Secrets
+injectEnvFrom: []
+
 # enable this flag to use knative serve to deploy the app
 knativeDeploy: false
+
+# Default terminationGracePeriodSeconds
+terminationGracePeriodSeconds: 30
 
 # HorizontalPodAutoscaler
 hpa:
@@ -96,6 +112,10 @@ additionalVolumeMounts: {}
 
 additionalVolumes: {}
 
+injectedVolumeMounts: {}
+
+injectedVolumes: {}
+
 # custom ingress annotations on this service
 ingress:
   enabled: false
@@ -114,3 +134,16 @@ configMap:
 secret:
   enabled: false
   values: {}
+
+# Service Account
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  #annotations: {}
+  #name: (optional)
+
+job:
+  enabled: false
+
+cronjob:
+  enabled: false

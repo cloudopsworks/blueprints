@@ -69,6 +69,9 @@ inputs:
   keychain_password:
     description: 'The keychain password to use for the build'
     required: true
+  build_export_options_plist:
+    description: 'The export options plist to use for the build'
+    required: true
 outputs:
   semver:
     description: 'The semver version'
@@ -124,8 +127,8 @@ runs:
         BUILD_PROVISION_PROFILE_BASE64: ${{ inputs.build_provision_profile_b64 }}
         KEYCHAIN_PASSWORD: ${{ inputs.keychain_password }}
       run: |
-        CERTIFICATE_PATH=$RUNNER_TEMP/cert.p12
-        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
         
         # import certificate and provisioning profile from secrets
@@ -145,7 +148,7 @@ runs:
       if: ${{ startsWith(inputs.xcode_version, '16') }}
       shell: bash
       run: |
-        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+        PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
@@ -155,7 +158,7 @@ runs:
       if: ${{ ! startsWith(inputs.xcode_version, '16') }}
       shell: bash
       run: |
-        PP_PATH=$RUNNER_TEMP/pp.mobileprovision
+        PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
@@ -165,32 +168,35 @@ runs:
     - name: Build Code
       working-directory: ${{ inputs.source_path }}
       shell: bash
-      run: |
-        echo "::group::XCode Build"
-        xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
-          -archivePath arch/${{ inputs.project_key }}.xcarchive \
-          -sdk ${{ inputs.xcode_sdk }} \
-          -configuration ${{ inputs.xcode_configuration }} \
-          -destination '${{ inputs.xcode_destination }}' \
-          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
-          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
-          MARKETING_VERSION=${{ steps.semver.outputs.result }} ${{ inputs.xcode_extra_args }} \
-          clean archive
-        echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        echo "::group::XCode Build"
+        xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
+          -archivePath $RUNNER_TEMP/${{ inputs.project_key }}.xcarchive \
+          -sdk ${{ inputs.xcode_sdk }} \
+          -configuration ${{ inputs.xcode_configuration }} \
+          -destination '${{ inputs.xcode_destination }}' ${{ inputs.xcode_extra_args }} \
+          clean archive
+        echo "::endgroup::"
+#          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
+#          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
+#          MARKETING_VERSION=${{ steps.semver.outputs.result }}
 
     - name: Export IPA
       working-directory: ${{ inputs.source_path }}
       shell: bash
-      run: |
-        echo "::group::XCode Export IPA"
-        xcodebuild -exportArchive \
-          -archivePath arch/${{ inputs.artifacts_name }}.xcarchive \
-          -exportPath build/${{ inputs.artifacts_name }} \
-          -exportOptionsPlist build/ExportOptions.plist
-        echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        EXPORT_OPTIONS_PLIST: ${{ inputs.build_export_options_plist }}
+      run: |
+        echo "::group::XCode Export IPA"
+        EXPORT_OPTS_PATH=$RUNNER_TEMP/ExportOptions.plist
+        echo -n "$EXPORT_OPTIONS_PLIST" | base64 --decode -o $EXPORT_OPTS_PATH
+        xcodebuild -exportArchive \
+          -archivePath $RUNNER_TEMP/${{ inputs.project_key }}.xcarchive \
+          -exportPath build/${{ inputs.artifacts_name }} \
+          -exportOptionsPlist $EXPORT_OPTS_PATH
+        echo "::endgroup::"

@@ -4,7 +4,7 @@
 #
 ARG IMAGE_NAME=eclipse-temurin:21-alpine
 ARG CLASSPATH=""
-ARG JAVA_OPTS=""
+ARG JAVA_OPTS="-XX:MaxRAMPercentage=65"
 ARG APM_OPTS=""
 
 FROM $IMAGE_NAME AS base

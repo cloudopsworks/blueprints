@@ -1,7 +1,7 @@
+{{- if .Values.job.enabled }}
 {{- if not .Values.cronjob.enabled }}
-{{- if not .Values.job.enabled }}
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
   name: {{ template "fullname" . }}
   labels:
@@ -12,16 +12,9 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- with .Values.strategy }}
-  strategy:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
   selector:
     matchLabels:
       app: {{ template "fullname" . }}
-  {{- if not .Values.hpa.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
   template:
     metadata:
       labels:
@@ -32,19 +25,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      {{- if .Values.serviceAccount.create }}
-      {{- if .Values.serviceAccount.name }}
-      serviceAccountName: {{ .Values.serviceAccount.name }}
-      {{- else }}
-      serviceAccountName: {{ template "fullname" . }}
-      {{- end }}
-      {{- end }}
-      securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
-      {{- with .Values.initContainers }}
-      initContainers:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       containers:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -144,7 +124,7 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 12 }}
-        volumeMounts: 
+        volumeMounts:
           {{- if .Values.additionalVolumeMounts }}
             {{- toYaml .Values.additionalVolumeMounts | nindent 10 }}
           {{- end }}
@@ -154,15 +134,15 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.affinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml . | indent 8 }}
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml . | indent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml . | indent 8 }}
       {{- end }}
       volumes:
         {{- if .Values.additionalVolumes }}
@@ -171,5 +151,14 @@ spec:
         {{- if .Values.injectedVolumes }}
           {{- toYaml .Values.injectedVolumes | nindent 8 }}
         {{- end }}
+      {{- if .Values.serviceAccount.create }}
+      {{- if .Values.serviceAccount.name }}
+      serviceAccount: {{ .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- else }}
+      serviceAccount: {{ template "fullname" . }}
+      serviceAccountName: {{ template "fullname" . }}
+      {{- end }}
+      {{- end }}
 {{- end }}
 {{- end }}
