@@ -7,156 +7,170 @@ metadata:
   labels:
     draft: {{ default "draft-app" .Values.draft }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
-{{- if .Values.annotations }}
+  {{- with .Values.annotations }}
   annotations:
-  {{- range $pkey, $pval := .Values.annotations }}
-    {{ $pkey }}: {{ quote $pval }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  selector:
-    matchLabels:
-      app: {{ template "fullname" . }}
-  template:
-    metadata:
-      labels:
-        draft: {{ default "draft-app" .Values.draft }}
-        app: {{ template "fullname" . }}
-{{- if .Values.podAnnotations }}
-      annotations:
-{{ toYaml .Values.podAnnotations | indent 8 }}
-{{- end }}
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  concurrencyPolicy: {{ .Values.concurrencyPolicy | default "Allow" }}
+  startingDeadlineSeconds: {{ .Values.startingDeadlineSeconds | default "100" }}
+  suspend: {{ .Values.suspend | default "false" }}
+  successfulJobsHistoryLimit: {{ .Values.successfulJobsHistoryLimit | default "3" }}
+  failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit | default "1" }}
+  jobTemplate:
     spec:
-      containers:
-        - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-{{- if .Values.env }}
-          env:
-{{ toYaml .Values.env | indent 10 }}
-{{- end }}
-          envFrom:
-{{- if .Values.envFrom }}
-{{ toYaml .Values.envFrom | indent 10 }}
-{{- end }}
-{{- if .Values.injectEnvFrom }}
-{{ toYaml .Values.injectEnvFrom | indent 10 }}
-{{- end }}
-          ports:
-            - containerPort: {{ .Values.service.internalPort }}
-          livenessProbe:
-{{- if eq .Values.probe.type "http" }}
-            httpGet:
-              scheme: {{ .Values.probe.scheme }}
-              path: {{ .Values.probe.path }}
-{{- if .Values.probe.port }}
-              port: {{ .Values.probe.port }}
-{{- else }}
-              port: {{ .Values.service.internalPort }}
-{{- end }}
-{{- else if eq .Values.probe.type "tcp" }}
-            tcpSocket:
-{{- if .Values.probe.port }}
-              port: {{ .Values.probe.port }}
-{{- else }}
-              port: {{ .Values.service.internalPort }}
-{{- end }}
-{{- else if eq .Values.probe.type "command" }}
-            exec:
-              command:
-{{ toYaml .Values.probe.command | indent 14 }}
-{{- end }}
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-            successThreshold: {{ .Values.livenessProbe.successThreshold }}
-            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-          readinessProbe:
-{{- if eq .Values.probe.type "http" }}
-            httpGet:
-              scheme: {{ .Values.probe.scheme }}
-              path: {{ .Values.probe.path }}
-{{- if .Values.probe.port }}
-              port: {{ .Values.probe.port }}
-{{- else }}
-              port: {{ .Values.service.internalPort }}
-{{- end }}
-{{- else if eq .Values.probe.type "tcp" }}
-            tcpSocket:
-{{- if .Values.probe.port }}
-              port: {{ .Values.probe.port }}
-{{- else }}
-              port: {{ .Values.service.internalPort }}
-{{- end }}
-{{- else if eq .Values.probe.type "command" }}
-            exec:
-              command:
-{{ toYaml .Values.probe.command | indent 14 }}
-{{- end }}
-            periodSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-            successThreshold: {{ .Values.readinessProbe.successThreshold }}
-            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-{{- if .Values.startupProbe.enabled }}
-          startupProbe:
-{{- if eq .Values.probe.type "http" }}
-            httpGet:
-              scheme: {{ .Values.probe.scheme }}
-              path: {{ .Values.probe.path }}
-{{- if .Values.probe.port }}
-              port: {{ .Values.probe.port }}
-{{- else }}
-              port: {{ .Values.service.internalPort }}
-{{- end }}
-{{- else if eq .Values.probe.type "tcp" }}
-            tcpSocket:
-{{- if .Values.probe.port }}
-              port: {{ .Values.probe.port }}
-{{- else }}
-              port: {{ .Values.service.internalPort }}
-{{- end }}
-{{- else if eq .Values.probe.type "command" }}
-            exec:
-              command:
-{{ toYaml .Values.probe.command | indent 14 }}
-{{- end }}
-            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
-            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
-            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
-{{- end }}
-          resources:
-{{ toYaml .Values.resources | indent 12 }}
-          volumeMounts:
-          {{- if .Values.additionalVolumeMounts }}
-{{ toYaml .Values.additionalVolumeMounts | indent 10 }}
+      template:
+        metadata:
+          labels:
+            draft: {{ default "draft-app" .Values.draft }}
+            app: {{ template "fullname" . }}
+          {{- if .Values.podAnnotations }}
+          annotations:
+            {{- toYaml .Values.podAnnotations | nindent 12 }}
           {{- end }}
-          {{- if .Values.injectedVolumeMounts }}
-{{ toYaml .Values.injectedVolumeMounts | indent 10 }}
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
           {{- end }}
-      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
-      {{- if .Values.affinity }}
-      affinity:
-{{ toYaml .Values.affinity | indent 8 }}
-      {{- end }}
-{{- if .Values.tolerations }}
-      tolerations:
-{{ toYaml .Values.tolerations | indent 8 }}
-{{- end }}
-{{- if .Values.nodeSelector }}
-      nodeSelector:
-{{ toYaml .Values.nodeSelector | indent 8 }}
-{{- end }}
-      volumes:
-        {{- if .Values.additionalVolumes }}
-{{ toYaml .Values.additionalVolumes | indent 8 }}
-        {{- end }}
-        {{- if .Values.injectedVolumes }}
-{{ toYaml .Values.injectedVolumes | indent 8 }}
-        {{- end }}
-{{- if .Values.serviceAccount.name }}
-      serviceAccount: {{ .Values.serviceAccount.name }}
-      serviceAccountName: {{ .Values.serviceAccount.name }}
-{{- else }}
-      serviceAccount: {{ template "fullname" . }}
-      serviceAccountName: {{ template "fullname" . }}
-{{- end }}
-{{- end }}
+          {{- if .Values.serviceAccount.create }}
+          {{- if .Values.serviceAccount.name }}
+          serviceAccountName: {{ .Values.serviceAccount.name }}
+          {{- else }}
+          serviceAccountName: {{ template "fullname" . }}
+          {{- end }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.initContainers }}
+          initContainers:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: {{ .Chart.Name }}
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              {{- with .Values.env }}
+              env:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              envFrom:
+              {{- with .Values.envFrom }}
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with .Values.injectEnvFrom }}
+                {{ toYaml . | indent 10 }}
+              {{- end }}
+              ports:
+                - containerPort: {{ .Values.service.internalPort }}
+                  protocol: TCP
+              livenessProbe:
+                {{- if eq .Values.probe.type "http" }}
+                httpGet:
+                  scheme: {{ .Values.probe.scheme }}
+                  path: {{ .Values.probe.path }}
+                  {{- if .Values.probe.port }}
+                  port: {{ .Values.probe.port }}
+                  {{- else }}
+                  port: {{ .Values.service.internalPort }}
+                  {{- end }}
+                {{- else if eq .Values.probe.type "tcp" }}
+                tcpSocket:
+                  {{- if .Values.probe.port }}
+                  port: {{ .Values.probe.port }}
+                  {{- else }}
+                  port: {{ .Values.service.internalPort }}
+                  {{- end }}
+                {{- else if eq .Values.probe.type "command" }}
+                exec:
+                  command:
+                    {{- toYaml .Values.probe.command | nindent 20 }}
+                {{- end }}
+                initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+                periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+                successThreshold: {{ .Values.livenessProbe.successThreshold }}
+                timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+              readinessProbe:
+                {{- if eq .Values.probe.type "http" }}
+                httpGet:
+                  scheme: {{ .Values.probe.scheme }}
+                  path: {{ .Values.probe.path }}
+                  {{- if .Values.probe.port }}
+                  port: {{ .Values.probe.port }}
+                  {{- else }}
+                  port: {{ .Values.service.internalPort }}
+                  {{- end }}
+                {{- else if eq .Values.probe.type "tcp" }}
+                tcpSocket:
+                  {{- if .Values.probe.port }}
+                  port: {{ .Values.probe.port }}
+                  {{- else }}
+                  port: {{ .Values.service.internalPort }}
+                  {{- end }}
+                {{- else if eq .Values.probe.type "command" }}
+                exec:
+                  command:
+                    {{- toYaml .Values.probe.command | nindent 20 }}
+                {{- end }}
+                periodSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+                successThreshold: {{ .Values.readinessProbe.successThreshold }}
+                timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+              {{- if .Values.startupProbe.enabled }}
+              startupProbe:
+                {{- if eq .Values.probe.type "http" }}
+                httpGet:
+                  scheme: {{ .Values.probe.scheme }}
+                  path: {{ .Values.probe.path }}
+                  {{- if .Values.probe.port }}
+                  port: {{ .Values.probe.port }}
+                  {{- else }}
+                  port: {{ .Values.service.internalPort }}
+                  {{- end }}
+                {{- else if eq .Values.probe.type "tcp" }}
+                tcpSocket:
+                  {{- if .Values.probe.port }}
+                  port: {{ .Values.probe.port }}
+                  {{- else }}
+                  port: {{ .Values.service.internalPort }}
+                  {{- end }}
+                {{- else if eq .Values.probe.type "command" }}
+                exec:
+                  command:
+                    {{- toYaml .Values.probe.command | nindent 20 }}
+                {{- end }}
+                initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+                failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+                periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+              {{- end }}
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+              volumeMounts:
+              {{- if .Values.additionalVolumeMounts }}
+                {{- toYaml .Values.additionalVolumeMounts | nindent 16 }}
+              {{- end }}
+              {{- if .Values.injectedVolumeMounts }}
+                {{- toYaml .Values.injectedVolumeMounts | nindent 16 }}
+              {{- end }}
+          terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | indent 12 }}
+          {{- end }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml .Values.nodeSelector | indent 12 }}
+          {{- end }}
+          volumes:
+          {{- if .Values.additionalVolumes }}
+            {{- toYaml .Values.additionalVolumes | nindent 12 }}
+          {{- end }}
+          {{- if .Values.injectedVolumes }}
+            {{- toYaml .Values.injectedVolumes | nindent 12 }}
+          {{- end }}
 {{- end }}
 {{- end }}
