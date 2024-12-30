@@ -2,16 +2,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-{{- if .Values.service.name }}
+  {{- if .Values.service.name }}
   name: {{ .Values.service.name }}
-{{- else }}
+  {{- else }}
   name: {{ template "fullname" . }}
-{{- end }}
+  {{- end }}
   labels:
+    draft: {{ default "draft-app" .Values.draft }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+  namespace: {{ .Release.Namespace }}
 data:
   {{- range $key, $value := .Values.configMap.values }}
   {{ $key }}: |-
-    {{ $value | nindent 4 }}
+    {{- $value | nindent 4 }}
   {{- end }}
 {{- end}}

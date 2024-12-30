@@ -3,7 +3,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- if .Values.service.name }}
+  name: {{ .Values.service.name }}
+  {{- else }}
   name: {{ template "fullname" . }}
+  {{- end }}
   labels:
     draft: {{ default "draft-app" .Values.draft }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
@@ -11,6 +15,7 @@ metadata:
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  namespace: {{ .Release.Namespace }}
 spec:
   {{- with .Values.strategy }}
   strategy:

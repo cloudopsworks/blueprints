@@ -2,40 +2,41 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  annotations:
-{{- if .Values.ingress.annotations }}
-{{ toYaml .Values.ingress.annotations | nindent 4 }}
-{{- end }}
-{{- if .Values.service.name }}
+  {{- if .Values.service.name }}
   name: {{ .Values.service.name }}
-{{- else }}
+  {{- else }}
   name: {{ template "fullname" . }}
-{{- end }}
+  {{- end }}
+  labels:
+    draft: {{ default "draft-app" .Values.draft }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   namespace: {{ .Release.Namespace }}
 spec:
-{{- if .Values.ingress.ingressClassName }}
+  {{- if .Values.ingress.ingressClassName }}
   ingressClassName: {{ .Values.ingress.ingressClassName -}}
-{{- end }}
-{{- with .Values.ingress.rules }}
+  {{- end }}
+  {{- with .Values.ingress.rules }}
   rules:
-{{ toYaml . | indent 4 }}
-{{- end }}
-{{- if .Values.ingress.tls.enabled }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
-{{- if .Values.ingress.host }}
+      {{- if .Values.ingress.host }}
         - {{ .Values.ingress.host }}
-{{- else }}
-  {{- if .Values.service.name }}
+      {{- else if .Values.service.name }}
         - {{ .Values.service.name }}
-  {{- else }}
+      {{- else }}
         - {{ template "fullname" . }}
-  {{- end }}
-{{- end }}
-{{- if .Values.ingress.tls.secretName }}
+      {{- end }}
+      {{- if .Values.ingress.tls.secretName }}
       secretName: "{{ .Values.ingress.tls.secretName }}"
-{{- else }}
+      {{- else }}
       secretName: "tls-{{ template "fullname" . }}-s"
-{{- end }}
-{{- end }}
+      {{- end }}
+  {{- end }}
 {{- end }}
