@@ -1,0 +1,39 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Retrieve Saved Target Artifacts
+author: cloudopsworks
+description: Retrieve saved target artifacts from the artifacts store
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to retrieve'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to retrieve'
+    required: false
+    default: 'source_artifacts'
+  destination_path:
+    description: 'The path to the destination'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    # Perform of download of artfiacts
+    - name: Download Target Artifacts from workflow
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.sources_artifacts_name }}_target
+        path: ${{ inputs.source_path }}${{ inputs.destination_path != '' && ( startsWith(inputs.destination_path, '/') && inputs.destination_path || format('/{0}',inputs.destination_path) ) || '' }}
