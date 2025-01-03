@@ -33,6 +33,10 @@ inputs:
   token:
     description: 'The github token to use for the build'
     required: true
+  is_tar:
+    description: 'The flag to extract embedded tarball from package'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -40,6 +44,14 @@ runs:
     # Perform of download of artfiacts
     - name: Download Target Artifacts from workflow
       uses: actions/download-artifact@v4
+      id: download
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: ${{ inputs.source_path }}${{ inputs.destination_path != '' && ( startsWith(inputs.destination_path, '/') && inputs.destination_path || format('/{0}',inputs.destination_path) ) || '' }}
+
+    - name: Extract Tarball
+      if: ${{ inputs.is_tar == 'true' }}
+      run: |
+        tar -xvf ${{ steps.download.outputs.download-path }}/*.tar -C ${{ steps.download.outputs.download-path }}/
+        rm -f ${{ steps.download.outputs.download-path }}/*.tar
+      shell: bash

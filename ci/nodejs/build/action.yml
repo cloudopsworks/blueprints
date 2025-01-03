@@ -174,3 +174,25 @@ runs:
         echo "::group::NPM Build"
         ${{ inputs.node_extra_env }} ${{ inputs.build_command }}
         echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # Test the code
+    - name: Test Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::NPM Test"
+        CI=true DISPLAY=:99 ${{ inputs.node_extra_env }} npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # SBOM generation
+    - name: SBOM Generation for Dtrack
+      uses: CycloneDX/gh-node-module-generatebom@v1
+      with:
+        path: ${{ inputs.source_path }}
+        output: "${{ inputs.source_path }}/bom.xml"
