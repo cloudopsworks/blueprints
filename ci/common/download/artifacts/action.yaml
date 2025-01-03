@@ -52,6 +52,6 @@ runs:
     - name: Extract Tarball
       if: ${{ inputs.is_tar == 'true' }}
       run: |
-        tar -xvf ${{ steps.download.outputs.download-path }}/*.tar -C ${{ steps.download.outputs.download-path }}/
+        tar -xf ${{ steps.download.outputs.download-path }}/*.tar -C ${{ steps.download.outputs.download-path }}/
         rm -f ${{ steps.download.outputs.download-path }}/*.tar
       shell: bash
