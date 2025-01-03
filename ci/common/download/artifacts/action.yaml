@@ -27,6 +27,12 @@ inputs:
     description: 'The path to the destination'
     required: false
     default: ''
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
 
 runs:
   using: 'composite'
