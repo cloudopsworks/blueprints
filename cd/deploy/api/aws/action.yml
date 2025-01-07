@@ -169,7 +169,10 @@ runs:
       id: plan
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       shell: bash
-      run: terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
+      run: |
+        echo "::group::Terragrunt Plan"
+        terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
+        echo "::endgroup::"
       continue-on-error: false
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
@@ -179,7 +182,10 @@ runs:
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       if: ${{ ! inputs.unlock }}
-      run: terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
+      run: |
+        echo "::group::Terragrunt Plan to JSON"
+        terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
+        echo "::endgroup::"
       shell: bash
       env:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
@@ -190,12 +196,19 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       if: ${{ ! inputs.unlock }}
       shell: bash
-      run: tf-summarize tfplan.json
+      run: |
+        echo "::group::TF Summarize of JSON file"
+        tf-summarize tfplan.json
+        echo "::endgroup::"
 
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-      run: terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+      if: ${{ inputs.unlock != 'true' }}
+      run: |
+        echo "::group::Terragrunt Apply"
+        terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+        echo "::endgroup::"
       shell: bash
       continue-on-error: false
       env:
