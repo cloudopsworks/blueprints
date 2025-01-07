@@ -109,7 +109,7 @@ runs:
 
     - name: Download API Artifacts
       uses: actions/download-artifact@v4
-      if: (inputs.unlock == 'false' && inputs.destroy == 'false')
+      if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}
         path: ${{ inputs.blueprint_path }}/terraform/aws/apigw/apifiles/
