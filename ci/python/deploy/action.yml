@@ -1,0 +1,48 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Deploy Python Component
+author: cloudopsworks
+description: Deploy Python Component to Python repository
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    # Get if this is a library project
+    - name: Get pipeline preview enabled
+      id: is_library
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.isLibrary and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Deploy Code to Registry
+    # FIXME!: empty code, need to implement how to deploy to PyPi registry
+    - name: Deploy Code to Registry
+      run: |
+        echo "::error::Deploying code to registry, not supported yet"
+        exit 1

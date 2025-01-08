@@ -1,0 +1,48 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Build Python Sources with Poetry
+author: cloudopsworks
+description: Build Python sources with poetry
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  python_extra_env:
+    description: 'The extra environment variables'
+    required: true
+  python_requirements_file:
+    description: 'The requirements file'
+    required: false
+    default: './pyproject.toml'
+
+runs:
+  using: 'composite'
+  steps:
+    # Install poetry
+    - name: Install poetry
+      shell: bash
+      run: pipx install poetry
+
+    - name: Install Dependencies (Poetry)
+      working-directory: ${{ inputs.source_path }}
+      if: steps.python_dist.outputs.result == 'pipenv'
+      shell: bash
+      run: |
+        echo "::group::Poetry Install"
+        source .venv/bin/activate
+        echo "Installing dependencies"
+        ${{ inputs.python_extra_env }} poetry install
+        echo "Exporting requirements"
+        poetry export --with dev --without-hashes --format=requirements.txt > requirements.txt
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}

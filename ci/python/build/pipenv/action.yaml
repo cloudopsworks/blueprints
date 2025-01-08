@@ -1,0 +1,46 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Build Python Sources with Pipenv
+author: cloudopsworks
+description: Build Python sources with pipenv
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  python_extra_env:
+    description: 'The extra environment variables'
+    required: true
+  python_requirements_file:
+    description: 'The requirements file'
+    required: false
+    default: './requirements.txt'
+
+runs:
+  using: 'composite'
+  steps:
+    # Install pipenv
+    - name: Install pipenv
+      shell: bash
+      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+
+    - name: Install Dependencies (PipEnv)
+      working-directory: ${{ inputs.source_path }}
+      if: steps.python_dist.outputs.result == 'pipenv'
+      shell: bash
+      run: |
+        echo "::group::Pipenv Install"
+        source .venv/bin/activate
+        echo "Installing dependencies"
+        ${{ inputs.python_extra_env }} pipenv install
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}

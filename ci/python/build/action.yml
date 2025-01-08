@@ -1,0 +1,255 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Build Python Sources
+author: cloudopsworks
+description: Build Python sources and save artifacts, requires ci/config/action.yml
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+  has_preview:
+    description: 'The preview flag will process only for preview builds'
+    required: false
+    default: 'false'
+  python_extra_env:
+    description: 'The extra environment variables'
+    required: true
+  python_requirements_file:
+    description: 'The requirements file'
+    required: false
+    default: './requirements.txt'
+
+outputs:
+  python_version:
+    description: 'The Python version to use for the build'
+    value: ${{ steps.python_version.outputs.result }}
+  python_dist:
+    description: 'The Python distribution to use for the build'
+    value: ${{ steps.python_dist.outputs.result }}
+  python_image_variant:
+    description: 'The Python image variant to use for the build'
+    value: ${{ steps.python_image_variant.outputs.result }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
+
+
+runs:
+  using: 'composite'
+  steps:
+    # Get pipeline conf Python version
+    - name: Get pipeline Python version
+      id: python_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.version // "20"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Python dist
+    - name: Get pipeline Python dist
+      id: python_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.dist // "pip"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Python test ruff linter
+    - name: Get pipeline Python test ruff linter
+      id: python_test_ruff
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.ruff // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Python test mypy test
+    - name: Get pipeline Python test mypy test
+      id: python_test_mypy
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.mypy // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf java image variant defaults to alpine
+    - name: Get pipeline Python image variant
+      id: python_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.python.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf
+    - name: Get pipeline zip packaging globs
+      id: zip_globs_line
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml | tr '\n' ' '
+
+    # Get pipeline conf
+    - name: Get pipeline zip packaging exclude globs
+      id: exclude_globs
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.excludeGlobs[] | "!" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # Get pipeline conf
+    - name: Get pipeline zip packaging exclude globs
+      id: raw_exclude_globs
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+
+    # Get Package Name from package.json
+    - name: Get package Name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -oj -r '.name' ${{ inputs.source_path }}/package.json
+
+    # Setup Python for builds for the version provided
+    - name: Setup Python
+      id: setup_python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ steps.python_version.outputs.result }}
+        cache: '${{ steps.python_dist.outputs.result }}'
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Python  Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+    - name: Generate Python Environment
+      working-directory: ${{ inputs.source_path }}
+      id: python_env
+      shell: bash
+      run: |
+        echo "::group::Python ENV Setup"
+        python -m venv .venv
+        source .venv/bin/activate
+        python -m pip install --upgrade pip setuptools wheel
+        echo "::endgroup::"
+
+    # Build the code
+    - name: Build PIP
+      if: steps.python_dist.outputs.result == 'pip'
+      uses: ./bp/ci/python/build/pip
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        python_requirements_file: ${{ inputs.python_requirements_file }}
+        python_extra_env: ${{ inputs.python_extra_env }}
+
+
+    - name: Build PYPENV
+      if: steps.python_dist.outputs.result == 'pipenv'
+      uses: ./bp/ci/python/build/pipenv
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        python_requirements_file: ${{ inputs.python_requirements_file }}
+        python_extra_env: ${{ inputs.python_extra_env }}
+
+    - name: Build Poetry
+      if: steps.python_dist.outputs.result == 'poetry'
+      uses: ./bp/ci/python/build/poetry
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        python_requirements_file: ${{ inputs.python_requirements_file }}
+        python_extra_env: ${{ inputs.python_extra_env }}
+
+    # Build Tests
+    - name: Run Python Tests
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Python Tests"
+        source .venv/bin/activate
+        pytest --cov=. \
+          --junitxml=test-results.xml \
+          --cov-report=xml \
+          --cov-report=term-missing \
+          --cov-report=html
+        
+        echp "::notice::Generating stubs for Ruff & MyPy"
+        echo "[]" > ruff_report.json
+        echo "" > mypy_report.txt
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Run Ruff Linter
+      if: steps.python_test_ruff.outputs.result == 'true'
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Python Linters"
+        source .venv/bin/activate
+        pip install ruff
+        ruff check --output-file ruff_report.json --output-format json
+        echo "::debug::Start Ruff Report"
+        cat ruff_report.json
+        echo "::debug::End Ruff Report"
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Run MyPy Test
+      if: steps.python_test_mypy.outputs.result == 'true'
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Python MyPy"
+        source .venv/bin/activate
+        pip install mypy
+        mypy . > mypy_report.txt
+        echo "::debug::Start MyPy Report"
+        cat mypy_report.txt
+        echo "::debug::End MyPy Report"
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # SBOM generation
+    - name: SBOM Generation for Dtrack
+      uses: CycloneDX/gh-python-generate-sbom@v2
+      with:
+        path: ${{ inputs.source_path }}
+        output: "${{ inputs.source_path }}/bom.xml"

@@ -5,7 +5,7 @@
 #
 name: Dependency Track Scan
 author: cloudopsworks
-description: This action scans the Node.js code using Dependency Track
+description: This action scans the Python code using Dependency Track
 inputs:
   source_path:
     description: 'The path to the source code'
