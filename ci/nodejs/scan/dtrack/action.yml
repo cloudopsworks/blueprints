@@ -46,4 +46,4 @@ runs:
              -F "autoCreate=true" \
              -F "projectName=${{ inputs.dtrack_project_key }}" \
              -F "projectVersion=${{ inputs.semver }}" \
-             -F "bom=@target/bom.xml"
+             -F "bom=@bom.xml"
