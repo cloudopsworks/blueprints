@@ -1,0 +1,69 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Config for Python Sources
+author: cloudopsworks
+description: Configuration for Python sources
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+  has_preview:
+    description: 'The preview flag will process only for preview builds'
+    required: false
+    default: 'false'
+
+outputs:
+  python_extra_env:
+    description: 'The extra environment variables'
+    value: ${{ steps.python_extra_env.outputs.result }}
+
+runs:
+    using: 'composite'
+    steps:
+      - name: Check tools and install
+        shell: bash
+        run: |
+          echo "::group::Check Tools"
+          sudo apt-get update
+          which make || sudo apt-get install -y make
+          which gh || sudo apt-get install -y gh
+          echo "::endgroup::"
+
+      # get from global inputs extra env vars from : python_extra_env entry
+      - name: Get Optional Env Vars
+        id: python_extra_env_global
+        uses: mikefarah/yq@master
+        with:
+          cmd: yq e -I=0 '.python_extra_env // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '\n' ' ' | sed 's/.$//'
+
+      # get from  inputs extra env vars from preview config: python_extra_env entry
+      - name: Get Optional Env Vars - ${{ inputs.environment }}
+        if: ${{ inputs.has_preview == 'true' }}
+        id: python_extra_env_preview
+        uses: mikefarah/yq@master
+        with:
+          cmd: yq e -I=0 '.python_extra_env // "${{ steps.python_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/preview/inputs.yaml | tr '\n' ' ' | sed 's/.$//'
+
+      # get from inputs extra env vars from specific build environment: python_extra_env entry
+      - name: Get Optional Env Vars - ${{ inputs.environment }}
+        if: ${{ inputs.has_preview != 'true' }}
+        id: python_extra_env_env
+        uses: mikefarah/yq@master
+        with:
+          cmd: yq e -I=0 '.python_extra_env // "${{ steps.python_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml | tr '\n' ' ' | sed 's/.$//'
+
+      - name: Set Optional python_extra_env from properly calulated origin
+        id: python_extra_env
+        shell: bash
+        run: echo 'result=${{ steps.python_extra_env_preview.outputs.result != '' && steps.python_extra_env_preview.outputs.result || steps.python_extra_env_env.outputs.result }}' >> $GITHUB_OUTPUT

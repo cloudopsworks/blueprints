@@ -1,0 +1,39 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Semgrep code Scanning Python
+author: cloudopsworks
+description: This action scans the Python code using Semgrep
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  semgrep_token:
+    description: 'The Semgrep token'
+    required: true
+  bot_user:
+    description: 'The bot user'
+    required: true
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Semgrep Code Scanning
+      id: semgrep
+      env:
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        semgrep --config=p/python . --json > semgrep.json
+        semgrep ci --sarif-output=semgrep.sarif

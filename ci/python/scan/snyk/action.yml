@@ -1,0 +1,38 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+# TODO: complete this module
+name: Snyk code Scanning Python
+author: cloudopsworks
+description: This action scans the Python code using Snyk
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  snyk_token:
+    description: 'The Snyk token'
+    required: true
+  bot_user:
+    description: 'The bot user'
+    required: true
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Snyk Code Scanning
+      id: snyk
+      env:
+        SNYK_TOKEN: ${{ inputs.snyk_token }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "TBD"
