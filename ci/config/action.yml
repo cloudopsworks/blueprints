@@ -81,6 +81,12 @@ outputs:
   has_preview:
     description: 'The preview enabled flag'
     value: ${{ steps.has_preview.outputs.result }}
+  observability_enabled:
+    description: 'The observability enabled flag'
+    value: ${{ steps.observability.outputs.result }}
+  observability_agent:
+    description: 'The observability agent type, can be one of: xray, datadog, newrelic, dynatrace'
+    value: ${{ steps.observability_agent.outputs.result }}
 
 runs:
   using: 'composite'
@@ -394,4 +400,22 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         RET=$(yq -I=0 '.cd.automatc and true' .github/cloudopsworks-ci.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get Observability Configuration
+    - name: Get Observability Configuration
+      id: observability
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 '.observability.enabled // "false"' .github/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    - name: Get Observability Agent Type
+      id: observability_agent
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      if: steps.observability.outputs.result == 'true'
+      run: |
+        RET=$(yq -o=json -I=0 '.observability.agent // "xray"' .github/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT

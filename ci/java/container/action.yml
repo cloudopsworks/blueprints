@@ -42,6 +42,14 @@ inputs:
   project_owner:
     description: 'The project owner'
     required: true
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'xray'
 
 runs:
   using: 'composite'
@@ -105,6 +113,19 @@ runs:
         INJECTION_POINT="#<JAVA-INJECTION-POINT>"
         while IFS= read -r line; do
           if [[ "$line" =~ $INJECTION_POINT ]]; then
+            # Insert the content related to observability agent installation
+            if [ "${{ inputs.observability_enabled }}" == "true" ]; then
+              case "${{ inputs.observability_agent }}" in
+                xray)
+                  echo "RUN curl -sSL https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip -o /app/webapp/xray-agent.zip"
+                  echo "RUN unzip /app/webapp/xray-agent.zip -d /app/webapp"
+                  echo "RUN rm /app/webapp/xray-agent.zip"
+                  ;;
+                datadog)
+                  echo "ADD 'https://dtdg.co/latest-java-tracer' /app/webapp/dd-java-agent.jar"
+                  ;;
+              esac
+            fi 
             # Insert the content of input at the injection point depending on conditions
             JARDEP=$(find target -name "*with-dependencies.jar" | head -1)
             if [ -n "$JARDEP" ]; then
@@ -122,6 +143,20 @@ runs:
         mv "$TEMP_FILE" "$DOCKERFILE"
         cat "$DOCKERFILE"
         echo "::endgroup::"
+
+    - name: APM Arguments setup
+      id: apm_args
+      shell: bash
+      if: ${{ inputs.observability_enabled == 'true' }}
+      run: |
+        case "${{ inputs.observability_agent }}" in
+          xray)
+            echo "result=APM_ARGS=-javaagent:/app/webapp/disco/disco-java-agent.jar=pluginPath=/app/webapp/disco/disco-plugins"
+            ;;
+          datadog)
+            echo "result=APM_ARGS=-javaagent:/app/webapp/dd-java-agent.jar"
+            ;;
+        esac
 
     # Java version image settings (adopt is deprecated)
     - name: Set output with Java Version
@@ -185,6 +220,7 @@ runs:
         docker_inline: ${{ steps.docker_inline.outputs.result }}
         docker_image_name: ${{ steps.docker_image_name.outputs.result }}
         docker_args: ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
+        apm_args: ${{ inputs.observability_enabled == 'true' && steps.apm_args.outputs.result || '' }}
         environment: ${{ inputs.environment }}
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}

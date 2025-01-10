@@ -83,6 +83,17 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'xray'
+  source_language:
+    description: 'The language source, e.g. java, python, nodejs'
+    required: java
 
 runs:
   using: 'composite'
@@ -143,6 +154,42 @@ runs:
           echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
           touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
         fi
+
+    - name: Generate XRAY observability artifacts for lambda or beanstalk
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' && contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values
+      shell: bash
+      run: |
+        echo "::group::Generate XRAY observability artifacts for lambda or beanstalk"
+        case "${{ inputs.source_language }}" in
+          java)
+            curl -sSL https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip -o xray-agent.zip
+            unzip xray-agent.zip
+            rm xray-agent.zip
+            ;;
+          node)
+            ;;
+          python)
+            ;;
+        esac
+        echo "::endgroup::"
+
+    - name: Generate Datadog observability artifacts for lambda or Beanstalk
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'datadog' && contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values
+      shell: bash
+      run: |
+        echo "::group::Generate Datadog observability artifacts for lambda or beanstalk"
+        case "${{ inputs.source_language }}" in
+          java)
+            curl -Lo dd-java-agent.jar 'https://dtdg.co/latest-java-tracer'
+            ;;
+          node)
+            ;;
+          python)
+            ;;
+        esac
+        echo "::endgroup::"
 
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}

@@ -44,6 +44,10 @@ inputs:
   custom_usergroup:
     description: 'The image variant'
     required: true
+  apm_args:
+    description: 'The APM arguments'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -144,6 +148,7 @@ runs:
         build-args: |
           ${{ inputs.docker_image_name }}
           ${{ inputs.docker_args }}
+          ${{ inputs.apm_args }}
         push: false
         context: ${{ inputs.source_path }}
         tags: |
