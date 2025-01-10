@@ -14,8 +14,10 @@ ARG GROUP_ID=10001
 ARG USER_NAME=webapp
 ARG GROUP_NAME=webapp
 
-## Stage 1: Create NGINX configuration
+## Stage 1: Create basic entries
 USER root
+
+RUN mkdir -p /app/webapp/
 
 # Copy the application configuarion as per the application
 # Build process must ensure output jar is unique for each build
