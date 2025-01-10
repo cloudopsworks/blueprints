@@ -124,7 +124,7 @@ runs:
             if [ "${{ inputs.observability_enabled }}" == "true" ]; then
               case "${{ inputs.observability_agent }}" in
                 xray)
-                  echo "RUN curl -sSL https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip -o /app/webapp/xray-agent.zip"
+                  echo "RUN curl -Lo /app/webapp/xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip"
                   echo "RUN unzip /app/webapp/xray-agent.zip -d /app/webapp"
                   echo "RUN rm /app/webapp/xray-agent.zip"
                   ;;

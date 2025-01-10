@@ -132,7 +132,7 @@ runs:
         echo "::group::Generate observability artifacts for java"
         case "${{ inputs.observability_agent }}" in
           xray)
-            curl -sSL https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip -o xray-agent.zip
+            curl -Lo xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
             unzip xray-agent.zip
             rm xray-agent.zip
             echo "result=-javaagent:./disco/disco-java-agent.jar=pluginPath=./disco/disco-plugins -Dcom.amazonaws.xray.strategy.tracingName=${{ inputs.project_key }}" >> $GITHUB_OUTPUT
