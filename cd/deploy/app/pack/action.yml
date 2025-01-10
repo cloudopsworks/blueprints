@@ -45,6 +45,15 @@ inputs:
   environment:
     description: 'The environment'
     required: true
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'xray'
+
 outputs:
   dest_zip_path:
     description: 'Destination ZIP path'
@@ -113,6 +122,29 @@ runs:
       run: |
         cp -p ./*.jar ${{ steps.temp_dir.outputs.result }}/app.jar
 
+    # Observability
+    - name: Generate observability artifacts for java
+      if: ${{ inputs.observability_enabled == 'true' && steps.stack.outputs.java_stack == 'true' }}
+      working-directory: ${{ steps.temp_dir.outputs.result }}
+      shell: bash
+      id: java_apm
+      run: |
+        echo "::group::Generate observability artifacts for java"
+        case "${{ inputs.observability_agent }}" in
+          xray)
+            curl -sSL https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip -o xray-agent.zip
+            unzip xray-agent.zip
+            rm xray-agent.zip
+            echo "result=-javaagent:./disco/disco-java-agent.jar=pluginPath=./disco/disco-plugins -Dcom.amazonaws.xray.strategy.tracingName=${{ inputs.project_key }}" >> $GITHUB_OUTPUT
+            ;;
+          datadog)
+            curl -Lo dd-java-agent.jar 'https://dtdg.co/latest-java-tracer'
+            echo "result=-javaagent:./dd-java-agent.jar -Ddd.env=${{ inputs.environment }} -Ddd.service=${{ inputs.release_name }} -Ddd.version=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
+            ;;
+        esac
+        echo "::endgroup::"
+    # Observability
+
     - name: Copy Application Release
       if: ${{ steps.stack.outputs.java_stack != 'true' && steps.stack.outputs.node_stack != 'true' && steps.stack.outputs.python_stack != 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
@@ -134,6 +166,9 @@ runs:
         java_stack: ${{ steps.stack.outputs.java_stack }}
         node_stack: ${{ steps.stack.outputs.node_stack }}
         python_stack: ${{ steps.stack.outputs.python_stack }}
+        java_apm: ${{ steps.java_apm.outputs.result }}
+        node_apm: ${{ steps.node_apm.outputs.result }}
+        python_apm: ${{ steps.python_apm.outputs.result }}
 
     ## Generate ZIP and push to bucket
     - name: Generate ZIP and report filename

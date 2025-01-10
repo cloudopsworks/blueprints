@@ -151,10 +151,10 @@ runs:
       run: |
         case "${{ inputs.observability_agent }}" in
           xray)
-            echo "result=APM_ARGS=-javaagent:/app/webapp/disco/disco-java-agent.jar=pluginPath=/app/webapp/disco/disco-plugins"
+            echo "result=APM_ARGS=-javaagent:/app/webapp/disco/disco-java-agent.jar=pluginPath=/app/webapp/disco/disco-plugins" >> $GITHUB_OUTPUT
             ;;
           datadog)
-            echo "result=APM_ARGS=-javaagent:/app/webapp/dd-java-agent.jar"
+            echo "result=APM_ARGS=-javaagent:/app/webapp/dd-java-agent.jar" >> $GITHUB_OUTPUT
             ;;
         esac
 
