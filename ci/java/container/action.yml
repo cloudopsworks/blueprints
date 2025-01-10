@@ -103,8 +103,7 @@ runs:
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* ${{ inputs.source_path }}/
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore ${{ inputs.source_path }}/
 
-    - name: Get xray config file from inputs-globa.yaml
-      shell: bash
+    - name: Get xray config file from inputs-global.yaml
       id: xray_config_file
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       uses: mikefarah/yq@master
