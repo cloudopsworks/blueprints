@@ -109,7 +109,7 @@ runs:
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.observability.config.configFilePath // "/app/webapp/xray"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.observability.config.configFilePath // "/app/xray" + "/"  + .observability.config.configFileName // "xray-config.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Dockerfile Java Specific Injection
       working-directory: ${{ inputs.source_path }}
