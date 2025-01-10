@@ -110,6 +110,17 @@ runs:
       with:
         cmd: yq e -I=0 '.observability.config.configFilePath // "/app/xray" + "/"  + .observability.config.configFileName // "xray-config.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    - name: Download AWS Xray agent
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      id: xray_agent_zip
+      shell: bash
+      run: |
+        tmpdir=$(mktemp -d)
+        cd /tmp
+        curl -Lo /app/webapp/xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
+        unzip /app/webapp/xray-agent.zip -d $tmpdir
+        echo "tmpdir=$tmpdir" >> $GITHUB_OUTPUT
+
     - name: Dockerfile Java Specific Injection
       working-directory: ${{ inputs.source_path }}
       shell: bash
@@ -124,9 +135,7 @@ runs:
             if [ "${{ inputs.observability_enabled }}" == "true" ]; then
               case "${{ inputs.observability_agent }}" in
                 xray)
-                  echo "RUN curl -Lo /app/webapp/xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip"
-                  echo "RUN unzip /app/webapp/xray-agent.zip -d /app/webapp"
-                  echo "RUN rm /app/webapp/xray-agent.zip"
+                  echo "COPY ${{ steps.xray_agent_zip.outputs.tmpdir }}/* /app/webapp/"
                   ;;
                 datadog)
                   echo "ADD 'https://dtdg.co/latest-java-tracer' /app/webapp/dd-java-agent.jar"
