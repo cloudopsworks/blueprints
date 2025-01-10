@@ -408,7 +408,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 '.observability.enabled // "false"' .github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '.observability.enabled // "false"' .github/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get Observability Agent Type
@@ -417,5 +417,5 @@ runs:
       working-directory: ${{ inputs.source_path }}
       if: steps.observability.outputs.result == 'true'
       run: |
-        RET=$(yq -o=json -I=0 '.observability.agent // "xray"' .github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '.observability.agent // "xray"' .github/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
