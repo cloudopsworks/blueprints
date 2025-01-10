@@ -117,8 +117,8 @@ runs:
       run: |
         tmpdir=$(mktemp -d)
         cd /tmp
-        curl -Lo /app/webapp/xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
-        unzip /app/webapp/xray-agent.zip -d $tmpdir
+        curl -Lo xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
+        unzip xray-agent.zip -d $tmpdir
         echo "tmpdir=$tmpdir" >> $GITHUB_OUTPUT
 
     - name: Dockerfile Java Specific Injection
