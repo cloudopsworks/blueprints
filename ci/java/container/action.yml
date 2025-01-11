@@ -112,14 +112,12 @@ runs:
 
     - name: Download AWS Xray agent
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
-      id: xray_agent_zip
       shell: bash
+      working-directory: ${{ inputs.source_path }}/target
       run: |
         tmpdir=$(mktemp -d)
-        cd /tmp
-        curl -Lo xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
-        unzip xray-agent.zip -d $tmpdir
-        echo "tmpdir=$tmpdir" >> $GITHUB_OUTPUT
+        curl -Lo $tmpdir/xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
+        unzip $tmpdir/xray-agent.zip
 
     - name: Dockerfile Java Specific Injection
       working-directory: ${{ inputs.source_path }}
@@ -135,7 +133,7 @@ runs:
             if [ "${{ inputs.observability_enabled }}" == "true" ]; then
               case "${{ inputs.observability_agent }}" in
                 xray)
-                  echo "COPY ${{ steps.xray_agent_zip.outputs.tmpdir }}/disco /app/webapp/disco"
+                  echo "COPY target/disco /app/webapp/disco"
                   ;;
                 datadog)
                   echo "ADD 'https://dtdg.co/latest-java-tracer' /app/webapp/dd-java-agent.jar"
