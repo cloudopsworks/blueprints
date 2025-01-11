@@ -135,7 +135,7 @@ runs:
             if [ "${{ inputs.observability_enabled }}" == "true" ]; then
               case "${{ inputs.observability_agent }}" in
                 xray)
-                  echo "COPY ${{ steps.xray_agent_zip.outputs.tmpdir }}/* /app/webapp/"
+                  echo "COPY ${{ steps.xray_agent_zip.outputs.tmpdir }}/disco /app/webapp/disco"
                   ;;
                 datadog)
                   echo "ADD 'https://dtdg.co/latest-java-tracer' /app/webapp/dd-java-agent.jar"
