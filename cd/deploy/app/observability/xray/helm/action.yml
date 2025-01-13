@@ -42,6 +42,7 @@ runs:
       id: xray_inject
       shell: bash
       run: |
+        echo "::group::Xray variable Injection"
         cat <<EOF >> values/xray-agent.json
         {
           "contextMissingStrategy": "$(yq e '.observability.config.contextMissingStrategy // "LOG_ERROR"' inputs-global.yaml)",
@@ -62,3 +63,4 @@ runs:
         cat values/xray-agent.json
         yq e -i '.config_map.enabled = true' inputs.yaml
         yq e -i '.env += {"name":"AWS_XRAY_TRACING_NAME","value":"${{ inputs.environment }}/${{ inputs.release_name }}/${{ inputs.release_version }}"}' helm-values.yaml
+        echo "::endgroup::"
