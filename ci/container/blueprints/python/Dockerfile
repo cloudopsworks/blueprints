@@ -18,6 +18,7 @@ USER root
 
 # Copy the application configuarion as per the application
 # Build process must ensure output python app is unique for each build
+COPY app/ *.py* *.txt *.toml /app/webapp/
 #<PYTHON-INJECTION-POINT>
 
 # Stage 2: Customized configuation injection occurs at command line
@@ -37,8 +38,8 @@ RUN chown -R $USER_NAME:$GROUP_NAME /app/webapp/
 
 COPY ./startup.sh /app/webapp/
 RUN chmod +x /app/webapp/startup.sh
-ENV PYTHON_OPTS=${PYTHON_OPTS}
-ENV APM_OPTS=${APM_OPTS}
+ENV PYTHON_OPTS ${PYTHON_OPTS}
+ENV APM_OPTS ${APM_OPTS}
 
 USER $USER_NAME
 

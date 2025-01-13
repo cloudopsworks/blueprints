@@ -3,6 +3,8 @@
 #            Distributed Under Apache v2.0 License
 #
 ARG IMAGE_NAME=node:22-alpine
+ARG NODE_OPTS=""
+ARG APM_OPTS=""
 
 FROM $IMAGE_NAME AS base
 
@@ -16,6 +18,7 @@ USER root
 
 # Copy the application configuarion as per the application
 COPY . /app/webapp/
+#<NODE-INJECTION-POINT>
 
 # Stage 2: Customized configuation injection occurs at command line
 FROM base AS customized
@@ -34,6 +37,8 @@ RUN chown -R $USER_NAME:$GROUP_NAME /app/webapp/
 
 COPY ./startup.sh /app/webapp/
 RUN chmod +x /app/webapp/startup.sh
+ENV NODE_OPTS ${NODE_OPTS}
+ENV APM_OPTS ${APM_OPTS}
 
 USER $USER_NAME
 
