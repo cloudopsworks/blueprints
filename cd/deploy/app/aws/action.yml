@@ -284,6 +284,16 @@ runs:
         tf-summarize tfplan.json
         echo "::endgroup::"
 
+    - name: Save Plan Artifacts
+      if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifacts_name }}_plan
+        path: |
+          ${{ inputs.blueprint_path }}/terraform/aws/**
+          !**/.terragrunt-cache/**
+          !**/.terraform/**
+
     - name: Restore Pipeline Artifacts
       uses: actions/download-artifact@v4
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
