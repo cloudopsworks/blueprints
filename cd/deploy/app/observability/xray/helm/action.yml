@@ -1,0 +1,64 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Xray Observability deployment setup for HELM
+author: cloudopsworks
+description: Xray Observability deployment setup for HELM chart
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  cloud:
+    description: 'The cloud'
+    required: true
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  project_key:
+    description: 'The package name'
+    required: true
+  deployment_name:
+    description: 'The deployment name'
+    required: true
+  environment:
+    description: 'The environment'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Xray variable Injection
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: xray_inject
+      shell: bash
+      run: |
+        cat <<EOF >> values/xray-agent.json
+        {
+          "contextMissingStrategy": "$(yq e '.observability.config.contextMissingStrategy // "LOG_ERROR"' inputs-global.yaml)",
+          "daemonAddress": "$(yq e '.observability.config.daemonAddress // "127.0.0.1:2000"' inputs-global.yaml)",
+          "tracingEnabled": $(yq e '.observability.config.tracingEnabled // "true"' inputs-global.yaml),
+          "samplingStrategy": "$(yq e '.observability.config.samplingStrategy // "CENTRAL"' inputs-global.yaml)",
+          "traceIdInjectionPrefix": "$(yq e '.observability.config.traceIdInjectionPrefix // ""' inputs-global.yaml)",
+          "samplingRulesManifest": "$(yq e '.observability.config.samplingRulesManifest // ""' inputs-global.yaml)",
+          "awsServiceHandlerManifest": "$(yq e '.observability.config.awsServiceHandlerManifest // ""' inputs-global.yaml)",
+          "awsSdkVersion": $(yq e '.observability.config.awsSdkVersion // "2"' inputs-global.yaml),
+          "maxStackTraceLength": $(yq e '.observability.config.maxStackTraceLength // "50"' inputs-global.yaml),
+          "streamingThreshold": $(yq e '.observability.config.streamingThreshold // "100"' inputs-global.yaml),
+          "traceIdInjection": $(yq e '.observability.config.traceIdInjection // "true"' inputs-global.yaml),
+          "pluginsEnabled": $(yq e '.observability.config.pluginsEnabled // "true"' inputs-global.yaml),
+          "collectSqlQueries": $(yq e '.observability.config.collectSqlQueries // "false"' inputs-global.yaml)
+        }
+        EOF
+        cat values/xray-agent.json
+        yq e -i '.config_map.enabled = true' inputs.yaml
+        yq e -i '.env += {"name":"AWS_XRAY_TRACING_NAME","value":"${{ inputs.environment }}/${{ inputs.release_name }}/${{ inputs.release_version }}"}' values.yaml

@@ -190,6 +190,34 @@ runs:
           sts_role_arn: ${{ inputs.aws_sts_role_arn }}
         EOF
 
+    - name: Generate Observability configuration for Xray
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      uses: ./bp/cd/deploy/app/observability/xray
+      with:
+        blueprint_path: ${{ inputs.blueprint_path }}
+        source_path: ${{ inputs.source_path }}
+        cloud: 'aws'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        deployment_name: ${{ inputs.deployment_name }}x
+        environment: ${{ inputs.environment }}
+
+    - name: Generate Observability configuration for datadog
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'datadog' }}
+      uses: ./bp/cd/deploy/app/observability/datadog
+      with:
+        blueprint_path: ${{ inputs.blueprint_path }}
+        source_path: ${{ inputs.source_path }}
+        cloud: 'aws'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        deployment_name: ${{ inputs.deployment_name }}
+        environment: ${{ inputs.environment }}
+
     - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
       shell: bash

@@ -1,0 +1,55 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Xray Observability deployment setup
+author: cloudopsworks
+description: Xray Observability deployment setup, process depends on target cloud
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  cloud:
+    description: 'The cloud'
+    required: true
+  cloud_type:
+    description: 'The cloud type'
+    required: true
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  project_key:
+    description: 'The package name'
+    required: true
+  deployment_name:
+    description: 'The deployment name'
+    required: true
+  environment:
+    description: 'The environment'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Xray for HELM
+      id: xray_helm
+      uses: ./bp/cd/deploy/app/observability/xray/helm
+      if: ${{ contains(fromJSON('["kubernetes","k8s","eks","aks","gke"]'), inputs.cloud_type) }}
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: ${{ inputs.cloud }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        deployment_name: ${{ inputs.deployment_name }}
+        environment: ${{ inputs.environment }}
