@@ -26,11 +26,18 @@ RUN mkdir -p /app/webapp/
 
 # Stage 2: Customized configuation injection occurs at command line
 FROM base AS customized
+ARG CLASSPATH
+ARG JAVA_OPTS
+ARG APM_OPTS
+
 WORKDIR /app
 #<DOCKER-INJECTION-POINT>
 
 # Stage 3: Final image
 FROM customized AS final
+ARG CLASSPATH
+ARG JAVA_OPTS
+ARG APM_OPTS
 
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
 #RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \

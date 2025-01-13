@@ -171,7 +171,7 @@ runs:
       run: |
         case "${{ inputs.observability_agent }}" in
           xray)
-            echo "result=APM_ARGS=-javaagent:/app/webapp/disco/disco-java-agent.jar=pluginPath=/app/webapp/disco/disco-plugins -Dcom.amazonaws.xray.configFile=${{ steps.xray_config_file.outputs.result }}" >> $GITHUB_OUTPUT
+            echo "result=APM_ARGS=\"-javaagent:/app/webapp/disco/disco-java-agent.jar=pluginPath=/app/webapp/disco/disco-plugins -Dcom.amazonaws.xray.configFile=${{ steps.xray_config_file.outputs.result }}\"" >> $GITHUB_OUTPUT
             ;;
           datadog)
             echo "result=APM_ARGS=-javaagent:/app/webapp/dd-java-agent.jar" >> $GITHUB_OUTPUT
