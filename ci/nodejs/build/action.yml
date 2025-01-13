@@ -42,6 +42,14 @@ inputs:
   node_extra_env:
     description: 'The extra environment variables'
     required: true
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'xray'
 
 outputs:
   node_version:
@@ -165,6 +173,15 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Install AWS open telemetry
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Install AWS Open Telemetry"
+        npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation
+        echo "::endgroup::"
 
     # Build the code! build target MUST be defined in package.json
     - name: Run NPM Build
