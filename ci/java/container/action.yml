@@ -103,12 +103,18 @@ runs:
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* ${{ inputs.source_path }}/
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore ${{ inputs.source_path }}/
 
+    - name: Get default config_map mount point for environment
+      id: config_map_mount_point
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.config_map.mount_point // "/app/configmap"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+
     - name: Get xray config file from inputs-global.yaml
       id: xray_config_file
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.observability.config.configFilePath // "/app/xray" + "/"  + .observability.config.configFileName // "xray-config.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-config.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Download AWS Xray agent
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}

@@ -43,7 +43,8 @@ runs:
       shell: bash
       run: |
         echo "::group::Xray variable Injection"
-        cat <<EOF >> values/xray-agent.json
+        files_path=$(yq e '.config_map.files_path // "."' inputs.yaml)
+        cat <<EOF >> values/${files_path}/xray-agent.json
         {
           "contextMissingStrategy": "$(yq e '.observability.config.contextMissingStrategy // "LOG_ERROR"' inputs-global.yaml)",
           "daemonAddress": "$(yq e '.observability.config.daemonAddress // "127.0.0.1:2000"' inputs-global.yaml)",
