@@ -61,4 +61,4 @@ runs:
         EOF
         cat values/xray-agent.json
         yq e -i '.config_map.enabled = true' inputs.yaml
-        yq e -i '.env += {"name":"AWS_XRAY_TRACING_NAME","value":"${{ inputs.environment }}/${{ inputs.release_name }}/${{ inputs.release_version }}"}' values.yaml
+        yq e -i '.env += {"name":"AWS_XRAY_TRACING_NAME","value":"${{ inputs.environment }}/${{ inputs.release_name }}/${{ inputs.release_version }}"}' helm-values.yaml

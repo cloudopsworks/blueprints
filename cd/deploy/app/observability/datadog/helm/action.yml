@@ -138,17 +138,17 @@ runs:
       id: datadog_inject
       shell: bash
       run: |
-        yq e -i '.env += {"name":"DD_ENV","value":"${{ inputs.environment }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_SERVICE","value":"${{ inputs.release_name }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_VERSION","value":"${{ inputs.release_version }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_LOGS_ENABLED","value":"${{ steps.dd_logs_enabled.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_APM_ENABLED","value":"${{ steps.dd_apm_enabled.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_APM_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_apm_non_local_traffic.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_LOGS_INJECTION","value":"${{ steps.dd_logs_injection.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL","value":"${{ steps.dd_logs_config_container_collect_all.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_CONTAINER_EXCLUDE_LOGS","value":"${{ steps.dd_container_exclude_logs.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_TRACE_DEBUG","value":"${{ steps.dd_trace_debug.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_DBM_PROPAGATION_MODE","value":"${{ steps.dd_dbm_propagation_mode.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_DOGSTATSD_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_dogstatsd_non_local_traffic.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_HTTP_CLIENT_ERROR_STATUSES","value":"${{ steps.dd_http_client_error_statuses.outputs.result }}"}' values.yaml
-        yq e -i '.env += {"name":"DD_HTTP_SERVER_ERROR_STATUSES","value":"${{ steps.dd_http_server_error_statuses.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_ENV","value":"${{ inputs.environment }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_SERVICE","value":"${{ inputs.release_name }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_VERSION","value":"${{ inputs.release_version }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_LOGS_ENABLED","value":"${{ steps.dd_logs_enabled.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_APM_ENABLED","value":"${{ steps.dd_apm_enabled.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_APM_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_apm_non_local_traffic.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_LOGS_INJECTION","value":"${{ steps.dd_logs_injection.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL","value":"${{ steps.dd_logs_config_container_collect_all.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_CONTAINER_EXCLUDE_LOGS","value":"${{ steps.dd_container_exclude_logs.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_TRACE_DEBUG","value":"${{ steps.dd_trace_debug.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_DBM_PROPAGATION_MODE","value":"${{ steps.dd_dbm_propagation_mode.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_DOGSTATSD_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_dogstatsd_non_local_traffic.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_HTTP_CLIENT_ERROR_STATUSES","value":"${{ steps.dd_http_client_error_statuses.outputs.result }}"}' helm-values.yaml
+        yq e -i '.env += {"name":"DD_HTTP_SERVER_ERROR_STATUSES","value":"${{ steps.dd_http_server_error_statuses.outputs.result }}"}' helm-values.yaml
