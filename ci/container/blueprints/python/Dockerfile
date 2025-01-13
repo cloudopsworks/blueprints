@@ -3,10 +3,11 @@
 #            Distributed Under Apache v2.0 License
 #
 ARG IMAGE_NAME=python:3.12-slim
-ARG PYTHON_OPTS=""
-ARG APM_OPTS=""
 
 FROM $IMAGE_NAME AS base
+
+ARG PYTHON_OPTS=""
+ARG APM_OPTS=""
 
 ARG USER_ID=10001
 ARG GROUP_ID=10001

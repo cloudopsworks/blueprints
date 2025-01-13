@@ -3,11 +3,12 @@
 #            Distributed Under Apache v2.0 License
 #
 ARG IMAGE_NAME=eclipse-temurin:21-alpine
+
+FROM $IMAGE_NAME AS base
+
 ARG CLASSPATH=""
 ARG JAVA_OPTS="-XX:MaxRAMPercentage=65"
 ARG APM_OPTS=""
-
-FROM $IMAGE_NAME AS base
 
 ARG USER_ID=10001
 ARG GROUP_ID=10001

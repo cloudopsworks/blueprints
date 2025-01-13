@@ -3,10 +3,11 @@
 #            Distributed Under Apache v2.0 License
 #
 ARG IMAGE_NAME=node:22-alpine
-ARG NODE_OPTS=""
-ARG APM_OPTS=""
 
 FROM $IMAGE_NAME AS base
+
+ARG NODE_OPTS=""
+ARG APM_OPTS=""
 
 ARG USER_ID=10001
 ARG GROUP_ID=10001
