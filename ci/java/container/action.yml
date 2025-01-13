@@ -114,7 +114,7 @@ runs:
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-config.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-agent.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Download AWS Xray agent
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
