@@ -1,0 +1,154 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Datadog Observability deployment setup for HELM
+author: cloudopsworks
+description: Datadog Observability deployment setup for HELM chart
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  cloud:
+    description: 'The cloud'
+    required: true
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  project_key:
+    description: 'The package name'
+    required: true
+  deployment_name:
+    description: 'The deployment name'
+    required: true
+  environment:
+    description: 'The environment'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: DD_TAGS
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_tags
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.tags // ""' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_LOGS_ENABLED
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_logs_enabled
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.logs_enabled // "true"' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_APM_ENABLED
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_apm_enabled
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.apm_enabled // "true"' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_APM_NON_LOCAL_TRAFFIC
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_apm_non_local_traffic
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.apm_non_local_traffic // "true"' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_LOGS_INJECTION
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_logs_injection
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.logs_injection // "true"' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_logs_config_container_collect_all
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.logs_config_container_collect_all // true' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_CONTAINER_EXCLUDE_LOGS
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_container_exclude_logs
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.container_exclude_logs // ""' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_TRACE_DEBUG
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_trace_debug
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.trace_debug // false' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_DBM_PROPAGATION_MODE
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_dbm_propagation_mode
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.dbm_propagation_mode // "full"' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_DOGSTATSD_NON_LOCAL_TRAFFIC
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_dogstatsd_non_local_traffic
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.dogstatsd_non_local_traffic // "true"' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_HTTP_CLIENT_ERROR_STATUSES
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_http_client_error_statuses
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.http_client_error_statuses // "400,401,403,404,405,409,410,429,500,501,502,503,504,505"' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: DD_HTTP_SERVER_ERROR_STATUSES
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: dd_http_server_error_statuses
+      shell: bash
+      run: |
+        result=$(yq e -I=0 '.observability.config.http_server_error_statuses // "500,502,503,504,505"' inputs-global.yaml)
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: Datadog variable Injection
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      id: datadog_inject
+      shell: bash
+      run: |
+        yq e -i '.env += {"name":"DD_ENV","value":"${{ inputs.environment }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_SERVICE","value":"${{ inputs.release_name }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_VERSION","value":"${{ inputs.release_version }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_LOGS_ENABLED","value":"${{ steps.dd_logs_enabled.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_APM_ENABLED","value":"${{ steps.dd_apm_enabled.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_APM_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_apm_non_local_traffic.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_LOGS_INJECTION","value":"${{ steps.dd_logs_injection.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL","value":"${{ steps.dd_logs_config_container_collect_all.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_CONTAINER_EXCLUDE_LOGS","value":"${{ steps.dd_container_exclude_logs.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_TRACE_DEBUG","value":"${{ steps.dd_trace_debug.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_DBM_PROPAGATION_MODE","value":"${{ steps.dd_dbm_propagation_mode.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_DOGSTATSD_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_dogstatsd_non_local_traffic.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_HTTP_CLIENT_ERROR_STATUSES","value":"${{ steps.dd_http_client_error_statuses.outputs.result }}"}' values.yaml
+        yq e -i '.env += {"name":"DD_HTTP_SERVER_ERROR_STATUSES","value":"${{ steps.dd_http_server_error_statuses.outputs.result }}"}' values.yaml
