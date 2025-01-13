@@ -138,6 +138,7 @@ runs:
       id: datadog_inject
       shell: bash
       run: |
+        echo "::group::Datadog variable Injection"
         yq e -i '.env += {"name":"DD_ENV","value":"${{ inputs.environment }}"}' helm-values.yaml
         yq e -i '.env += {"name":"DD_SERVICE","value":"${{ inputs.release_name }}"}' helm-values.yaml
         yq e -i '.env += {"name":"DD_VERSION","value":"${{ inputs.release_version }}"}' helm-values.yaml
@@ -152,3 +153,4 @@ runs:
         yq e -i '.env += {"name":"DD_DOGSTATSD_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_dogstatsd_non_local_traffic.outputs.result }}"}' helm-values.yaml
         yq e -i '.env += {"name":"DD_HTTP_CLIENT_ERROR_STATUSES","value":"${{ steps.dd_http_client_error_statuses.outputs.result }}"}' helm-values.yaml
         yq e -i '.env += {"name":"DD_HTTP_SERVER_ERROR_STATUSES","value":"${{ steps.dd_http_server_error_statuses.outputs.result }}"}' helm-values.yaml
+        echo "::endgroup::"
