@@ -55,6 +55,7 @@ runs:
         else
           arch="arm64"
         fi
+        echo "result=$arch"
         echo "result=$arch" >> $GITHUB_OUTPUT
 
     - name: extract lambda runtime from inputs.yaml
@@ -71,6 +72,7 @@ runs:
         elif [[ "$lruntime" =~ "java*" ]]; then
           runtime="aws-otel-java-agent-${{ steps.arch.outputs.result }}-ver-1-32-0:4"
         fi
+        echo "result=$runtime"
         echo "result=$runtime" >> $GITHUB_OUTPUT
 
     - name: Xray/OTEL variable Injection
