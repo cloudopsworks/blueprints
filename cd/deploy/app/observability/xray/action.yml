@@ -40,10 +40,24 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Xray for HELM
+    - name: Xray/OTEL for HELM
       id: xray_helm
       uses: ./bp/cd/deploy/app/observability/xray/helm
       if: ${{ contains(fromJSON('["kubernetes","k8s","eks","aks","gke"]'), inputs.cloud_type) }}
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: ${{ inputs.cloud }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        deployment_name: ${{ inputs.deployment_name }}
+        environment: ${{ inputs.environment }}
+
+    - name: Xray/OTEL for Lambdas
+      id: xray_helm
+      uses: ./bp/cd/deploy/app/observability/xray/lambda
+      if: ${{ contains(fromJSON('["lambda","function"]'), inputs.cloud_type) }}
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
