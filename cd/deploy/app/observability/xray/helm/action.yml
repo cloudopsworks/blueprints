@@ -43,25 +43,6 @@ runs:
       shell: bash
       run: |
         echo "::group::Xray variable Injection"
-        files_path=$(yq e '.config_map.files_path // "."' inputs.yaml)
-        cat <<EOF >> values/${files_path}/xray-agent.json
-        {
-          "contextMissingStrategy": "$(yq e '.observability.config.contextMissingStrategy // "LOG_ERROR"' inputs-global.yaml)",
-          "daemonAddress": "$(yq e '.observability.config.daemonAddress // "127.0.0.1:2000"' inputs-global.yaml)",
-          "tracingEnabled": $(yq e '.observability.config.tracingEnabled // "true"' inputs-global.yaml),
-          "samplingStrategy": "$(yq e '.observability.config.samplingStrategy // "CENTRAL"' inputs-global.yaml)",
-          "traceIdInjectionPrefix": "$(yq e '.observability.config.traceIdInjectionPrefix // ""' inputs-global.yaml)",
-          "samplingRulesManifest": "$(yq e '.observability.config.samplingRulesManifest // ""' inputs-global.yaml)",
-          "awsServiceHandlerManifest": "$(yq e '.observability.config.awsServiceHandlerManifest // ""' inputs-global.yaml)",
-          "awsSdkVersion": $(yq e '.observability.config.awsSdkVersion // "2"' inputs-global.yaml),
-          "maxStackTraceLength": $(yq e '.observability.config.maxStackTraceLength // "50"' inputs-global.yaml),
-          "streamingThreshold": $(yq e '.observability.config.streamingThreshold // "100"' inputs-global.yaml),
-          "traceIdInjection": $(yq e '.observability.config.traceIdInjection // "true"' inputs-global.yaml),
-          "pluginsEnabled": $(yq e '.observability.config.pluginsEnabled // "true"' inputs-global.yaml),
-          "collectSqlQueries": $(yq e '.observability.config.collectSqlQueries // "false"' inputs-global.yaml)
-        }
-        EOF
-        cat values/xray-agent.json
         yq e -i '.config_map.enabled = true' inputs.yaml
-        yq e -i '.env += [{"name":"AWS_XRAY_TRACING_NAME","value":"${{ inputs.environment }}/${{ inputs.release_name }}/${{ inputs.release_version }}"}]' helm-values.yaml
+        yq e -i '.env += [{"name":"OTEL_RESOURCE_ATTRIBUTES","value":"service.name=${{ inputs.release_name }},service.version=${{ inputs.release_version }},service.env=${{ inputs.environment }},service.sourceProject=${{ inputs.project_key }}"}]' helm-values.yaml
         echo "::endgroup::"
