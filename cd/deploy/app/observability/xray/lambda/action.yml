@@ -37,6 +37,10 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: start group
+      shell: bash
+      run: echo "::group::Xray/OTEL variable Injection"
+
     - name: extract aws.region from inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/lambda
       id: aws_region
@@ -80,7 +84,6 @@ runs:
       id: xray_inject
       shell: bash
       run: |
-        echo "::group::Xray/OTEL variable Injection"
         yq e -i '.lambda.layers += [{"arn":"arn:aws:lambda:${{ steps.aws_region.outputs.result }}:901920570463:${{ steps.runtime.outputs.result }}"}]' inputs.yaml
         yq e -i '.lambda.environment.variables += [{"name":"AWS_LAMBDA_EXEC_WRAPPER","value":"/opt/otel-instrument"}]' inputs.yaml
         yq e -i '.lambda.iam.enabled = true' inputs.yaml
@@ -89,4 +92,7 @@ runs:
         yq e -i '.lambda.tracing.mode = "Active"' inputs.yaml
         echo "inputs.yaml:"
         cat inputs.yaml
-        echo "::endgroup::"
+
+    - name: end group
+      shell: bash
+      run: echo "::endgroup::"
