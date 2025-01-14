@@ -49,6 +49,7 @@ runs:
       shell: bash
       run: |
         larch=$(yq e '.lambda.arch // "x86_64"' inputs.yaml)
+        arch=
         if [ "$larch" == "x86_64" ]; then
           arch="amd64"
         else
