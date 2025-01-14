@@ -84,7 +84,7 @@ runs:
       id: xray_inject
       shell: bash
       run: |
-        yq e -i '.lambda.layers += [{"arn":"arn:aws:lambda:${{ steps.aws_region.outputs.result }}:901920570463:${{ steps.runtime.outputs.result }}"}]' inputs.yaml
+        yq e -i '.lambda.layers += [{"arn":"arn:aws:lambda:${{ steps.aws_region.outputs.result }}:901920570463:layer:${{ steps.runtime.outputs.result }}"}]' inputs.yaml
         yq e -i '.lambda.environment.variables += [{"name":"AWS_LAMBDA_EXEC_WRAPPER","value":"/opt/otel-instrument"}]' inputs.yaml
         yq e -i '.lambda.iam.enabled = true' inputs.yaml
         yq e -i '.lambda.iam.policy_attachments += [{"arn":"arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"}]' inputs.yaml
