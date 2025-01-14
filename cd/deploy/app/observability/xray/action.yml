@@ -55,7 +55,7 @@ runs:
         environment: ${{ inputs.environment }}
 
     - name: Xray/OTEL for Lambdas
-      id: xray_helm
+      id: xray_lambda
       uses: ./bp/cd/deploy/app/observability/xray/lambda
       if: ${{ contains(fromJSON('["lambda","function"]'), inputs.cloud_type) }}
       with:
