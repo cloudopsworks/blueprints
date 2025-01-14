@@ -43,6 +43,5 @@ runs:
       shell: bash
       run: |
         echo "::group::Xray variable Injection"
-        yq e -i '.config_map.enabled = true' inputs.yaml
         yq e -i '.env += [{"name":"OTEL_RESOURCE_ATTRIBUTES","value":"service.name=${{ inputs.release_name }},service.version=${{ inputs.release_version }},service.env=${{ inputs.environment }},service.sourceProject=${{ inputs.project_key }}"}]' helm-values.yaml
         echo "::endgroup::"
