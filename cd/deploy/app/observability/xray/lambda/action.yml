@@ -65,11 +65,11 @@ runs:
       run: |
         lruntime=$(yq e '.lambda.runtime // ""' inputs.yaml)
         runtime=
-        if [[ "$lruntime" =~ "node*" ]]; then
+        if [[ "$lruntime" =~ node* ]]; then
           runtime="aws-otel-nodejs-${{ steps.arch.outputs.result }}-ver-1-30-1:1"
-        elif [[ "$lruntime" =~ "python*" ]]; then
+        elif [[ "$lruntime" =~ python* ]]; then
           runtime="aws-otel-python-${{ steps.arch.outputs.result }}-ver-1-29-0:1"
-        elif [[ "$lruntime" =~ "java*" ]]; then
+        elif [[ "$lruntime" =~ java* ]]; then
           runtime="aws-otel-java-agent-${{ steps.arch.outputs.result }}-ver-1-32-0:4"
         fi
         echo "result=$runtime"
