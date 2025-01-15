@@ -260,5 +260,5 @@ runs:
     - name: SBOM Generation for Dtrack
       uses: CycloneDX/gh-python-generate-sbom@v2
       with:
-        path: ${{ inputs.source_path }}
+        input: ${{ inputs.source_path }}/requirements.txt
         output: "${{ inputs.source_path }}/bom.xml"
