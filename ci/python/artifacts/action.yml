@@ -72,9 +72,13 @@ runs:
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |
-          !.venv/**
-          !venv/**
-          ${{ inputs.source_path }}/**/*
+          ${{ steps.zip_globs.outputs.result }}
+          bom.xml
+          .coverage
+          coverage.xml
+          test-results.xml
+          htmlcov/**/*
+          __tests__/**/*
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
