@@ -38,8 +38,11 @@ runs:
       id: split_excludes
       shell: bash
       run: |
-        items="${{ inputs.semgrep_excludes }}"
-        result="--exclude ${items//,/ --exclude }"
+        if [[ -n "${{ inputs.semgrep_excludes }}" ]]; then
+          result="--exclude '$(echo "${{ inputs.semgrep_excludes }}" | sed "s/,/' --exclude '/g")'"
+        else
+          result=""
+        fi
         echo "result=$result" >> $GITHUB_OUTPUT
 
     - name: Semgrep Code Scanning
