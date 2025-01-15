@@ -37,7 +37,7 @@ runs:
       id: split_excludes
       shell: bash
       run: |
-        echo "result::$(echo ${{ inputs.semgrep_excludes }} | sed 's/,/ --exclude /g')" >> $GITHUB_OUTPUT
+        echo "result=$(echo ${{ inputs.semgrep_excludes }} | sed 's/,/ --exclude /g')" >> $GITHUB_OUTPUT
 
     - name: Semgrep Code Scanning
       id: semgrep
