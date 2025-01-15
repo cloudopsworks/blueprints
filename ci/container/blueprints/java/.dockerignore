@@ -14,6 +14,8 @@ jenkins-x*.*
 skaffold.*
 .helmignore
 .git*
+gulpfile.js
+sonar-project.properties
 # CloudOpsWorks Tronador
 tronador/
 .tronador
@@ -21,3 +23,7 @@ tronador/
 # Generated Dockerfile and Image
 Dockerfile
 docker-image.tar*
+# coverage
+.nyc_output/*
+coverage/*
+bom.xml
