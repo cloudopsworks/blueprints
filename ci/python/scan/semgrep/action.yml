@@ -39,7 +39,7 @@ runs:
       shell: bash
       run: |
         items="${{ inputs.semgrep_excludes }}"
-        result="--exclude ${item//,/ --exclude }"
+        result="--exclude ${items//,/ --exclude }"
         echo "result=$result" >> $GITHUB_OUTPUT
 
     - name: Semgrep Code Scanning
