@@ -23,7 +23,3 @@ tronador/
 # Generated Dockerfile and Image
 Dockerfile
 docker-image.tar*
-# coverage
-.nyc_output/*
-coverage/*
-bom.xml
