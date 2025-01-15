@@ -83,6 +83,14 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'xray'
 
 runs:
   using: 'composite'
@@ -182,6 +190,34 @@ runs:
           sts_role_arn: ${{ inputs.aws_sts_role_arn }}
         EOF
 
+    - name: Generate Observability configuration for Xray
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      uses: ./bp/cd/deploy/app/observability/xray
+      with:
+        blueprint_path: ${{ inputs.blueprint_path }}
+        source_path: ${{ inputs.source_path }}
+        cloud: 'aws'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        deployment_name: ${{ inputs.deployment_name }}x
+        environment: ${{ inputs.environment }}
+
+    - name: Generate Observability configuration for datadog
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'datadog' }}
+      uses: ./bp/cd/deploy/app/observability/datadog
+      with:
+        blueprint_path: ${{ inputs.blueprint_path }}
+        source_path: ${{ inputs.source_path }}
+        cloud: 'aws'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        deployment_name: ${{ inputs.deployment_name }}
+        environment: ${{ inputs.environment }}
+
     - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
       shell: bash
@@ -248,6 +284,18 @@ runs:
         tf-summarize tfplan.json
         echo "::endgroup::"
 
+    - name: Save Plan Artifacts
+      if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifacts_name }}_iac
+        retention-days: 1
+        overwrite: true
+        path: |
+          ${{ inputs.blueprint_path }}/terraform/aws/**
+          !**/.terragrunt-cache/**
+          !**/.terraform/**
+
     - name: Restore Pipeline Artifacts
       uses: actions/download-artifact@v4
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
@@ -272,6 +320,8 @@ runs:
         aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
         environment: ${{ inputs.environment }}
         aws_region: ${{ inputs.aws_region }}
+        observability_enabled: ${{ inputs.observability_enabled }}
+        observability_agent: ${{ inputs.observability_agent }}
 
     - name: Terragrunt Apply
       id: apply

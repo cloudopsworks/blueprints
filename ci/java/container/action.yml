@@ -42,6 +42,14 @@ inputs:
   project_owner:
     description: 'The project owner'
     required: true
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'xray'
 
 runs:
   using: 'composite'
@@ -95,6 +103,30 @@ runs:
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* ${{ inputs.source_path }}/
         cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore ${{ inputs.source_path }}/
 
+    - name: Get default config_map mount point for environment
+      id: config_map_mount_point
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.config_map.mount_point // "/app/configmap"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+
+    - name: Get xray config file from inputs-global.yaml
+      id: xray_config_file
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-agent.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Download AWS Xray agent
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}/target
+      run: |
+        tmpdir=$(mktemp -d)
+        mkdir -p observability/
+        curl -Lo $tmpdir/xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
+        unzip $tmpdir/xray-agent.zip -d observability/
+        curl -Lo observability/aws-opentelemetry-agent.jar https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar
+
     - name: Dockerfile Java Specific Injection
       working-directory: ${{ inputs.source_path }}
       shell: bash
@@ -105,6 +137,19 @@ runs:
         INJECTION_POINT="#<JAVA-INJECTION-POINT>"
         while IFS= read -r line; do
           if [[ "$line" =~ $INJECTION_POINT ]]; then
+            # Insert the content related to observability agent installation
+            if [ "${{ inputs.observability_enabled }}" == "true" ]; then
+              case "${{ inputs.observability_agent }}" in
+                xray)
+                  #echo "COPY target/observability/disco /app/webapp/disco"
+                  #echo "ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
+                  echo "COPY target/observability/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
+                  ;;
+                datadog)
+                  echo "ADD 'https://dtdg.co/latest-java-tracer' /app/webapp/dd-java-agent.jar"
+                  ;;
+              esac
+            fi 
             # Insert the content of input at the injection point depending on conditions
             JARDEP=$(find target -name "*with-dependencies.jar" | head -1)
             if [ -n "$JARDEP" ]; then
@@ -122,6 +167,21 @@ runs:
         mv "$TEMP_FILE" "$DOCKERFILE"
         cat "$DOCKERFILE"
         echo "::endgroup::"
+
+    - name: APM Arguments setup
+      id: apm_args
+      shell: bash
+      if: ${{ inputs.observability_enabled == 'true' }}
+      run: |
+        case "${{ inputs.observability_agent }}" in
+          xray)
+            #echo "result=APM_OPTS=-javaagent:/app/webapp/disco/disco-java-agent.jar=pluginPath=/app/webapp/disco/disco-plugins -Dcom.amazonaws.xray.configFile=${{ steps.xray_config_file.outputs.result }}" >> $GITHUB_OUTPUT
+            echo "result=APM_OPTS=-javaagent:/app/aws-opentelemetry-agent.jar" >> $GITHUB_OUTPUT
+            ;;
+          datadog)
+            echo "result=APM_OPTS=-javaagent:/app/webapp/dd-java-agent.jar" >> $GITHUB_OUTPUT
+            ;;
+        esac
 
     # Java version image settings (adopt is deprecated)
     - name: Set output with Java Version
@@ -185,6 +245,7 @@ runs:
         docker_inline: ${{ steps.docker_inline.outputs.result }}
         docker_image_name: ${{ steps.docker_image_name.outputs.result }}
         docker_args: ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
+        apm_args: ${{ inputs.observability_enabled == 'true' && steps.apm_args.outputs.result || '' }}
         environment: ${{ inputs.environment }}
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}

@@ -3,19 +3,22 @@
 #            Distributed Under Apache v2.0 License
 #
 ARG IMAGE_NAME=eclipse-temurin:21-alpine
+
+FROM $IMAGE_NAME AS base
+
 ARG CLASSPATH=""
 ARG JAVA_OPTS="-XX:MaxRAMPercentage=65"
 ARG APM_OPTS=""
-
-FROM $IMAGE_NAME AS base
 
 ARG USER_ID=10001
 ARG GROUP_ID=10001
 ARG USER_NAME=webapp
 ARG GROUP_NAME=webapp
 
-## Stage 1: Create NGINX configuration
+## Stage 1: Create basic entries
 USER root
+
+RUN mkdir -p /app/webapp/
 
 # Copy the application configuarion as per the application
 # Build process must ensure output jar is unique for each build
@@ -23,11 +26,18 @@ USER root
 
 # Stage 2: Customized configuation injection occurs at command line
 FROM base AS customized
+ARG CLASSPATH
+ARG JAVA_OPTS
+ARG APM_OPTS
+
 WORKDIR /app
 #<DOCKER-INJECTION-POINT>
 
 # Stage 3: Final image
 FROM customized AS final
+ARG CLASSPATH
+ARG JAVA_OPTS
+ARG APM_OPTS
 
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
 #RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \

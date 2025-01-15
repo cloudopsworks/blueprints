@@ -19,6 +19,18 @@ inputs:
   python_stack:
     description: 'The Python stack'
     required: true
+  node_apm:
+    description: 'The Node APM parameters'
+    required: false
+    default: ''
+  java_apm:
+    description: 'The Java APM parameters'
+    required: false
+    default: ''
+  python_apm:
+    description: 'The Python APM parameters'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -29,7 +41,7 @@ runs:
       shell: bash
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: npm run start' > Procfile
+          echo 'web: ${{ inputs.node_apm }} npm run start' > Procfile
           echo '::warning::Procfile created with default content'
         else
           echo '::notice::Procfile already exists, will use provided'
@@ -41,7 +53,19 @@ runs:
       shell: bash
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: java $JAVA_OPTS -jar app.jar' > Procfile
+          echo 'web: java $JAVA_OPTS ${{ inputs.java_apm }} -jar app.jar' > Procfile
+          echo '::warning::Procfile created with default content'
+        else
+          echo '::notice::Procfile already exists, will use provided.'
+        fi
+
+    - name: Default Procfile for Python
+      if: ${{ inputs.python_stack == 'true' }}
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        if [ ! -f Procfile ] ; then
+          echo 'web: ${{ inputs.python_apm }} python3 main.py' > Procfile
           echo '::warning::Procfile created with default content'
         else
           echo '::notice::Procfile already exists, will use provided.'

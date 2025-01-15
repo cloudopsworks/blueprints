@@ -118,12 +118,12 @@ runs:
       with:
         cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
 
-    # Get Package Name from package.json
+    # Get Package Name from pyproject.toml
     - name: Get package Name
       id: package_name
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -oj -r '.name' ${{ inputs.source_path }}/package.json
+        cmd: yq e -oj -r '.project.name' ${{ inputs.source_path }}/pyproject.toml
 
     # Setup Python for builds for the version provided
     - name: Setup Python
@@ -132,6 +132,15 @@ runs:
       with:
         python-version: ${{ steps.python_version.outputs.result }}
         cache: '${{ steps.python_dist.outputs.result }}'
+
+    # install basic tools
+    - name: Install Basic Python Tools
+      id: install_basic_tools
+      shell: bash
+      run: |
+        echo "::group::Install Basic Python Tools"
+        python -m pip install --upgrade pip toml-cli
+        echo "::endgroup::"
 
     # Versioning SET
     - name: Version SET
@@ -160,7 +169,7 @@ runs:
         echo "::group::Python ENV Setup"
         python -m venv .venv
         source .venv/bin/activate
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip setuptools wheel pytest pytest-cov
         echo "::endgroup::"
 
     # Build the code
@@ -205,7 +214,7 @@ runs:
           --cov-report=term-missing \
           --cov-report=html
         
-        echp "::notice::Generating stubs for Ruff & MyPy"
+        echo "::notice::Generating stubs for Ruff & MyPy"
         echo "[]" > ruff_report.json
         echo "" > mypy_report.txt
         echo "::endgroup::"
@@ -251,5 +260,5 @@ runs:
     - name: SBOM Generation for Dtrack
       uses: CycloneDX/gh-python-generate-sbom@v2
       with:
-        path: ${{ inputs.source_path }}
+        input: ${{ inputs.source_path }}/requirements.txt
         output: "${{ inputs.source_path }}/bom.xml"

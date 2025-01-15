@@ -21,3 +21,17 @@ tronador/
 # Generated Dockerfile and Image
 Dockerfile
 docker-image.tar*
+# Python
+.env
+.env/
+env/
+.venv/
+venv/
+__pycache__/
+poetry.lock
+__tests__/
+*/__tests__/*
+# Python Coverage
+coverage.xml
+test-results.xml
+htmlcov/

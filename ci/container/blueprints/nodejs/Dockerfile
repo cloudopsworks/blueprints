@@ -6,6 +6,9 @@ ARG IMAGE_NAME=node:22-alpine
 
 FROM $IMAGE_NAME AS base
 
+ARG NODE_OPTS=""
+ARG APM_OPTS=""
+
 ARG USER_ID=10001
 ARG GROUP_ID=10001
 ARG USER_NAME=webapp
@@ -16,14 +19,20 @@ USER root
 
 # Copy the application configuarion as per the application
 COPY . /app/webapp/
+#<NODE-INJECTION-POINT>
 
 # Stage 2: Customized configuation injection occurs at command line
 FROM base AS customized
+ARG NODE_OPTS
+ARG APM_OPTS
+
 WORKDIR /app
 #<DOCKER-INJECTION-POINT>
 
 # Stage 3: Final image
 FROM customized AS final
+ARG NODE_OPTS
+ARG APM_OPTS
 
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
 #RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \
@@ -34,6 +43,7 @@ RUN chown -R $USER_NAME:$GROUP_NAME /app/webapp/
 
 COPY ./startup.sh /app/webapp/
 RUN chmod +x /app/webapp/startup.sh
+ENV NODE_OPTIONS="${NODE_OPTS} ${APM_OPTS}"
 
 USER $USER_NAME
 

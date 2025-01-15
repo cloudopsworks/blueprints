@@ -35,5 +35,6 @@ inputs = {
   bucket_path      = local.release_vars.bucket_path
   version_label    = local.release_vars.version_label
   absolute_path    = get_terragrunt_dir()
+  observability    = try(local.base_vars.observability, {})
   extra_tags       = try(local.local_vars.tags, {})
 }

@@ -52,6 +52,7 @@ runs:
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
+        overwrite: 'true'
 
     # Perform of upload of sources
     - name: Upload Sources to workflow
@@ -66,13 +67,22 @@ runs:
         include-hidden-files: true
         compression-level: '3' #mid-fast
 
-    # Perform of upload of all target artfiacts for java
+    # Perform of upload of all target artfiacts for Python
     - name: Upload Target Artifacts to workflow
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |
-          ${{ inputs.source_path }}/target/**/*
+          ${{ steps.zip_globs.outputs.result }}
+          ${{ inputs.source_path }}/bom.xml
+          ${{ inputs.source_path }}/.coverage
+          ${{ inputs.source_path }}/coverage.xml
+          ${{ inputs.source_path }}/test-results.xml
+          ${{ inputs.source_path }}/htmlcov/**/*
+          ${{ inputs.source_path }}/__tests__/**/*
+          ${{ inputs.source_path }}/ruff_report.json
+          ${{ inputs.source_path }}/mypy_report.txt
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
+        overwrite: 'true'

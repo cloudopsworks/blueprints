@@ -78,5 +78,6 @@ inputs = {
   secret_files          = try(local.local_vars.secret_files, {})
   secrets               = try(local.local_vars.aws, {})
   absolute_path         = get_terragrunt_dir()
+  observability         = try(local.base_vars.observability, {})
   extra_tags            = try(local.local_vars.tags, {})
 }

@@ -42,6 +42,14 @@ inputs:
   node_extra_env:
     description: 'The extra environment variables'
     required: true
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'xray'
 
 outputs:
   node_version:
@@ -153,7 +161,18 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e -oj -i '.repository.type="git"|.repository.url="${{ github.repositoryUrl }}"' ${{ inputs.source_path }}/package.json
-    
+
+    # Install nyc jest and mocha globally
+    - name: Install Global Dependencies
+      shell: bash
+      run: |
+        echo "::group::Install Global Dependencies"
+        npm install -g nyc jest mocha
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
     # Build the code!
     - name: Install Dependencies
       working-directory: ${{ inputs.source_path }}
@@ -165,6 +184,15 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Install AWS open telemetry
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Install AWS Open Telemetry"
+        npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation
+        echo "::endgroup::"
 
     # Build the code! build target MUST be defined in package.json
     - name: Run NPM Build
@@ -184,7 +212,7 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Test"
-        CI=true DISPLAY=:99 ${{ inputs.node_extra_env }} npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless
+        CI=true DISPLAY=:99 ${{ inputs.node_extra_env }} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}

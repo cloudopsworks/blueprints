@@ -202,6 +202,18 @@ runs:
         tf-summarize tfplan.json
         echo "::endgroup::"
 
+    - name: Save Plan Artifacts
+      if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifacts_name }}_iac
+        retention-days: 1
+        overwrite: true
+        path: |
+          ${{ inputs.blueprint_path }}/terraform/aws/**
+          !**/.terragrunt-cache/**
+          !**/.terraform/**
+
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw

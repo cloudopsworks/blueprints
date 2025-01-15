@@ -37,6 +37,10 @@ inputs:
     description: 'The flag to extract embedded tarball from package'
     required: false
     default: 'false'
+  exclude_opts:
+    description: 'The exclude options to use for the build'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -52,6 +56,6 @@ runs:
     - name: Extract Tarball
       if: ${{ inputs.is_tar == 'true' }}
       run: |
-        tar -xf ${{ steps.download.outputs.download-path }}/*.tar -C ${{ steps.download.outputs.download-path }}/
+        tar ${{ inputs.exclude_opts != '' && format('--exclude="{0}"',inputs.exclude_opts) || '' }} -xf ${{ steps.download.outputs.download-path }}/*.tar -C ${{ steps.download.outputs.download-path }}/
         rm -f ${{ steps.download.outputs.download-path }}/*.tar
       shell: bash

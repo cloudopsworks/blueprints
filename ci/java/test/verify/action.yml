@@ -11,20 +11,25 @@ inputs:
     description: 'The path to the source code'
     required: false
     default: 'source'
+    deprecationMessage: 'ACTION is DEPRECATED. not in use after workflow v5.6.x'
   blueprint_path:
     description: 'The path to the blueprint'
     required: false
     default: 'bp'
+    deprecationMessage: 'ACTION is DEPRECATED. not in use after workflow v5.6.x'
   bot_user:
     description: 'The bot user to use for the build'
     required: true
+    deprecationMessage: 'ACTION is DEPRECATED. not in use after workflow v5.6.x'
   token:
     description: 'The github token to use for the build'
     required: true
+    deprecationMessage: 'ACTION is DEPRECATED. not in use after workflow v5.6.x'
   dtrack_project_type:
     description: 'The Dependency Track project type'
     required: false
     default: 'library'
+    deprecationMessage: 'ACTION is DEPRECATED. not in use after workflow v5.6.x'
 
 runs:
     using: 'composite'

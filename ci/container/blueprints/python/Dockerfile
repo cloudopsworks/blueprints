@@ -3,10 +3,11 @@
 #            Distributed Under Apache v2.0 License
 #
 ARG IMAGE_NAME=python:3.12-slim
-ARG PYTHON_OPTS=""
-ARG APM_OPTS=""
 
 FROM $IMAGE_NAME AS base
+
+ARG PYTHON_OPTS=""
+ARG APM_OPTS=""
 
 ARG USER_ID=10001
 ARG GROUP_ID=10001
@@ -18,15 +19,21 @@ USER root
 
 # Copy the application configuarion as per the application
 # Build process must ensure output python app is unique for each build
+COPY app/ *.py* *.txt *.toml /app/webapp/
 #<PYTHON-INJECTION-POINT>
 
 # Stage 2: Customized configuation injection occurs at command line
 FROM base AS customized
+ARG PYTHON_OPTS
+ARG APM_OPTS
+
 WORKDIR /app
 #<DOCKER-INJECTION-POINT>
 
 # Stage 3: Final image
 FROM customized AS final
+ARG PYTHON_OPTS
+ARG APM_OPTS
 
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
 #RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \
