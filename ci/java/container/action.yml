@@ -140,7 +140,7 @@ runs:
               case "${{ inputs.observability_agent }}" in
                 xray)
                   #echo "COPY target/disco /app/webapp/disco"
-                  echo "ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/download/version/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
+                  echo "ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/download/latest/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
                   ;;
                 datadog)
                   echo "ADD 'https://dtdg.co/latest-java-tracer' /app/webapp/dd-java-agent.jar"
