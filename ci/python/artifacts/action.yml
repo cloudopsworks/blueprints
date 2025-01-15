@@ -72,7 +72,7 @@ runs:
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |
-          ${{ inputs.source_path }}/target/**/*
+          ${{ inputs.source_path }}/**/*
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
