@@ -116,14 +116,16 @@ runs:
       with:
         cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-agent.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-#    - name: Download AWS Xray agent
-#      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
-#      shell: bash
-#      working-directory: ${{ inputs.source_path }}/target
-#      run: |
-#        tmpdir=$(mktemp -d)
-#        curl -Lo $tmpdir/xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
-#        unzip $tmpdir/xray-agent.zip
+    - name: Download AWS Xray agent
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}/target
+      run: |
+        tmpdir=$(mktemp -d)
+        mkdir -p observability/
+        curl -Lo $tmpdir/xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
+        unzip $tmpdir/xray-agent.zip -d observability/
+        curl -Lo observability/aws-opentelemetry-agent.jar https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar
 
     - name: Dockerfile Java Specific Injection
       working-directory: ${{ inputs.source_path }}
@@ -139,8 +141,9 @@ runs:
             if [ "${{ inputs.observability_enabled }}" == "true" ]; then
               case "${{ inputs.observability_agent }}" in
                 xray)
-                  #echo "COPY target/disco /app/webapp/disco"
-                  echo "ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
+                  #echo "COPY target/observability/disco /app/webapp/disco"
+                  #echo "ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
+                  echo "COPY target/observability/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
                   ;;
                 datadog)
                   echo "ADD 'https://dtdg.co/latest-java-tracer' /app/webapp/dd-java-agent.jar"
