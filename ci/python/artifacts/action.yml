@@ -74,12 +74,12 @@ runs:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |
           ${{ steps.zip_globs.outputs.result }}
-          bom.xml
-          .coverage
-          coverage.xml
-          test-results.xml
-          htmlcov/**/*
-          __tests__/**/*
+          ${{ inputs.source_path }}/bom.xml
+          ${{ inputs.source_path }}/.coverage
+          ${{ inputs.source_path }}/coverage.xml
+          ${{ inputs.source_path }}/test-results.xml
+          ${{ inputs.source_path }}/htmlcov/**/*
+          ${{ inputs.source_path }}/__tests__/**/*
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
