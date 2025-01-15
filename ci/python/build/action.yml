@@ -214,7 +214,7 @@ runs:
           --cov-report=term-missing \
           --cov-report=html
         
-        echp "::notice::Generating stubs for Ruff & MyPy"
+        echo "::notice::Generating stubs for Ruff & MyPy"
         echo "[]" > ruff_report.json
         echo "" > mypy_report.txt
         echo "::endgroup::"
