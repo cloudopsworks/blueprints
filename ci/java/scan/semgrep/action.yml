@@ -32,12 +32,15 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # Split the semgrep_excludes into tokens and return the result as --exclude aaa --exclude bbb options
+    # Split the semgrep_excludes into tokens and return as the result for each token prepended with --exclude xxx
+    # eg: --exclude aaa --exclude bbb options
     - name: Split semgrep_excludes
       id: split_excludes
       shell: bash
       run: |
-        echo "result=$(echo ${{ inputs.semgrep_excludes }} | sed 's/,/ --exclude /g')" >> $GITHUB_OUTPUT
+        items="${{ inputs.semgrep_excludes }}"
+        result="--exclude ${item//,/ --exclude }"
+        echo "result=$result" >> $GITHUB_OUTPUT
 
     - name: Semgrep Code Scanning
       id: semgrep
