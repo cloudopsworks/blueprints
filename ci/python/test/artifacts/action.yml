@@ -33,17 +33,19 @@ runs:
         if-no-files-found: 'warn'
         path: |
           ${{ inputs.source_path }}/.coverage
-          ${{ inputs.source_path }}/coverage/**
-          ${{ inputs.source_path }}/htmlcov/**          
+          ${{ inputs.source_path }}/coverage/**/*
+          ${{ inputs.source_path }}/htmlcov/**/*
           ${{ inputs.source_path }}/test-results.xml
           ${{ inputs.source_path }}/**/jacoco.exec
           ${{ inputs.source_path }}/**/jacoco.xml
           ${{ inputs.source_path }}/**/jacoco.csv
           ${{ inputs.source_path }}/**/jacoco.html
           ${{ inputs.source_path }}/**/jacoco.json
-          ${{ inputs.source_path }}/**/site/jacoco/**
+          ${{ inputs.source_path }}/**/site/jacoco/**/*
           ${{ inputs.source_path }}/*.sarif
           ${{ inputs.source_path }}/bom.xml
           ${{ inputs.source_path }}/trivy-report.json
+          ${{ inputs.source_path }}/ruff_report.json
+          ${{ inputs.source_path }}/mypy_report.txt
           ${{ inputs.source_path }}/sonar/**/*
 

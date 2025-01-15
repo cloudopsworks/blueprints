@@ -80,6 +80,8 @@ runs:
           ${{ inputs.source_path }}/test-results.xml
           ${{ inputs.source_path }}/htmlcov/**/*
           ${{ inputs.source_path }}/__tests__/**/*
+          ${{ inputs.source_path }}/ruff_report.json
+          ${{ inputs.source_path }}/mypy_report.txt
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
