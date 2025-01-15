@@ -66,15 +66,15 @@ runs:
         include-hidden-files: true
         compression-level: '3' #mid-fast
 
-    # Perform of upload of all target artfiacts for java
+    # Perform of upload of all target artfiacts for Python
     - name: Upload Target Artifacts to workflow
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |
-          ${{ inputs.source_path }}/**/*
           !.venv/**
           !venv/**
+          ${{ inputs.source_path }}/**/*
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
