@@ -136,6 +136,7 @@ runs:
     # install basic tools
     - name: Install Basic Python Tools
       id: install_basic_tools
+      shell: bash
       run: |
         echo "::group::Install Basic Python Tools"
         python -m pip install --upgrade pip setuptools wheel pytest pytest-cov toml-cli
