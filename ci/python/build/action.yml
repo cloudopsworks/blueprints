@@ -118,12 +118,12 @@ runs:
       with:
         cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
 
-    # Get Package Name from package.json
+    # Get Package Name from pyproject.toml
     - name: Get package Name
       id: package_name
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -oj -r '.name' ${{ inputs.source_path }}/package.json
+        cmd: yq e -oj -r '.project.name' ${{ inputs.source_path }}/pyproject.toml
 
     # Setup Python for builds for the version provided
     - name: Setup Python
@@ -132,6 +132,14 @@ runs:
       with:
         python-version: ${{ steps.python_version.outputs.result }}
         cache: '${{ steps.python_dist.outputs.result }}'
+
+    # install basic tools
+    - name: Install Basic Python Tools
+      id: install_basic_tools
+      run: |
+        echo "::group::Install Basic Python Tools"
+        python -m pip install --upgrade pip setuptools wheel pytest pytest-cov toml-cli
+        echo "::endgroup::"
 
     # Versioning SET
     - name: Version SET
