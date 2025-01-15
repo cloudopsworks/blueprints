@@ -52,6 +52,7 @@ runs:
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
+        overwrite: 'true'
 
     # Perform of upload of sources
     - name: Upload Sources to workflow
@@ -82,3 +83,4 @@ runs:
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
+        overwrite: 'true'

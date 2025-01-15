@@ -94,6 +94,7 @@ runs:
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
+        overwrite: 'true'
 
     # Perform the node_build packaging right from the build directory
     - name: Upload Build result
@@ -105,6 +106,7 @@ runs:
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
+        overwrite: 'true'
 
     # Perform of upload of sources
     - name: Upload Sources to workflow
@@ -128,3 +130,4 @@ runs:
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
+        overwrite: 'true'
