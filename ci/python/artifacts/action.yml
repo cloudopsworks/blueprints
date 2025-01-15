@@ -73,6 +73,8 @@ runs:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |
           ${{ inputs.source_path }}/**/*
+          !.venv/**
+          !venv/**
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
