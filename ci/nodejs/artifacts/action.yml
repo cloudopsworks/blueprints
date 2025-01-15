@@ -126,10 +126,7 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
-        path: |
-          ${{ steps.tar_file.outputs.artifact }}
-          ${{ inputs.source_path }}/coverage/**/*
-          ${{ inputs.source_path }}/bom.xml
+        path: ${{ steps.tar_file.outputs.artifact }}
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
