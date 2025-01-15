@@ -133,15 +133,6 @@ runs:
         python-version: ${{ steps.python_version.outputs.result }}
         cache: '${{ steps.python_dist.outputs.result }}'
 
-    # install basic tools
-    - name: Install Basic Python Tools
-      id: install_basic_tools
-      shell: bash
-      run: |
-        echo "::group::Install Basic Python Tools"
-        python -m pip install --upgrade pip setuptools wheel pytest pytest-cov toml-cli
-        echo "::endgroup::"
-
     # Versioning SET
     - name: Version SET
       working-directory: ${{ inputs.source_path }}
@@ -169,7 +160,7 @@ runs:
         echo "::group::Python ENV Setup"
         python -m venv .venv
         source .venv/bin/activate
-        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --upgrade pip setuptools wheel pytest pytest-cov toml-cli
         echo "::endgroup::"
 
     # Build the code
