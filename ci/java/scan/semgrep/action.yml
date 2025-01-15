@@ -27,24 +27,24 @@ inputs:
   semgrep_excludes:
     description: 'The Semgrep excludes'
     required: false
-    default: '.github/workflows/*,*/__tests__/*'
+    default: '.github/workflows/*,src/test/*'
 
 runs:
-    using: 'composite'
-    steps:
-      # Split the semgrep_excludes into tokens and return the result as --exclude aaa --exclude bbb options
-      - name: Split semgrep_excludes
-        id: split_excludes
-        shell: bash
-        run: |
-          echo "result::$(echo ${{ inputs.semgrep_excludes }} | sed 's/,/ --exclude /g')" >> $GITHUB_OUTPUT
+  using: 'composite'
+  steps:
+    # Split the semgrep_excludes into tokens and return the result as --exclude aaa --exclude bbb options
+    - name: Split semgrep_excludes
+      id: split_excludes
+      shell: bash
+      run: |
+        echo "result::$(echo ${{ inputs.semgrep_excludes }} | sed 's/,/ --exclude /g')" >> $GITHUB_OUTPUT
 
-      - name: Semgrep Code Scanning
-        id: semgrep
-        env:
-          SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
-        working-directory: ${{ inputs.source_path }}
-        shell: bash
-        run: |
-          semgrep --config=p/java . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
-          semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.split_excludes.outputs.result }}
+    - name: Semgrep Code Scanning
+      id: semgrep
+      env:
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        semgrep --config=p/java . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
+        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.split_excludes.outputs.result }}
