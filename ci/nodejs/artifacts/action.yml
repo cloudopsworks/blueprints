@@ -91,12 +91,12 @@ runs:
       shell: bash
       run: |
         TMP_DIR=$(mktemp -d)
-        echo "node_modules/" > /tmp/exclude_globs_target.txt
+        echo "node_modules*" > /tmp/exclude_globs_target.txt
         echo ".git*" >> /tmp/exclude_globs_target.txt
-        echo "tronador/" >> /tmp/exclude_globs_target.txt
+        echo "tronador*" >> /tmp/exclude_globs_target.txt
         echo ".tronador" >> /tmp/exclude_globs_target.txt
         echo ".nyc*" >> /tmp/exclude_globs_target.txt
-        echo "apifiles/" >> /tmp/exclude_globs_target.txt
+        echo "apifiles*" >> /tmp/exclude_globs_target.txt
         tar -cf $TMP_DIR/node_artifacts_target.tar --ignore-failed-read --hard-dereference --exclude-from=/tmp/exclude_globs_target.txt --exclude-vcs ${{ steps.zip_globs_line.outputs.result }} "coverage/*" test-results.xml "*.sarif" bom.xml trivy-report.json
         echo "artifact=$TMP_DIR/node_artifacts_target.tar" >> $GITHUB_OUTPUT
 
