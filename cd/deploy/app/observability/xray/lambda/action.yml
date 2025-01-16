@@ -86,7 +86,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Xray/OTEL variable Injection"
-        yq e -i '.lambda.layers += [{"arn":"arn:aws:lambda::901920570463:layer:${{ steps.runtime.outputs.result }}"}]' inputs.yaml
+        yq e -i '.lambda.layers += [{"arn":"${{ steps.runtime.outputs.result }}"}]' inputs.yaml
         yq e -i '.lambda.environment.variables += [{"name":"AWS_LAMBDA_EXEC_WRAPPER","value":"${{ steps.runtime.outputs.wrapper }}"}]' inputs.yaml
         yq e -i '.lambda.iam.enabled = true' inputs.yaml
         yq e -i '.lambda.iam.policy_attachments += [{"arn":"arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"},{"arn":"arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy"}]' inputs.yaml
