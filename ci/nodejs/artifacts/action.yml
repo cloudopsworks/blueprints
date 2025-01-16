@@ -81,8 +81,18 @@ runs:
       run: |
         TMP_DIR=$(mktemp -d)
         echo "${{ steps.raw_exclude_globs.outputs.result }}" > /tmp/exclude_globs.txt
-        tar -cf $TMP_DIR/node_artifacts.tar --exclude-from=/tmp/exclude_globs.txt --ignore-failed-read --exclude-vcs ${{ steps.zip_globs_line.outputs.result }} "*coverage/*" test-results.xml "*jacoco.exec" "*/jacoco.xml" "*/jacoco.csv" "*/jacoco.html" "*/jacoco.json" "*/site/jacoco/*" "*.sarif" bom.xml trivy-report.json
+        tar -cf $TMP_DIR/node_artifacts.tar --exclude-from=/tmp/exclude_globs.txt --ignore-failed-read --exclude-vcs ${{ steps.zip_globs_line.outputs.result }}
         echo "artifact=$TMP_DIR/node_artifacts.tar" >> $GITHUB_OUTPUT
+
+    # Create tarball for target
+    - name: Create TAR file for target
+      id: tar_file_target
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        TMP_DIR=$(mktemp -d)
+        tar -cf $TMP_DIR/node_artifacts_target.tar --ignore-failed-read --hard-dereference --exclude="*node_modules/*" --exclude-vcs ${{ steps.zip_globs_line.outputs.result }} "*coverage/*" test-results.xml "*jacoco.exec" "*/jacoco.xml" "*/jacoco.csv" "*/jacoco.html" "*/jacoco.json" "*/site/jacoco/*" "*.sarif" bom.xml trivy-report.json
+        echo "artifact=$TMP_DIR/node_artifacts_target.tar" >> $GITHUB_OUTPUT
 
     # Perform of upload of artfiacts only if not front_end
     - name: Upload Artifacts to workflow
@@ -126,7 +136,7 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
-        path: ${{ steps.tar_file.outputs.artifact }}
+        path: ${{ steps.tar_file_target.outputs.artifact }}
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
