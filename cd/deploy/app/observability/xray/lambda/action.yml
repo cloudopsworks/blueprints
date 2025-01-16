@@ -78,6 +78,7 @@ runs:
         fi
         echo "::debug::result=$runtime"
         echo "result=$runtime" >> $GITHUB_OUTPUT
+        echo "wrapper=$wrapper" >> $GITHUB_OUTPUT
 
     - name: Xray/OTEL variable Injection
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/lambda
