@@ -67,10 +67,10 @@ runs:
         runtime=
         wrapper=
         if [[ "$lruntime" =~ node* ]]; then
-          runtime="aws-otel-nodejs-${{ steps.arch.outputs.result }}-ver-1-30-1:1"
-          wrapper="/opt/otel-handler"
+          runtime=$(yq e '.nodejs.${{ steps.aws_region.outputs.result }}' observability.yaml)
+          wrapper="/opt/otel-instrument"
         elif [[ "$lruntime" =~ python* ]]; then
-          runtime="aws-otel-python-${{ steps.arch.outputs.result }}-ver-1-29-0:1"
+          runtime=$(yq e '.python.${{ steps.aws_region.outputs.result }}' observability.yaml)
           wrapper="/opt/otel-instrument"
         elif [[ "$lruntime" =~ java* ]]; then
           runtime="aws-otel-java-agent-${{ steps.arch.outputs.result }}-ver-1-32-0:4"
@@ -78,6 +78,7 @@ runs:
         fi
         echo "::debug::result=$runtime"
         echo "result=$runtime" >> $GITHUB_OUTPUT
+        echo "wrapper=$wrapper" >> $GITHUB_OUTPUT
 
     - name: Xray/OTEL variable Injection
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/lambda
@@ -85,7 +86,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Xray/OTEL variable Injection"
-        yq e -i '.lambda.layers += [{"arn":"arn:aws:lambda:${{ steps.aws_region.outputs.result }}:901920570463:layer:${{ steps.runtime.outputs.result }}"}]' inputs.yaml
+        yq e -i '.lambda.layers += [{"arn":"${{ steps.runtime.outputs.result }}"}]' inputs.yaml
         yq e -i '.lambda.environment.variables += [{"name":"AWS_LAMBDA_EXEC_WRAPPER","value":"${{ steps.runtime.outputs.wrapper }}"}]' inputs.yaml
         yq e -i '.lambda.iam.enabled = true' inputs.yaml
         yq e -i '.lambda.iam.policy_attachments += [{"arn":"arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"},{"arn":"arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy"}]' inputs.yaml
