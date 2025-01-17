@@ -44,21 +44,21 @@ runs:
             repo: context.repo.repo,
             pull_number: pull_request_number
           });
+                    
+          var is_approved = false;
           
-          const {data: reviews} = await github.rest.pulls.listReviews({
+          for await (const {data: reviews} of github.paginate.iterator(github.rest.pulls.listReviews, {
             owner: context.repo.owner,
             repo: context.repo.repo,
             pull_number: pull_request_number
-          });
-          
-          var is_approved = false;
-          
-          for (const aReview of reviews ) {
-            console.debug(`${author} has reviewed?: # ${aReview.id} - State: ${aReview.state} - UserLogin: ${aReview.user.login}`);
-            if( aReview.user.login === author && aReview.state === 'APPROVED' ) {
-              console.log(`Found ${author} made a review and result is: ${aReview.state}`);
-              is_approved = true;
-              break;
+          })) {
+            for (const aReview of reviews ) {
+              console.debug(`${author} has reviewed?: # ${aReview.id} - State: ${aReview.state} - UserLogin: ${aReview.user.login}`);
+              if( aReview.user.login === author && aReview.state === 'APPROVED' ) {
+                console.log(`Found ${author} made a review and result is: ${aReview.state}`);
+                is_approved = true;
+                break;
+              }
             }
           }
           
