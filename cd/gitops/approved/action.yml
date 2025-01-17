@@ -54,14 +54,18 @@ runs:
           var is_approved = false;
           
           for (const aReview of reviews ) {
+            console.debug(`{author} has reviewed: # {aReview.id} ?`);
             if( aReview.user.login === author && aReview.state === 'APPROVED' ) {
+              console.log(`found {autor} made a review and result is: {aReview.state}`);
               is_approved = true;
               break;
             }
           }
           
           for (const aUser of reviewers.users ) {
+            console.debug(`{author} is reviewer: {aUser.login} ?`);
             if( aUser.login === author ) {
+              console.log(`found {autor} in the reviewers list`);
               is_approved = true;
               break;
             }
