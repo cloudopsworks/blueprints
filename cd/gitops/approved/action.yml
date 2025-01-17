@@ -53,7 +53,7 @@ runs:
             pull_number: pull_request_number
           })) {
             for (const aReview of reviews ) {
-              console.debug(`${author} has reviewed?: # ${aReview.id} - State: ${aReview.state} - UserLogin: ${aReview.user.login}`);
+              //console.debug(`${author} has reviewed?: # ${aReview.id} - State: ${aReview.state} - UserLogin: ${aReview.user.login}`);
               if( aReview.user.login === author && aReview.state === 'APPROVED' ) {
                 console.log(`Found ${author} made a review and result is: ${aReview.state}`);
                 is_approved = true;
@@ -63,7 +63,7 @@ runs:
           }
           
           for (const aUser of reviewers.users ) {
-            console.debug(`${author} is reviewer: ${aUser.login} ?`);
+            //console.debug(`${author} is reviewer: ${aUser.login} ?`);
             if( aUser.login === author ) {
               console.log(`Found ${author} in the reviewers list`);
               is_approved = true;
