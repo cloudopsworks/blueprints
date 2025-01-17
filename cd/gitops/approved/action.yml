@@ -54,7 +54,7 @@ runs:
           var is_approved = false;
           
           for (const aReview of reviews ) {
-            console.debug(`${author} has reviewed: # ${aReview.id} ?`);
+            console.debug(`${author} has reviewed?: # ${aReview.id} - State: ${aReview.state} - UserLogin: ${aReview.user.login}`);
             if( aReview.user.login === author && aReview.state === 'APPROVED' ) {
               console.log(`Found ${author} made a review and result is: ${aReview.state}`);
               is_approved = true;
