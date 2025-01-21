@@ -15,13 +15,35 @@ runs:
       shell: bash
       run: |
         echo "::group::Install runner-tools"
-        (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y))
+        (type -p wget >/dev/null || (sudo apt update && sudo apt-get -y install wget))
         sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-        sudo apt install -y gh jq curl zip unzip python3 python3-pip
+        sudo apt install -y gh jq curl zip unzip python3 python3-pip apt-transport-https ca-certificates gnupg
+        echo "::endgroup::"
+
+    - name: Download and Install AWS CLI
+      working-directory: /tmp
+      shell: bash
+      run: |
+        echo "::group::Download and install AWS CLI"
         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
         unzip -qo awscliv2.zip
         which aws || sudo ./aws/install
-        which aws && sudo ./aws/install --update
+        echo "::endgroup::"
+
+    - name: Download and Install Azure CLI
+      working-directory: /tmp
+      shell: bash
+      run: |
         curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
         az extension add --name azure-devops
+        echo "::endgroup::"
+
+    - name: Download and Install GCP CLI
+      working-directory: /tmp
+      shell: bash
+      run: |
+        echo "::group::Download and install GCP CLI"
+        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+        sudo apt-get update -y && sudo apt-get -y install google-cloud-cli
         echo "::endgroup::"
