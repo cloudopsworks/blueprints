@@ -35,8 +35,8 @@ runs:
       shell: bash
       run: |
         echo "::group::Download and install Azure CLI"
+        (type -p az || (curl -L https://aka.ms/InstallAzureCLIDeb | sudo bash)) 
         curl -L https://aka.ms/InstallAzureCLIDeb | sudo bash
-        az extension add --name azure-devops
         echo "::endgroup::"
 
     - name: Download and Install GCP CLI
@@ -44,7 +44,5 @@ runs:
       shell: bash
       run: |
         echo "::group::Download and install GCP CLI"
-        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-        sudo apt-get update -y && sudo apt-get -y install google-cloud-cli
+        (type -p gcloud || (echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && apt-get update -y && apt-get install google-cloud-cli -y))
         echo "::endgroup::"
