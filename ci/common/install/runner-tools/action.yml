@@ -35,8 +35,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Download and install Azure CLI"
-        (type -p az || (curl -L https://aka.ms/InstallAzureCLIDeb | sudo bash)) 
-        curl --insecure -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        (type -p az || (curl --insecure -sL https://aka.ms/InstallAzureCLIDeb | sudo bash)) 
         echo "::endgroup::"
 
     - name: Download and Install GCP CLI
