@@ -34,6 +34,7 @@ runs:
       working-directory: /tmp
       shell: bash
       run: |
+        echo "::group::Download and install Azure CLI"
         curl -L https://aka.ms/InstallAzureCLIDeb | sudo bash
         az extension add --name azure-devops
         echo "::endgroup::"
