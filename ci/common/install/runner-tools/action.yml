@@ -30,6 +30,7 @@ runs:
         unzip -qo awscliv2.zip
         type -p aws > /dev/null || sudo ./aws/install
         type -p aws > /dev/null && sudo ./aws/install --update
+        aws --version
         echo "::endgroup::"
 
     - name: Download and Install Azure CLI
@@ -39,6 +40,7 @@ runs:
         echo "::group::Download and install Azure CLI"
         (type -p az > /dev/null || (echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" | sudo tee -a /etc/apt/sources.list.d/azure-cli.list && sudo mkdir -p /etc/apt/keyrings && curl -sLS https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor > /etc/apt/keyrings/microsoft.gpg && chmod go+r /etc/apt/keyrings/microsoft.gpg && sudo apt-get update -y && sudo apt-get install azure-cli -y))
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" | sudo tee -a /etc/apt/sources.list.d/azure-cli.list && sudo mkdir -p /etc/apt/keyrings && curl -sLS https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor > /etc/apt/keyrings/microsoft.gpg && chmod go+r /etc/apt/keyrings/microsoft.gpg && sudo apt-get update -y && sudo apt-get install azure-cli -y
+        az --version
         echo "::endgroup::"
 
 
@@ -48,4 +50,5 @@ runs:
       run: |
         echo "::group::Download and install GCP CLI"
         (type -p gcloud || (echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && sudo apt-get update -y && sudo apt-get install google-cloud-cli -y))
+        gcloud --version
         echo "::endgroup::"
