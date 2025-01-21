@@ -71,7 +71,7 @@ runs:
         VERSION=$(curl -s "https://api.github.com/repos/google/go-containerregistry/releases/latest" | jq -r '.tag_name')
         OS=$(uname -s)
         ARCH=$(uname -m)
-        curl -sL "https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_${OS}_${ARCH}.tar.gz" > go-containerregistry.tar.gz
+        curl -L "https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_${OS}_${ARCH}.tar.gz" > go-containerregistry.tar.gz
         sudo tar -zxvf go-containerregistry.tar.gz -C /usr/local/bin/ crane
         echo "::endgroup::"
 

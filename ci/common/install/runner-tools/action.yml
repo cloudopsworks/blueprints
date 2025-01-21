@@ -25,7 +25,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Download and install AWS CLI"
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        curl -L "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
         unzip -qo awscliv2.zip
         which aws || sudo ./aws/install
         echo "::endgroup::"
@@ -34,7 +34,7 @@ runs:
       working-directory: /tmp
       shell: bash
       run: |
-        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        curl -L https://aka.ms/InstallAzureCLIDeb | sudo bash
         az extension add --name azure-devops
         echo "::endgroup::"
 
