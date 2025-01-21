@@ -13,9 +13,10 @@ runs:
     - name: Install runner-tools
       working-directory: /tmp
       shell: bash
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
         echo "::group::Install runner-tools"
-        export DEBIAN_FRONTEND=noninteractive
         (type -p wget >/dev/null || (sudo apt update && sudo apt-get -y install wget))
         sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
         sudo apt install -y gh jq curl zip unzip python3 python3-pip apt-transport-https ca-certificates gnupg lsb-release
@@ -36,6 +37,8 @@ runs:
     - name: Download and Install Azure CLI
       working-directory: /tmp
       shell: bash
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
         echo "::group::Download and install Azure CLI"
         (type -p az > /dev/null || (echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" | sudo tee -a /etc/apt/sources.list.d/azure-cli.list && sudo mkdir -p /etc/apt/keyrings && curl -sLS https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor > /etc/apt/keyrings/microsoft.gpg && sudo chmod go+r /etc/apt/keyrings/microsoft.gpg && sudo apt-get update -y && sudo apt-get install azure-cli -y))
@@ -46,6 +49,8 @@ runs:
     - name: Download and Install GCP CLI
       working-directory: /tmp
       shell: bash
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
         echo "::group::Download and install GCP CLI"
         (type -p gcloud || (echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && sudo apt-get update -y && sudo apt-get install google-cloud-cli -y))
