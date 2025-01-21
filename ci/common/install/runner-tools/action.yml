@@ -22,4 +22,6 @@ runs:
         unzip -qo awscliv2.zip
         which aws || sudo ./aws/install
         which aws && sudo ./aws/install --update
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+        az extension add --name azure-devops
         echo "::endgroup::"
