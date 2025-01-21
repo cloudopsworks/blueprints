@@ -29,7 +29,7 @@ runs:
         curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
         unzip -qo awscliv2.zip
         type -p aws > /dev/null || sudo ./aws/install
-        type -p aws > /dev/null && sudo ./aws/install --upgrade
+        type -p aws > /dev/null && sudo ./aws/install --update
         echo "::endgroup::"
 
     - name: Download and Install Azure CLI
