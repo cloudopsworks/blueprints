@@ -30,20 +30,20 @@ runs:
         unzip -qo awscliv2.zip
         which aws || sudo ./aws/install
         echo "::endgroup::"
-
-    - name: Download and Install Azure CLI
-      working-directory: /tmp
-      shell: bash
-      run: |
-        echo "::group::Download and install Azure CLI"
-        (type -p az > /dev/null || (echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" | tee -a /etc/apt/sources.list.d/azure-cli.list && mkdir -p /etc/apt/keyrings && curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/keyrings/microsoft.gpg && chmod go+r /etc/apt/keyrings/microsoft.gpg && apt-get update -y && apt-get install azure-cli -y))
-        echo "::endgroup::"
-        
-
-    - name: Download and Install GCP CLI
-      working-directory: /tmp
-      shell: bash
-      run: |
-        echo "::group::Download and install GCP CLI"
-        (type -p gcloud || (echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && apt-get update -y && apt-get install google-cloud-cli -y))
-        echo "::endgroup::"
+#
+#    - name: Download and Install Azure CLI
+#      working-directory: /tmp
+#      shell: bash
+#      run: |
+#        echo "::group::Download and install Azure CLI"
+#        (type -p az > /dev/null || (echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" | tee -a /etc/apt/sources.list.d/azure-cli.list && mkdir -p /etc/apt/keyrings && curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/keyrings/microsoft.gpg && chmod go+r /etc/apt/keyrings/microsoft.gpg && apt-get update -y && apt-get install azure-cli -y))
+#        echo "::endgroup::"
+#
+#
+#    - name: Download and Install GCP CLI
+#      working-directory: /tmp
+#      shell: bash
+#      run: |
+#        echo "::group::Download and install GCP CLI"
+#        (type -p gcloud || (echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && apt-get update -y && apt-get install google-cloud-cli -y))
+#        echo "::endgroup::"
