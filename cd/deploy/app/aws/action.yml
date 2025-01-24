@@ -22,7 +22,7 @@ inputs:
   tg_version:
     description: 'The version of Terragrunt to use'
     required: false
-    default: '0.59.5'
+    default: '0.72.2'
   tf_summarize_version:
     description: 'The version of tf-summarize to use'
     required: false
