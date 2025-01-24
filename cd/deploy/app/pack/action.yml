@@ -108,12 +108,12 @@ runs:
       run: |
         [ -f values/.env ] && cp -pf values/.env ${{ steps.temp_dir.outputs.result }}
 
-    - name: Copy Python Application Release
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
-      if: ${{ steps.stack.outputs.python_stack == 'true' }}
-      shell: bash
-      run: |
-        cp -pfr ./* ./.* ${{ steps.temp_dir.outputs.result }}/
+#    - name: Copy Python Application Release
+#      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
+#      if: ${{ steps.stack.outputs.python_stack == 'true' }}
+#      shell: bash
+#      run: |
+#        cp -pfr ./* ./.* ${{ steps.temp_dir.outputs.result }}/
 
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
