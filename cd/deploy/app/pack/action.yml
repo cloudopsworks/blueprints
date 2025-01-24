@@ -113,7 +113,7 @@ runs:
       if: ${{ steps.stack.outputs.python_stack == 'true' }}
       shell: bash
       run: |
-        cp -pfr ./* ./.* ${{ steps.temp_dir.outputs.result }}/
+        cp -pfr . ${{ steps.temp_dir.outputs.result }}/
 
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
