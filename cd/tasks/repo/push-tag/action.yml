@@ -37,5 +37,6 @@ runs:
       run: |
         git config --global user.name "${{ inputs.bot_user }}"
         git config --global user.email "${{ inputs.bot_email}}"
+        git pull --rebase
         make gitflow/version/tag
         make gitflow/version/publish
