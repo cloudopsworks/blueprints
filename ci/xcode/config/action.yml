@@ -104,5 +104,5 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-          OUT=$(yq e '.xcode.version // "14.1"' .github/vars/inputs-${{ inputs.environment }}.yaml)
+          OUT=$(yq e '.xcode.version // "14.1"' .github/vars/inputs-global.yaml)
           echo "result=$OUT" >> $GITHUB_OUTPUT
