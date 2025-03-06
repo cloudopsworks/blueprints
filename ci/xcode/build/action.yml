@@ -149,8 +149,6 @@ runs:
       if: ${{ startsWith(inputs.xcode_version, '16') }}
       shell: bash
       run: |
-        set -x
-        ls -l $RUNNER_TEMP
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
 
         # apply provisioning profile
@@ -161,7 +159,6 @@ runs:
       if: ${{ ! startsWith(inputs.xcode_version, '16') }}
       shell: bash
       run: |
-        ls -l $RUNNER_TEMP
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
 
         # apply provisioning profile
