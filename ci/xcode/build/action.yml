@@ -152,7 +152,7 @@ runs:
 
         # apply provisioning profile
         mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
-        UUID=$(grep --text --after-context=1 UUID "${1}" | grep --ignore-case --only-matching "[-A-Z0-9]\{36\}")
+        UUID=$(grep --text --after-context=1 UUID "${PP_PATH}" | grep --ignore-case --only-matching "[-A-Z0-9]\{36\}")
         cp $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles\${UUID}.mobileprovision
 
     - name: Set Provissioning Profile - Xcode < 16
