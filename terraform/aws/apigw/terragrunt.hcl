@@ -12,8 +12,8 @@ locals {
   global_vars  = yamldecode(file(find_in_parent_folders("global-inputs.yaml")))
 }
 
-include {
-  path = find_in_parent_folders()
+include "root" {
+  path = find_in_parent_folders("root.hcl")
 }
 
 terraform {
