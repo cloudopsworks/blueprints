@@ -30,18 +30,27 @@ runs:
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        GLOBS=$(yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' .github/cloudopsworks-ci.yaml)
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        echo "$GLOBS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
     # Get pipeline conf exclude globs
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        GLOBS=$(yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' .github/cloudopsworks-ci.yaml)
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        echo "$GLOBS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
 
-    # Perform of upload of artfiacts for java
+    # Perform of upload of artfiacts for xcode
     - name: Upload Artifacts to workflow
       uses: actions/upload-artifact@v4
       with:
@@ -61,6 +70,7 @@ runs:
         path: |
           ${{ inputs.source_path }}/**
           !${{ inputs.source_path }}/target/**
+          !${{ inputs.source_path }}/build/**
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
         include-hidden-files: true
