@@ -152,7 +152,7 @@ runs:
 
         # apply provisioning profile
         mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
-        UUID=$(grep --text --after-context=1 UUID "${PP_PATH}" | grep --ignore-case --only-matching "[-A-Z0-9]\{36\}")
+        UUID=$(grep --text --after-context=1 UUID $PP_PATH | grep --ignore-case --only-matching "[-A-Z0-9]\{36\}")
         echo "UUID = $UUID"
         cp $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles\${UUID}.mobileprovision
 
@@ -164,7 +164,7 @@ runs:
 
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        UUID=$(grep --text --after-context=1 UUID "${PP_PATH}" | grep --ignore-case --only-matching "[-A-Z0-9]\{36\}")
+        UUID=$(grep --text --after-context=1 UUID $PP_PATH | grep --ignore-case --only-matching "[-A-Z0-9]\{36\}")
         echo "UUID = $UUID"
         cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles\${UUID}.mobileprovision
 
