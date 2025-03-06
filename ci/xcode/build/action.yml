@@ -87,8 +87,8 @@ runs:
       shell: bash
       run: |
         echo "::group::Check Tools"
-        which make || sudo apt-get install -y make
-        which gh || sudo apt-get install -y gh
+        which gh || brew install gh
+        which grep || brew install grep
         echo "::endgroup::"
 
     # Versioning SET
