@@ -36,7 +36,7 @@ spec:
           value: {{ .Values.hpa.percentValueUp | default "80" }}
           periodSeconds: {{ .Values.hpa.percentPeriodUp | default "60" }}
   metrics:
-  {{- if .Values.hpa.external }}
+  {{- if .Values.hpa.external.enabled }}
     - type: External
       external:
         metric:

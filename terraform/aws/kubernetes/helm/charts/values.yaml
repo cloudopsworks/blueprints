@@ -39,6 +39,22 @@ hpa:
   maxReplicas: 6
   cpuTargetAverageUtilization: 80
   memoryTargetAverageUtilization: 80
+  # Enable Metrics
+  #cpuPercentage: true
+  #memoryPercentage: true
+  # Optionals defaults
+  #stabilizationWindowSeconds: 300
+  #percentValueDown: 40
+  #percentPeriodDown: 60
+  #percentValueUp: 80
+  #percentPeriodUp: 60
+  # External
+  #external:
+  #  enabled: true
+  #  name: external-metric
+  #  labelSelector:
+  #    labelKey: labelValue
+  #  averageValue: 50
 
 # Canary deployments
 # If enabled, Istio and Flagger need to be installed in the cluster
