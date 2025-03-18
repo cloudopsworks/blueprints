@@ -49,7 +49,7 @@ hpa:
   #percentValueUp: 80
   #percentPeriodUp: 60
   # External
-  #external:
+  external: {}
   #  enabled: true
   #  name: external-metric
   #  labelSelector:
