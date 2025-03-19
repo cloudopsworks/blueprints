@@ -40,6 +40,10 @@ spec:
       {{- else }}
       serviceAccountName: {{ template "fullname" . }}
       {{- end }}
+      {{- else }}
+      {{- if .Values.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
       {{- end }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
