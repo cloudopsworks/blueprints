@@ -18,7 +18,7 @@ TRONADOR_AUTO_INIT := true
 
 ## Lint the code
 lint:
-	terragrunt --terragrunt-workging-dir terraform/ run-all hclfmt
+	terragrunt --workging-dir terraform/ run-all hclfmt
 
 .PHONY: tag
 .PHONY: tag_local

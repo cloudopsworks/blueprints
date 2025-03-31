@@ -172,7 +172,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
-        terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
+        terragrunt --non-interactive ${{ steps.plan_action.outputs.value }}
         echo "::endgroup::"
       continue-on-error: false
       env:
@@ -185,7 +185,7 @@ runs:
       if: ${{ ! inputs.unlock }}
       run: |
         echo "::group::Terragrunt Plan to JSON"
-        terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
+        terragrunt --non-interactive show -json plan.tfplan > tfplan.json
         echo "::endgroup::"
       shell: bash
       env:
@@ -220,7 +220,7 @@ runs:
       if: ${{ inputs.unlock != 'true' }}
       run: |
         echo "::group::Terragrunt Apply"
-        terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+        terragrunt --non-interactive apply -no-color plan.tfplan
         echo "::endgroup::"
       shell: bash
       continue-on-error: false
