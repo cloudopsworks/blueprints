@@ -145,7 +145,7 @@ runs:
         yq e '.namespace_annotations += { "field.cattle.io/projectId": "${{ inputs.rancher_project_id }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.container_registry = "${{ inputs.container_registry }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.cluster_name = "${{ inputs.cluster_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.namespace = "${{ inputs.release_name }}-${{ inputs.pull_request_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        yq e '.namespace = "preview-${{ inputs.release_name }}-${{ inputs.pull_request_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.create_namespace = true' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
 
     - name: Copy Values Bundle
