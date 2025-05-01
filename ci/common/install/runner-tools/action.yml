@@ -6,6 +6,11 @@
 name: Install Runner tools
 author: cloudopsworks
 description: Install runner-tools for the workflow
+inputs:
+  cloud:
+    description: 'The cloud provider to use for the build'
+    required: false
+    default: 'all'
 
 runs:
   using: 'composite'
@@ -25,6 +30,7 @@ runs:
     - name: Download and Install AWS CLI
       working-directory: /tmp
       shell: bash
+      if: ${{ inputs.cloud == 'aws' || inputs.cloud == 'all' }}
       run: |
         echo "::group::Download and install AWS CLI"
         curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -37,6 +43,7 @@ runs:
     - name: Download and Install Azure CLI
       working-directory: /tmp
       shell: bash
+      if: ${{ inputs.cloud == 'azure' || inputs.cloud == 'az' || inputs.cloud == 'all' }}
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -45,14 +52,15 @@ runs:
         az --version
         echo "::endgroup::"
 
-
-    - name: Download and Install GCP CLI
-      working-directory: /tmp
-      shell: bash
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        echo "::group::Download and install GCP CLI"
-        (type -p gcloud > /dev/null || (echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && sudo apt-get update -y && sudo apt-get install google-cloud-cli -y))
-        gcloud --version
-        echo "::endgroup::"
+# TODO: Reenable GCP CLI installation when the GCP CLI is available in the base image
+#    - name: Download and Install GCP CLI
+#      working-directory: /tmp
+#      shell: bash
+#      if: ${{ inputs.cloud == 'gcp' || inputs.cloud == 'all' }}
+#      env:
+#        DEBIAN_FRONTEND: noninteractive
+#      run: |
+#        echo "::group::Download and install GCP CLI"
+#        (type -p gcloud > /dev/null || (echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && sudo apt-get update -y && sudo apt-get install google-cloud-cli -y))
+#        gcloud --version
+#        echo "::endgroup::"

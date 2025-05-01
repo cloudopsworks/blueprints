@@ -17,7 +17,7 @@ include "root" {
 }
 
 terraform {
-  source = "github.com/cloudopsworks/terraform-module-aws-api-gateway-apis-deploy.git//?ref=v5"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-api-gateway-apis-deploy.git//?ref=v5"
 }
 
 inputs = {
