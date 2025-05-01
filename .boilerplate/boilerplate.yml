@@ -1,0 +1,43 @@
+##
+# (c) 2025 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+variables:
+  # Generic Boilerplate Variables Setup
+  - name: organization_name
+    order: 0
+    description: "Organization Name"
+    type: string
+    default: "Organization"
+  - name: organization_unit
+    order: 1
+    description: "Organization Unit"
+    type: string
+    default: "Unit"
+  - name: environment_name
+    order: 2
+    description: "Environment Name"
+    type: string
+    default: "DEV"
+  - name: environment_type
+    order: 3
+    description: "Environment Type"
+    type: string
+    default: "Testing"
+  - name: hub_spoke
+    order: 4
+    description: "Hub and Spoke architecture"
+    type: bool
+    default: false
+  - name: is_hub
+    order: 5
+    description: "Is this a hub configuration?"
+    type: bool
+    default: false
+  - name: tags
+    order: 6
+    description: "Tags"
+    type: map
+    default: {}
+  # End - Generic Boilerplate Variables Setup
