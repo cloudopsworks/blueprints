@@ -18,11 +18,11 @@ inputs:
   tofu_version:
     description: 'The version of OpenTofu to use'
     required: false
-    default: '1.7.1'
+    default: '1.7.7'
   tg_version:
     description: 'The version of Terragrunt to use'
     required: false
-    default: '0.59.5'
+    default: '0.76.3'
   tf_summarize_version:
     description: 'The version of tf-summarize to use'
     required: false
@@ -172,10 +172,11 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
-        terragrunt --terragrunt-non-interactive ${{ steps.plan_action.outputs.value }}
+        terragrunt --non-interactive ${{ steps.plan_action.outputs.value }}
         echo "::endgroup::"
       continue-on-error: false
       env:
+        TG_TF_PATH: tofu
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
@@ -185,10 +186,11 @@ runs:
       if: ${{ ! inputs.unlock }}
       run: |
         echo "::group::Terragrunt Plan to JSON"
-        terragrunt --terragrunt-non-interactive show -json plan.tfplan > tfplan.json
+        terragrunt --non-interactive show -json plan.tfplan > tfplan.json
         echo "::endgroup::"
       shell: bash
       env:
+        TG_TF_PATH: tofu
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
@@ -220,11 +222,12 @@ runs:
       if: ${{ inputs.unlock != 'true' }}
       run: |
         echo "::group::Terragrunt Apply"
-        terragrunt --terragrunt-non-interactive apply -no-color plan.tfplan
+        terragrunt --non-interactive apply -no-color plan.tfplan
         echo "::endgroup::"
       shell: bash
       continue-on-error: false
       env:
+        TG_TF_PATH: tofu
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
