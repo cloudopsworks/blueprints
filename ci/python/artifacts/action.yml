@@ -41,13 +41,14 @@ runs:
       with:
         cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
 
-    # Perform of upload of artfiacts for java
+    # Perform of upload of artfiacts for python with dependencies if file exists
     - name: Upload Artifacts to workflow
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifacts_name }}
         path: |
           ${{ steps.zip_globs.outputs.result }}
+          ${{ inputs.source_path }}/python-dependencies.tar
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
         include-hidden-files: true

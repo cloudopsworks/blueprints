@@ -97,6 +97,13 @@ runs:
       with:
         cmd: yq e '.python.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Get pipeline conf java image variant defaults to alpine
+    - name: Get pipeline Python require packing dependencies
+      id: python_with_dependencies
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.python.with_dependencies // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs_line
@@ -262,3 +269,16 @@ runs:
       with:
         input: ${{ inputs.source_path }}/requirements.txt
         output: "${{ inputs.source_path }}/bom.xml"
+
+    - name: Build Dependency files if they are required
+      working-directory: ${{ inputs.source_path }}
+      if: steps.python_with_dependencies.outputs.result == 'true'
+      shell: bash
+      run: |
+        if [ -d .venv/lib/python*/site-packages ]; then
+          echo "Building python dependencies"
+          tar -cf python-dependencies.tar -C .venv/lib/python*/site-packages . 
+        else
+          echo "No python dependencies found"
+        fi
+
