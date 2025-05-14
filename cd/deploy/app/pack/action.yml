@@ -114,6 +114,10 @@ runs:
       shell: bash
       run: |
         cp -pfr . ${{ steps.temp_dir.outputs.result }}/
+        if [ -f python-dependencies.tar ]; then
+          echo "Extracting Python dependencies as python-dependencies.tar has been found."
+          tar -xf python-dependencies.tar -C ${{ steps.temp_dir.outputs.result }}
+        fi
 
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
