@@ -35,3 +35,4 @@ __tests__/
 coverage.xml
 test-results.xml
 htmlcov/
+python-dependencies.tar

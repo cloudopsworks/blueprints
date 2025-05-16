@@ -117,6 +117,7 @@ runs:
         if [ -f python-dependencies.tar ]; then
           echo "Extracting Python dependencies as python-dependencies.tar has been found."
           tar -xf python-dependencies.tar -C ${{ steps.temp_dir.outputs.result }}
+          rm -f python-dependencies.tar
         fi
 
     - name: Copy Java Application Release
