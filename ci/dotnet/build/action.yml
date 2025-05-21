@@ -134,6 +134,16 @@ runs:
       with:
         cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Check existence of packages.lock.json and set to true
+    - name: Check for packages.lock.json
+      id: lock_file
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}/packages.lock.json" ]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
     # Setup .Net SDK for builds
     - name: Set .Net SDK
       uses: actions/setup-dotnet@v4
@@ -141,7 +151,7 @@ runs:
         NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       with:
         dotnet-version: "${{ steps.dotnet_version.outputs.result }}"
-        cache: true
+        cache: ${{ steps.lock_file.outputs.result }}
 
     # Versioning SET
     - name: Version SET
@@ -168,7 +178,7 @@ runs:
       shell: bash
       run: |
         echo "::group::.Net Build"
-        dotnet restore --locked-mode
+        dotnet restore ${{ steps.lock_file.outputs.result == 'true' && '--locked-mode' || ' ' }}
         dotnet build ${{ steps.build_opts.outputs.result }} --no-restore --verbosity normal
         echo "::endgroup::"
       env:
