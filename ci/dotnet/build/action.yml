@@ -115,7 +115,7 @@ runs:
 
     # Get from global inputs the custom Build Options
     - name: Get Build options
-      id: build_opts
+      id: publish_opts
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
@@ -201,7 +201,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::.Net Publishing"
-        dotnet publish ${{ steps.project_path.outputs.result }} --output ./${{ steps.project_path.outputs.result }}_Release --no-build --no-restore
+        dotnet publish ${{ steps.project_path.outputs.result }} ${{ steps.publish_opts.outputs.result }} --output ./${{ steps.project_path.outputs.result }}_Release --no-build --no-restore
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
