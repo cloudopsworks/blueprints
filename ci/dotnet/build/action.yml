@@ -99,12 +99,12 @@ runs:
           exit 1
         fi
 
-    # Get the Package name from pom.xml (in the form of groupId.artifactId)
+    # Get the Package name from project's path csproj file
     - name: Get Package name
       id: package_name
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -oy '.project.groupId + "." + .project.artifactId' ${{ inputs.source_path }}/pom.xml
+        cmd: yq e -px -oy '.Project.PropertyGroup.AssemblyName' ${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}/${{ steps.project_path.outputs.result }}.csproj
 
     # Get from global inputs the custom Build Options
     - name: Get .Net Build options
