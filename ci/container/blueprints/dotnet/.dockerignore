@@ -1,0 +1,48 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+draft.toml
+charts/
+NOTICE
+LICENSE
+README.md
+OWNERS
+OWNERS_ALIASES
+jenkins-x*.*
+skaffold.*
+.helmignore
+.git*
+gulpfile.js
+sonar-project.properties
+# CloudOpsWorks Tronador
+tronador/
+.tronador
+/Makefile
+# Generated Dockerfile and Image
+Dockerfile
+docker-image.tar*
+# Ignore .NET build artifacts
+bin/
+obj/
+out/
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.vspx
+*.psess
+*.vspscc
+.vscode/
+# Logs, build results, and temporary files
+*.log
+*.tlog
+*.tmp
+*.temp
+*.cache
+# NuGet packages and restore artifacts
+*.nupkg
+packages/
+project.lock.json
+project.fragment.lock.json

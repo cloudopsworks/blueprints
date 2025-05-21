@@ -1,0 +1,179 @@
+##
+# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
+#            On GitHub: https://github.com/cloudopsworks
+#            Distributed Under Apache v2.0 License
+#
+name: Build .Net Sources
+author: cloudopsworks
+description: Build .NEt sources and save artifacts
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+outputs:
+  dotnet_version:
+    description: 'The .Net version to use for the build'
+    value: ${{ steps.dotnet_version.outputs.result }}
+  dotnet_dist:
+    description: 'The .Net distribution to use for the build'
+    value: ${{ steps.dotnet_dist.outputs.result }}
+  dotnet_image_variant:
+    description: 'The .Net image variant to use for the build, currently not fully supported'
+    value: ${{ steps.dotnet_image_variant.outputs.result }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check tools and install
+      shell: bash
+      run: |
+        echo "::group::Check Tools"
+        sudo apt-get update
+        which make || sudo apt-get install -y make
+        which gh || sudo apt-get install -y gh
+        echo "::endgroup::"
+
+    # Get pipeline conf .Net version Defaults to 9
+    - name: Get pipeline .Net version
+      id: dotnet_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.version // "9.0"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net dist defaults to aspnet
+    - name: Get pipeline .Net dist
+      id: dotnet_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.dist // "aspnet"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net image variant defaults to alpine
+    - name: Get pipeline .Net image variant
+      id: dotnet_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net build project path
+    - name: Get pipeline .Net build project path
+      id: project_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.project_path // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+      # Validate project_path must not be blank, othewise fail the entire workflow
+    - name: Validate project_path
+      id: validate_project_path
+      shell: bash
+      run: |
+        if [ -z "${{ steps.project_path.outputs.result }}" ]; then
+          echo "Error: project_path is empty"
+          exit 1
+        fi
+
+    # Get the Package name from pom.xml (in the form of groupId.artifactId)
+    - name: Get Package name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -oy '.project.groupId + "." + .project.artifactId' ${{ inputs.source_path }}/pom.xml
+
+    # Get from global inputs the custom Build Options
+    - name: Get Build options
+      id: build_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.build_options // "--configuration Release"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Build Options
+    - name: Get Build options
+      id: build_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get DependencyTrack project type configuration, default is null
+    - name: Get Pipeline conf DependencyTrack Project type
+      id: dtrack_project_type
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Setup .Net SDK for builds
+    - name: Set .Net SDK
+      uses: actions/setup-dotnet@v4
+      env:
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      with:
+        dotnet-version: "${{ steps.dotnet_version.outputs.result }}"
+        cache: true
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::.Net Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+    # Build the code!
+    - name: Build Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::.Net Build"
+        dotnet restore --locked-mode
+        dotnet build ${{ steps.build_opts.outputs.result }} --no-restore --verbosity normal
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+    - name: Run .Net Publishing
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "::group::.Net Publishing"
+        dotnet publish ${{ steps.project_path.outputs.result }} --output ./${{ steps.project_path.outputs.result }}_Release --no-build --no-restore
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
