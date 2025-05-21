@@ -107,21 +107,21 @@ runs:
         cmd: yq e -oy '.project.groupId + "." + .project.artifactId' ${{ inputs.source_path }}/pom.xml
 
     # Get from global inputs the custom Build Options
-    - name: Get Build options
+    - name: Get .Net Build options
       id: build_opts
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.build_options // "--configuration Release"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get from global inputs the custom Build Options
-    - name: Get Build options
+    - name: Get .Net Publish options
       id: publish_opts
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get from global inputs the custom Test Options
-    - name: Get Test options
+    - name: Get .Net Test options
       id: test_opts
       uses: mikefarah/yq@master
       with:
