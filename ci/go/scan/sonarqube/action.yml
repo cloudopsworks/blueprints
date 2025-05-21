@@ -1,0 +1,120 @@
+##
+# (c) 2021-2025
+#      Cloud Ops Works LLC - https://cloudops.works/
+#      Find us on:
+#        GitHub: https://github.com/cloudopsworks
+#        WebSite: https://cloudops.works
+#      Distributed Under Apache v2.0 License
+#
+name: Sonarqube Scan GoLang
+author: cloudopsworks
+description: This action scans the GoLang code using Sonarqube
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  sonarqube_url:
+    description: 'The Sonarqube URL'
+    required: true
+  sonarqube_token:
+    description: 'The Sonarqube token'
+    required: true
+  sonarqube_project_key:
+    description: 'The Sonarqube project key'
+    required: true
+  semver:
+    description: 'The Semver version'
+    required: true
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get Sonar sources form inputs-global.yaml
+      id: source_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.sources_path // "src/"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar binaries from inputs-global.yaml
+      id: binaries_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.binaries_path // "target/classes"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar libraries from inputs-global.yaml
+      id: libraries_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.libraries_path // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar tests from inputs-global.yaml (defaults to source_path)
+      id: tests_path
+      uses: mikefarah/yq@master
+      with:
+          cmd: yq e -I=0 '.sonarqube.tests_path // "${{ steps.source_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar test binaries from inputs-global.yaml
+      id: test_binaries_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.tests_binaries // "target/test-classes"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar test inclusions from inputs-global.yaml
+      id: test_inclusions_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.tests_inclusions // "${{ steps.tests_path.outputs.result }}/**/test/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar test libraries from inputs-global.yaml
+      id: test_libraries_path
+      uses: mikefarah/yq@master
+      with:
+          cmd: yq e -I=0 '.sonarqube.tests_libraries // "${{ steps.libraries_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar extra exclusions from inputs-global.yaml
+      id: extra_exclusions_paths
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.extra_exclusions // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Sonar exclusions from inputs-global.yaml
+      id: exclusions_paths
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.exclusions // "target/**,${{ steps.tests_path.outputs.result }}/**/test/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get if sonar branch setting is disabled
+      id: branch_disabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.branch_disabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # TODO: enable branch.name must buy Developer/Pro plan
+    # Scan the code
+    - name: Sonar Scan
+      uses: sonarsource/sonarqube-scan-action@v2
+      env:
+        SONAR_TOKEN: ${{ inputs.sonarqube_token }}
+        SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
+      with:
+        projectBaseDir: ${{ inputs.source_path }}
+        args: >
+          -Dsonar.projectKey=${{ inputs.sonarqube_project_key }}
+          -Dsonar.projectVersion=${{ inputs.semver }}
+          -Dsonar.sources=${{ steps.source_path.outputs.result }}
+          -Dsonar.tests=${{ steps.tests_path.outputs.result }}
+          -Dsonar.test.binaries=${{ steps.test_binaries_path.outputs.result }}
+          -Dsonar.test.inclusions=${{ steps.test_inclusions_path.outputs.result }}
+          -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
+          -Dsonar.language=GoLang
+          ${{ steps.branch_disabled.outputs.result != 'true' && format('-Dsonar.branch.name={0}',github.ref_name) || ' ' }}
+#          -Dsonar.scanner.metadataFilePath=target/sonar/report-task.txt
+#          -Dsonar.test.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}

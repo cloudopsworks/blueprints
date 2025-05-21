@@ -1,0 +1,209 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Build GoLang Sources
+author: cloudopsworks
+description: Build GoLang sources and save artifacts
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+outputs:
+  golang_version:
+    description: 'The GoLang version to use for the build'
+    value: ${{ steps.golang_version.outputs.result }}
+  golang_dist:
+    description: 'The GoLang distribution to use for the build'
+    value: ${{ steps.golang_dist.outputs.result }}
+  golang_arch:
+    description: 'The GoLang architecture to use for the build'
+    value: ${{ steps.golang_arch.outputs.result }}
+  golang_image_variant:
+    description: 'The GoLang image variant to use for the build'
+    value: ${{ steps.golang_image_variant.outputs.result }}
+  golang_main_file:
+    description: 'The GoLang main file to use for the build'
+    value: ${{ steps.main_file.outputs.result }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check tools and install
+      shell: bash
+      run: |
+        echo "::group::Check Tools"
+        sudo apt-get update
+        which make || sudo apt-get install -y make
+        which gh || sudo apt-get install -y gh
+        echo "::endgroup::"
+
+    # Get pipeline conf GoLang version Defaults to 1.23
+    - name: Get pipeline GoLang version
+      id: golang_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.version // "1.23"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang dist defaults to linux (supported: linux windows darwin)
+    - name: Get pipeline GoLang dist
+      id: golang_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.dist // "linux"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang arch defaults to x64
+    - name: Get pipeline GoLang arch
+      id: golang_arch
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.arch // "amd64"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang image variant defaults to alpine
+    - name: Get pipeline GoLang image variant
+      id: golang_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang main file defaults to main.go
+    - name: Get pipeline GoLang main file
+      id: main_file
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.main_file // "main.go"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get the Package name from pom.xml (in the form of groupId.artifactId)
+    - name: Get Package name
+      id: package_name
+      shell: bash
+      run: |
+        # Check if go.mod exists
+        if [ ! -f "go.mod" ]; then
+          echo "Error: go.mod file not found in current directory" >&2
+          exit 1
+        fi
+
+        # Extract the module name using grep and sed
+        # 1. Use grep to find the line starting with "module "
+        # 2. Use sed to extract just the module name part
+        # 3. Use sed again to replace "/" with "-"
+        module_name=$(grep -m 1 "^module " go.mod | sed 's/^module //' | sed 's/\//-/g')
+
+        # Check if we successfully extracted a module name
+        if [ -z "$module_name" ]; then
+          echo "Error: Could not find module declaration in go.mod" >&2
+          exit 1
+        fi
+        echo "result=$module_name" >> $GITHUB_OUTPUT
+
+    # Get from global inputs the custom Go Options
+    - name: Get Go options
+      id: build_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get DependencyTrack project type configuration, default is null
+    - name: Get Pipeline conf DependencyTrack Project type
+      id: dtrack_project_type
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Setup GoLang GoLang SDK for builds
+    - name: Set GoLang SDK
+      uses: actions/setup-go@v5
+      with:
+        token: ${{ inputs.token }}
+        go-version: "${{ steps.golang_version.outputs.result }}"
+        check-latest: true
+        cache-dependency-path: "**/*.sum"
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Go Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+    # Build the code!
+    - name: Build Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Go Build"
+        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go build -o bin/${{ steps.package_name.outputs.result }} ${{ steps.main_file.outputs.result }}
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # Test the code!
+    - name: Test Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Go Test"
+        mkdir -p test-results
+        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go test -coverprofile=test-results/coverage.out ./... }}
+        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go tool cover -html=test-results/coverage.out -o test-results/coverage.html
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # SBOM generation
+    - name: SBOM Download for Dtrack
+      uses: CycloneDX/gh-gomod-generate-sbom@v2
+      with:
+        version: v1
+
+    - name: SBOM Generation for Dtrack
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "::group::SBOM Generation"
+        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} cyclonedx-gomod app -licences -packages -output bom.xml -main $(dirname ${{ steps.main_file.outputs.result }})
+        echo "::endgroup::"
