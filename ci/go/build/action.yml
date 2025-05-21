@@ -102,7 +102,7 @@ runs:
       with:
         cmd: yq e '.golang.main_file // "main.go"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    # Get the Package name from pom.xml (in the form of groupId.artifactId)
+    # Get the Package name from go.mod
     - name: Get Package name
       id: package_name
       shell: bash
