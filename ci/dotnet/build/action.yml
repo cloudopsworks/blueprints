@@ -120,6 +120,13 @@ runs:
       with:
         cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Get from global inputs the custom Test Options
+    - name: Get Test options
+      id: test_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
@@ -168,6 +175,26 @@ runs:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
         NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+    # Test the code!
+    - name: Test Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::.Net Tests"
+        dotnet test ${{ steps.test_opts.outputs.result }} --no-restore --no-build --verbosity normal
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # SBOM generation
+    - name: SBOM Generation for Dtrack
+      uses: CycloneDX/gh-dotnet-generate-sbom@v1
+      with:
+        path: ${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}.sln
+        json: false
+        github-bearer-token: ${{ inputs.token }}
 
     - name: Run .Net Publishing
       shell: bash

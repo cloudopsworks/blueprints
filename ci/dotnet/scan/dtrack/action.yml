@@ -50,4 +50,4 @@ runs:
              -F "projectName=${{ inputs.dtrack_project_key }}" \
              -F "projectVersion=${{ inputs.semver }}" \
              -F "parentName=${{ inputs.dtrack_project_key }}" \
-             -F "bom=@target/bom.json"
+             -F "bom=@target/bom.xml"
