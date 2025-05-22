@@ -209,7 +209,7 @@ runs:
         
         # Startup the .Net App
         cd /app/webapp
-        exec dotnet ${{ inputs.package }}.dll \${DOTNET_ARGS}
+        exec dotnet ${{ inputs.package_name }}.dll \${DOTNET_ARGS}
         EOF
         cat ./startup.sh
         
