@@ -78,6 +78,7 @@ runs:
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |
+          ${{ inputs.source_path }}/TestResults/**
           ${{ inputs.source_path }}/**/bin/**
           ${{ inputs.source_path }}/**/obj/**
           ${{ steps.exclude_globs.outputs.result }}

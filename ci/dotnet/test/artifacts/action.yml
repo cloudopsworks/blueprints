@@ -35,6 +35,7 @@ runs:
         name: test_artifacts
         if-no-files-found: 'warn'
         path: |
+          ${{ inputs.source_path }}/TestResults/**
           ${{ inputs.source_path }}/**/TestResults/**
           ${{ inputs.source_path }}/**/*.sarif
           ${{ inputs.source_path }}/**/bom.xml
