@@ -92,14 +92,14 @@ runs:
         VAL=$(yq eval '.beanstalk.solution_stack | test("(?i:.*go.*)")' inputs.yaml)
         echo "result=$VAL" >> $GITHUB_OUTPUT
 
-    - name: Get Elastic Beanstalk Rust Stack from inputs-${{ inputs.environment }}.yaml
-      id: rust_stack_eb
-      if: ${{ inputs.cloud_type == 'beanstalk' }}
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        echo "::error::This is not supported for beanstalk"
-        exit 1
+#    - name: Get Elastic Beanstalk Rust Stack from inputs-${{ inputs.environment }}.yaml
+#      id: rust_stack_eb
+#      if: ${{ inputs.cloud_type == 'beanstalk' }}
+#      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+#      shell: bash
+#      run: |
+#        echo "::error::This is not supported for beanstalk"
+#        exit 1
 
     # Get Stacks for Java, Node, and Python if lambda is in cloud_type
     - name: Get Lambda Java Stack from inputs-${{ inputs.environment }}.yaml

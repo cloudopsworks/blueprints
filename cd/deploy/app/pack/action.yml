@@ -132,7 +132,7 @@ runs:
 
     - name: Copy GoLang/Rust Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
-      if: ${{ steps.stack.outputs.go_stack == 'true' }}
+      if: ${{ steps.stack.outputs.go_stack == 'true' || steps.stack.outputs.rust_stack == 'true' }}
       shell: bash
       run: |
         cp -pfr ./bin/ ${{ steps.temp_dir.outputs.result }}/
