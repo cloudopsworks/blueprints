@@ -124,18 +124,18 @@ runs:
         fi
 
     - name: Copy .Net Application Release
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/PublishRelease/
       if: ${{ steps.stack.outputs.dotnet_stack == 'true' }}
       shell: bash
       run: |
-        cp -pfr ./PublishRelease/ ${{ steps.temp_dir.outputs.result }}/
+        cp -pfr . ${{ steps.temp_dir.outputs.result }}/
 
     - name: Copy GoLang/Rust Application Release
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/bin
       if: ${{ steps.stack.outputs.go_stack == 'true' || steps.stack.outputs.rust_stack == 'true' }}
       shell: bash
       run: |
-        cp -pfr ./bin/ ${{ steps.temp_dir.outputs.result }}/
+        cp -pfr . ${{ steps.temp_dir.outputs.result }}/
 
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
