@@ -123,6 +123,20 @@ runs:
           rm -f python-dependencies.tar
         fi
 
+    - name: Copy .Net Application Release
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
+      if: ${{ steps.stack.outputs.dotnet_stack == 'true' }}
+      shell: bash
+      run: |
+        cp -pfr ./PublishRelease/ ${{ steps.temp_dir.outputs.result }}/
+
+    - name: Copy GoLang/Rust Application Release
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
+      if: ${{ steps.stack.outputs.go_stack == 'true' }}
+      shell: bash
+      run: |
+        cp -pfr ./bin/ ${{ steps.temp_dir.outputs.result }}/
+
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
       if: ${{ steps.stack.outputs.java_stack == 'true' }}
