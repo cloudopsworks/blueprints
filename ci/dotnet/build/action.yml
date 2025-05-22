@@ -238,7 +238,8 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::.Net Publishing"
-        dotnet publish ${{ steps.project_path.outputs.result }} ${{ steps.publish_opts.outputs.result }} --output ./${{ steps.project_path.outputs.result }}_Release --no-build --no-restore
+        dotnet publish --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.project_path.outputs.result }} \
+          ${{ steps.publish_opts.outputs.result }} --output ./PublishRelease --no-build --no-restore
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}

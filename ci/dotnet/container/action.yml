@@ -33,6 +33,9 @@ inputs:
   environment:
     description: 'The environment to use for the build'
     required: true
+  package_name:
+    description: 'The package name'
+    required: true
   is_release:
     description: 'The release flag'
     required: true
@@ -148,10 +151,13 @@ runs:
                   ;;
                 datadog)
                   echo "ADD 'https://github.com/DataDog/dd-trace-dotnet/releases/download/v3.16.0/datadog-dotnet-apm-3.16.0-musl.tar.gz' /opt/datadog/"
-                  echo "COPY --chown=$USER_ID --from=<OTHER_STAGE> /empty/ /var/log/datadog/dotnet/"
+                  echo "RUN mkdir -p /var/log/datadog/dotnet/"
+                  echo "RUN chown $USER_NAME:$GROUP_NAME /var/log/datadog/dotnet/"
                   ;;
               esac
-            fi 
+            fi
+            # Insert the Application Content at the injection point
+            echo "COPY PublishRelease/* /app/webapp/"
             echo "${{ inputs.docker_inline }}"
           else
             # Print the current line
@@ -191,6 +197,22 @@ runs:
         cat ./startup.sh
       env:
         CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
+
+    - name: Build and set startup.sh command
+      if: ${{ steps.custom_run_command.outputs.result == '' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "Creation of startup.sh script..."
+        cat > ./startup.sh << EOF
+        #!/bin/sh
+        
+        # Startup the .Net App
+        cd /app/webapp
+        exec dotnet ${{ inputs.package }}.dll \${DOTNET_ARGS}
+        EOF
+        cat ./startup.sh
+        
 
     # Run Generalized Docker Build & Upload Artifact
     - name: Generalized Docker Build
