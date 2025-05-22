@@ -105,6 +105,7 @@ runs:
     # Get the Package name from go.mod
     - name: Get Package name
       id: package_name
+      working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         # Check if go.mod exists
