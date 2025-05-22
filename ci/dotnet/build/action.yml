@@ -32,6 +32,9 @@ inputs:
   token:
     description: 'The github token to use for the build'
     required: true
+  environment:
+    description: 'The environment to use for the build'
+    required: true
 outputs:
   dotnet_version:
     description: 'The .Net version to use for the build'
@@ -111,7 +114,14 @@ runs:
       id: build_opts
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.build_options // "--configuration Release"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Build Options
+    - name: Get .Net Build options
+      id: run_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.run_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get from global inputs the custom Build Options
     - name: Get .Net Publish options
@@ -126,6 +136,20 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the default configuration
+    - name: Get .Net default configuration
+      id: global_default_configuration
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.dotnet.configuration // "Release"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the default configuration
+    - name: Get .Net default configuration
+      id: default_configuration
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.dotnet_configuration // "${{ steps.global_default_configuration.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
 
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
@@ -144,6 +168,7 @@ runs:
         else
           echo "result=false" >> $GITHUB_OUTPUT
         fi
+
     # Setup .Net SDK for builds
     - name: Set .Net SDK
       uses: actions/setup-dotnet@v4
@@ -179,7 +204,7 @@ runs:
       run: |
         echo "::group::.Net Build"
         dotnet restore ${{ steps.lock_file.outputs.result == 'true' && '--locked-mode' || ' ' }}
-        dotnet build ${{ steps.build_opts.outputs.result }} --no-restore --verbosity normal
+        dotnet build --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.build_opts.outputs.result }} --no-restore --verbosity normal
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -192,7 +217,9 @@ runs:
       shell: bash
       run: |
         echo "::group::.Net Tests"
-        dotnet test ${{ steps.test_opts.outputs.result }} --no-restore --verbosity normal
+        dotnet test --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.test_opts.outputs.result }} \
+          --no-build --no-restore --verbosity normal --collect "XPlat Code Coverage" \
+          --results-directory ./TestResults /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura -- ${{ steps.run_opts.outputs.result }}
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
