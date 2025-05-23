@@ -111,18 +111,16 @@ runs:
         tags=$(gh api "repos/cloudopsworks/blueprints/tags" --jq '.[].name' || echo "")
         if [[ -z "$tags" ]]; then
           echo "::error::Failed to fetch tags for $repo"
-          continue
-        fi
-
-        # Extract highest semver-style tag
-        latest=$(echo "$tags" | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -n1)
-        if [[ -z "$latest" ]]; then
-          echo "::error::No semantic version tags found for cloudopsworks/blueprints"
-          continue
-        fi
-        
-        if [[ "$ref" != "$latest" ]]; then
-          echo "::warning:: 🚨 Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $ref | Latest: $latest"
+        else
+          # Extract highest semver-style tag
+          latest=$(echo "$tags" | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -n1)
+          if [[ -z "$latest" ]]; then
+            echo "::error::No semantic version tags found for cloudopsworks/blueprints"
+          else
+            if [[ "$ref" != "$latest" ]]; then
+              echo "::warning:: 🚨 Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $ref | Latest: $latest"
+            fi
+          fi          
         fi
 
     - name: Check Module Version
@@ -143,16 +141,14 @@ runs:
         tags=$(gh api "repos/${repo}/tags" --jq '.[].name' || echo "")
         if [[ -z "$tags" ]]; then
           echo "::error::Failed to fetch tags for $repo"
-          continue
-        fi
-
-        # Extract highest semver-style tag
-        latest=$(echo "$tags" | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -n1)
-        if [[ -z "$latest" ]]; then
-          echo "::error::No semantic version tags found for $repo"
-          continue
-        fi
-        
-        if [[ "$ref" != "$latest" ]]; then
-          echo "::warning:: 🚨 Repository Workflow is Outdated: Template: $repo | Current: $ref | Latest: $latest"
+        else
+          # Extract highest semver-style tag
+          latest=$(echo "$tags" | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -n1)
+          if [[ -z "$latest" ]]; then
+            echo "::error::No semantic version tags found for $repo"
+          else
+            if [[ "$ref" != "$latest" ]]; then
+              echo "::warning:: 🚨 Repository Workflow is Outdated: Template: $repo | Current: $ref | Latest: $latest"
+            fi
+          fi
         fi
