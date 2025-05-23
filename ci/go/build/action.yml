@@ -206,5 +206,5 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::SBOM Generation"
-        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} cyclonedx-gomod app -licences -packages -output bom.xml -main $(dirname ${{ steps.main_file.outputs.result }})
+        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} cyclonedx-gomod app -licenses -packages -output bom.xml -main $(dirname ${{ steps.main_file.outputs.result }})
         echo "::endgroup::"
