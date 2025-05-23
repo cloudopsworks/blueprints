@@ -47,34 +47,34 @@ runs:
         #   - repo = cloudopsworks/<moduletype>-app-template
         #   - current_version = contenfrom .github/_VERSION file
         if [ -f ".github/.golang" ]; then
-          echo "::notice::Module type is golang"
+          echo "Module type is golang"
           echo "repo=cloudopsworks/go-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.python" ]; then
-          echo "::notice::Module type is python"
+          echo "Module type is python"
           echo "repo=cloudopsworks/python-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.node" ]; then
-          echo "::notice::Module type is node"
+          echo "Module type is node"
           echo "repo=cloudopsworks/node-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.terraform" ]; then
-          echo "::notice::Module type is terraform"
+          echo "Module type is terraform"
           echo "repo=cloudopsworks/terraform-project-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.java" ]; then
-          echo "::notice::Module type is java"
+          echo "Module type is java"
           echo "repo=cloudopsworks/java-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.dotnet" ]; then
-          echo "::notice::Module type is dotnet"
+          echo "Module type is dotnet"
           echo "repo=cloudopsworks/dotnet-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.rust" ]; then
-          echo "::notice::Module type is rust"
+          echo "Module type is rust"
           echo "repo=cloudopsworks/rust-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.docker" ]; then
-          echo "::notice::Module type is docker"
+          echo "Module type is docker"
           echo "repo=cloudopsworks/docker-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.xcode" ]; then
-          echo "::notice::Module type is Xcode"
+          echo "Module type is Xcode"
           echo "repo=cloudopsworks/xcode-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".github/.iac" ]; then
-          echo "::notice::Module type is iac"
+          echo "Module type is iac"
           echo "repo=cloudopsworks/terragrunt-project-template" >> $GITHUB_OUTPUT
         else
           echo "::warning::No module marker file found in .github directory"

@@ -130,13 +130,6 @@ runs:
       run: |
         cp -pfr . ${{ steps.temp_dir.outputs.result }}/
 
-    - name: ChMod for GoLang/Rust Applications under release/bin
-      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/bin
-      if: ${{ steps.stack.outputs.go_stack == 'true' || steps.stack.outputs.rust_stack == 'true' }}
-      shell: bash
-      run: |
-        chmod +x *
-
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
       if: ${{ steps.stack.outputs.java_stack == 'true' }}
@@ -172,6 +165,7 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
       shell: bash
       run: |
+        find bin/ -type f -print -exec chmod 755 {} \;
         cp -vpr ./* ${{ steps.temp_dir.outputs.result }}
 
     - name: Copy values/ into temp dir
