@@ -108,7 +108,7 @@ runs:
         repo="${{ steps.check_module_type.outputs.repo }}"
         ref="${{ steps.check_module_type.outputs.current_version }}"
         # Get tags via GitHub CLI (uses GH_TOKEN)
-        tags=$(gh api "repos/cloudopsworks/blueprints/tags" --jq '.[].name' || echo "")
+        tags=$(git ls-remote --tags origin | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
         if [[ -z "$tags" ]]; then
           echo "::error::Failed to fetch tags for $repo"
         else
@@ -139,7 +139,7 @@ runs:
         repo="${{ steps.check_module_type.outputs.repo }}"
         ref="${{ steps.check_module_type.outputs.current_version }}"
         # Get tags via GitHub CLI (uses GH_TOKEN)
-        tags=$(gh api "repos/$repo/tags" --jq '.[].name' || echo "")
+        tags=$(git ls-remote --tags origin | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
         if [[ -z "$tags" ]]; then
           echo "::error::Failed to fetch tags for $repo"
         else
