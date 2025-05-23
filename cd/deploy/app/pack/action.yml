@@ -190,7 +190,7 @@ runs:
         python_stack: ${{ steps.stack.outputs.python_stack }}
         dotnet_stack: ${{ steps.stack.outputs.dotnet_stack }}
         go_stack: ${{ steps.stack.outputs.go_stack }}
-        package_name: ${{ inputs.project_key }}
+        release_name: ${{ inputs.release_name }}
         java_apm: ${{ steps.java_apm.outputs.result }}
         node_apm: ${{ steps.node_apm.outputs.result }} # TODO: Need to implement
         python_apm: ${{ steps.python_apm.outputs.result }} # TODO: Need to implement

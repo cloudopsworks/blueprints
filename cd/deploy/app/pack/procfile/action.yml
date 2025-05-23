@@ -28,9 +28,6 @@ inputs:
   go_stack:
     description: 'The Go stack'
     required: true
-  package_name:
-    description: 'The Go package name'
-    required: true
   node_apm:
     description: 'The Node APM parameters'
     required: false
@@ -51,6 +48,9 @@ inputs:
     description: 'The Go APM parameters'
     required: false
     default: ''
+  release_name:
+    description: 'Pass from the previous step the release name'
+    required: true
 
 runs:
   using: 'composite'
@@ -97,7 +97,7 @@ runs:
       shell: bash
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: dotnet ${{ inputs.package_name }}.dll' > Procfile
+          echo 'web: dotnet ${{ inputs.release_name }}.dll' > Procfile
           echo '::warning::Procfile created with default content'
         else
           echo '::notice::Procfile already exists, will use provided.'
@@ -109,7 +109,7 @@ runs:
       shell: bash
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: bin/${{ inputs.package_name }}' > Procfile
+          echo 'web: bin/${{ inputs.release_name }}' > Procfile
           echo '::warning::Procfile created with default content'
         else
           echo '::notice::Procfile already exists, will use provided.'
