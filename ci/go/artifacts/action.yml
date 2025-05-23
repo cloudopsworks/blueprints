@@ -69,3 +69,17 @@ runs:
         retention-days: 1
         include-hidden-files: true
         compression-level: '3' #mid-fast
+
+    # Perform of upload of target generated sources
+    - name: Upload Sources to workflow
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.sources_artifacts_name }}_target
+        path: |
+          ${{ inputs.source_path }}/test-results/**
+          ${{ inputs.source_path }}/**/bin/**
+          ${{ inputs.source_path }}/**/obj/**
+          ${{ steps.exclude_globs.outputs.result }}
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '3' #mid-fast
