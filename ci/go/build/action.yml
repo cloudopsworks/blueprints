@@ -188,7 +188,7 @@ runs:
       run: |
         echo "::group::Go Test"
         mkdir -p test-results
-        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go test -coverprofile=test-results/coverage.out ./... }}
+        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go test -coverprofile=test-results/coverage.out ./...
         GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go tool cover -html=test-results/coverage.out -o test-results/coverage.html
         echo "::endgroup::"
       env:
