@@ -18,6 +18,10 @@ inputs:
     description: 'The path to the blueprint'
     required: true
     default: 'bp'
+  token:
+    description: 'The GitHub token'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -88,6 +92,8 @@ runs:
       id: check_blueprint_version
       working-directory: ${{ inputs.blueprint_path }}
       shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
       run: |
         # Check the blueprint version in the blueprint
         # Check module version against the latest tag in the module repo
@@ -122,6 +128,8 @@ runs:
     - name: Check Module Version
       id: check_module_version
       shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
       run: |
         # Check the module version in the blueprint
         # Check module version against the latest tag in the module repo

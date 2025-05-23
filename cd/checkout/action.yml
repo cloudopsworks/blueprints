@@ -64,3 +64,4 @@ runs:
       with:
         source_path: source
         blueprint_path: bp
+        token: ${{ inputs.token }}
