@@ -1,0 +1,149 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Check Module Versions and warn if not latest
+author: cloudopsworks
+description: Check the module versions and warn if not latest
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: true
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: true
+    default: 'bp'
+  token:
+    description: 'The GitHub token'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check Module Type
+      id: check_module_type
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        # Check the the existence of module marker in .github directory
+        # Supported marker files are:
+        #   - .golang
+        #   - .python
+        #   - .node
+        #   - .terraform
+        #   - .java
+        #   - .dotnet
+        #   - .rust
+        #   - .docker
+        #   - .iac
+        #   - .xcode
+        # ouptuts are:
+        #   - repo = cloudopsworks/<moduletype>-app-template
+        #   - current_version = contenfrom .github/_VERSION file
+        if [ -f ".github/.golang" ]; then
+          echo "::notice::Module type is golang"
+          echo "repo=cloudopsworks/go-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.python" ]; then
+          echo "::notice::Module type is python"
+          echo "repo=cloudopsworks/python-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.node" ]; then
+          echo "::notice::Module type is node"
+          echo "repo=cloudopsworks/node-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.terraform" ]; then
+          echo "::notice::Module type is terraform"
+          echo "repo=cloudopsworks/terraform-project-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.java" ]; then
+          echo "::notice::Module type is java"
+          echo "repo=cloudopsworks/java-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.dotnet" ]; then
+          echo "::notice::Module type is dotnet"
+          echo "repo=cloudopsworks/dotnet-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.rust" ]; then
+          echo "::notice::Module type is rust"
+          echo "repo=cloudopsworks/rust-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.docker" ]; then
+          echo "::notice::Module type is docker"
+          echo "repo=cloudopsworks/docker-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.xcode" ]; then
+          echo "::notice::Module type is Xcode"
+          echo "repo=cloudopsworks/xcode-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".github/.iac" ]; then
+          echo "::notice::Module type is iac"
+          echo "repo=cloudopsworks/terragrunt-project-template" >> $GITHUB_OUTPUT
+        else
+          echo "::warning::No module marker file found in .github directory"
+        fi
+        
+        mod_version=""
+        if [ -f ".github/_VERSION" ]; then
+          mod_version=$(cat .github/_VERSION)
+        else
+          echo "::warning::No version file (_VERSION) found in .github directory"
+        fi
+        echo "current_version=$mod_version" >> $GITHUB_OUTPUT
+
+    - name: Check Blueprint Version
+      id: check_blueprint_version
+      working-directory: ${{ inputs.blueprint_path }}
+      shell: bash
+      run: |
+        # Check the blueprint version in the blueprint
+        # Check module version against the latest tag in the module repo
+        # this should be done whith github api but without the 
+        blueprint_version=""
+        if [ -f ".github/_VERSION" ]; then
+          blueprint_version=$(cat .github/_VERSION)
+        else
+          echo "::warning::No version file (_VERSION) found in .github directory"
+        fi
+
+        # Get tags via GitHub CLI (uses GH_TOKEN)
+        tags=$(git ls-remote --tags origin | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
+        if [[ -z "$tags" ]]; then
+          echo "::error::Failed to fetch tags for cloudopsworks/blueprints"
+        else
+          # Extract highest semver-style tag
+          latest=$(echo "$tags" | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -n1)
+          if [[ -z "$latest" ]]; then
+            echo "::error::No semantic version tags found for cloudopsworks/blueprints"
+          else
+            if [[ "$blueprint_version" != "$latest" ]]; then
+              echo "::warning:: 🚨 Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $blueprint_version | Latest: $latest"
+            fi
+          fi          
+        fi
+
+    - name: Check Module Version
+      id: check_module_version
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        # Check the module version in the blueprint
+        # Check module version against the latest tag in the module repo
+        # this should be done whith github api but without the 
+        if [ "${{ steps.check_module_type.outputs.repo }}" == "" ]; then
+          echo "::error::No module marker file found in .github directory"
+        fi
+        repo="${{ steps.check_module_type.outputs.repo }}"
+        ref="${{ steps.check_module_type.outputs.current_version }}"
+        # Get tags via GitHub CLI (uses GH_TOKEN)
+        tags=$(git ls-remote --tags https://github.com/$repo.git | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
+        if [[ -z "$tags" ]]; then
+          echo "::error::Failed to fetch tags for $repo"
+        else
+          # Extract highest semver-style tag
+          latest=$(echo "$tags" | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -n1)
+          if [[ -z "$latest" ]]; then
+            echo "::error::No semantic version tags found for $repo"
+          else
+            if [[ "$ref" != "$latest" ]]; then
+              echo "::warning:: 🚨 Repository Workflow is Outdated: Template: $repo | Current: $ref | Latest: $latest"
+            fi
+          fi
+        fi

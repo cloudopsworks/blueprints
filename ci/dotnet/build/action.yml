@@ -1,0 +1,247 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Build .Net Sources
+author: cloudopsworks
+description: Build .NEt sources and save artifacts
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+outputs:
+  dotnet_version:
+    description: 'The .Net version to use for the build'
+    value: ${{ steps.dotnet_version.outputs.result }}
+  dotnet_dist:
+    description: 'The .Net distribution to use for the build'
+    value: ${{ steps.dotnet_dist.outputs.result }}
+  dotnet_image_variant:
+    description: 'The .Net image variant to use for the build, currently not fully supported'
+    value: ${{ steps.dotnet_image_variant.outputs.result }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check tools and install
+      shell: bash
+      run: |
+        echo "::group::Check Tools"
+        sudo apt-get update
+        which make || sudo apt-get install -y make
+        which gh || sudo apt-get install -y gh
+        echo "::endgroup::"
+
+    # Get pipeline conf .Net version Defaults to 9
+    - name: Get pipeline .Net version
+      id: dotnet_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.version // "9.0"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net dist defaults to aspnet
+    - name: Get pipeline .Net dist
+      id: dotnet_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.dist // "aspnet"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net image variant defaults to alpine
+    - name: Get pipeline .Net image variant
+      id: dotnet_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net build project path
+    - name: Get pipeline .Net build project path
+      id: project_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.project_path // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+      # Validate project_path must not be blank, othewise fail the entire workflow
+    - name: Validate project_path
+      id: validate_project_path
+      shell: bash
+      run: |
+        if [ -z "${{ steps.project_path.outputs.result }}" ]; then
+          echo "Error: project_path is empty"
+          exit 1
+        fi
+
+    # Get the Package name from project's path csproj file
+    - name: Get Package name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -px -oy '.Project.PropertyGroup.AssemblyName' ${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}/${{ steps.project_path.outputs.result }}.csproj
+
+    # Get from global inputs the custom Build Options
+    - name: Get .Net Build options
+      id: build_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Build Options
+    - name: Get .Net Build options
+      id: run_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.run_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Build Options
+    - name: Get .Net Publish options
+      id: publish_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Test Options
+    - name: Get .Net Test options
+      id: test_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the default configuration
+    - name: Get .Net default configuration
+      id: global_default_configuration
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.dotnet.configuration // "Release"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the default configuration
+    - name: Get .Net default configuration
+      id: default_configuration
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.dotnet_configuration // "${{ steps.global_default_configuration.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+
+    # Get DependencyTrack project type configuration, default is null
+    - name: Get Pipeline conf DependencyTrack Project type
+      id: dtrack_project_type
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Check existence of packages.lock.json and set to true
+    - name: Check for packages.lock.json
+      id: lock_file
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}/packages.lock.json" ]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
+
+    # Setup .Net SDK for builds
+    - name: Set .Net SDK
+      uses: actions/setup-dotnet@v4
+      env:
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      with:
+        dotnet-version: "${{ steps.dotnet_version.outputs.result }}"
+        cache: ${{ steps.lock_file.outputs.result }}
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::.Net Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+    # Build the code!
+    - name: Build Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::.Net Build"
+        dotnet restore ${{ steps.lock_file.outputs.result == 'true' && '--locked-mode' || ' ' }}
+        dotnet build --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.build_opts.outputs.result }} --no-restore --verbosity normal
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+    # Test the code!
+    - name: Test Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::.Net Tests"
+        dotnet test --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.test_opts.outputs.result }} \
+          --no-build --no-restore --verbosity normal --collect "XPlat Code Coverage" \
+          --results-directory ./TestResults /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura -- ${{ steps.run_opts.outputs.result }}
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # SBOM generation
+    - name: SBOM Generation for Dtrack
+      uses: CycloneDX/gh-dotnet-generate-sbom@v1
+      with:
+        path: ${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}.sln
+        json: false
+        github-bearer-token: ${{ inputs.token }}
+
+    - name: Run .Net Publishing
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "::group::.Net Publishing"
+        dotnet publish --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.project_path.outputs.result }} \
+          ${{ steps.publish_opts.outputs.result }} --output ./PublishRelease --no-build --no-restore
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages

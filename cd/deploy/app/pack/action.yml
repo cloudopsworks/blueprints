@@ -1,7 +1,10 @@
 ##
-# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
-#            On GitHub: https://github.com/cloudopsworks
-#            Distributed Under Apache v2.0 License
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
 #
 name: Zip Packaging for Uploading
 author:  cloudopsworks
@@ -115,9 +118,24 @@ runs:
       run: |
         cp -pfr . ${{ steps.temp_dir.outputs.result }}/
         if [ -f python-dependencies.tar ]; then
-          echo "Extracting Python dependencies as python-dependencies.tar has been found."
+          echo "::notice::Extracting Python dependencies as python-dependencies.tar has been found."
           tar -xf python-dependencies.tar -C ${{ steps.temp_dir.outputs.result }}
+          rm -f python-dependencies.tar
         fi
+
+    - name: Copy .Net Application Release
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/PublishRelease/
+      if: ${{ steps.stack.outputs.dotnet_stack == 'true' }}
+      shell: bash
+      run: |
+        cp -pfr . ${{ steps.temp_dir.outputs.result }}/
+
+    - name: ChMod for GoLang/Rust Applications under release/bin
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/bin
+      if: ${{ steps.stack.outputs.go_stack == 'true' || steps.stack.outputs.rust_stack == 'true' }}
+      shell: bash
+      run: |
+        chmod +x *
 
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
@@ -150,7 +168,7 @@ runs:
     # Observability
 
     - name: Copy Application Release
-      if: ${{ steps.stack.outputs.java_stack != 'true' && steps.stack.outputs.node_stack != 'true' && steps.stack.outputs.python_stack != 'true' }}
+      if: ${{ steps.stack.outputs.java_stack != 'true' && steps.stack.outputs.node_stack != 'true' && steps.stack.outputs.python_stack != 'true' && steps.stack.outputs.dotnet_stack != 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
       shell: bash
       run: |
@@ -170,9 +188,14 @@ runs:
         java_stack: ${{ steps.stack.outputs.java_stack }}
         node_stack: ${{ steps.stack.outputs.node_stack }}
         python_stack: ${{ steps.stack.outputs.python_stack }}
+        dotnet_stack: ${{ steps.stack.outputs.dotnet_stack }}
+        go_stack: ${{ steps.stack.outputs.go_stack }}
+        release_name: ${{ inputs.release_name }}
         java_apm: ${{ steps.java_apm.outputs.result }}
-        node_apm: ${{ steps.node_apm.outputs.result }}
-        python_apm: ${{ steps.python_apm.outputs.result }}
+        node_apm: ${{ steps.node_apm.outputs.result }} # TODO: Need to implement
+        python_apm: ${{ steps.python_apm.outputs.result }} # TODO: Need to implement
+        dotnet_apm: ${{ steps.dotnet_apm.outputs.result }} # TODO: Need to implement
+        go_apm: ${{ steps.go_apm.outputs.result }} # TODO: Need to implement
 
     ## Generate ZIP and push to bucket
     - name: Generate ZIP and report filename

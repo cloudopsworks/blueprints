@@ -1,7 +1,10 @@
 ##
-# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
-#            On GitHub: https://github.com/cloudopsworks
-#            Distributed Under Apache v2.0 License
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
 #
 name: Procfile creation for ElasticBeanstalk
 author: cloudopsworks
@@ -19,6 +22,12 @@ inputs:
   python_stack:
     description: 'The Python stack'
     required: true
+  dotnet_stack:
+    description: 'The .NET stack'
+    required: true
+  go_stack:
+    description: 'The Go stack'
+    required: true
   node_apm:
     description: 'The Node APM parameters'
     required: false
@@ -31,6 +40,17 @@ inputs:
     description: 'The Python APM parameters'
     required: false
     default: ''
+  dotnet_apm:
+    description: 'The .NET APM parameters'
+    required: false
+    default: ''
+  go_apm:
+    description: 'The Go APM parameters'
+    required: false
+    default: ''
+  release_name:
+    description: 'Pass from the previous step the release name'
+    required: true
 
 runs:
   using: 'composite'
@@ -71,3 +91,25 @@ runs:
           echo '::notice::Procfile already exists, will use provided.'
         fi
 
+    - name: Default Procfile for .Net
+      if: ${{ inputs.dotnet_stack == 'true' }}
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        if [ ! -f Procfile ] ; then
+          echo '::warning::Procfile not created environment will generate it.'
+        else
+          echo '::notice::Procfile already exists, will use provided.'
+        fi
+
+    - name: Default Procfile for Go
+      if: ${{ inputs.go_stack == 'true' }}
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        if [ ! -f Procfile ] ; then
+          echo 'web: exec bin/${{ inputs.release_name }}' > Procfile
+          echo '::warning::Procfile created with default content'
+        else
+          echo '::notice::Procfile already exists, will use provided.'
+        fi

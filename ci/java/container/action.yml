@@ -1,7 +1,10 @@
 ##
-# (c) 2024 - Cloud Ops Works LLC - https://cloudops.works/
-#            On GitHub: https://github.com/cloudopsworks
-#            Distributed Under Apache v2.0 License
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
 #
 name: Generate Containerized Java Application
 author: cloudopsworks
@@ -141,8 +144,6 @@ runs:
             if [ "${{ inputs.observability_enabled }}" == "true" ]; then
               case "${{ inputs.observability_agent }}" in
                 xray)
-                  #echo "COPY target/observability/disco /app/webapp/disco"
-                  #echo "ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest/download/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
                   echo "COPY target/observability/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar"
                   ;;
                 datadog)
