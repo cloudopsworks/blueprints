@@ -129,6 +129,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
       run: |
+        set -x
         # Check the module version in the blueprint
         # Check module version against the latest tag in the module repo
         # this should be done whith github api but without the 
