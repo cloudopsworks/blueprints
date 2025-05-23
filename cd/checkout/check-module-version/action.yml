@@ -125,8 +125,6 @@ runs:
       id: check_module_version
       working-directory: ${{ inputs.source_path }}
       shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.token }}
       run: |
         # Check the module version in the blueprint
         # Check module version against the latest tag in the module repo
@@ -137,7 +135,7 @@ runs:
         repo="${{ steps.check_module_type.outputs.repo }}"
         ref="${{ steps.check_module_type.outputs.current_version }}"
         # Get tags via GitHub CLI (uses GH_TOKEN)
-        tags=$(git ls-remote --tags origin | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
+        tags=$(git ls-remote --tags https://github.com/$repo.git | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
         if [[ -z "$tags" ]]; then
           echo "::error::Failed to fetch tags for $repo"
         else
