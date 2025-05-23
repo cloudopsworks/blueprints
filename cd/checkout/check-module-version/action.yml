@@ -138,7 +138,7 @@ runs:
         repo="${{ steps.check_module_type.outputs.repo }}"
         ref="${{ steps.check_module_type.outputs.current_version }}"
         # Get tags via GitHub CLI (uses GH_TOKEN)
-        tags=$(gh api "repos/${repo}/tags" --jq '.[].name' || echo "")
+        tags=$(gh api "repos/$repo/tags" --jq '.[].name' || echo "")
         if [[ -z "$tags" ]]; then
           echo "::error::Failed to fetch tags for $repo"
         else
