@@ -109,7 +109,7 @@ runs:
       shell: bash
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: bin/${{ inputs.release_name }}' > Procfile
+          echo 'web: exec bin/${{ inputs.release_name }}' > Procfile
           echo '::warning::Procfile created with default content'
         else
           echo '::notice::Procfile already exists, will use provided.'

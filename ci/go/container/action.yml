@@ -136,7 +136,8 @@ runs:
         while IFS= read -r line; do
           if [[ "$line" =~ $INJECTION_POINT ]]; then
             # Insert the content of input at the injection point depending on conditions
-            echo "COPY bin/* /app/webapp/${{ inputs.project_key }}"
+            echo "COPY bin/* /app/webapp/${{ inputs.package_name }}"
+            echo "RUN chmod +x /app/webapp/${{ inputs.package_name }}"
             echo "${{ inputs.docker_inline }}"
           else
             # Print the current line
