@@ -97,8 +97,7 @@ runs:
       shell: bash
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: dotnet ${{ inputs.release_name }}.dll' > Procfile
-          echo '::warning::Procfile created with default content'
+          echo '::warning::Procfile not created environment will generate it.'
         else
           echo '::notice::Procfile already exists, will use provided.'
         fi
