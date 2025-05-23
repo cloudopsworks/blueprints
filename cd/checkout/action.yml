@@ -51,7 +51,6 @@ runs:
         fetch-depth: 0
         path: source
 
-
     - name: Checkout Blueprint
       uses: actions/checkout@v4
       with:
@@ -59,3 +58,9 @@ runs:
         ref: ${{ inputs.blueprint_ref }}
         fetch-depth: 1
         path: bp
+
+    - name: Check Source Module version
+      uses: ./bp/cd/checkout/check-module-version
+      with:
+        source_path: source
+        blueprint_path: bp

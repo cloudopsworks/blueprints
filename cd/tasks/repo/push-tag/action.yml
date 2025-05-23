@@ -45,7 +45,7 @@ runs:
         ret=$?
         count=3
         while [ $ret -ne 0 ] && [ $count -gt 0 ]; do
-          echo "Failed to push TAG, retrying in 10 sec..."
+          echo "::error::Failed to push TAG, retrying in 10 sec..."
           sleep 10
           git pull --rebase
           make gitflow/version/tag
@@ -53,7 +53,7 @@ runs:
           count=$((count-1))
         done
         if [ $ret -ne 0 ]; then
-          echo "Failed to push TAG, all retries failed!"
+          echo "::error::Failed to push TAG, all retries failed!"
           exit 1
         fi
         make gitflow/version/publish
