@@ -103,20 +103,18 @@ runs:
           echo "::warning::No version file (_VERSION) found in .github directory"
         fi
 
-        repo="${{ steps.check_module_type.outputs.repo }}"
-        ref="${{ steps.check_module_type.outputs.current_version }}"
         # Get tags via GitHub CLI (uses GH_TOKEN)
         tags=$(git ls-remote --tags origin | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
         if [[ -z "$tags" ]]; then
-          echo "::error::Failed to fetch tags for $repo"
+          echo "::error::Failed to fetch tags for cloudopsworks/blueprints"
         else
           # Extract highest semver-style tag
           latest=$(echo "$tags" | grep -E '^v?[0-9]+(\.[0-9]+)*$' | sort -V | tail -n1)
           if [[ -z "$latest" ]]; then
             echo "::error::No semantic version tags found for cloudopsworks/blueprints"
           else
-            if [[ "$ref" != "$latest" ]]; then
-              echo "::warning:: 🚨 Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $ref | Latest: $latest"
+            if [[ "$blueprint_version" != "$latest" ]]; then
+              echo "::warning:: 🚨 Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $blueprint_version | Latest: $latest"
             fi
           fi          
         fi
