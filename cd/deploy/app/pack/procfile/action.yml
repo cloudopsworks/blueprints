@@ -22,6 +22,15 @@ inputs:
   python_stack:
     description: 'The Python stack'
     required: true
+  dotnet_stack:
+    description: 'The .NET stack'
+    required: true
+  go_stack:
+    description: 'The Go stack'
+    required: true
+  package_name:
+    description: 'The Go package name'
+    required: true
   node_apm:
     description: 'The Node APM parameters'
     required: false
@@ -32,6 +41,14 @@ inputs:
     default: ''
   python_apm:
     description: 'The Python APM parameters'
+    required: false
+    default: ''
+  dotnet_apm:
+    description: 'The .NET APM parameters'
+    required: false
+    default: ''
+  go_apm:
+    description: 'The Go APM parameters'
     required: false
     default: ''
 
@@ -74,3 +91,26 @@ runs:
           echo '::notice::Procfile already exists, will use provided.'
         fi
 
+    - name: Default Procfile for .Net
+      if: ${{ inputs.dotnet_stack == 'true' }}
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        if [ ! -f Procfile ] ; then
+          echo 'web: dotnet ${{ inputs.package_name }}.dll' > Procfile
+          echo '::warning::Procfile created with default content'
+        else
+          echo '::notice::Procfile already exists, will use provided.'
+        fi
+
+    - name: Default Procfile for Go
+      if: ${{ inputs.go_stack == 'true' }}
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        if [ ! -f Procfile ] ; then
+          echo 'web: bin/${{ inputs.package_name }}' > Procfile
+          echo '::warning::Procfile created with default content'
+        else
+          echo '::notice::Procfile already exists, will use provided.'
+        fi

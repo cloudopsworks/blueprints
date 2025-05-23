@@ -176,7 +176,7 @@ runs:
         if [ "${{ inputs.dotnet_version }}" != "" ] ; then
           echo "result=IMAGE_NAME=mcr.microsoft.com/dotnet/${{ inputs.dotnet_dist }}:${{ inputs.dotnet_version }}-${{ inputs.dotnet_image_variant }}" >> $GITHUB_OUTPUT
         else
-          echo "::error::dotnet_version si blank!"
+          echo "::error::dotnet_version is blank!"
           exit 1
         fi
 

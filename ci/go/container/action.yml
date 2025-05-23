@@ -36,6 +36,9 @@ inputs:
   environment:
     description: 'The environment to use for the build'
     required: true
+  package_name:
+    description: 'The package name'
+    required: true
   is_release:
     description: 'The release flag'
     required: true
@@ -168,6 +171,22 @@ runs:
         cat ./startup.sh
       env:
         CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
+
+    - name: Build and set startup.sh command
+      if: ${{ steps.custom_run_command.outputs.result == '' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "Creation of startup.sh script..."
+        cat > ./startup.sh << EOF
+        #!/bin/sh
+        
+        # Startup the .Net App
+        cd /app/webapp
+        exec bin/${{ inputs.package_name }} \${GOLANG_ARGS}
+        EOF
+        cat ./startup.sh
+        
 
     # Run Generalized Docker Build & Upload Artifact
     - name: Generalized Docker Build
