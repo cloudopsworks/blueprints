@@ -50,6 +50,7 @@ runs:
       with:
         name: ${{ inputs.artifacts_name }}
         path: |
+          ${{ inputs.source_path }}/bin/**
           ${{ steps.zip_globs.outputs.result }}
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
