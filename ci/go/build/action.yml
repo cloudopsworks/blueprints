@@ -102,6 +102,13 @@ runs:
       with:
         cmd: yq e '.golang.main_file // "main.go"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Get pipeline conf GoLang if CGO is disabled or not
+    - name: Get pipeline GoLang main file
+      id: disable_cgo
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.disable_cgo // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Get the Package name from go.mod
     - name: Get Package name
       id: package_name
@@ -175,7 +182,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Go Build"
-        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go build -o bin/${{ steps.package_name.outputs.result }} ${{ steps.main_file.outputs.result }}
+        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} ${{ steps.disable_cgo.outputs.result == 'true' && 'CGO_ENABLED=0' || '' }} go build -o bin/${{ steps.package_name.outputs.result }} ${{ steps.main_file.outputs.result }}
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
