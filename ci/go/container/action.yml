@@ -182,9 +182,9 @@ runs:
         cat > ./startup.sh << EOF
         #!/bin/sh
         
-        # Startup the .Net App
+        # Startup the GoLang App
         cd /app/webapp
-        exec bin/${{ inputs.package_name }} \${GOLANG_ARGS}
+        exec bin/${{ inputs.package_name }} \${GO_OPTS}
         EOF
         cat ./startup.sh
         
