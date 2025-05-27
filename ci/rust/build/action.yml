@@ -136,7 +136,7 @@ runs:
       run: |
         echo "::group::Install GCC Toolchain"
         sudo apt-get install -y cmake g++ pkg-config jq
-        sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
+        sudo apt-get install -y libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
         echo "::endgroup::"
     - name: Add Rust Target
       if: ${{ steps.rust_dist.outputs.result != '' && steps.rust_arch.outputs.result != '' }}
