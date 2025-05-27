@@ -106,6 +106,13 @@ runs:
       with:
         cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Get from global inputs the custom Rust Test Options
+    - name: Get Rust Build options
+      id: test_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
@@ -196,7 +203,7 @@ runs:
         mkdir -p test-results
         cargo install cargo-tarpaulin
         cargo install cargo-kcov
-        cargo test --release --no-fail-fast --no-run --test-threads=1 ${{ steps.build_opts.outputs.result }} -- --nocapture > test-results/test.log
+        cargo test --release --no-fail-fast --no-run ${{ steps.build_opts.outputs.result }} -- --nocapture --test-threads=1 ${{ steps.test_opts.outputs.result }} > test-results/test.log
         cargo kcov --release --output test-results
         echo "::endgroup::"
       env:
