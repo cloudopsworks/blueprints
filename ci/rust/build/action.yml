@@ -1,0 +1,212 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Build Rust Sources
+author: cloudopsworks
+description: Build Rust sources and save artifacts
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+outputs:
+  rust_version:
+    description: 'The Rust version to use for the build'
+    value: ${{ steps.rust_version.outputs.result }}
+  rust_dist:
+    description: 'The Rust distribution to use for the build'
+    value: ${{ steps.rust_dist.outputs.result }}
+  rust_arch:
+    description: 'The Rust architecture to use for the build'
+    value: ${{ steps.rust_arch.outputs.result }}
+  rust_image_variant:
+    description: 'The Rust image variant to use for the build'
+    value: ${{ steps.rust_image_variant.outputs.result }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.result }}
+  package_name:
+    description: 'The package name'
+    value: ${{ steps.package_name.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check tools and install
+      shell: bash
+      run: |
+        echo "::group::Check Tools"
+        sudo apt-get update
+        which make || sudo apt-get install -y make
+        which gh || sudo apt-get install -y gh
+        echo "::endgroup::"
+
+    # Get pipeline conf Rust version Defaults to 1.87
+    - name: Get pipeline Rust version
+      id: rust_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.rust.version // "stable"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Rust dist defaults to linux (supported: linux windows darwin)
+    - name: Get pipeline Rust dist
+      id: rust_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.rust.dist // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Rust arch defaults to x64
+    - name: Get pipeline Rust arch
+      id: rust_arch
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.rust.arch // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Rust image variant defaults to alpine
+    - name: Get pipeline Rust image variant
+      id: rust_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.rust.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get package name from the Cargo.toml file
+    - name: Get package name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -otoml '.package.name' ./${{ inputs.source_path }}/Cargo.toml
+
+    # Get from global inputs the custom Go Options
+    - name: Get Rust Build options
+      id: build_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get DependencyTrack project type configuration, default is null
+    - name: Get Pipeline conf DependencyTrack Project type
+      id: dtrack_project_type
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Rust comes in GitHub Actions, so we can use the latest version
+    - name: Set Rust SDK
+      shell: bash
+      run: |
+        echo "::group::Set Rust SDK"
+        rustup install ${{ steps.rust_version.outputs.result }}
+        echo "::endgroup::"
+      with:
+        token: ${{ inputs.token }}
+
+    - name: Add Rust Target
+      if: ${{ steps.rust_dist.outputs.result != '' && steps.rust_arch.outputs.result != '' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Add Rust Target"
+        rustup target add ${{ steps.rust_arch.outputs.result }}-${{ steps.rust_dist.outputs.result }}
+        echo "::endgroup::"
+
+    - name: Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          ${{ inputs.source_path }}/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Go Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+    # Build the code!
+    - name: Build Default Target Code
+      if: ${{ steps.rust_dist.outputs.result == '' || steps.rust_arch.outputs.result == '' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Rust Default Cargo Build"
+        cargo build --release ${{ steps.build_opts.outputs.result }} --target-dir ./target
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # Build the targetted code!
+    - name: Build Targetted Code (Cross Compile)
+      if: ${{ steps.rust_dist.outputs.result != '' && steps.rust_arch.outputs.result != '' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Rust Cargo Build - Cross Compile"
+        cargo build --release --target ${{ steps.rust_arch.outputs.result }}-${{ steps.rust_dist.outputs.result }} ${{ steps.build_opts.outputs.result }}
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # Test the code!
+    - name: Test Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Go Test"
+        mkdir -p test-results
+        cargo install cargo-tarpaulin
+        cargo install cargo-kcov
+        cargo test --release --no-fail-fast --no-run --test-threads=1 ${{ steps.build_opts.outputs.result }} -- --nocapture > test-results/test.log
+        cargo kcov --release --output test-results
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: SBOM Generation for Dtrack
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "::group::SBOM Generation"
+        cargo install cargo-cyclonedx
+        cargo cyclonedx --format xml ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
+        echo "::endgroup::"

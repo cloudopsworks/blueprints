@@ -1,0 +1,29 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+src/
+draft.toml
+charts/
+NOTICE
+LICENSE
+README.md
+OWNERS
+OWNERS_ALIASES
+jenkins-x*.*
+skaffold.*
+.helmignore
+.git*
+gulpfile.js
+sonar-project.properties
+# CloudOpsWorks Tronador
+tronador/
+.tronador
+/Makefile
+# Generated Dockerfile and Image
+Dockerfile
+docker-image.tar*
