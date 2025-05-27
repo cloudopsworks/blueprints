@@ -6,9 +6,9 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Generate Containerized GoLang Application
+name: Generate Containerized Rust Application
 author: cloudopsworks
-description: Generate a containerized GoLang application
+description: Generate a containerized Rust application
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -21,17 +21,17 @@ inputs:
   semver:
     description: 'The semver version to use for the build'
     required: true
-  golang_version:
-    description: 'The GoLang version to use for the build'
+  rust_version:
+    description: 'The Rust version to use for the build'
     required: true
-  golang_dist:
-    description: 'The GoLang distribution to use for the build'
+  rust_dist:
+    description: 'The Rust distribution to use for the build'
     required: true
-  golang_arch:
-    description: 'The GoLang architecture to use for the build'
+  rust_arch:
+    description: 'The Rust architecture to use for the build'
     required: true
-  golang_image_variant:
-    description: 'The GoLang image variant to use for the build'
+  rust_image_variant:
+    description: 'The Rust image variant to use for the build'
     required: true
   environment:
     description: 'The environment to use for the build'
@@ -106,11 +106,11 @@ runs:
         cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Copy Dockerfile from blueprint to current dir
-    - name: Copy Dockerfile GoLang App
+    - name: Copy Dockerfile Rust App
       shell: bash
       run: |
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/go/* ${{ inputs.source_path }}/
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/go/.dockerignore ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/rust/* ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/rust/.dockerignore ${{ inputs.source_path }}/
 
     - name: Get default config_map mount point for environment
       id: config_map_mount_point
@@ -125,18 +125,18 @@ runs:
       with:
         cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-agent.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    - name: Dockerfile GoLang Specific Injection
+    - name: Dockerfile Rust Specific Injection
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "::group::Injecting GoLang content in Dockerfile..."
+        echo "::group::Injecting Rust content in Dockerfile..."
         DOCKERFILE=Dockerfile
         TEMP_FILE=$(mktemp)
-        INJECTION_POINT="#<GOLANG-INJECTION-POINT>"
+        INJECTION_POINT="#<RUST-INJECTION-POINT>"
         while IFS= read -r line; do
           if [[ "$line" =~ $INJECTION_POINT ]]; then
             # Insert the content of input at the injection point depending on conditions
-            echo "COPY bin/* /app/webapp/${{ inputs.package_name }}"
+            echo "COPY target/release/${{ inputs.package_name }} /app/webapp/${{ inputs.package_name }}"
             echo "RUN chmod +x /app/webapp/${{ inputs.package_name }}"
             echo "${{ inputs.docker_inline }}"
           else
@@ -148,12 +148,12 @@ runs:
         cat "$DOCKERFILE"
         echo "::endgroup::"
 
-    # GoLang version image settings (adopt is deprecated)
-    - name: Set output with GoLang Version
+    # Rust version image settings (adopt is deprecated)
+    - name: Set output with Rust Version
       id: docker_image_name
       shell: bash
       run: |
-        echo "result=IMAGE_NAME=${{ inputs.golang_image_variant }}" >> $GITHUB_OUTPUT
+        echo "result=IMAGE_NAME=${{ inputs.rust_image_variant }}" >> $GITHUB_OUTPUT
 
     # if custom_run_command is non empty then need to override the startup.sh scripts with new content, write the file in-place
     - name: Set custom run command
@@ -165,7 +165,7 @@ runs:
         cat > ./startup.sh << EOF
         #!/bin/sh
         
-        # Startup the GoLang App (custom command)
+        # Startup the Rust App (custom command)
         cd /app/webapp
         $CUSTOM_RUN_COMMAND
         EOF
@@ -182,9 +182,9 @@ runs:
         cat > ./startup.sh << EOF
         #!/bin/sh
         
-        # Startup the GoLang App
+        # Startup the .Net App
         cd /app/webapp
-        exec bin/${{ inputs.package_name }} \${GO_OPTS}
+        exec bin/${{ inputs.package_name }} \${RUST_ARGS}
         EOF
         cat ./startup.sh
         
