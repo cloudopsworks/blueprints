@@ -120,8 +120,9 @@ runs:
         echo "::group::Set Rust SDK"
         rustup install ${{ steps.rust_version.outputs.result }}
         echo "::endgroup::"
-      with:
-        token: ${{ inputs.token }}
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
     - name: Add Rust Target
       if: ${{ steps.rust_dist.outputs.result != '' && steps.rust_arch.outputs.result != '' }}
