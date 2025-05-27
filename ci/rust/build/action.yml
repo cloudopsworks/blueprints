@@ -99,7 +99,7 @@ runs:
       with:
         cmd: yq e -otoml '.package.name' ./${{ inputs.source_path }}/Cargo.toml
 
-    # Get from global inputs the custom Go Options
+    # Get from global inputs the custom Rust Options
     - name: Get Rust Build options
       id: build_opts
       uses: mikefarah/yq@master
@@ -147,7 +147,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "::group::Go Version SET"
+        echo "::group::Rust Version SET"
         make version
         echo "::endgroup::"
       env:
@@ -192,7 +192,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "::group::Go Test"
+        echo "::group::Rust Test"
         mkdir -p test-results
         cargo install cargo-tarpaulin
         cargo install cargo-kcov

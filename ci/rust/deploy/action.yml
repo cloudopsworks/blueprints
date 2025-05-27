@@ -8,7 +8,7 @@
 #
 name: Deploy Rust Component
 author: cloudopsworks
-description: Deploy Rust component to Go repository
+description: Deploy Rust component to Rust repository
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -43,20 +43,20 @@ runs:
       with:
         cmd: yq e '.isLibrary and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    # Get from global inputs the custom Go Options
-    - name: Get Go options
+    # Get from global inputs the custom Rust Options
+    - name: Get Rust options
       id: build_opts
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    # Deploy release to Go Repository (defaults to Github repo)
-    - name: Deploy to Go Repo
+    # Deploy release to Rust Repository (defaults to Github repo)
+    - name: Deploy to Rust Repo
       if: ${{ steps.is_library.outputs.result == 'true' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "::group::Go Deploy to Repo"
+        echo "::group::Rust Deploy to Repo"
         echo "NOT SUPPORTED YET"
         echo "::endgroup::"
       env:
