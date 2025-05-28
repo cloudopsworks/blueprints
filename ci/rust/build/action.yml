@@ -210,7 +210,7 @@ runs:
         echo "::group::Rust Test"
         mkdir -p test-results
         cargo test --release --no-fail-fast ${{ steps.build_opts.outputs.result }} -- --test-threads=1 ${{ steps.test_opts.outputs.result }} > test-results/test.log
-        cargo kcov ./test-results
+        cargo tarpaulin --out Html --out Xml --out Lcov --output-dir test-results/
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
