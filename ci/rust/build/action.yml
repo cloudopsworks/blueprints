@@ -126,7 +126,7 @@ runs:
       run: |
         echo "::group::Set Rust SDK"
         rustup install ${{ steps.rust_version.outputs.result }}
-        cargo install cargo-tarpaulin cargo-kcov cargo-cyclonedx
+        cargo install cargo-tarpaulin cargo-cyclonedx
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
