@@ -209,7 +209,7 @@ runs:
       run: |
         echo "::group::Rust Test"
         mkdir -p test-results
-        cargo test --release --no-fail-fast --no-run ${{ steps.build_opts.outputs.result }} -- --nocapture --test-threads=1 ${{ steps.test_opts.outputs.result }} > test-results/test.log
+        cargo test --release --no-fail-fast ${{ steps.build_opts.outputs.result }} -- --test-threads=1 ${{ steps.test_opts.outputs.result }} > test-results/test.log
         cargo kcov ./test-results
         echo "::endgroup::"
       env:
