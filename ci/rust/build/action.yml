@@ -126,6 +126,7 @@ runs:
       run: |
         echo "::group::Set Rust SDK"
         rustup install ${{ steps.rust_version.outputs.result }}
+        cargo install cargo-tarpaulin cargo-kcov cargo-cyclonedx
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -208,9 +209,8 @@ runs:
       run: |
         echo "::group::Rust Test"
         mkdir -p test-results
-        cargo install cargo-tarpaulin cargo-kcov
         cargo test --release --no-fail-fast --no-run ${{ steps.build_opts.outputs.result }} -- --nocapture --test-threads=1 ${{ steps.test_opts.outputs.result }} > test-results/test.log
-        cargo kcov --release --output test-results
+        cargo kcov ./test-results
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -221,6 +221,5 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::SBOM Generation"
-        cargo install cargo-cyclonedx
         cargo cyclonedx --format xml ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
         echo "::endgroup::"
