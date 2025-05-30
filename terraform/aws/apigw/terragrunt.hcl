@@ -20,7 +20,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-api-gateway-apis-deploy.git//?ref=v5.1.1"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-api-gateway-apis-deploy.git//?ref=v5.1.6"
 }
 
 inputs = {
@@ -30,6 +30,7 @@ inputs = {
     environment_name  = local.base_vars.environment_name
     environment_type  = local.local_vars.environment
   }
+  release           = local.release_vars.release
   cloud_provider    = local.apis_vars.provider
   apis              = local.apis_vars.apis
   api_files_dir     = try(local.global_vars.api_files_dir, "apifiles/")
