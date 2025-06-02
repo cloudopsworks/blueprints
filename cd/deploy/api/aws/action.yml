@@ -103,12 +103,10 @@ runs:
         sudo chmod +x /bin/terragrunt
         terragrunt -v
 
-    - name: Copy configurations
+    - name: Create apigw directory
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/apigw/apis-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/inputs.yaml
-        cp -pf ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/inputs-apis.yaml
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/inputs-global.yaml
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/apigw
 
     - name: Download API Artifacts
       uses: actions/download-artifact@v4
@@ -117,6 +115,27 @@ runs:
         name: ${{ inputs.artifacts_name }}
         path: ${{ inputs.blueprint_path }}/terraform/aws/apigw/apifiles/
 
+    - name: Copy configurations
+      shell: bash
+      run: |
+        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
+        for api in $apis; do
+          api_name=$(echo $api | cut -d'/' -f1)
+          api_version=$(echo $api | cut -d'/' -f2)
+          echo "Copying API: $api_name version: $api_version"
+          mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}
+          yq eval 'with_entries(select(.key != "apigw_definitions"))'  ${{ inputs.source_path }}/.github/vars/apigw/apis-dev.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-cloud.yaml
+          yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.github/vars/apigw/apis-dev.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
+          cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-base.yaml
+          cp -p ${{ inputs.blueprint_path }}/terraform/aws/apigw_template/* ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/
+        done
+
+    - name: Get cloud_type from inputs-global.yaml
+      id: cloud_type
+      shell: bash
+      run: |
+        ret=$(yq eval -I=0 -r -oj '.cloud_type' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        echo "result=${ret}" >> $GITHUB_OUTPUT
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       shell: bash
@@ -136,6 +155,7 @@ runs:
         cat > global-inputs.yaml << EOF
         environment: ${{ inputs.deployment_name }}
         release_name: ${{ inputs.release_name }}
+        cloud_type: ${{ steps.cloud_type.outputs.result }}
         default:
           region: ${{ inputs.aws_region != '' && inputs.aws_region }}
           sts_role_arn: ${{ inputs.aws_sts_role_arn != '' && inputs.aws_sts_role_arn }}
@@ -175,7 +195,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
-        terragrunt --non-interactive ${{ steps.plan_action.outputs.value }}
+        terragrunt --non-interactive --out-dir=${{ github.workspace }}/.tfplan run-all ${{ steps.plan_action.outputs.value }} -input=false
         echo "::endgroup::"
       continue-on-error: false
       env:
@@ -225,7 +245,7 @@ runs:
       if: ${{ inputs.unlock != 'true' }}
       run: |
         echo "::group::Terragrunt Apply"
-        terragrunt --non-interactive apply -no-color plan.tfplan
+        terragrunt --non-interactive --out-dir=${{ github.workspace }}/.tfplan run-all apply -no-color
         echo "::endgroup::"
       shell: bash
       continue-on-error: false
