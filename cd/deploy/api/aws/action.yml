@@ -127,7 +127,7 @@ runs:
           yq eval 'with_entries(select(.key != "apigw_definitions"))'  ${{ inputs.source_path }}/.github/vars/apigw/apis-dev.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-cloud.yaml
           yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.github/vars/apigw/apis-dev.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
           cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-base.yaml
-          cp -p ${{ inputs.blueprint_path }}/terraform/aws/apigw_template/* ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/
+          cp -p ${{ inputs.blueprint_path }}/terraform/aws/apigw_template/*.hcl ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/
         done
 
     - name: Get cloud_type from inputs-global.yaml
