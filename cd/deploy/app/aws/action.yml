@@ -274,7 +274,7 @@ runs:
 
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      if: ${{ inputs.unlock != 'true' }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       shell: bash
       run: |
         echo "::group::Terragrunt Plan to JSON"
@@ -288,7 +288,7 @@ runs:
 
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      if: ${{ inputs.unlock != 'true' }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       shell: bash
       run: |
         echo "::group::TF Summarize of JSON file"
@@ -337,7 +337,7 @@ runs:
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      if: ${{ inputs.unlock != 'true' && ! cancelled() }}
+      if: ${{ inputs.unlock != 'true' && ! cancelled() && steps.plan.outcome == 'success' }}
       shell: bash
       run: |
         echo "::group::Terragrunt Apply"

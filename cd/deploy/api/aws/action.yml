@@ -206,7 +206,7 @@ runs:
 
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-      if: ${{ ! inputs.unlock }}
+      if: ${{ ! inputs.unlock && steps.plan.outcome == 'success' }}
       run: |
         echo "::group::Terragrunt Plan to JSON"
         terragrunt --non-interactive show -json plan.tfplan > tfplan.json
@@ -220,7 +220,7 @@ runs:
 
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-      if: ${{ ! inputs.unlock }}
+      if: ${{ ! inputs.unlock && steps.plan.outcome == 'success' }}
       shell: bash
       run: |
         echo "::group::TF Summarize of JSON file"
@@ -242,7 +242,7 @@ runs:
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-      if: ${{ inputs.unlock != 'true' }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       run: |
         echo "::group::Terragrunt Apply"
         terragrunt --non-interactive run-all --out-dir=${{ github.workspace }}/.tfplan apply -no-color
