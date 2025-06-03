@@ -40,10 +40,18 @@ co_master:
 
 tag_local: co_master get_version
 	git tag -f $(VER_MAJOR).$(VER_MINOR)
+
+tag_local_all: co_master get_version
+	git tag -f $(VER_MAJOR).$(VER_MINOR)
 	git tag -f $(VER_MAJOR)
 
-## Tag the current version
+## Tag the current version only upto minor
 tag:: tag_local
+	git push origin -f $(VER_MAJOR).$(VER_MINOR)
+	git checkout develop
+
+## Tag the current version upto major and minor
+tagall:: tag_local_all
 	git push origin -f $(VER_MAJOR).$(VER_MINOR)
 	git push origin -f $(VER_MAJOR)
 	git checkout develop
