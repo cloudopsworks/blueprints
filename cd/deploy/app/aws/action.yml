@@ -129,7 +129,12 @@ runs:
       shell: bash
       run: |
         mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
-        cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        if [ -d ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ] ; then
+          cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        else
+          echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
+          touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
+        fi
 
     - name: Create Hash value for values bundle
       id: hash_value
