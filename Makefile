@@ -55,3 +55,15 @@ tagall:: tag_local_all
 	git push origin -f $(VER_MAJOR).$(VER_MINOR)
 	git push origin -f $(VER_MAJOR)
 	git checkout develop
+
+# Build the current branch as hotfix and merge it into develop and master
+build-hotfix:
+	@$(MAKE) gitflow/hotfix/start
+	@$(MAKE) gitflow/hotfix/publish
+	@git merge develop
+	@$(MAKE) gitflow/version/file
+	@$(MAKE) gitflow/hotfix/finish/local
+	@git checkout develop
+	@git merge master --no-ff
+	@git push
+	@$(MAKE) tag
