@@ -58,12 +58,12 @@ tagall:: tag_local_all
 
 # Build the current branch as hotfix and merge it into develop and master
 build-hotfix:
-	@$(SELF) gitflow/hotfix/start
-	@$(SELF) gitflow/hotfix/publish
+	@$(MAKE) gitflow/hotfix/start
+	@$(MAKE) gitflow/hotfix/publish
 	@git merge develop
-	@$(SELF) gitflow/version/file
-	@$(SELF) gitflow/hotfix/finish/local
+	@$(MAKE) gitflow/version/file
+	@$(MAKE) gitflow/hotfix/finish/local
 	@git checkout develop
 	@git merge master --no-ff
 	@git push
-	@$(SELF) tag
+	@$(MAKE) tag
