@@ -128,6 +128,17 @@ runs:
           yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.github/vars/apigw/apis-dev.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
           cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-base.yaml
           cp -p ${{ inputs.blueprint_path }}/terraform/aws/apigw_template/*.hcl ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/
+          file_name_stub=$(yq eval -I=0 -r -oj '.file_name' ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml)
+          echo "Rewriting API name and version in openapi file ${file_name_stub}"
+          file_name=${{ inputs.blueprint_path }}/terraform/aws/apigw/apifiles/${file_name_stub}.yaml
+          if [ -f "${{ inputs.blueprint_path }}/terraform/aws/apigw/apifiles/${file_name_stub}.json" ]; then
+            echo "Found JSON file, using that instead of YAML"
+            file_name=${{ inputs.blueprint_path }}/terraform/aws/apigw/apifiles/${file_name_stub}.json
+          fi
+          echo "File name: ${file_name}"
+          [ -f $file_name ] || exit 1
+          yq eval -i ".info.title = \"${api_name}\"" ${file_name}
+          yq eval -i ".info.version = \"${api_version}\"" ${file_name}
         done
 
     - name: Get cloud_type from inputs-global.yaml
