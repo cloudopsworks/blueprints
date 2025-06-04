@@ -9,7 +9,7 @@
 
 locals {
   local_vars   = yamldecode(file("./inputs-api.yaml"))
-  cloud_vars    = yamldecode(file("./inputs-cloud.yaml"))
+  cloud_vars   = yamldecode(file("./inputs-cloud.yaml"))
   base_vars    = yamldecode(file("./inputs-base.yaml"))
   release_vars = yamldecode(file(find_in_parent_folders("./release.yaml")))
   global_vars  = yamldecode(file(find_in_parent_folders("global-inputs.yaml")))
