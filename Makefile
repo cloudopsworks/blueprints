@@ -38,23 +38,27 @@ get_version: packages/install/gitversion
 co_master:
 	git checkout master
 
-tag_local: co_master get_version
+tag_local: get_version
 	git tag -f $(VER_MAJOR).$(VER_MINOR)
 
-tag_local_all: co_master get_version
+tag_local_all: get_version
 	git tag -f $(VER_MAJOR).$(VER_MINOR)
 	git tag -f $(VER_MAJOR)
 
 ## Tag the current version only upto minor
-tag:: tag_local
+tag:: co_master tag_local
 	git push origin -f $(VER_MAJOR).$(VER_MINOR)
 	git checkout develop
 
 ## Tag the current version upto major and minor
-tagall:: tag_local_all
+tagall:: co_master tag_local_all
 	git push origin -f $(VER_MAJOR).$(VER_MINOR)
 	git push origin -f $(VER_MAJOR)
 	git checkout develop
+
+## Tag the current support branch (no master checkout
+tagbranch:: tag_local
+	git push origin -f $(VER_MAJOR).$(VER_MINOR)
 
 # Build the current branch as hotfix and merge it into develop and master
 build-hotfix:
