@@ -260,7 +260,7 @@ runs:
             const can_delete = ! cannot_delete.includes(branch);
             var protection_rule = '';
           
-            var required_approve = reviewers_count > 0;
+            var required_approve = (reviewers_count > 0);
           
             const default_approved = true;
             const default_count = 0;
