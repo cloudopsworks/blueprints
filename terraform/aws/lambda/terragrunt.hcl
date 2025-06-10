@@ -19,7 +19,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-lambda-deploy.git//?ref=v5.3.0"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-lambda-deploy.git//?ref=v5.3.1"
 }
 
 inputs = {
