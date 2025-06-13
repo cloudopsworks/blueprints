@@ -116,8 +116,9 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         RET=$(yq e '.repository_owner' .github/vars/inputs-global.yaml)
-        if [[ "${{ steps.getowner.outputs.owner }} != '${RET}' ]]; then
-          echo "::error::Project owner from inputs-global.yaml does not match the repository owner. Validation Failed."
+        if [[ "${{ steps.getowner.outputs.owner }}" != "$RET" ]] ; then
+          echo "::error::Project owner from inputs-global.yaml does not match the repository owner. Validation Failed. Expected repository_owner: '${{ steps.getowner.outputs.owner }}'"
+          exit 1
         fi
         echo "result=$RET" >> $GITHUB_OUTPUT
 
@@ -126,7 +127,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         RET=$(yq e '.environment_name' .github/vars/inputs-global.yaml)
-        if [[ "${{ steps.getowner.outputs.repo_name }}" != "${RET}" ]]; then
+        if [[ "${{ steps.getowner.outputs.repo_name }}" != "$RET" ]] ; then
           echo "::warning::Environment name from inputs-global.yaml does not match the repository name. Pipeline Outcomes are not aligned."
         fi
 
