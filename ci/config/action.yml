@@ -106,7 +106,8 @@ runs:
         repo_owner=`echo "$GITHUB_REPOSITORY" | cut -f 1 -d "/"`
         repo_name=`echo "$GITHUB_REPOSITORY" | cut -f 2 -d "/"`
         echo "owner=$repo_owner" >> $GITHUB_OUTPUT
-        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT        
+        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT
+        echo "Owner: $repo_owner - Repository: $repo_name"
 
     # Get repository_owner from inputs-global.yaml as project_owner id
     - name: Get Project Owner
@@ -115,7 +116,19 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         RET=$(yq e '.repository_owner' .github/vars/inputs-global.yaml)
+        if [[ "${{ steps.getowner.outputs.owner }} != '${RET}' ]]; then
+          echo "::error::Project owner from inputs-global.yaml does not match the repository owner. Validation Failed."
+        fi
         echo "result=$RET" >> $GITHUB_OUTPUT
+
+    - name: Get Environment from inputs-global.yaml for validation
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e '.environment_name' .github/vars/inputs-global.yaml)
+        if [[ "${{ steps.getowner.outputs.repo_name }}" != "${RET}" ]]; then
+          echo "::warning::Environment name from inputs-global.yaml does not match the repository name. Pipeline Outcomes are not aligned."
+        fi
 
     # Get the deployments configuration
     - name: Get the deployments configuration
