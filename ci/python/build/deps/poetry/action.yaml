@@ -24,7 +24,7 @@ inputs:
   python_requirements_file:
     description: 'The requirements file'
     required: false
-    default: './pyproject.toml'
+    default: './requirements.txt'
 
 runs:
   using: 'composite'
@@ -36,7 +36,6 @@ runs:
 
     - name: Install Dependencies (Poetry)
       working-directory: ${{ inputs.source_path }}
-      if: steps.python_dist.outputs.result == 'pipenv'
       shell: bash
       run: |
         echo "::group::Poetry Install"
@@ -44,7 +43,7 @@ runs:
         echo "Installing dependencies"
         ${{ inputs.python_extra_env }} poetry install
         echo "Exporting requirements"
-        poetry export --with dev --without-hashes --format=requirements.txt > requirements.txt
+        poetry export --with dev --without-hashes --format=requirements.txt > ${{ inputs.source_path }}/${{ inputs.python_requirements_file }}
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
