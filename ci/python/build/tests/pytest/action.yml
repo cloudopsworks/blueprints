@@ -42,7 +42,7 @@ runs:
         echo "::group::Python Tests"
         source .venv/bin/activate
         python -m pip install pytest
-        coverage run -m pytest --junitxml=test-results.xml
+        coverage run --source=. -m pytest --junitxml=test-results.xml
         coverage report --omit "__tests__/*"
         coverage lcov --omit "__tests__/*"
         coverage xml --omit "__tests__/*"
