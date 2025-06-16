@@ -278,10 +278,19 @@ runs:
       if: steps.python_with_dependencies.outputs.result == 'true'
       shell: bash
       run: |
-        if [ -d .venv/lib/python*/site-packages ]; then
+        echo "::group::Build Python Dependencies"
+        source .venv/bin/activate
+        if [ -f requirements.txt ]; then
+          echo "Building requirements.txt"
+          pip install --target ./target/ -r requirements.txt
+        else
+          echo "No requirements.txt found"
+        fi
+        if [ -d ./target ]; then
           echo "Building python dependencies"
-          tar -cf python-dependencies.tar -C .venv/lib/python*/site-packages . 
+          tar -cf python-dependencies.tar -C ./target . 
         else
           echo "No python dependencies found"
         fi
+        echo "::endgroup::"
 
