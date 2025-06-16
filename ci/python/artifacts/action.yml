@@ -81,6 +81,9 @@ runs:
           ${{ inputs.source_path }}/bom.xml
           ${{ inputs.source_path }}/.coverage
           ${{ inputs.source_path }}/coverage.xml
+          ${{ inputs.source_path }}/coverage.json
+          ${{ inputs.source_path }}/coverage.lcov
+          ${{ inputs.source_path }}/lcov.info
           ${{ inputs.source_path }}/test-results.xml
           ${{ inputs.source_path }}/htmlcov/**/*
           ${{ inputs.source_path }}/__tests__/**/*
