@@ -1,0 +1,53 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Build Python Sources with Basic Pip install
+author: cloudopsworks
+description: Build Python sources with pip install
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  python_extra_env:
+    description: 'The extra environment variables'
+    required: true
+  python_requirements_file:
+    description: 'The requirements file'
+    required: false
+    default: './requirements.txt'
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  token:
+    description: 'The github token to use for the build'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Python Tests
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Python Tests"
+        source .venv/bin/activate
+        python -m pip install nose
+        coverage run --source=. -m nose -w ./__tests__
+        coverage report --omit "__tests__/*"
+        coverage lcov --omit "__tests__/*"
+        coverage xml --omit "__tests__/*"
+        coverage html --omit "__tests__/*"
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
