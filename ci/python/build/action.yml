@@ -107,6 +107,13 @@ runs:
       with:
         cmd: yq e '.python.with_dependencies // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
+    # Get pipeline conf Python tests tooling: pytest , unittest (pyunit), nose
+    - name: Get pipeline Python tests tooling
+      id: python_tests
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.tests // "pytest"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs_line
@@ -179,13 +186,13 @@ runs:
         echo "::group::Python ENV Setup"
         python -m venv .venv
         source .venv/bin/activate
-        python -m pip install --upgrade pip setuptools wheel pytest pytest-cov
+        python -m pip install --upgrade pip setuptools wheel coverage
         echo "::endgroup::"
 
     # Build the code
     - name: Build PIP
       if: steps.python_dist.outputs.result == 'pip'
-      uses: ./bp/ci/python/build/pip
+      uses: ./bp/ci/python/build/deps/pip
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
@@ -195,7 +202,7 @@ runs:
 
     - name: Build PYPENV
       if: steps.python_dist.outputs.result == 'pipenv'
-      uses: ./bp/ci/python/build/pipenv
+      uses: ./bp/ci/python/build/deps/pipenv
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
@@ -204,33 +211,55 @@ runs:
 
     - name: Build Poetry
       if: steps.python_dist.outputs.result == 'poetry'
-      uses: ./bp/ci/python/build/poetry
+      uses: ./bp/ci/python/build/deps/poetry
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
         python_requirements_file: ${{ inputs.python_requirements_file }}
         python_extra_env: ${{ inputs.python_extra_env }}
 
-    # Build Tests
-    - name: Run Python Tests
+    - name: Python Tests - Pytest
+      if: steps.python_tests.outputs.result == 'pytest'
+      uses: ./bp/ci/python/build/pytest
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        python_requirements_file: ${{ inputs.python_requirements_file }}
+        python_extra_env: ${{ inputs.python_extra_env }}
+        bot_user: ${{ inputs.bot_user }}
+        token: ${{ inputs.token }}
+
+    - name: Python Tests - Unittest / PyUnit
+      if: steps.python_tests.outputs.result == 'unittest' || steps.python_tests.outputs.result == 'pyunit'
+      uses: ./bp/ci/python/build/unittest
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        python_requirements_file: ${{ inputs.python_requirements_file }}
+        python_extra_env: ${{ inputs.python_extra_env }}
+        bot_user: ${{ inputs.bot_user }}
+        token: ${{ inputs.token }}
+
+    - name: Python Tests - Nose
+      if: steps.python_tests.outputs.result == 'nose'
+      uses: ./bp/ci/python/build/nose
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        python_requirements_file: ${{ inputs.python_requirements_file }}
+        python_extra_env: ${{ inputs.python_extra_env }}
+        bot_user: ${{ inputs.bot_user }}
+        token: ${{ inputs.token }}
+
+    - name: Python stubs generation
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "::group::Python Tests"
-        source .venv/bin/activate
-        pytest --cov=. \
-          --junitxml=test-results.xml \
-          --cov-report=xml \
-          --cov-report=term-missing \
-          --cov-report=html
-        
-        echo "::notice::Generating stubs for Ruff & MyPy"
+        echo "::group::Python Sutbs Generation"
+        echo "Generating stubs for Ruff & MyPy"
         echo "[]" > ruff_report.json
         echo "" > mypy_report.txt
         echo "::endgroup::"
-      env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
 
     - name: Run Ruff Linter
       if: steps.python_test_ruff.outputs.result == 'true'
