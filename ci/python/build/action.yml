@@ -220,7 +220,7 @@ runs:
 
     - name: Python Tests - Pytest
       if: steps.python_tests.outputs.result == 'pytest'
-      uses: ./bp/ci/python/build/pytest
+      uses: ./bp/ci/python/build/tests/pytest
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
@@ -231,7 +231,7 @@ runs:
 
     - name: Python Tests - Unittest / PyUnit
       if: steps.python_tests.outputs.result == 'unittest' || steps.python_tests.outputs.result == 'pyunit'
-      uses: ./bp/ci/python/build/unittest
+      uses: ./bp/ci/python/build/tests/unittest
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
@@ -242,7 +242,7 @@ runs:
 
     - name: Python Tests - Nose
       if: steps.python_tests.outputs.result == 'nose'
-      uses: ./bp/ci/python/build/nose
+      uses: ./bp/ci/python/build/tests/nose
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
