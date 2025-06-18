@@ -185,6 +185,7 @@ runs:
 
     # NPM config registry setup
     - name: NPM Config Registry Setup
+      working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         echo "::group::NPM Config Registry Setup"
