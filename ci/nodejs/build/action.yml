@@ -74,6 +74,13 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    # Get onwer from inputs-global.yaml
+    - name: Get pipeline owner
+      id: repo_owner
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.repository_owner // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Get pipeline conf node version
     - name: Get pipeline node version
       id: node_version
@@ -176,6 +183,19 @@ runs:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
 
+    # NPM config registry setup
+    - name: NPM Config Registry Setup
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::NPM Config Registry Setup"
+        npm config --location=project set "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN"
+        npm config --location=project set "@${{ steps.repo_owner.outputs.result }}:registry=https://npm.pkg.github.com/"
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
     # Build the code!
     - name: Install Dependencies
       working-directory: ${{ inputs.source_path }}
@@ -227,3 +247,12 @@ runs:
       with:
         path: ${{ inputs.source_path }}
         output: "${{ inputs.source_path }}/bom.xml"
+
+    # Removal of .npmrc file for security reasons
+    - name: Remove .npmrc file
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Remove .npmrc file"
+        [ -f .npmrc ] && rm -f .npmrc
+        echo "::endgroup::"
