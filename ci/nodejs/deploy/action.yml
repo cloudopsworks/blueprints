@@ -37,13 +37,30 @@ runs:
   using: 'composite'
   steps:
     # Get if this is a library project
-    - name: Get pipeline preview enabled
+    - name: Get pipeline is Library
       id: is_library
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.isLibrary and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '(.isLibrary or .is_library) and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    # TODO: allow to deploy to other registries than GitHub
+    - name: Get Pipeline Library destination Registry
+      id: library_registry
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.npm.registry || "https://npm.pkg.github.com"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Pipeline Library Registry strategy
+      id: library_strategy
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.npm.strategy || "all"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    - name: Get Pipeline Library access type
+      id: library_access
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.npm.access || "restricted"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     # Deploy Code to Registry
     - name: Deploy Code to Registy
       if: ${{ steps.is_library.outputs.result == 'true' }}
@@ -51,6 +68,6 @@ runs:
       with:
         package: ${{ inputs.source_path }}
         token: ${{ inputs.token }}
-        registry: "https://npm.pkg.github.com"
-        strategy: "all"
-        access: "restricted"
+        registry: "${{ steps.library_registry.outputs.result }}"
+        strategy: "${{ steps.library_strategy.outputs.result }}"
+        access: "${{ steps.library_access.outputs.result }}"
