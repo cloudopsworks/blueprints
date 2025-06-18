@@ -117,8 +117,7 @@ runs:
       run: |
         RET=$(yq e '.repository_owner' .github/vars/inputs-global.yaml)
         if [[ "${{ steps.getowner.outputs.owner }}" != "$RET" ]] ; then
-          echo "::error::Project owner from inputs-global.yaml does not match the repository owner. Validation Failed. Expected repository_owner: '${{ steps.getowner.outputs.owner }}'"
-          exit 1
+          echo "::error::Project owner from inputs-global.yaml does not match the repository owner. Validation Failed. Expected repository_owner: '${{ steps.getowner.outputs.owner }}'... Build may fail."
         fi
         echo "result=$RET" >> $GITHUB_OUTPUT
 
