@@ -109,7 +109,11 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
-        [ -f values/.env ] && cp -pf values/.env ${{ steps.temp_dir.outputs.result }}
+        if [ -f values/.env ] ; then
+          cp -pf values/.env ${{ steps.temp_dir.outputs.result }}
+        else
+          echo "::warning::No .env file found in values/ directory, skipping copy, may lead to deployment problems."
+        fi
 
     - name: Copy Python Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
