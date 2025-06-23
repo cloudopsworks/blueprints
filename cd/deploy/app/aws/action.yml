@@ -334,6 +334,13 @@ runs:
         observability_enabled: ${{ inputs.observability_enabled }}
         observability_agent: ${{ inputs.observability_agent }}
 
+    - name: Validate Bundle Outcome
+      if: ${{ ( contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true') && steps.bundle.outcome == 'failure' }}
+      shell: bash
+      run: |
+        echo "::error::Bundle creation failed, please check the logs for details."
+        exit 1
+
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
