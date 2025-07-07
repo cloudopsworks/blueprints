@@ -124,8 +124,8 @@ runs:
           api_version=$(echo $api | cut -d'/' -f2)
           echo "Copying API: $api_name version: $api_version"
           mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}
-          yq eval 'with_entries(select(.key != "apigw_definitions"))'  ${{ inputs.source_path }}/.github/vars/apigw/apis-dev.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-cloud.yaml
-          yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.github/vars/apigw/apis-dev.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
+          yq eval 'with_entries(select(.key != "apigw_definitions"))'  ${{ inputs.source_path }}/.github/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-cloud.yaml
+          yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.github/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
           cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-base.yaml
           cp -p ${{ inputs.blueprint_path }}/terraform/aws/apigw_template/*.hcl ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/
           file_name_stub=$(yq eval -I=0 -r -oj '.file_name' ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml)
