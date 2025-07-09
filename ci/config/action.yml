@@ -388,7 +388,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.isLibrary and true' .github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '(.isLibrary or .is_library) and true' .github/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get preview enabled
