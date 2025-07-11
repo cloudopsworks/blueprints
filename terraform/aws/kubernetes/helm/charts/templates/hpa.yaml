@@ -24,17 +24,25 @@ spec:
   maxReplicas: {{ .Values.hpa.maxReplicas }}
   behavior:
     scaleDown:
+      {{- if .Values.hpa.scaleDown }}
+      {{- toYaml .Values.hpa.scaleDown | nindent 6 }}
+      {{- else }}
       stabilizationWindowSeconds: {{ .Values.hpa.stabilizationWindowSeconds | default "300" }}
       policies:
         - type: Percent
           value: {{ .Values.hpa.percentValueDown | default "40" }}
           periodSeconds: {{ .Values.hpa.percentPeriodDown | default "60" }}
+      {{- end }}
     scaleUp:
+      {{- if .Values.hpa.scaleUp }}
+      {{- toYaml .Values.hpa.scaleUp | nindent 6 }}
+      {{- else }}
       stabilizationWindowSeconds: {{ .Values.hpa.stabilizationWindowSeconds | default "300" }}
       policies:
         - type: Percent
           value: {{ .Values.hpa.percentValueUp | default "80" }}
           periodSeconds: {{ .Values.hpa.percentPeriodUp | default "60" }}
+      {{- end }}
   metrics:
   {{- if .Values.hpa.external.enabled }}
     - type: External
@@ -65,6 +73,9 @@ spec:
         target:
           type: Utilization
           averageUtilization: {{ .Values.hpa.memoryTargetAverageUtilization | default "80" }}
+    {{- end }}
+    {{- if values.hpa.metrics }}
+    {{- toYaml .Values.hpa.metrics | nindent 4 }}
     {{- end }}
   {{- end }}
 {{- end }}
