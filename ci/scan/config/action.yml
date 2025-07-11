@@ -49,6 +49,9 @@ outputs:
   fail_on_quality_gate:
     description: 'The fail on quality gate flag'
     value: ${{ steps.fail_on_quality_gate.outputs.result }}
+  quality_gate_enabled:
+    description: 'The quality gate enabled flag'
+    value: ${{ steps.quality_gate_enabled.outputs.result }}
 
 runs:
   using: 'composite'
@@ -84,6 +87,13 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.sonarqube.fail_on_quality_gate and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get Sonarqube Quality Gate enabled setting - defaults to true
+    - name: Get Quality Gate Enabled status
+      id: quality_gate_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.sonarqube.quality_gate_enabled // "true"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     # Get DependencyTrack Configuration is enabled
     - name: Get Pipeline conf DependencyTrack is Enabled
