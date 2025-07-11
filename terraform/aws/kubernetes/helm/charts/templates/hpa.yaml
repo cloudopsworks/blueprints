@@ -74,7 +74,7 @@ spec:
           type: Utilization
           averageUtilization: {{ .Values.hpa.memoryTargetAverageUtilization | default "80" }}
     {{- end }}
-    {{- if values.hpa.metrics }}
+    {{- if .Values.hpa.metrics }}
     {{- toYaml .Values.hpa.metrics | nindent 4 }}
     {{- end }}
   {{- end }}
