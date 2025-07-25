@@ -147,6 +147,7 @@ runs:
       run: |
         ret=$(yq eval -I=0 -r -oj '.cloud_type' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
         echo "result=${ret}" >> $GITHUB_OUTPUT
+
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       shell: bash
@@ -179,6 +180,36 @@ runs:
         cat > state_conf.yaml << EOF
         ${{ inputs.terraform_state_conf }}
         EOF
+
+      # Migrates the APIGW terraform state from blueprint v5.8 to v5.9
+    - name: Migrate APIGW Terraform state
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws
+      shell: bash
+      run: |
+        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
+        for api in $apis; do
+          api_name=$(echo $api | cut -d'/' -f1)
+          api_version=$(echo $api | cut -d'/' -f2)
+          bucket=$(yq eval -I=0 -r -oj '.s3.bucket' state_conf.yaml)
+          file=$(aws s3 ls s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate)
+          result=$?
+          if [ $result -eq 0 ]; then
+            echo "::warn::Migrating APIGW Terraform state for API: $api_name version: $api_version"
+            aws s3 mv s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate \
+              s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/${api_name}/${api_version}/terraform.tfstate
+            if [ $? -ne 0 ]; then
+              echo "::error::Failed to migrate APIGW Terraform state for API: $api_name version: $api_version"
+              exit 1
+            fi
+            echo "::info::APIGW Terraform state migrated for API: $api_name version: $api_version"
+          else
+            echo "No APIGW Terraform state found for API: $api_name version: $api_version, no migration needed."
+          fi
+          break
+        done
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
 
     - name: Determine Plan Action
       uses: actions/github-script@v7
