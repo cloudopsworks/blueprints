@@ -184,6 +184,7 @@ runs:
       # Migrates the APIGW terraform state from blueprint v5.8 to v5.9
     - name: Migrate APIGW Terraform state
       shell: bash
+      continue-on-error: true
       run: |
         set -x
         apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
