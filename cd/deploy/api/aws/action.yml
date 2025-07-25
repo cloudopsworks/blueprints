@@ -185,7 +185,6 @@ runs:
     - name: Migrate APIGW Terraform state
       shell: bash
       run: |
-        set -x
         apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
         for api in $apis; do
           api_name=$(echo $api | cut -d'/' -f1)
