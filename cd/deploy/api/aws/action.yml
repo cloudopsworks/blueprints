@@ -183,14 +183,13 @@ runs:
 
       # Migrates the APIGW terraform state from blueprint v5.8 to v5.9
     - name: Migrate APIGW Terraform state
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws
       shell: bash
       run: |
         apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
         for api in $apis; do
           api_name=$(echo $api | cut -d'/' -f1)
           api_version=$(echo $api | cut -d'/' -f2)
-          bucket=$(yq eval -I=0 -r -oj '.s3.bucket' state_conf.yaml)
+          bucket=$(yq eval -I=0 -r -oj '.s3.bucket' ${{ inputs.blueprint_path }}/terraform/aws/state_conf.yaml)
           file=$(aws s3 ls s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate)
           result=$?
           if [ $result -eq 0 ]; then
