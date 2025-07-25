@@ -193,7 +193,7 @@ runs:
           file=$(aws s3 ls s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate)
           result=$?
           if [ $result -eq 0 ]; then
-            echo "::warn::Migrating APIGW Terraform state for API: $api_name version: $api_version"
+            echo "::warning::Migrating APIGW Terraform state for API: $api_name version: $api_version"
             aws s3 mv s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate \
               s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/${api_name}/${api_version}/terraform.tfstate
             if [ $? -ne 0 ]; then
