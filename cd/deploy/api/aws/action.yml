@@ -190,11 +190,11 @@ runs:
           api_name=$(echo $api | cut -d'/' -f1)
           api_version=$(echo $api | cut -d'/' -f2)
           bucket=$(yq eval -I=0 -r -oj '.s3.bucket' ${{ inputs.blueprint_path }}/terraform/aws/state_conf.yaml)
-          result=$(aws s3 ls s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate || echo $?)
+          result=$((aws s3 ls s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate > /dev/null && echo 0) || echo $?)
           if [ $result -eq 0 ]; then
             echo "::warning::Migrating APIGW Terraform state for API: $api_name version: $api_version"
-            result_mig=$(aws s3 mv s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate \
-              s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/${api_name}/${api_version}/terraform.tfstate || echo $?)
+            result_mig=$((aws s3 mv s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/terraform.tfstate \
+              s3://${bucket}/deployments/${{ inputs.deployment_name }}/${{ inputs.release_name }}/apigw/${api_name}/${api_version}/terraform.tfstate && echo 0) || echo $?)
             if [ $result_mig -ne 0 ]; then
               echo "::error::Failed to migrate APIGW Terraform state for API: $api_name version: $api_version"
               exit 1
