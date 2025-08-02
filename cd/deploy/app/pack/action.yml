@@ -165,12 +165,12 @@ runs:
     # Observability
 
     - name: Copy Application Release
-      if: ${{ steps.stack.outputs.java_stack != 'true' && steps.stack.outputs.node_stack != 'true' && steps.stack.outputs.python_stack != 'true' && steps.stack.outputs.dotnet_stack != 'true' }}
+      if: ${{ steps.stack.outputs.rust_stack == 'true' || steps.stack.outputs.go_stack == 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
       shell: bash
       run: |
         find bin/ -type f -print -exec chmod 755 {} \;
-        cp -vpr ./* ${{ steps.temp_dir.outputs.result }}
+        cp -vpr bin/* ${{ steps.temp_dir.outputs.result }}
 
     - name: Copy values/ into temp dir
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/values
