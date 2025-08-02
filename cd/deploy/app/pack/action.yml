@@ -171,6 +171,7 @@ runs:
       run: |
         find bin/ -type f -print -exec chmod 755 {} \;
         cp -vpr bin/* ${{ steps.temp_dir.outputs.result }}
+        mv ${{ steps.temp_dir.outputs.result }}/${{ inputs.release_name }} bootstrap
 
     - name: Copy values/ into temp dir
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/values
