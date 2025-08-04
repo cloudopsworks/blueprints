@@ -30,14 +30,35 @@ runs:
         sudo apt install -y gh jq curl zip unzip python3 python3-pip apt-transport-https ca-certificates gnupg lsb-release
         echo "::endgroup::"
 
+    - name: Check sourcedir existence
+      id: sourcedir
+      shell: bash
+      run: |
+        if [ ! -f ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ]; then
+          echo "Source directory does not exist. will omit cloudentry."
+          echo "result=false" >> $GITHUB_OUTPUT
+        else
+          echo "result=true" >> $GITHUB_OUTPUT
+        fi
+
     # Get the cloud entry from .github/vars/inputs-global.yaml as plain text
     - name: Get Cloud Entry
+      id: cloud_src
+      shell: bash
+      if: ${{ steps.sourcedir.outputs.result == 'true' }}
+      run: |
+        RET=$(yq e '.cloud // "all"' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    - name: Set Cloud Entry
       id: cloud
       shell: bash
-      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.cloud // "all"' .github/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
-        echo "result=$RET" >> $GITHUB_OUTPUT
+        if [ "${{ steps.sourcedir.outputs.result }}" == "true" ]; then
+          echo "result=${{ steps.cloud_src.outputs.result }}" >> $GITHUB_OUTPUT
+        else
+          echo "result=ALL" >> $GITHUB_OUTPUT
+        fi
 
     - name: Download and Install AWS CLI
       working-directory: /tmp
