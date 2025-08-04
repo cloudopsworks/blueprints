@@ -95,10 +95,9 @@ runs:
   using: 'composite'
   steps:
     - name: Install runner-tools
-      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5.9
       with:
         source_path: ${{ inputs.source_path }}
-      # TODO: solve the download of proper tools on cloud environment
 
     # Get the owner repo
     - name: Get owner
