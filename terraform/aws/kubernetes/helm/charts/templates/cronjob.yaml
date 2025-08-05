@@ -35,6 +35,7 @@ spec:
             {{- toYaml .Values.podAnnotations | nindent 12 }}
           {{- end }}
         spec:
+          restartPolicy: {{ .Values.cronjob.restartPolicy | default "OnFailure" }}
           {{- with .Values.imagePullSecrets }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
@@ -70,87 +71,6 @@ spec:
               {{- end }}
               {{- with .Values.injectEnvFrom }}
                 {{ toYaml . | indent 10 }}
-              {{- end }}
-              ports:
-                - containerPort: {{ .Values.service.internalPort }}
-                  protocol: TCP
-              livenessProbe:
-                {{- if eq .Values.probe.type "http" }}
-                httpGet:
-                  scheme: {{ .Values.probe.scheme }}
-                  path: {{ .Values.probe.path }}
-                  {{- if .Values.probe.port }}
-                  port: {{ .Values.probe.port }}
-                  {{- else }}
-                  port: {{ .Values.service.internalPort }}
-                  {{- end }}
-                {{- else if eq .Values.probe.type "tcp" }}
-                tcpSocket:
-                  {{- if .Values.probe.port }}
-                  port: {{ .Values.probe.port }}
-                  {{- else }}
-                  port: {{ .Values.service.internalPort }}
-                  {{- end }}
-                {{- else if eq .Values.probe.type "command" }}
-                exec:
-                  command:
-                    {{- toYaml .Values.probe.command | nindent 20 }}
-                {{- end }}
-                initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-                periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-                successThreshold: {{ .Values.livenessProbe.successThreshold }}
-                timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-              readinessProbe:
-                {{- if eq .Values.probe.type "http" }}
-                httpGet:
-                  scheme: {{ .Values.probe.scheme }}
-                  path: {{ .Values.probe.path }}
-                  {{- if .Values.probe.port }}
-                  port: {{ .Values.probe.port }}
-                  {{- else }}
-                  port: {{ .Values.service.internalPort }}
-                  {{- end }}
-                {{- else if eq .Values.probe.type "tcp" }}
-                tcpSocket:
-                  {{- if .Values.probe.port }}
-                  port: {{ .Values.probe.port }}
-                  {{- else }}
-                  port: {{ .Values.service.internalPort }}
-                  {{- end }}
-                {{- else if eq .Values.probe.type "command" }}
-                exec:
-                  command:
-                    {{- toYaml .Values.probe.command | nindent 20 }}
-                {{- end }}
-                periodSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-                successThreshold: {{ .Values.readinessProbe.successThreshold }}
-                timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-              {{- if .Values.startupProbe.enabled }}
-              startupProbe:
-                {{- if eq .Values.probe.type "http" }}
-                httpGet:
-                  scheme: {{ .Values.probe.scheme }}
-                  path: {{ .Values.probe.path }}
-                  {{- if .Values.probe.port }}
-                  port: {{ .Values.probe.port }}
-                  {{- else }}
-                  port: {{ .Values.service.internalPort }}
-                  {{- end }}
-                {{- else if eq .Values.probe.type "tcp" }}
-                tcpSocket:
-                  {{- if .Values.probe.port }}
-                  port: {{ .Values.probe.port }}
-                  {{- else }}
-                  port: {{ .Values.service.internalPort }}
-                  {{- end }}
-                {{- else if eq .Values.probe.type "command" }}
-                exec:
-                  command:
-                    {{- toYaml .Values.probe.command | nindent 20 }}
-                {{- end }}
-                initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
-                failureThreshold: {{ .Values.startupProbe.failureThreshold }}
-                periodSeconds: {{ .Values.startupProbe.periodSeconds }}
               {{- end }}
               resources:
                 {{- toYaml .Values.resources | nindent 16 }}
