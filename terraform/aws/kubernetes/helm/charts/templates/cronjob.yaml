@@ -71,7 +71,7 @@ spec:
                 {{- toYaml . | nindent 16 }}
               {{- end }}
               {{- with .Values.injectEnvFrom }}
-                {{ toYaml . | indent 10 }}
+                {{ toYaml . | nindent 16 }}
               {{- end }}
               {{- end }}
               resources:
@@ -90,11 +90,11 @@ spec:
           {{- end }}
           {{- with .Values.tolerations }}
           tolerations:
-            {{- toYaml . | indent 12 }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- with .Values.nodeSelector }}
           nodeSelector:
-            {{- toYaml .Values.nodeSelector | indent 12 }}
+            {{- toYaml .Values.nodeSelector | nindent 12 }}
           {{- end }}
           volumes:
           {{- if .Values.additionalVolumes }}
