@@ -166,3 +166,4 @@ job:
 
 cronjob:
   enabled: false
+  restartPolicy: OnFailure
