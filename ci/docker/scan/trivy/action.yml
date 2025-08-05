@@ -1,0 +1,33 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Semgrep code Scanning Dockerfile
+author: cloudopsworks
+description: This action scans the Dockerfile using Semgrep and outputs the results in various formats.
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  bot_user:
+    description: 'The bot user'
+    required: true
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Trivy Scan
+      shell: bash
+      run: echo "::info::Trivy scan is not implemented yet. Will be released Soon!."
