@@ -1,9 +1,9 @@
 {{- if not .Values.cronjob.enabled }}
 {{- if not .Values.job.enabled }}
 {{- if not .Values.daemonset.enabled }}
-{{- if not .Values.statefulset.enabled }}
+{{- if .Values.statefulset.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   {{- if .Values.service.name }}
   name: {{ .Values.service.name }}
@@ -19,9 +19,10 @@ metadata:
   {{- end }}
   namespace: {{ .Release.Namespace }}
 spec:
-  {{- with .Values.strategy }}
-  strategy:
-    {{- toYaml . | nindent 4 }}
+  {{- if .Values.service.name }}
+  serviceName: {{ .Values.service.name }}
+  {{- else }}
+  serviceName: {{ template "fullname" . }}
   {{- end }}
   selector:
     matchLabels:
@@ -29,15 +30,18 @@ spec:
   {{- if not .Values.hpa.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- with .Values.strategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.podManagementPolicy }}
+  podManagementPolicy: {{ .Values.podManagementPolicy}}
+  {{- end }}
   {{- if .Values.revisionHistoryLimit }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   {{- end }}
-  paused: {{ .Values.paused | default false }}
   {{- if .Values.minReadySeconds }}
   minReadySeconds: {{ .Values.minReadySeconds }}
-  {{- end }}
-  {{-if .Values.progressDeadlineSeconds }}
-  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
   {{- end }}
   template:
     metadata:
