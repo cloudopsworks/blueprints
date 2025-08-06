@@ -1,9 +1,9 @@
 {{- if not .Values.cronjob.enabled }}
 {{- if not .Values.job.enabled }}
-{{- if not .Values.daemonset.enabled }}
 {{- if not .Values.statefulset.enabled }}
+{{- if .Values.daemonset.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   {{- if .Values.service.name }}
   name: {{ .Values.service.name }}
@@ -20,24 +20,17 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   {{- with .Values.strategy }}
-  strategy:
+  updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   selector:
     matchLabels:
       app: {{ template "fullname" . }}
-  {{- if not .Values.hpa.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
   {{- if .Values.revisionHistoryLimit }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   {{- end }}
-  paused: {{ .Values.paused | default false }}
   {{- if .Values.minReadySeconds }}
   minReadySeconds: {{ .Values.minReadySeconds }}
-  {{- end }}
-  {{-if .Values.progressDeadlineSeconds }}
-  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
   {{- end }}
   template:
     metadata:

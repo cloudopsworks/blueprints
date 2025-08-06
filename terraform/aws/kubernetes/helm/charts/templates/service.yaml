@@ -1,6 +1,6 @@
 {{- if not .Values.cronjob.enabled }}
 {{- if not .Values.job.enabled }}
-{{- if .Values.service.enabled }}
+{{- if or .Values.service.enabled .Values.statefulset.enabled }}
 apiVersion: v1
 kind: Service
 metadata:

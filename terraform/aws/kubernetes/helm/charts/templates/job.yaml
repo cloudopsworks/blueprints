@@ -1,5 +1,7 @@
 {{- if .Values.job.enabled }}
 {{- if not .Values.cronjob.enabled }}
+{{- if not .Values.daemonset.enabled }}
+{{- if not .Values.statefulset.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -20,6 +22,21 @@ spec:
   selector:
     matchLabels:
       app: {{ template "fullname" . }}
+  {{- if .Values.job.parallelism }}
+  parallelism: {{ .Values.job.parallelism }}
+  {{- end }}
+  {{- if and .Values.job.completions .Values.job.completionMode }}
+  completions: {{ .Values.job.completions | default 1 }}
+  completionMode: {{ .Values.job.completionMode | default "NonIndexed" }}
+  {{- end }}
+  backoffLimit: {{ .Values.job.backoffLimit | default 6 }}
+  {{- if .Values.job.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ .Values.job.ttlSecondsAfterFinished }}
+  {{- end }}
+  {{- if .Values.job.activeDeadlineSeconds }}
+  activeDeadlineSeconds: {{ .Values.job.activeDeadlineSeconds }}
+  {{- end }}
+  suspend: {{ .Values.job.suspend | default false }}
   template:
     metadata:
       labels:
@@ -68,86 +85,6 @@ spec:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         {{- end }}
-        ports:
-        - containerPort: {{ .Values.service.internalPort }}
-        livenessProbe:
-          {{- if eq .Values.probe.type "http" }}
-          httpGet:
-            scheme: {{ .Values.probe.scheme }}
-            path: {{ .Values.probe.path }}
-            {{- if .Values.probe.port }}
-            port: {{ .Values.probe.port }}
-            {{- else }}
-            port: {{ .Values.service.internalPort }}
-            {{- end }}
-          {{- else if eq .Values.probe.type "tcp" }}
-          tcpSocket:
-            {{- if .Values.probe.port }}
-            port: {{ .Values.probe.port }}
-            {{- else }}
-            port: {{ .Values.service.internalPort }}
-            {{- end }}
-          {{- else if eq .Values.probe.type "command" }}
-          exec:
-            command:
-              {{- toYaml .Values.probe.command | nindent 14 }}
-          {{- end }}
-          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-          successThreshold: {{ .Values.livenessProbe.successThreshold }}
-          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-        readinessProbe:
-          {{- if eq .Values.probe.type "http" }}
-          httpGet:
-            scheme: {{ .Values.probe.scheme }}
-            path: {{ .Values.probe.path }}
-            {{- if .Values.probe.port }}
-            port: {{ .Values.probe.port }}
-            {{- else }}
-            port: {{ .Values.service.internalPort }}
-            {{- end }}
-          {{- else if eq .Values.probe.type "tcp" }}
-          tcpSocket:
-            {{- if .Values.probe.port }}
-            port: {{ .Values.probe.port }}
-            {{- else }}
-            port: {{ .Values.service.internalPort }}
-            {{- end }}
-          {{- else if eq .Values.probe.type "command" }}
-          exec:
-            command:
-            {{- toYaml .Values.probe.command | nindent 14 }}
-          {{- end }}
-          periodSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-          successThreshold: {{ .Values.readinessProbe.successThreshold }}
-          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-        {{- if .Values.startupProbe.enabled }}
-        startupProbe:
-          {{- if eq .Values.probe.type "http" }}
-          httpGet:
-            scheme: {{ .Values.probe.scheme }}
-            path: {{ .Values.probe.path }}
-            {{- if .Values.probe.port }}
-            port: {{ .Values.probe.port }}
-            {{- else }}
-            port: {{ .Values.service.internalPort }}
-            {{- end }}
-          {{- else if eq .Values.probe.type "tcp" }}
-          tcpSocket:
-            {{- if .Values.probe.port }}
-            port: {{ .Values.probe.port }}
-            {{- else }}
-            port: {{ .Values.service.internalPort }}
-            {{- end }}
-          {{- else if eq .Values.probe.type "command" }}
-          exec:
-            command:
-            {{- toYaml .Values.probe.command | nindent 14 }}
-          {{- end }}
-          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
-          failureThreshold: {{ .Values.startupProbe.failureThreshold }}
-          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
-        {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 12 }}
         volumeMounts:
@@ -177,5 +114,7 @@ spec:
         {{- if .Values.injectedVolumes }}
           {{- toYaml .Values.injectedVolumes | nindent 8 }}
         {{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}

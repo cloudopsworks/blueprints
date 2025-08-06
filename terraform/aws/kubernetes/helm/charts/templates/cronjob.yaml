@@ -1,5 +1,7 @@
 {{- if .Values.cronjob.enabled }}
 {{- if not .Values.job.enabled }}
+{{- if not .Values.daemonset.enabled }}
+{{- if not .Values.statefulset.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -18,11 +20,22 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   schedule: {{ .Values.cronjob.schedule | quote }}
-  concurrencyPolicy: {{ .Values.concurrencyPolicy | default "Allow" }}
-  startingDeadlineSeconds: {{ .Values.startingDeadlineSeconds | default "100" }}
-  suspend: {{ .Values.suspend | default "false" }}
-  successfulJobsHistoryLimit: {{ .Values.successfulJobsHistoryLimit | default "3" }}
-  failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit | default "1" }}
+  timeZone: {{ .Values.cronjob.timeZone | default "UTC" | quote }}
+  {{if .Values.cronjob.concurrencyPolicy }}
+  concurrencyPolicy: {{ .Values.cronjob.concurrencyPolicy }}
+  {{- end }}
+  {{- if .Values.cronjob.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ .Values.cronjob.startingDeadlineSeconds }}
+  {{- end }}
+  {{- if .Values.cronjob.suspend }}
+  suspend: {{ .Values.cronjob.suspend }}
+  {{- end }}
+  {{- if .Values.cronjob.successfulJobsHistoryLimit }}
+  successfulJobsHistoryLimit: {{ .Values.cronjob.successfulJobsHistoryLimit }}
+  {{- end }}
+  {{- if .Values.cronjob.failedJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjob.failedJobsHistoryLimit }}
+  {{- end }}
   jobTemplate:
     spec:
       template:
@@ -65,12 +78,14 @@ spec:
               env:
                 {{- toYaml . | nindent 16 }}
               {{- end }}
+              {{- if or .Values.envFrom .Values.injectEnvFrom }}
               envFrom:
               {{- with .Values.envFrom }}
                 {{- toYaml . | nindent 16 }}
               {{- end }}
               {{- with .Values.injectEnvFrom }}
-                {{ toYaml . | indent 10 }}
+                {{ toYaml . | nindent 16 }}
+              {{- end }}
               {{- end }}
               resources:
                 {{- toYaml .Values.resources | nindent 16 }}
@@ -88,11 +103,11 @@ spec:
           {{- end }}
           {{- with .Values.tolerations }}
           tolerations:
-            {{- toYaml . | indent 12 }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- with .Values.nodeSelector }}
           nodeSelector:
-            {{- toYaml .Values.nodeSelector | indent 12 }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           volumes:
           {{- if .Values.additionalVolumes }}
@@ -101,5 +116,7 @@ spec:
           {{- if .Values.injectedVolumes }}
             {{- toYaml .Values.injectedVolumes | nindent 12 }}
           {{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}

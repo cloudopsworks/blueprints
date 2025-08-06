@@ -118,6 +118,16 @@ startupProbe:
 tracing:
   enabled: false
 
+# Enable deployment through StatefulSet
+# This is useful for applications that require stable network identities and persistent storage.
+statefulset:
+  enabled: false
+
+# Enable deployment through DaemonSet
+# This is useful for applications that need to run on every node in the cluster.
+daemonset:
+  enabled: false
+
 # Affinity configuration for Pods
 affinity: {}
 
