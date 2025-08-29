@@ -41,4 +41,5 @@ terraform.rc
 
 # CloudOpsWorks Tronador
 .tronador
+.tronador*.mk
 tronador/
