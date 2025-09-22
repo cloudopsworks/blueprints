@@ -42,13 +42,14 @@ remote_state {
     if_exists = "overwrite_terragrunt"
   }
   config = {
-    bucket               = local.state_conf.s3.bucket
-    region               = local.state_conf.s3.region
-    workspace_key_prefix = "workspaces"
-    encrypt              = true
-    kms_key_id           = local.state_conf.s3.kms_key_id
-    dynamodb_table       = local.state_conf.s3.dynamodb_table
-    key                  = "deployments/${local.global_vars.environment}/${local.global_vars.release_name}/${path_relative_to_include()}/terraform.tfstate"
+    bucket                = local.state_conf.s3.bucket
+    region                = local.state_conf.s3.region
+    workspace_key_prefix  = "workspaces"
+    encrypt               = true
+    kms_key_id            = local.state_conf.s3.kms_key_id
+    dynamodb_table        = local.state_conf.s3.dynamodb_table
+    key                   = "deployments/${local.global_vars.environment}/${local.global_vars.release_name}/${path_relative_to_include()}/terraform.tfstate"
+    disable_bucket_update = true
   }
 }
 
