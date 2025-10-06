@@ -19,7 +19,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-elasticbeanstalk-deploy.git//?ref=v5.1.5"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-elasticbeanstalk-deploy.git//?ref=v5.1.6"
 }
 
 inputs = {
