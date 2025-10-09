@@ -26,8 +26,17 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Restore Cache
+      uses: actions/cache/restore@v4
+      id: cache
+      with:
+        path: .cloudopsworks_wf
+        key: ${{ runner.os }}-${{ github.repository }}-${{ github.action }}-${{ github.ref }}
+        fail-on-cache-miss: 'false'
+
     - name: Check Module Type
       id: check_module_type
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -77,19 +86,20 @@ runs:
           echo "Module type is iac"
           echo "repo=cloudopsworks/terragrunt-project-template" >> $GITHUB_OUTPUT
         else
-          echo "::warning::No module marker file found in .github directory"
+          echo "::warning::🚨 No module marker file found in .github directory"
         fi
         
         mod_version=""
         if [ -f ".github/_VERSION" ]; then
           mod_version=$(cat .github/_VERSION)
         else
-          echo "::warning::No version file (_VERSION) found in .github directory"
+          echo "::warning::🚨 No version file (_VERSION) found in .github directory"
         fi
         echo "current_version=$mod_version" >> $GITHUB_OUTPUT
 
     - name: Check Blueprint Version
       id: check_blueprint_version
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       working-directory: ${{ inputs.blueprint_path }}
       shell: bash
       run: |
@@ -100,13 +110,13 @@ runs:
         if [ -f ".github/_VERSION" ]; then
           blueprint_version=$(cat .github/_VERSION)
         else
-          echo "::warning::No version file (_VERSION) found in .github directory"
+          echo "::warning::🚨 No version file (_VERSION) found in .github directory"
         fi
 
         # Get tags via GitHub CLI (uses GH_TOKEN)
         tags=$(git ls-remote --tags origin | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
         if [[ -z "$tags" ]]; then
-          echo "::error::Failed to fetch tags for cloudopsworks/blueprints"
+          echo "::error::❌ Failed to fetch tags for cloudopsworks/blueprints"
         else
           # Extract highest semver-style tag
           latest=$(echo "$tags" | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
@@ -114,13 +124,14 @@ runs:
             echo "::error::No semantic version tags found for cloudopsworks/blueprints"
           else
             if [[ "$blueprint_version" != "$latest" ]]; then
-              echo "::warning:: 🚨 Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $blueprint_version | Latest: $latest"
+              echo "::warning::⚠️ Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $blueprint_version | Latest: $latest"
             fi
           fi          
         fi
-
+        
     - name: Check Module Version
       id: check_module_version
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -143,7 +154,19 @@ runs:
             echo "::error::No semantic version tags found for $repo"
           else
             if [[ "$ref" != "$latest" ]]; then
-              echo "::warning:: 🚨 Repository Workflow is Outdated: Template: $repo | Current: $ref | Latest: $latest"
+              echo "::warning::⚠️ Repository Workflow is Outdated: Template: $repo | Current: $ref | Latest: $latest"
             fi
           fi
         fi
+
+    - name: Save Check Beacon
+      shell: bash
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+      run: touch .cloudopsworks_wf/.check-module-version
+
+    - name: Save Cache
+      uses: actions/cache/save@v4
+      id: cache_save
+      with:
+        path: .cloudopsworks_wf
+        key: ${{ runner.os }}-${{ github.repository }}-${{ github.action }}-${{ github.ref }}
