@@ -162,7 +162,9 @@ runs:
     - name: Save Check Beacon
       shell: bash
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-      run: touch .cloudopsworks_wf/.check-module-version
+      run: |
+        mkdir -p .cloudopsworks_wf/
+        touch .cloudopsworks_wf/.check-module-version
 
     - name: Save Cache
       uses: actions/cache/save@v4
