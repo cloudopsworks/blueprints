@@ -1,0 +1,31 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Patchwork action AI Agentic Patch Management Process
+author: cloudopsworks
+description: This action runs the Patchwork AI Agentic Patch Management Process
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate  patchwork-setting.yaml
+      shell: bash
+      run: |
+        echo "semgrep_extra_args: --config=p/java --exclude .github/workflows/* --exclude src/test/*" >> patchwork-setting.yaml 

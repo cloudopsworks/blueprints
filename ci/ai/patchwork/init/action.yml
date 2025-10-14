@@ -1,0 +1,77 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Patchwork action AI Agentic Patch - Init
+author: cloudopsworks
+description: This action runs the Patchwork AI Agentic Patch Management Process
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The Github token'
+    required: true
+  llm_base_url:
+    description: 'Local/Custom LLM implementation URL, inlcudes all OpenAI compatible API Servers'
+    required: false
+    default: ''
+  llm_model:
+    description: 'Local/Custom LLM implementation Model to use, e.g. gpt-4o, gpt-3.5-turbo, etc.'
+    required: false
+    default: ''
+  openai_api_key:
+    description: 'OpenAI API Key, required if no llm_base_url is provided'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Patchwork
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        pip3 install 'patchwork-cli[all]' --upgrade
+
+    - name: Generate patchwork-setting.yaml
+      shell: bash
+      run: |
+        cat > patchwork-setting.yaml <<EOF
+        compatibility: medium
+        severity: medium
+        context_size: 4096
+        model_temperature: 0.5
+        vulnerability_limit: 10
+        EOF
+
+    - name: Git Tokens
+      shell: bash
+      env:
+        GIT_TOKEN: ${{ inputs.token }}
+      run: |
+        echo "github_api_key: $GIT_TOKEN" >> patchwork-setting.yaml
+
+    - name: Open AI Api Keys
+      shell: bash
+      if: ${{ inputs.openai_api_key != '' }}
+      env:
+        API_KEY: ${{ inputs.openai_api_key }}
+      run: |
+        echo "openai_api_key: $API_KEY" >> patchwork-setting.yaml
+
+    - name: Patchwork AutoFix - Custom LLM Config
+      shell: bash
+      if: ${{ inputs.llm_base_url != '' && inputs.llm_model != '' }}
+      run: |
+        echo "client_base_url: ${{ inputs.llm_base_url }}" >> patchwork-setting.yaml
+        echo "model: ${{ inputs.llm_model }}" >> patchwork-setting.yaml
