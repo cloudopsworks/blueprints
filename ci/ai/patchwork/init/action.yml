@@ -47,11 +47,9 @@ runs:
       shell: bash
       run: |
         cat > patchwork-setting.yaml <<EOF
-        compatibility: medium
         severity: medium
         context_size: 4096
         model_temperature: 0.5
-        vulnerability_limit: 10
         EOF
 
     - name: Git Tokens

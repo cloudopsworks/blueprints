@@ -6,7 +6,7 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Patchwork action AI Agentic Patch Management Process
+name: Patchwork action AI Agentic Patch Management Process - AutoFix
 author: cloudopsworks
 description: This action runs the Patchwork AI Agentic Patch Management Process
 inputs:
@@ -31,6 +31,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Autofix Params
+      shell: bash
+      run: |
+        echo "compatibility: medium" >> patchwork-setting.yaml
+        echo "vulnerability_limit: 10" >> patchwork-setting.yaml
+
     - name: Patchwork AutoFix
       working-directory: ${{ inputs.source_path }}
       shell: bash
