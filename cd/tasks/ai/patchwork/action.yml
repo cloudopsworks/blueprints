@@ -21,6 +21,9 @@ inputs:
   token:
     description: 'The Github token'
     required: true
+  semgrep_token:
+    description: 'The Semgrep token'
+    required: true
   patched_token:
     description: 'Patched Code SAAS Token'
     required: false
@@ -47,34 +50,49 @@ runs:
       run: |
         pip3 install 'patchwork-cli[all]' --upgrade
 
+    - name: Generate  patchwork-setting.yaml
+      shell: bash
+      run: |
+        cat > patchwork-setting.yaml <<EOF
+        compatibility: medium
+        severity: medium
+        semgrep_extra_args: --config=p/java --exclude .github/workflows/* --exclude src/test/*
+        context_size: 4096
+        model_temperature: 0.5
+        vulnerability_limit: 10
+        EOF
+
     - name: Patchwork AutoFix - OpenAI
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.llm_base_url == '' && inputs.llm_model == ''  && inputs.patched_token == '' }}
       env:
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GIT_TOKEN: ${{ inputs.token }}
         OPENAI_KEY: ${{ inputs.openai_api_key }}
       run: |
-        patchwork AutoFix github_api_key=$GIT_TOKEN openai_api_key=$OPENAI_KEY
+        patchwork AutoFix github_api_key=$GIT_TOKEN openai_api_key=$OPENAI_KEY --config ../patchwork-setting.yaml
 
     - name: Patchwork AutoFix - Custom LLM
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.llm_base_url != '' && inputs.llm_model != '' && inputs.patched_token == '' }}
       env:
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GIT_TOKEN: ${{ inputs.token }}
         OPENAI_KEY: ${{ inputs.openai_api_key }}
         LLM_URL: ${{ inputs.llm_base_url }}
         LLM_MODEL: ${{ inputs.llm_model }}
       run: |
-        patchwork AutoFix github_api_key=$GIT_TOKEN openai_api_key=$OPENAI_KEY client_base_url=$LLM_URL model=$LLM_MODEL
+        patchwork AutoFix github_api_key=$GIT_TOKEN openai_api_key=$OPENAI_KEY client_base_url=$LLM_URL model=$LLM_MODEL --config ../patchwork-setting.yaml
 
     - name: Patchwork AutoFix - OpenAI
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.patched_token != '' }}
       env:
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GIT_TOKEN: ${{ inputs.token }}
         PATCHED_TOKEN: ${{ inputs.patched_token }}
       run: |
-        patchwork AutoFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN
+        patchwork AutoFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml
