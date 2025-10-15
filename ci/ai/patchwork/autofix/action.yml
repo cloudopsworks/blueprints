@@ -34,7 +34,7 @@ runs:
     - name: Autofix Params
       shell: bash
       run: |
-        echo "vulnerability_limit: 10" >> patchwork-setting.yaml
+        echo "vulnerability_limit: 100" >> patchwork-setting.yaml
 
       #echo "compatibility: medium" >> patchwork-setting.yaml
 
@@ -46,7 +46,7 @@ runs:
         SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
-        patchwork AutoFix --config ../patchwork-setting.yaml
+        patchwork AutoFix github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
         
 
     - name: Patchwork AutoFix - OpenAI
