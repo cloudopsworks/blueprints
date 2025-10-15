@@ -28,4 +28,4 @@ runs:
     - name: Generate  patchwork-setting.yaml
       shell: bash
       run: |
-        echo "semgrep_extra_args: --config=p/golang --exclude .github/workflows/* --exclude src/test/*" >> patchwork-setting.yaml 
+        echo "semgrep_extra_args: --config=p/golang --exclude .github/workflows/**/*" >> patchwork-setting.yaml 

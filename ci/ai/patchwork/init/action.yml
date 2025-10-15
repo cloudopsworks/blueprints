@@ -63,10 +63,11 @@ runs:
       shell: bash
       run: |
         cat > patchwork-setting.yaml <<EOF
-        severity: medium
-        context_size: 4096
-        model_temperature: 0.5
+        context_size: 128000
+        model_temperature: 0.4
         EOF
+
+      #severity: medium
 
     - name: Git Tokens
       shell: bash

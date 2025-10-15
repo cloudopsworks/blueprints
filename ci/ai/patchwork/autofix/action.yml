@@ -34,8 +34,9 @@ runs:
     - name: Autofix Params
       shell: bash
       run: |
-        echo "compatibility: medium" >> patchwork-setting.yaml
         echo "vulnerability_limit: 10" >> patchwork-setting.yaml
+
+      #echo "compatibility: medium" >> patchwork-setting.yaml
 
     - name: Patchwork AutoFix
       working-directory: ${{ inputs.source_path }}
