@@ -44,7 +44,7 @@ runs:
       if: ${{ inputs.patched_token == '' }}
       env:
         SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GIT_TOKEN: ${{ inputs.token }}
       run: |
         patchwork AutoFix github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
         
