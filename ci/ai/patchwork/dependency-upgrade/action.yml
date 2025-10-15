@@ -59,4 +59,4 @@ runs:
         SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
-        patchwork DependencyUpgrade --config ../patchwork-setting.yaml
+        patchwork DependencyUpgrade --config ../patchwork-setting.yaml --plain

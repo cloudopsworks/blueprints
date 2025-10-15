@@ -57,4 +57,4 @@ runs:
         GIT_TOKEN: ${{ inputs.token }}
         PATCHED_TOKEN: ${{ inputs.patched_token }}
       run: |
-        patchwork AutoFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml
+        patchwork AutoFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml --plain
