@@ -97,31 +97,29 @@ Required GitHub Secrets and Variables, in the below table:
 | DEPLOYMENT_AWS_ACCESS_KEY_ID     |  Secret  | AWS Access Key ID used for deployments                                                                                                       |   Yes    |
 | DEPLOYMENT_AWS_SECRET_ACCESS_KEY |  Secret  | AWS Secret Access Key used for deployments                                                                                                   |   Yes    |
 |                                  |
-| PREVIEW_AWS_REGION               | Variable | AWS Region used for preview deployments, defaults to `us-east-1`                                                                             |   Yes    |
+| PREVIEW_AWS_REGION               | Variable | AWS Region used for preview deployments, defaults to `us-east-1`                                                                              |   Yes    |
 | PREVIEW_AWS_STS_ROLE_ARN         | Variable | AWS STS Role ARN, Only needded if all actions are performed throug STS Assume Role                                                           |    No    |
 | PREVIEW_AWS_ACCESS_KEY_ID        |  Secret  | AWS Access Key ID used for preview deployments                                                                                               |   Yes    |
 | PREVIEW_AWS_SECRET_ACCESS_KEY    |  Secret  | AWS Secret Access Key used for preview deployments                                                                                           |   Yes    |
 | __Azure__                        |          | - Azure Based Resources                                                                                                                      |          |
-| BUILD_AZURE_CLIENT_ID            |  Secret  | Azure Client ID, used for builds (ACR deploy, Repositories)                                                                                  |   Yes    |
-| BUILD_AZURE_CLIENT_SECRET        |  Secret  | Azure Client Secret, used for builds                                                                                                         |   Yes    |
-| BUILD_AZURE_TENANT_ID            | Variable | Azure Tenant ID                                                                                                                              |   Yes    |
-|                                  |
 | DEPLOYMENT_AZURE_SERVICE_ID      |  Secret  | Azure Client ID used for deployments                                                                                                         |   Yes    |
 | DEPLOYMENT_AZURE_SERVICE_SECRET  |  Secret  | Azure Client Secret used for deployments                                                                                                     |   Yes    |
 | DEPLOYMENT_AZURE_RESOURCE_GROUP  | Variable | Default Azure Resource Group used for deployments                                                                                            |   Yes    |
-| DEPLOYMENT_AZURE_TENANT_ID       | Variable | Azure Tenant ID used for deployments                                                                                                         |   Yes    |
-| DEPLOYMENT_AZURE_SUBSCRIPTION_ID | Variable | Azure Subscription ID used for deployments                                                                                                   |   Yes    |
-|                                  |
+|                                  |          
 | PREVIEW_AZURE_SERVICE_ID         |  Secret  | Azure Client ID used for preview deployments                                                                                                 |   Yes    |
 | PREVIEW_AZURE_SERVICE_SECRET     |  Secret  | Azure Client Secret used for preview deployments                                                                                             |   Yes    |
 | PREVIEW_AZURE_RESOURCE_GROUP     | Variable | Default Azure Resource Group used for preview deployments                                                                                    |   Yes    |
-| PREVIEW_AZURE_TENANT_ID          | Variable | Azure Tenant ID used for preview deployments                                                                                                 |   Yes    |
-| PREVIEW_AZURE_SUBSCRIPTION_ID    | Variable | Azure Subscription ID used for preview deployments                                                                                           |   Yes    |
-| __Independent of Provider__      |
+| __Independent of Provider__      | 
 | PREVIEW_DOCKER_REGISTRY_ADDRESS  | Variable | Docker Registry Address for preview deployments                                                                                              |   Yes    |
 | DOCKER_REGISTRY_ADDRESS          | Variable | Default Docker Registry Address for deployments                                                                                              |   Yes    |
 | DEPLOYMENT_RUNNER_SET            | Variable | Default Runner set for deployment, used to identify the runner set for deployment, can be overriden at pipeline, defaults to `ubuntu-latest` |    No    |
 | PREVIEW_RUNNER_SET               | Variable | Default Runner set for preview deployments, used to identify the runner set for preview deployments, defaults to `ubuntu-latest`             |    No    |
+| __AI Patching Management__       |          | - Supported by Patchwork                                                                                                                     |          |
+| OPENAI_API_KEY                   |  Secret  | OpenAI API KEY or Hosted LLM API Key for the provided URL.                                                                                   |    No    |
+| LIBRARIES_IO_API_KEY             |  Secret  | libraries.io API KEY, if set the DependencyUpgrade process will set analyze_impact=true                                                      |    No    |
+| PATCHED_CODES_TOKEN              |  Secret  | Patched Codes Token, if set the AutoFix and DependencyUpgrade processes will use the SAAS service at https://www.patched.codes/              |    No    |
+| HOSTED_LLM_BASE_URL              | Variable | Hosted LLMs Local or remote different from OpenAI's provided, if this is set, HOSTED_LLM_MODEL must be set.                                  |    No    |
+| HOSTED_LLM_MODEL                 | Variable | Hosted LLM Local or Remote Model, can be used also to change default OpenAI's Model used in actions.                                         |    No    |
 
 
 
