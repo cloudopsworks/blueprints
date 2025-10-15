@@ -1,0 +1,123 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Patchwork action AI Agentic Patch Management Process
+author: cloudopsworks
+description: This action runs the Patchwork AI Agentic Patch Management Process
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate  patchwork-setting.yaml
+      shell: bash
+      run: |
+        echo "language: python" >> patchwork-setting.yaml 
+
+    # Get pipeline conf Python version
+    - name: Get pipeline Python version
+      id: python_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.version // "3.12"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Python dist
+    - name: Get pipeline Python dist
+      id: python_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.dist // "pip"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Python test ruff linter
+    - name: Get pipeline Python test ruff linter
+      id: python_test_ruff
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.ruff // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Python test mypy test
+    - name: Get pipeline Python test mypy test
+      id: python_test_mypy
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.mypy // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf java image variant defaults to alpine
+    - name: Get pipeline Python image variant
+      id: python_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.python.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf java image variant defaults to alpine
+    - name: Get pipeline Python require packing dependencies
+      id: python_with_dependencies
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.python.with_dependencies // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf Python tests tooling: pytest , unittest (pyunit), nose
+    - name: Get pipeline Python tests tooling
+      id: python_tests
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.python.tests // "pytest"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get Package Name from pyproject.toml
+    - name: Get package Name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -oj -r '.project.name' ${{ inputs.source_path }}/pyproject.toml
+
+    # Setup Python for builds for the version provided
+    - name: Setup Python
+      id: setup_python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ steps.python_version.outputs.result }}
+        cache: '${{ steps.python_dist.outputs.result }}'
+
+    # install basic tools
+    - name: Install Basic Python Tools
+      id: install_basic_tools
+      shell: bash
+      run: |
+        echo "::group::Install Basic Python Tools"
+        python -m pip install --upgrade pip toml-cli
+        echo "::endgroup::"
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Python  Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT

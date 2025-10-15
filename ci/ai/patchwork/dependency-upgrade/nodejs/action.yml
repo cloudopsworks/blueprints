@@ -1,0 +1,95 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Patchwork action AI Agentic Patch Management Process
+author: cloudopsworks
+description: This action runs the Patchwork AI Agentic Patch Management Process
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate  patchwork-setting.yaml
+      shell: bash
+      run: |
+        echo "language: nodejs" >> patchwork-setting.yaml 
+
+    # Get pipeline conf node version
+    - name: Get pipeline node version
+      id: node_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.node.version // "20"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf node dist
+    - name: Get pipeline node dist
+      id: node_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq eval '.node.dist // "adopt"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf java image variant defaults to alpine
+    - name: Get pipeline NodeJS image variant
+      id: node_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.node.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get Package Name from package.json
+    - name: Get package Name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -oj -r '.name' ${{ inputs.source_path }}/package.json
+
+    # Setup Node JS for builds with version provided
+    - name: Set Node Version
+      uses: actions/setup-node@v4
+      with:
+        node-version: "${{ steps.node_version.outputs.result }}"
+        check-latest: true
+        token: ${{ inputs.token }}
+
+    # Cache all NPM packages
+    - name: Cache NPM packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json','**/npm-shrinkwrap.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Node Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
