@@ -110,20 +110,6 @@ runs:
       with:
         cmd: yq e -I=0 '.dotnet.configuration // "Release"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
-    # Get from global inputs the default configuration
-    - name: Get .Net default configuration
-      id: default_configuration
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.dotnet_configuration // "${{ steps.global_default_configuration.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
-
-    # Get DependencyTrack project type configuration, default is null
-    - name: Get Pipeline conf DependencyTrack Project type
-      id: dtrack_project_type
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
-
     # Check existence of packages.lock.json and set to true
     - name: Check for packages.lock.json
       id: lock_file
