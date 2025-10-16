@@ -6,7 +6,7 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Patchwork action AI Agentic Patch Management Process
+name: Patchwork action AI Agentic Patch Management Process - Java
 author: cloudopsworks
 description: This action runs the Patchwork AI Agentic Patch Management Process
 inputs:

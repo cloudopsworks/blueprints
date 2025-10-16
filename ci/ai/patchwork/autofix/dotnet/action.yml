@@ -6,7 +6,7 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Patchwork action AI Agentic Patch Management Process - Java
+name: Patchwork action AI Agentic Patch Management Process - DotNet
 author: cloudopsworks
 description: This action runs the Patchwork AI Agentic Patch Management Process
 inputs:
@@ -28,4 +28,4 @@ runs:
     - name: Generate  patchwork-setting.yaml
       shell: bash
       run: |
-        echo "semgrep_extra_args: --config=p/java --exclude .github/workflows/**/*" >> patchwork-setting.yaml 
+        echo "semgrep_extra_args: --config=p/csharp --exclude .github/workflows/**/*" >> patchwork-setting.yaml 
