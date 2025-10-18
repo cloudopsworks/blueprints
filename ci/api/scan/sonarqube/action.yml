@@ -37,6 +37,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Get Repository Owner from inputs-global.yaml
+      id: repo_owner
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     - name: Apis Sonar Scan
       uses: sonarsource/sonarqube-scan-action@v2
       env:
@@ -50,3 +56,4 @@ runs:
           -Dsonar.sources=apifiles/
           -Dsonar.branch.name=openapi
           -Dsonar.language=openapi
+          ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('-Dsonar.organization={0}',steps.repo_owner.outputs.result) || ' ' }}
