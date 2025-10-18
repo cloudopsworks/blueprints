@@ -37,6 +37,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Get Repository Owner from inputs-global.yaml
+      id: repo_owner
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
     - name: Get Sonar sources form inputs-global.yaml
       id: source_path
       uses: mikefarah/yq@master
@@ -106,6 +112,6 @@ runs:
     - name: Run Sonar Scanner .Net
       shell: bash
       run: |
-        dotnet <path to SonarScanner.MSBuild.dll> begin /k:"${{ inputs.sonarqube_project_key }}" /v:"${{ inputs.semver }}" /d:sonar.token="${{ inputs.sonarqube_token }}" /d:sonar.host.url="${{ inputs.sonarqube_url }}" ${{ steps.branch_disabled.outputs.result != 'true' && format('/d:sonar.branch.name="{0}"',github.ref_name) || ' ' }}
+        dotnet-sonarscanner begin /k:"${{ inputs.sonarqube_project_key }}" /v:"${{ inputs.semver }}" /d:sonar.token="${{ inputs.sonarqube_token }}" /d:sonar.host.url="${{ inputs.sonarqube_url }}" ${{ steps.branch_disabled.outputs.result != 'true' && format('/d:sonar.branch.name="{0}"',github.ref_name) || ' ' }} ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('/d:sonar.organization="{0}"',steps.repo_owner.outputs.result) || ' ' }}
         dotnet build <path to project file or .sln file> --no-incremental
-        dotnet <path to SonarScanner.MSBuild.dll> end /d:sonar.token="${{ inputs.sonarqube_token }}" 
+        dotnet-sonarscanner end /d:sonar.token="${{ inputs.sonarqube_token }}" 
