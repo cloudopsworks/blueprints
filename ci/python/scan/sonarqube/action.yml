@@ -89,7 +89,7 @@ runs:
       with:
         projectBaseDir: ${{ inputs.source_path }}
         args: >
-          -Dsonar.projectKey=${{ inputs.sonarqube_project_key }}
+          -Dsonar.projectKey=${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('{0}_{1}',steps.repo_owner.outputs.result,inputs.sonarqube_project_key) || inputs.sonarqube_project_key }}
           -Dsonar.projectVersion=${{ inputs.semver }}
           -Dsonar.sources=${{ steps.source_path.outputs.result }}
           -Dsonar.tests=${{ steps.tests_path.outputs.result }}
