@@ -53,6 +53,8 @@ runs:
         args: >
           -Dsonar.projectKey=${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('{0}_{1}',steps.repo_owner.outputs.result,inputs.sonarqube_project_key) || inputs.sonarqube_project_key }}
           -Dsonar.projectVersion=${{ inputs.semver }}
+          -Dsonar.yaml.activate=true
+          -Dsonar.json.activate=true
           -Dsonar.sources=apifiles/
           -Dsonar.branch.name=openapi
           -Dsonar.language=openapi
