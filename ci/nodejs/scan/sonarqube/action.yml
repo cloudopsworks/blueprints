@@ -108,7 +108,7 @@ runs:
           -Dsonar.test.inclusions=${{ steps.test_inclusions_path.outputs.result }}
           -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.test.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
-          -Dsonar.javascript.lcov.reportPaths=coverage/
+          -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info
           -Dsonar.language=javascript
           -Dsonar.sourceEncoding=UTF-8
           ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('-Dsonar.organization={0}',steps.repo_owner.outputs.result) || ' ' }}
