@@ -47,13 +47,13 @@ runs:
       id: source_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.sources_path // "src/"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.sources_path // "./src"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar binaries from inputs-global.yaml
       id: binaries_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.binaries_path // "target/classes"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.binaries_path // "./target/classes"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar libraries from inputs-global.yaml
       id: libraries_path
@@ -65,19 +65,19 @@ runs:
       id: tests_path
       uses: mikefarah/yq@master
       with:
-          cmd: yq e -I=0 '.sonarqube.tests_path // "${{ steps.source_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+          cmd: yq e -I=0 '.sonarqube.tests_path // "${{ steps.source_path.outputs.result }}/test"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar test binaries from inputs-global.yaml
       id: test_binaries_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.tests_binaries // "target/test-classes"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.tests_binaries // "./target/test-classes"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar test inclusions from inputs-global.yaml
       id: test_inclusions_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.tests_inclusions // "${{ steps.tests_path.outputs.result }}/**/test/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.tests_inclusions // "${{ steps.tests_path.outputs.result }}/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get Sonar test libraries from inputs-global.yaml
       id: test_libraries_path
@@ -95,7 +95,7 @@ runs:
       id: exclusions_paths
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.exclusions // "target/**,${{ steps.tests_path.outputs.result }}/**/test/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.exclusions // "target/**"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get if sonar branch setting is disabled
       id: branch_disabled
