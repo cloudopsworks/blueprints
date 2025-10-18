@@ -124,6 +124,7 @@ runs:
           -Dsonar.java.test.libraries=${{ steps.test_libraries_path.outputs.result }}
           -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.language=java
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/coverage
           ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('-Dsonar.organization={0}',steps.repo_owner.outputs.result) || ' ' }}
           ${{ steps.branch_disabled.outputs.result != 'true' && format('-Dsonar.branch.name={0}',github.ref_name) || ' ' }}
 #          -Dsonar.scanner.metadataFilePath=target/sonar/report-task.txt
