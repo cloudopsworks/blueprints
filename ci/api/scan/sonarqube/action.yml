@@ -60,4 +60,5 @@ runs:
           -Dsonar.sources=apifiles/
           -Dsonar.branch.name=openapi
           -Dsonar.language=openapi
+          -Dsonar.sourceEncoding=UTF-8
           ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('-Dsonar.organization={0}',steps.repo_owner.outputs.result) || ' ' }}
