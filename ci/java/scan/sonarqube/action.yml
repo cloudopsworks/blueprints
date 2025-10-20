@@ -95,7 +95,7 @@ runs:
       id: exclusions_paths
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.exclusions // "target/**"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.exclusions // "target/**/*,apifiles/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
 
     - name: Get if sonar branch setting is disabled
       id: branch_disabled
