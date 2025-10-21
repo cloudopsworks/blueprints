@@ -1,0 +1,150 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Patchwork action AI Agentic Patch Management Process - DotNet
+author: cloudopsworks
+description: This action runs the Patchwork AI Agentic Patch Management Process
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate  patchwork-setting.yaml
+      shell: bash
+      run: |
+        echo "language: dotnet" >> patchwork-setting.yaml 
+
+    # Get pipeline conf .Net version Defaults to 9
+    - name: Get pipeline .Net version
+      id: dotnet_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.version // "9.0"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net dist defaults to aspnet
+    - name: Get pipeline .Net dist
+      id: dotnet_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.dist // "aspnet"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net image variant defaults to alpine
+    - name: Get pipeline .Net image variant
+      id: dotnet_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf .Net build project path
+    - name: Get pipeline .Net build project path
+      id: project_path
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.dotnet.project_path // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+      # Validate project_path must not be blank, othewise fail the entire workflow
+    - name: Validate project_path
+      id: validate_project_path
+      shell: bash
+      run: |
+        if [ -z "${{ steps.project_path.outputs.result }}" ]; then
+          echo "Error: project_path is empty"
+          exit 1
+        fi
+
+    # Get the Package name from project's path csproj file
+    - name: Get Package name
+      id: package_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -px -oy '.Project.PropertyGroup.AssemblyName' ${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}/${{ steps.project_path.outputs.result }}.csproj
+
+    # Get from global inputs the custom Build Options
+    - name: Get .Net Build options
+      id: build_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Build Options
+    - name: Get .Net Build options
+      id: run_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.run_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Build Options
+    - name: Get .Net Publish options
+      id: publish_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the custom Test Options
+    - name: Get .Net Test options
+      id: test_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get from global inputs the default configuration
+    - name: Get .Net default configuration
+      id: global_default_configuration
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.dotnet.configuration // "Release"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Check existence of packages.lock.json and set to true
+    - name: Check for packages.lock.json
+      id: lock_file
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}/packages.lock.json" ]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
+
+    # Setup .Net SDK for builds
+    - name: Set .Net SDK
+      uses: actions/setup-dotnet@v4
+      env:
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+      with:
+        dotnet-version: "${{ steps.dotnet_version.outputs.result }}"
+        cache: ${{ steps.lock_file.outputs.result }}
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::.Net Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT

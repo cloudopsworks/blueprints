@@ -27,6 +27,9 @@ inputs:
   token:
     description: 'The Github token'
     required: true
+  semver:
+    description: 'SemVer Version from build'
+    required: false
 
 runs:
   using: 'composite'

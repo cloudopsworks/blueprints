@@ -27,6 +27,7 @@ inputs:
   sonarqube_token:
     description: 'The Sonarqube token'
     required: true
+
 outputs:
   quality_gate_status:
     description: 'The Quality Gate status'

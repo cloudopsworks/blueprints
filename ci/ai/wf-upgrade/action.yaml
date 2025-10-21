@@ -5,10 +5,10 @@
 #       GitHub: https://github.com/cloudopsworks
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
-# TODO: complete this module
-name: Snyk code Scanning Java
+#
+name: Action to upgrade from code template
 author: cloudopsworks
-description: This action scans the Java code using Snyk
+description: The action to upgrade from code template
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -18,27 +18,29 @@ inputs:
     description: 'The path to the blueprint'
     required: false
     default: 'bp'
-  snyk_token:
-    description: 'The Snyk token'
-    required: true
-  bot_user:
-    description: 'The bot user'
-    required: true
   token:
     description: 'The Github token'
     required: true
-  semver:
-    description: 'SemVer Version from build'
-    required: false
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  bot_email:
+    description: 'The bot email to use for the build'
+    required: true
+  patched_token:
+    description: 'Patched Code SAAS Token'
+    required: true
 
 runs:
   using: 'composite'
   steps:
-    - name: Snyk Code Scanning
-      id: snyk
-      env:
-        SNYK_TOKEN: ${{ inputs.snyk_token }}
+    - name: Upgrade to latest minor version
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
-        echo "TBD"
+        make repos/upgrade
+        git config --global user.name "${{ inputs.bot_user }}"
+        git config --global user.email "${{ inputs.bot_email }}"
+        git push origin ${{ github.head_ref }}

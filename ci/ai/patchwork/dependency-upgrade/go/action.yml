@@ -1,0 +1,142 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Patchwork action AI Agentic Patch Management Process - GoLang
+author: cloudopsworks
+description: This action runs the Patchwork AI Agentic Patch Management Process
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The Github token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate  patchwork-setting.yaml
+      shell: bash
+      run: |
+        echo "language: go" >> patchwork-setting.yaml 
+
+    - name: Check tools and install
+      shell: bash
+      run: |
+        echo "::group::Check Tools"
+        sudo apt-get update
+        which make || sudo apt-get install -y make
+        which gh || sudo apt-get install -y gh
+        echo "::endgroup::"
+
+    # Get pipeline conf GoLang version Defaults to 1.23
+    - name: Get pipeline GoLang version
+      id: golang_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.version // "1.23"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang dist defaults to linux (supported: linux windows darwin)
+    - name: Get pipeline GoLang dist
+      id: golang_dist
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.dist // "linux"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang arch defaults to x64
+    - name: Get pipeline GoLang arch
+      id: golang_arch
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.arch // "amd64"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang image variant defaults to alpine
+    - name: Get pipeline GoLang image variant
+      id: golang_image_variant
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang main file defaults to main.go
+    - name: Get pipeline GoLang main file
+      id: main_file
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.main_file // "main.go"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get pipeline conf GoLang if CGO is disabled or not
+    - name: Get pipeline GoLang main file
+      id: disable_cgo
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.disable_cgo // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Get the Package name from go.mod
+    - name: Get Package name
+      id: package_name
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        # Check if go.mod exists
+        if [ ! -f "go.mod" ]; then
+          echo "Error: go.mod file not found in current directory" >&2
+          exit 1
+        fi
+
+        # Extract the module name using grep and sed
+        # 1. Use grep to find the line starting with "module "
+        # 2. Use sed to extract just the module name part
+        # 3. Use sed again to replace "/" with "-"
+        module_name=$(grep -m 1 "^module " go.mod | sed 's/^module //' | sed 's/\//-/g')
+
+        # Check if we successfully extracted a module name
+        if [ -z "$module_name" ]; then
+          echo "Error: Could not find module declaration in go.mod" >&2
+          exit 1
+        fi
+        echo "result=$module_name" >> $GITHUB_OUTPUT
+
+    # Get from global inputs the custom Go Options
+    - name: Get Go options
+      id: build_opts
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+
+    # Setup GoLang GoLang SDK for builds
+    - name: Set GoLang SDK
+      uses: actions/setup-go@v5
+      with:
+        token: ${{ inputs.token }}
+        go-version: "${{ steps.golang_version.outputs.result }}"
+        check-latest: true
+        cache-dependency-path: "**/*.sum"
+
+    # Versioning SET
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Go Version SET"
+        make version
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT

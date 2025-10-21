@@ -5,10 +5,10 @@
 #       GitHub: https://github.com/cloudopsworks
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
-# TODO: complete this module
-name: Snyk code Scanning Java
+#
+name: Patchwork action AI Agentic Patch Management Process - NodeJS
 author: cloudopsworks
-description: This action scans the Java code using Snyk
+description: This action runs the Patchwork AI Agentic Patch Management Process
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -18,27 +18,14 @@ inputs:
     description: 'The path to the blueprint'
     required: false
     default: 'bp'
-  snyk_token:
-    description: 'The Snyk token'
-    required: true
-  bot_user:
-    description: 'The bot user'
-    required: true
   token:
     description: 'The Github token'
     required: true
-  semver:
-    description: 'SemVer Version from build'
-    required: false
 
 runs:
   using: 'composite'
   steps:
-    - name: Snyk Code Scanning
-      id: snyk
-      env:
-        SNYK_TOKEN: ${{ inputs.snyk_token }}
-      working-directory: ${{ inputs.source_path }}
+    - name: Generate  patchwork-setting.yaml
       shell: bash
       run: |
-        echo "TBD"
+        echo "semgrep_extra_args: --config=p/nodejs --exclude .github/workflows/**/*" >> patchwork-setting.yaml 
