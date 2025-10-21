@@ -1,0 +1,46 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Action to upgrade from code template
+author: cloudopsworks
+description: The action to upgrade from code template
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The Github token'
+    required: true
+  bot_user:
+    description: 'The bot user to use for the build'
+    required: true
+  bot_email:
+    description: 'The bot email to use for the build'
+    required: true
+  patched_token:
+    description: 'Patched Code SAAS Token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Upgrade to latest minor version
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        make repos/upgrade
+        git config --global user.name "${{ inputs.bot_user }}"
+        git config --global user.email "${{ inputs.bot_email }}"
+        git push origin ${{ github.head_ref }}
