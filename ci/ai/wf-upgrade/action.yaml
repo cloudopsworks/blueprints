@@ -49,4 +49,4 @@ runs:
         git config --global user.name "${{ inputs.bot_user }}"
         git config --global user.email "${{ inputs.bot_email }}"
         git push origin $branch
-        gh pr create -B ${{ github.head_ref }} -b "Workflow Upgrade to Latest Patch Version \n from: $prev_ver\n to: $ver" -t "Workflow Upgrade to $ver"
+        gh pr create -B develop -b "Workflow Upgrade to Latest Patch Version \n from: $prev_ver\n to: $ver" -t "Workflow Upgrade to $ver"
