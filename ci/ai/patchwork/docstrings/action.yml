@@ -46,7 +46,7 @@ runs:
       env:
         GIT_TOKEN: ${{ inputs.token }}
       run: |
-        patchwork SonarFix github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
+        patchwork GenerateDocstring github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
 
     - name: Patchwork DocStrings - Patched-Codes
       working-directory: ${{ inputs.source_path }}
@@ -56,4 +56,4 @@ runs:
         GIT_TOKEN: ${{ inputs.token }}
         PATCHED_TOKEN: ${{ inputs.patched_token }}
       run: |
-        patchwork AutoFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml --plain
+        patchwork GenerateDocstring github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml --plain

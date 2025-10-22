@@ -68,13 +68,12 @@ runs:
       run: |
         patchwork SonarFix github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
 
-    - name: Patchwork AutoFix - Patched-Co
+    - name: Patchwork AutoFix - Patched-Codes
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.patched_token != '' }}
       env:
-        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GIT_TOKEN: ${{ inputs.token }}
         PATCHED_TOKEN: ${{ inputs.patched_token }}
       run: |
-        patchwork AutoFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml --plain
+        patchwork SonarFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml --plain
