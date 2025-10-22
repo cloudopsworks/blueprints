@@ -40,7 +40,13 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
+        dp=$(date +'%Y%m%d%H%M%S')
+        branch=feature/workflow-upgrade-$dp
+        git checkout -b $branch
+        $prev_ver=$(cat .github/_VERSION)
         make repos/upgrade
+        $ver=$(cat .github/_VERSION)
         git config --global user.name "${{ inputs.bot_user }}"
         git config --global user.email "${{ inputs.bot_email }}"
-        git push origin ${{ github.head_ref }}
+        git push origin $branch
+        gh pr create -B ${{ github.head_ref }} -b "Workflow Upgrade to Latest Patch Version \n from: $prev_ver\n to: $ver" -t "Workflow Upgrade to $ver"
