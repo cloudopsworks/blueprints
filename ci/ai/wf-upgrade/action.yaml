@@ -43,8 +43,8 @@ runs:
         GITURL=$(git ls-remote --get-url 2>/dev/null)
         dp=$(date +'%Y%m%d%H%M%S')
         branch=feature/workflow-upgrade-$dp
-        git config user.name "${{ inputs.bot_user }}"
-        git config user.email "${{ inputs.bot_email }}"
+        git config --global user.name "${{ inputs.bot_user }}"
+        git config --global user.email "${{ inputs.bot_email }}"
         git branch $branch develop
         git checkout $branch
         prev_ver=$(cat .github/_VERSION)
