@@ -57,7 +57,7 @@ runs:
         echo "sonarqube_api_key: $SONARTOKEN" >> patchwork-setting.yaml
         echo "sonarqube_project_key: $SONARPROJECT" >> patchwork-setting.yaml
         echo "language: $LANG" >> patchwork-setting.yaml
-        echo "branch_prefix: feature/" >> patchwork-setting.yaml
+        echo "branch_prefix: feature/sonarqubefix-" >> patchwork-setting.yaml
 
     - name: Patchwork SonarQube
       working-directory: ${{ inputs.source_path }}

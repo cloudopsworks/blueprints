@@ -35,7 +35,7 @@ runs:
     - name: DocStrings Params
       shell: bash
       run: |
-        echo "branch_prefix: feature/" >> patchwork-setting.yaml
+        echo "branch_prefix: feature/unit-tests-" >> patchwork-setting.yaml
         echo "test_file_extension: ${{ inputs.file_extension }}" >> patchwork-setting.yaml
 
     - name: Patchwork DocStrings

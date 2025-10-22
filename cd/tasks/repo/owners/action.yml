@@ -147,7 +147,7 @@ runs:
         github-token: ${{ inputs.token }}
         script: |
           const branchesStrict = ['main', 'master', 'support/*'];
-          const branchesRelax = ['release/*', 'hotfix/*', 'feature/*', 'develop'];
+          const branchesRelax = ['release/*', 'hotfix/*', 'feature/*', 'develop', 'generatedocstring-*', 'generateunittests-', 'autofix-', 'sonarfix-'];
           const cannot_delete = ['main', 'master', 'support/*', 'develop'];
           const protectedSources = JSON.parse('${{ steps.protected_sources.outputs.result }}');
           const reviewers_json = JSON.parse('${{ steps.reviewers_list.outputs.result }}');

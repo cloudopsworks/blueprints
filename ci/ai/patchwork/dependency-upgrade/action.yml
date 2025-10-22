@@ -41,7 +41,7 @@ runs:
       shell: bash
       run: |
         echo "upgrade_threshold: minor" >> patchwork-setting.yaml
-        echo "branch_prefix: feature/" >> patchwork-setting.yaml
+        echo "branch_prefix: feature/dependencyupgrade-" >> patchwork-setting.yaml
         echo "branch_suffix: \"-${{ github.run_id }}\"" >> patchwork-setting.yaml
 
     - name: Dependency Upgrade Params - libraries.io
