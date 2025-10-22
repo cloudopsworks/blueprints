@@ -65,9 +65,9 @@ runs:
     - name: Push to repository
       id: push
       if: ${{ steps.upgrade.outputs.result == 'true' }}
-      uses: ad-m/github-push-action@v1
+      uses: ad-m/github-push-action@master
       with:
-        github_token: '${{ inputs.token }}'
+        github_token: ${{ inputs.token }}
         branch: ${{ steps.upgrade.outputs.branch }}
         directory: ${{ inputs.source_path }}
 
