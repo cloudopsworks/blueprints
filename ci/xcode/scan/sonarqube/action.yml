@@ -6,9 +6,9 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Sonarqube Scan Java
+name: Sonarqube Scan Xcode
 author: cloudopsworks
-description: This action scans the Java code using Sonarqube
+description: This action scans the Xcode/Swift code using Sonarqube
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -124,6 +124,7 @@ runs:
           -Dsonar.java.test.libraries=${{ steps.test_libraries_path.outputs.result }}
           -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.language=swift
+          -Dsonar.lang.patterns.openapi=openapi
           ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('-Dsonar.organization={0}',steps.repo_owner.outputs.result) || ' ' }}
           ${{ steps.branch_disabled.outputs.result != 'true' && format('-Dsonar.branch.name={0}',github.ref_name) || ' ' }}
 #          -Dsonar.scanner.metadataFilePath=target/sonar/report-task.txt

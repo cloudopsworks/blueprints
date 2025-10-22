@@ -99,5 +99,6 @@ runs:
           -Dsonar.python.coverage.reportPaths=${{inputs.source_path}}/test-results.xml,${{inputs.source_path}}/ruff_report.xml,${{inputs.source_path}}/mypy_report.txt
           -Dsonar.language=python
           -Dsonar.sourceEncoding=UTF-8
+          -Dsonar.lang.patterns.openapi=openapi
           ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('-Dsonar.organization={0}',steps.repo_owner.outputs.result) || ' ' }}
           ${{ steps.branch_disabled.outputs.result != 'true' && format('-Dsonar.branch.name={0}',github.ref_name) || ' ' }}
