@@ -514,7 +514,7 @@ runs:
             console.log("reviewer_name: " + reviewer_name);
             reviewer = members_result.organization.membersWithRole.nodes.find( member => member.login === reviewer_name );
             if ( reviewer != null ) {
-              console.log("reviewer_id" + reviewer.id);
+              //console.log("reviewer_id" + reviewer.id);
               reviewers_ids.push(reviewer.id);
             }
           }
@@ -612,9 +612,9 @@ runs:
             const variables_list = deploy.variables
             const self_review = reviewers_list.length > 0;
           
-            console.debug("env: " + env_key);
-            console.debug('param: ' + JSON.stringify(deploy));
-            console.debug('repo_result: ' + JSON.stringify(repo_result));
+            //console.debug("env: " + env_key);
+            //console.debug('param: ' + JSON.stringify(deploy));
+            //console.debug('repo_result: ' + JSON.stringify(repo_result));
           
             const env_obj = repo_result.repository.environments.nodes.find( node => node.name === env_key );
             const env_exists = ( env_obj != null && env_obj != undefined);
@@ -643,14 +643,14 @@ runs:
                 env: env_key
               };
               const env_data = (await github.graphql(env_query, env_vars));
-              console.debug("env_data: " + JSON.stringify(env_data));
+              //console.debug("env_data: " + JSON.stringify(env_data));
               env_id = env_data.createEnvironment.environment.id;
             } else {
-              console.debug("env_obj: " + JSON.stringify(env_obj));
+              //console.debug("env_obj: " + JSON.stringify(env_obj));
               env_id = env_obj.id
             }
           
-            console.debug("env_id: " + env_id);
+            //console.debug("env_id: " + env_id);
           
             env_query = '';
             env_query = `
@@ -670,8 +670,8 @@ runs:
               no_self_review: self_review
             };
           
-            console.debug("env_query: " + env_query);
-            console.debug("env_vars: " + JSON.stringify(env_vars));
+            //console.debug("env_query: " + env_query);
+            //console.debug("env_vars: " + JSON.stringify(env_vars));
             await github.graphql(env_query, env_vars);
           
             var vars_response = await github.request('GET /repos/{owner}/{repo}/environments/{environment_name}/variables', {
@@ -682,14 +682,14 @@ runs:
                 'X-GitHub-Api-Version': '2022-11-28'
               }
             });
-            console.debug("curr_variables: " + JSON.stringify(vars_response));
-            console.debug("variables_list: " + JSON.stringify(variables_list));
+            //console.debug("curr_variables: " + JSON.stringify(vars_response));
+            //console.debug("variables_list: " + JSON.stringify(variables_list));
             if ( vars_response.status == 200 && vars_response.data.total_count > 0 ) {
-              console.debug("vars JSON: " + JSON.stringify(vars_response.data.variables));
+              //console.debug("vars JSON: " + JSON.stringify(vars_response.data.variables));
               for ( const item of vars_response.data.variables ) {
-                console.debug("Variable: " + item['name'] + " | Value: " + item['value']);
+                //console.debug("Variable: " + item['name'] + " | Value: " + item['value']);
                 if ( variables_list[item['name']] != null ) {
-                  console.debug("Updating variable: " + item['name'] + " | Value: " + variables_list[item['name']]);
+                  //console.debug("Updating variable: " + item['name'] + " | Value: " + variables_list[item['name']]);
                   await github.request('PATCH /repos/{owner}/{repo}/environments/{environment_name}/variables/{variable_name}', {
                     owner: context.repo.owner,
                     repo: context.repo.repo,
@@ -707,7 +707,7 @@ runs:
               }
             } else {
               for ( const [key, value] of Object.entries(variables_list) ) {
-                console.debug("Creating variable: " + key + " | Value: " + value);
+                //console.debug("Creating variable: " + key + " | Value: " + value);
                 await github.request('POST /repos/{owner}/{repo}/environments/{environment_name}/variables', {
                   owner: context.repo.owner,
                   repo: context.repo.repo,
