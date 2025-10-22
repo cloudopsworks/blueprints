@@ -35,6 +35,7 @@ runs:
   using: 'composite'
   steps:
     - name: Upgrade to latest minor version
+      id: upgrade
       working-directory: ${{ inputs.source_path }}
       shell: bash
       env:
@@ -50,10 +51,38 @@ runs:
         prev_ver=$(cat .github/_VERSION)
         make repos/upgrade
         ver=$(cat .github/_VERSION)
+        echo "prev_ver=$prev_ver" >> $GITHUB_OUTPUT
+        echo "ver=$ver" >> $GITHUB_OUTPUT
+        echo "branch=$branch" >> $GITHUB_OUTPUT
         if [[ "$(git ls-remote $GITURL develop | cut -f1)" == "$(git rev-parse HEAD)" ]] ; then
-          echo "::info::No changes detected between local develop and remote develop. Exiting."
+          echo "::info::No changes detected between local develop and remote develop. Nothing to be done."
+          echo "result=false" >> $GITHUB_OUTPUT
         else
-          echo "::info::Changes detected... Pushing code to Origin and creating Pull request..."
-          git push origin $branch
-          gh pr create -B develop -b "Workflow Upgrade to Latest Patch Version \n from: $prev_ver\n to: $ver" -t "Workflow Upgrade to $ver"
+          echo "::info::Changes detected... Will push code to Origin and creating Pull request..."
+          echo "result=true" >> $GITHUB_OUTPUT
         fi
+
+    - name: Push to repository
+      id: push
+      if: ${{ steps.upgrade.outputs.result == 'true' }}
+      uses: ad-m/github-push-action@v1
+      with:
+        github_token: '${{ inputs.token }}'
+        branch: ${{ steps.upgrade.outputs.branch }}
+        directory: ${{ inputs.source_path }}
+
+    - name: Create Pull Request
+      if: ${{ steps.upgrade.outputs.result == 'true' }}
+      uses: cloudopsworks/create-pull-request@v4
+      with:
+        labels: automated pr
+      env:
+        token: ${{ inputs.token }}
+        title: Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}
+        body: |-
+          Workflow Upgrade to Latest Patch Version 
+          From: ${{ steps.upgrade.outputs.prev_ver }}
+          To: ${{ steps.upgrade.outputs.ver }}
+        branch: ${{ steps.upgrade.outputs.branch }}
+        path: ${{ inputs.source_path }}
+        base: develop
