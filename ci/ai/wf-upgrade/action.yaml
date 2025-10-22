@@ -40,6 +40,8 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
+        GITURL=$(git ls-remote --get-url 2>/dev/null)
+        
         dp=$(date +'%Y%m%d%H%M%S')
         branch=feature/workflow-upgrade-$dp
         git branch $branch develop
@@ -47,7 +49,12 @@ runs:
         $prev_ver=$(cat .github/_VERSION)
         make repos/upgrade
         $ver=$(cat .github/_VERSION)
-        git config --global user.name "${{ inputs.bot_user }}"
-        git config --global user.email "${{ inputs.bot_email }}"
-        git push origin $branch
-        gh pr create -B develop -b "Workflow Upgrade to Latest Patch Version \n from: $prev_ver\n to: $ver" -t "Workflow Upgrade to $ver"
+        if [[ "$(git ls-remote $GITURL develop | cut -f1)" == "$(git rev-parse HEAD)" ]] ; then
+          echo "No changes detected between local develop and remote develop. Exiting."
+        else
+          echo "Changes detected... Pushing code to Origin and creating Pull request..."
+          git config --global user.name "${{ inputs.bot_user }}"
+          git config --global user.email "${{ inputs.bot_email }}"
+          git push origin $branch
+          gh pr create -B develop -b "Workflow Upgrade to Latest Patch Version \n from: $prev_ver\n to: $ver" -t "Workflow Upgrade to $ver"
+        fi
