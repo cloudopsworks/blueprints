@@ -21,45 +21,25 @@ inputs:
   token:
     description: 'The Github token'
     required: true
-  sonarqube_url:
-    description: 'The SonarQube URL'
-    required: true
-  sonarqube_token:
-    description: 'The Sonarqube token'
-    required: true
-  sonarqube_project_key:
-    description: 'SonarQube project key'
-    required: true
-  project_owner:
-    description: 'Project Owner'
-    required: false
-    default: ''
   patched_token:
     description: 'Patched Code SAAS Token'
     required: true
-  language:
-    description: 'Coding Language'
-    required: true
+  base_path:
+    description: 'Base Path for code'
+    required: false
+    default: '.'
 
 runs:
   using: 'composite'
   steps:
-    - name: Sonarqube Params
+    - name: DocStrings Params
       shell: bash
-      env:
-        SONARURL: ${{ inputs.sonarqube_url }}
-        SONARTOKEN: ${{ inputs.sonarqube_token }}
-        SONARPROJECT: ${{ contains(inputs.sonarqube_url,'sonarcloud.io') && format('{0}_{1}',inputs.project_owner,inputs.sonarqube_project_key) || inputs.sonarqube_project_key }}
-        LANG: ${{ inputs.language }}
       run: |
-        echo "vulnerability_limit: 100" >> patchwork-setting.yaml
-        echo "sonarqube_base_url: $SONARURL/api/" >> patchwork-setting.yaml
-        echo "sonarqube_api_key: $SONARTOKEN" >> patchwork-setting.yaml
-        echo "sonarqube_project_key: $SONARPROJECT" >> patchwork-setting.yaml
-        echo "language: $LANG" >> patchwork-setting.yaml
         echo "branch_prefix: feature/" >> patchwork-setting.yaml
+        echo "rewrite_existing: false" >> patchwork-setting.yaml
+        echo "base_path: ${{ inputs.base_path }}" >> patchwork-setting.yaml
 
-    - name: Patchwork SonarQube
+    - name: Patchwork DocStrings
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.patched_token == '' }}
@@ -68,12 +48,11 @@ runs:
       run: |
         patchwork SonarFix github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
 
-    - name: Patchwork AutoFix - Patched-Co
+    - name: Patchwork DocStrings - Patched-Codes
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.patched_token != '' }}
       env:
-        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GIT_TOKEN: ${{ inputs.token }}
         PATCHED_TOKEN: ${{ inputs.patched_token }}
       run: |
