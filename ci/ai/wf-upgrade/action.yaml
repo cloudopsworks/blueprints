@@ -49,9 +49,9 @@ runs:
         make repos/upgrade
         ver=$(cat .github/_VERSION)
         if [[ "$(git ls-remote $GITURL develop | cut -f1)" == "$(git rev-parse HEAD)" ]] ; then
-          echo "No changes detected between local develop and remote develop. Exiting."
+          echo "::info::No changes detected between local develop and remote develop. Exiting."
         else
-          echo "Changes detected... Pushing code to Origin and creating Pull request..."
+          echo "::info::Changes detected... Pushing code to Origin and creating Pull request..."
           git config --global user.name "${{ inputs.bot_user }}"
           git config --global user.email "${{ inputs.bot_email }}"
           git push origin $branch
