@@ -41,7 +41,6 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         GITURL=$(git ls-remote --get-url 2>/dev/null)
-        
         dp=$(date +'%Y%m%d%H%M%S')
         branch=feature/workflow-upgrade-$dp
         git branch $branch develop
