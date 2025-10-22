@@ -45,9 +45,9 @@ runs:
         branch=feature/workflow-upgrade-$dp
         git branch $branch develop
         git checkout $branch
-        $prev_ver=$(cat .github/_VERSION)
+        prev_ver=$(cat .github/_VERSION)
         make repos/upgrade
-        $ver=$(cat .github/_VERSION)
+        ver=$(cat .github/_VERSION)
         if [[ "$(git ls-remote $GITURL develop | cut -f1)" == "$(git rev-parse HEAD)" ]] ; then
           echo "No changes detected between local develop and remote develop. Exiting."
         else
