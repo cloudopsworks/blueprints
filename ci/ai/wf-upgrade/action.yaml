@@ -71,6 +71,11 @@ runs:
         branch: ${{ steps.upgrade.outputs.branch }}
         directory: ${{ inputs.source_path }}
 
+    - name: Checkout develop
+      shell: bash
+      run: |
+        git checkout develop
+
     - name: Create Pull Request
       if: ${{ steps.upgrade.outputs.result == 'true' }}
       uses: cloudopsworks/create-pull-request@v4
