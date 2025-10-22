@@ -43,6 +43,8 @@ runs:
         GITURL=$(git ls-remote --get-url 2>/dev/null)
         dp=$(date +'%Y%m%d%H%M%S')
         branch=feature/workflow-upgrade-$dp
+        git config user.name "${{ inputs.bot_user }}"
+        git config user.email "${{ inputs.bot_email }}"
         git branch $branch develop
         git checkout $branch
         prev_ver=$(cat .github/_VERSION)
@@ -52,8 +54,6 @@ runs:
           echo "::info::No changes detected between local develop and remote develop. Exiting."
         else
           echo "::info::Changes detected... Pushing code to Origin and creating Pull request..."
-          git config --global user.name "${{ inputs.bot_user }}"
-          git config --global user.email "${{ inputs.bot_email }}"
           git push origin $branch
           gh pr create -B develop -b "Workflow Upgrade to Latest Patch Version \n from: $prev_ver\n to: $ver" -t "Workflow Upgrade to $ver"
         fi
