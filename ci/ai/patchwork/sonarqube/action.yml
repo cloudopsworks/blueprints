@@ -58,7 +58,6 @@ runs:
         GIT_TOKEN: ${{ inputs.token }}
       run: |
         patchwork SonarFix github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
-        
 
     - name: Patchwork AutoFix - OpenAI
       working-directory: ${{ inputs.source_path }}
