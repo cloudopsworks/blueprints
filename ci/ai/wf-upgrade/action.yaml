@@ -76,6 +76,7 @@ runs:
       uses: cloudopsworks/create-pull-request@v4
       with:
         labels: automated pr
+      env:
         token: ${{ inputs.token }}
         title: Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}
         body: |-
