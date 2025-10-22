@@ -413,62 +413,49 @@ runs:
           const rule_exists = repo_result.repository.branchProtectionRules.nodes.find(rule => rule.pattern === '*');
           var protection_rule = '';
           
-          if (rule_exists == null) {
-            protection_rule = `
-                mutation($repo_id: ID!, $branch: String!, $required_approve: Boolean!, $reviewers_count: Int!, $admin_ids: [ID!], $reviewers_ids: [ID!], $contexts: [String!]) {
-                  createBranchProtectionRule(input: {
-                    repositoryId: $repo_id,
-                    pattern: $branch,
-                    requiresApprovingReviews: $required_approve,
-                    requiredApprovingReviewCount: $reviewers_count,
-                    restrictsPushes: true,
-                    pushActorIds: $admin_ids,
-                    bypassForcePushActorIds: $admin_ids,
-                    bypassPullRequestActorIds: $admin_ids,
-                    restrictsReviewDismissals: true,
-                    reviewDismissalActorIds: $reviewers_ids,
-                    requiredStatusCheckContexts: $contexts,
-                    allowsForcePushes: false,
-                    requiresStrictStatusChecks: true,
-                    requiresStatusChecks: true,
-                    isAdminEnforced: false,
-                    blocksCreations: true,
-                    allowsDeletions: true
-                  }) {
-                    clientMutationId
-                  }
+          if (rule_exists != null) {
+            rm_protection_rule = `
+              mutation($rule_id: ID!) {
+                deleteBranchProtectionRule(input: {
+                  branchProtectionRuleId: $rule_id
+                }) {
+                  clientMutationId
                 }
-              `;
-          } else {
-            protection_rule = `
-                mutation($rule_id: ID!, $required_approve: Boolean!, $reviewers_count: Int!, $admin_ids: [ID!], $reviewers_ids: [ID!], $contexts: [String!]) {
-                  updateBranchProtectionRule(input: {
-                    branchProtectionRuleId: $rule_id,
-                    requiresApprovingReviews: $required_approve,
-                    requiredApprovingReviewCount: $reviewers_count,
-                    restrictsPushes: true,
-                    pushActorIds: $admin_ids,
-                    bypassForcePushActorIds: $admin_ids,
-                    bypassPullRequestActorIds: $admin_ids,
-                    restrictsReviewDismissals: true,
-                    reviewDismissalActorIds: $reviewers_ids,
-                    requiredStatusCheckContexts: $contexts,
-                    allowsForcePushes: false,
-                    requiresStrictStatusChecks: true,
-                    requiresStatusChecks: true,
-                    isAdminEnforced: false,
-                    blocksCreations: true,
-                    allowsDeletions: true
-                  }) {
-                    clientMutationId
-                  }
-                }
-              `;
+              }
+            `;
+            const rm_vars = {
+              rule_id: rule_exists.id
+            }
+            await github.graphql(rm_protection_rule, rm_vars);
           }
+          protection_rule = `
+            mutation($repo_id: ID!, $branch: String!, $required_approve: Boolean!, $reviewers_count: Int!, $admin_ids: [ID!], $reviewers_ids: [ID!], $contexts: [String!]) {
+              createBranchProtectionRule(input: {
+                repositoryId: $repo_id,
+                pattern: $branch,
+                requiresApprovingReviews: $required_approve,
+                requiredApprovingReviewCount: $reviewers_count,
+                restrictsPushes: true,
+                pushActorIds: $admin_ids,
+                bypassForcePushActorIds: $admin_ids,
+                bypassPullRequestActorIds: $admin_ids,
+                restrictsReviewDismissals: true,
+                reviewDismissalActorIds: $reviewers_ids,
+                requiredStatusCheckContexts: $contexts,
+                allowsForcePushes: false,
+                requiresStrictStatusChecks: true,
+                requiresStatusChecks: true,
+                isAdminEnforced: false,
+                blocksCreations: true,
+                allowsDeletions: true
+              }) {
+                clientMutationId
+              }
+            }
+          `;
           
           const vars = {
             repo_id: repo_result.repository.id,
-            rule_id: rule_exists ? rule_exists.id : null,
             branch: '*',
             required_approve: (reviewers_count > 0),
             reviewers_count: reviewers_count,
