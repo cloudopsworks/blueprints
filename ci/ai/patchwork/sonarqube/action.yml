@@ -30,6 +30,10 @@ inputs:
   sonarqube_project_key:
     description: 'SonarQube project key'
     required: true
+  project_owner:
+    description: 'Project Owner'
+    required: false
+    default: ''
   patched_token:
     description: 'Patched Code SAAS Token'
     required: true
@@ -45,7 +49,7 @@ runs:
       env:
         SONARURL: ${{ inputs.sonarqube_url }}
         SONARTOKEN: ${{ inputs.sonarqube_token }}
-        SONARPROJECT: ${{ inputs.sonarqube_project_key }}
+        SONARPROJECT: ${{ containse(inputs.sonarqube_url,'sonarcloud.io') && format('{0}_{1}',inputs.project_owner,inputs.sonarqube_project_key) || inputs.sonarqube_project_key }}
         LANG: ${{ inputs.language }}
       run: |
         echo "vulnerability_limit: 100" >> patchwork-setting.yaml
