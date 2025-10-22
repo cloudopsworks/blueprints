@@ -73,6 +73,7 @@ runs:
 
     - name: Checkout develop
       shell: bash
+      working-directory: ${{ inputs.source_path }}
       run: |
         git checkout develop
 
