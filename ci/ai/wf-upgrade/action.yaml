@@ -74,20 +74,7 @@ runs:
     - name: Checkout develop
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
-        git checkout develop
-
-    - name: Create Pull Request
-      if: ${{ steps.upgrade.outputs.result == 'true' }}
-      uses: cloudopsworks/create-pull-request@v4
-      with:
-        labels: automated pr
-        token: ${{ inputs.token }}
-        title: Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}
-        body: |-
-          Workflow Upgrade to Latest Patch Version 
-          From: ${{ steps.upgrade.outputs.prev_ver }}
-          To: ${{ steps.upgrade.outputs.ver }}
-        branch: ${{ steps.upgrade.outputs.branch }}
-        path: ${{ inputs.source_path }}
-        base: develop
+        gh pr create -B develop -b "Workflow Upgrade to Latest Patch Version \n From: ${{ steps.upgrade.outputs.prev_ver }}\n To: ${{ steps.upgrade.outputs.ver }}" -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"
