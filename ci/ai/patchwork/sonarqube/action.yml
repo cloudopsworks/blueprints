@@ -53,7 +53,7 @@ runs:
         LANG: ${{ inputs.language }}
       run: |
         echo "vulnerability_limit: 100" >> patchwork-setting.yaml
-        echo "sonarqube_base_url: $SONARURL/api" >> patchwork-setting.yaml
+        echo "sonarqube_base_url: $SONARURL/api/" >> patchwork-setting.yaml
         echo "sonarqube_api_key: $SONARTOKEN" >> patchwork-setting.yaml
         echo "sonarqube_project_key: $SONARPROJECT" >> patchwork-setting.yaml
         echo "language: $LANG" >> patchwork-setting.yaml
