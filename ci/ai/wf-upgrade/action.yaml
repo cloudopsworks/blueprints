@@ -77,7 +77,7 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
-        tmp_file=$(mktemp -t pr-body)
+        tmp_file=$(mktemp pr-body-XXXXXXXX)
         echo ":rocket:Workflow Upgrade to Latest Patch Version." >> $tmp_file
         echo "    From: \`${{ steps.upgrade.outputs.prev_ver }}\`" >> tmp_file
         echo "    To: `\${{ steps.upgrade.outputs.ver }}\`" >> tmp_file
