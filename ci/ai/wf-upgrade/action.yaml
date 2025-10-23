@@ -77,4 +77,4 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
-        gh pr create -B develop -b "Workflow Upgrade to Latest Patch Version \n From: ${{ steps.upgrade.outputs.prev_ver }}\n To: ${{ steps.upgrade.outputs.ver }}" -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"
+        gh pr create -B develop -H ${{ steps.upgrade.outputs.branch }} -b "Workflow Upgrade to Latest Patch Version \n From: ${{ steps.upgrade.outputs.prev_ver }}\n To: ${{ steps.upgrade.outputs.ver }}" -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"
