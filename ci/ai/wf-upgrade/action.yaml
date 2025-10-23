@@ -79,8 +79,8 @@ runs:
       run: |
         tmp_file=$(mktemp pr-body-XXXXXXXX)
         echo ":rocket:Workflow Upgrade to Latest Patch Version." >> $tmp_file
-        echo "    From: \`${{ steps.upgrade.outputs.prev_ver }}\`" >> tmp_file
-        echo "    To: `\${{ steps.upgrade.outputs.ver }}\`" >> tmp_file
+        echo "    From: \`${{ steps.upgrade.outputs.prev_ver }}\`" >> $tmp_file
+        echo "    To: \`${{ steps.upgrade.outputs.ver }}\`" >> $tmp_file
         gh pr create -B develop -H ${{ steps.upgrade.outputs.branch }} \ 
           -F $tmp_file \
-          -t "Workflow Upgrade to \`${{ steps.upgrade.outputs.ver }}\`"
+          -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"
