@@ -82,5 +82,5 @@ runs:
         echo "    From: \`${{ steps.upgrade.outputs.prev_ver }}\`" >> $tmp_file
         echo "    To: \`${{ steps.upgrade.outputs.ver }}\`" >> $tmp_file
         gh pr create -B develop -H ${{ steps.upgrade.outputs.branch }} \
-        -F $tmp_file \
-        -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"
+          -F $tmp_file \
+          -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"
