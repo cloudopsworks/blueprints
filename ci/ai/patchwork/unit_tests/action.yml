@@ -36,6 +36,11 @@ runs:
       shell: bash
       run: |
         echo "branch_prefix: feature/unit-tests-" >> patchwork-setting.yaml
+        echo -n "filter: \"*.${{ inputs.file_extension }}"
+        if [[ "${{ inputs.file_extension }}" == "js" ]] ; then
+          echo -n ",*.ts"
+        fi
+        echo "\"" >> patchwork-setting.yaml
         echo "test_file_extension: ${{ inputs.file_extension }}" >> patchwork-setting.yaml
 
     - name: Patchwork DocStrings
