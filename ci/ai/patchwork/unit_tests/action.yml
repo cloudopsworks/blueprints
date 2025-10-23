@@ -36,7 +36,7 @@ runs:
       shell: bash
       run: |
         echo "branch_prefix: feature/unit-tests-" >> patchwork-setting.yaml
-        echo -n "filter: \"*.${{ inputs.file_extension }}"
+        echo -n "filter: \"*.${{ inputs.file_extension }}" >> patchwork-setting.yaml
         if [[ "${{ inputs.file_extension }}" == "js" ]] ; then
           echo -n ",*.ts"
         fi
