@@ -77,8 +77,10 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
+        tmp_file=$(mktemp -t pr-body)
+        echo ":rocket:Workflow Upgrade to Latest Patch Version." >> $tmp_file
+        echo "    From: \`${{ steps.upgrade.outputs.prev_ver }}\`" >> tmp_file
+        echo "    To: `\${{ steps.upgrade.outputs.ver }}\`" >> tmp_file
         gh pr create -B develop -H ${{ steps.upgrade.outputs.branch }} \ 
-          -b ":rocket:Workflow Upgrade to Latest Patch Version.
-          From: \`${{ steps.upgrade.outputs.prev_ver }}\`
-          To: `\${{ steps.upgrade.outputs.ver }}\`" \
-          -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"
+          -F $tmp_file \
+          -t "Workflow Upgrade to \`${{ steps.upgrade.outputs.ver }}\`"
