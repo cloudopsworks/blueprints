@@ -35,12 +35,46 @@ runs:
   using: 'composite'
   steps:
     - name: Upgrade to latest minor version
+      id: upgrade
       working-directory: ${{ inputs.source_path }}
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
-        make repos/upgrade
+        GITURL=$(git ls-remote --get-url 2>/dev/null)
+        dp=$(date +'%Y%m%d%H%M%S')
+        branch=feature/workflow-upgrade-$dp
         git config --global user.name "${{ inputs.bot_user }}"
         git config --global user.email "${{ inputs.bot_email }}"
-        git push origin ${{ github.head_ref }}
+        git branch $branch develop
+        git checkout $branch
+        prev_ver=$(cat .github/_VERSION)
+        make repos/upgrade
+        ver=$(cat .github/_VERSION)
+        echo "prev_ver=$prev_ver" >> $GITHUB_OUTPUT
+        echo "ver=$ver" >> $GITHUB_OUTPUT
+        echo "branch=$branch" >> $GITHUB_OUTPUT
+        if [[ "$(git ls-remote $GITURL develop | cut -f1)" == "$(git rev-parse HEAD)" ]] ; then
+          echo "::info::No changes detected between local develop and remote develop. Nothing to be done."
+          echo "result=false" >> $GITHUB_OUTPUT
+        else
+          echo "::info::Changes detected... Will push code to Origin and creating Pull request..."
+          echo "result=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Push to repository
+      id: push
+      if: ${{ steps.upgrade.outputs.result == 'true' }}
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ inputs.token }}
+        branch: ${{ steps.upgrade.outputs.branch }}
+        directory: ${{ inputs.source_path }}
+
+    - name: Checkout develop
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        gh pr create -B develop -H ${{ steps.upgrade.outputs.branch }} -b "Workflow Upgrade to Latest Patch Version \n From: ${{ steps.upgrade.outputs.prev_ver }}\n To: ${{ steps.upgrade.outputs.ver }}" -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"

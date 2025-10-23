@@ -21,41 +21,59 @@ inputs:
   token:
     description: 'The Github token'
     required: true
-  semgrep_token:
-    description: 'The Semgrep token'
+  sonarqube_url:
+    description: 'The SonarQube URL'
     required: true
+  sonarqube_token:
+    description: 'The Sonarqube token'
+    required: true
+  sonarqube_project_key:
+    description: 'SonarQube project key'
+    required: true
+  project_owner:
+    description: 'Project Owner'
+    required: false
+    default: ''
   patched_token:
     description: 'Patched Code SAAS Token'
+    required: true
+  language:
+    description: 'Coding Language'
     required: true
 
 runs:
   using: 'composite'
   steps:
-    - name: Autofix Params
+    - name: Sonarqube Params
       shell: bash
+      env:
+        SONARURL: ${{ inputs.sonarqube_url }}
+        SONARTOKEN: ${{ inputs.sonarqube_token }}
+        SONARPROJECT: ${{ contains(inputs.sonarqube_url,'sonarcloud.io') && format('{0}_{1}',inputs.project_owner,inputs.sonarqube_project_key) || inputs.sonarqube_project_key }}
+        LANG: ${{ inputs.language }}
       run: |
         echo "vulnerability_limit: 100" >> patchwork-setting.yaml
+        echo "sonarqube_base_url: $SONARURL/api/" >> patchwork-setting.yaml
+        echo "sonarqube_api_key: $SONARTOKEN" >> patchwork-setting.yaml
+        echo "sonarqube_project_key: $SONARPROJECT" >> patchwork-setting.yaml
+        echo "language: $LANG" >> patchwork-setting.yaml
+        echo "branch_prefix: feature/sonarqubefix-" >> patchwork-setting.yaml
 
-      #echo "compatibility: medium" >> patchwork-setting.yaml
-
-    - name: Patchwork AutoFix
+    - name: Patchwork SonarQube
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.patched_token == '' }}
       env:
-        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GIT_TOKEN: ${{ inputs.token }}
       run: |
-        patchwork AutoFix github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
-        
+        patchwork SonarFix github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
 
     - name: Patchwork AutoFix - Patched-Codes
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.patched_token != '' }}
       env:
-        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
         GIT_TOKEN: ${{ inputs.token }}
         PATCHED_TOKEN: ${{ inputs.patched_token }}
       run: |
-        patchwork AutoFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml --plain
+        patchwork SonarFix github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml --plain

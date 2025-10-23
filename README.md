@@ -115,6 +115,7 @@ Required GitHub Secrets and Variables, in the below table:
 | DEPLOYMENT_RUNNER_SET            | Variable | Default Runner set for deployment, used to identify the runner set for deployment, can be overriden at pipeline, defaults to `ubuntu-latest` |    No    |
 | PREVIEW_RUNNER_SET               | Variable | Default Runner set for preview deployments, used to identify the runner set for preview deployments, defaults to `ubuntu-latest`             |    No    |
 | __AI Patching Management__       |          | - Supported by Patchwork                                                                                                                     |          |
+| PATCHWORK_ENABLED                | Variable | Enable / Disable Patchwork AI Patching features, defaults to `false`                                                                         |    No    |
 | OPENAI_API_KEY                   |  Secret  | OpenAI API KEY or Hosted LLM API Key for the provided URL.                                                                                   |    No    |
 | LIBRARIES_IO_API_KEY             |  Secret  | libraries.io API KEY, if set the DependencyUpgrade process will set analyze_impact=true                                                      |    No    |
 | PATCHED_CODES_TOKEN              |  Secret  | Patched Codes Token, if set the AutoFix and DependencyUpgrade processes will use the SAAS service at https://www.patched.codes/              |    No    |

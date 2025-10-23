@@ -41,7 +41,7 @@ runs:
       shell: bash
       run: |
         echo "upgrade_threshold: minor" >> patchwork-setting.yaml
-        echo "branch_prefix: feature/" >> patchwork-setting.yaml
+        echo "branch_prefix: feature/dependencyupgrade-" >> patchwork-setting.yaml
         echo "branch_suffix: \"-${{ github.run_id }}\"" >> patchwork-setting.yaml
 
     - name: Dependency Upgrade Params - libraries.io
@@ -58,6 +58,16 @@ runs:
       shell: bash
       if: ${{ inputs.patched_token == '' }}
       env:
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GIT_TOKEN: ${{ inputs.token }}
       run: |
-        patchwork DependencyUpgrade --config ../patchwork-setting.yaml --plain
+        patchwork DependencyUpgrade github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
+
+    - name: Patchwork Dependency Upgrade - Patched Codes
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      if: ${{ inputs.patched_token != '' }}
+      env:
+        GIT_TOKEN: ${{ inputs.token }}
+        PATCHED_TOKEN: ${{ inputs.patched_token }}
+      run: |
+        patchwork DependencyUpgrade github_api_key=$GIT_TOKEN patched_api_key=$PATCHED_TOKEN --config ../patchwork-setting.yaml --plain
