@@ -6,9 +6,9 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Deploy Application AWS
+name: Deploy Application Google Cloud Platform
 author: cloudopsworks
-description: Deploy Application to AWS
+description: Deploy Application to Google Cloud Platform
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -24,20 +24,17 @@ inputs:
   cloud_type:
     description: 'The cloud type'
     required: true
-  aws_region:
-    description: 'The AWS region'
-    required: true
-  aws_sts_role_arn:
-    description: 'The AWS STS Role ARN'
-    required: true
-  aws_access_key_id:
-    description: 'The AWS access key ID'
-    required: true
-  aws_secret_access_key:
-    description: 'The AWS secret access key'
-    required: true
   terraform_state_conf:
     description: 'The Terraform state configuration'
+    required: true
+  gcp_credentials:
+    description: 'Google Cloud Credentials'
+    required: true
+  gcp_project:
+    description: 'Google Cloud Project Name'
+    required: true
+  gcp_region:
+    description: 'Google Cloud Region'
     required: true
   unlock:
     description: 'Unlock the state'
@@ -81,7 +78,7 @@ inputs:
   observability_agent:
     description: 'The observability agent'
     required: false
-    default: 'xray'
+    default: 'datadog'
 
 runs:
   using: 'composite'
@@ -96,25 +93,25 @@ runs:
     - name: Copy configurations
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/inputs.yaml
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/
+        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/inputs.yaml
+        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/
 
     - name: Copy Values Bundle
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) }}
       shell: bash
       run: |
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
         if [ -d ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ] ; then
-          cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+          cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
         else
           echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
-          touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
+          touch ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/.empty
         fi
 
     - name: Create Hash value for values bundle
       id: hash_value
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
       run: |
         hash=$(find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum)
@@ -123,20 +120,20 @@ runs:
         echo "result=$short_hash" >> $GITHUB_OUTPUT
 
     - name: Copy Values Bundle
-      if: ${{ contains(fromJSON('["kubernetes","k8s","eks"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["kubernetes","k8s","gke"]'), inputs.cloud_type) }}
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/helm-values.yaml
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        cp -pf ${{ inputs.source_path }}/.github/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/helm-values.yaml
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
         if [ -d ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ]; then
-          cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+          cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
         else
           echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
-          touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
+          touch ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/.empty
         fi
 
     - name: Generate release.yaml
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
       run: |
         cat > release.yaml << EOF 
@@ -149,43 +146,21 @@ runs:
 
     - name: Insert release.qualifier data into release.yaml
       if: ${{ inputs.qualifier != '' }}
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
       run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
 
-    - name: Insert bucket name & bucket path for beanstalk & lambda
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
-      shell: bash
-      run: |
-        yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
-        yq e -i '.version_label = "${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
-
     - name: Generate Global Inputs global-inputs.yaml
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp
       shell: bash
       run: |
         cat > global-inputs.yaml << EOF
         environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
         release_name: ${{ inputs.release_name }}
         default:
-          region: ${{ inputs.aws_region }}
-          sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+          region: ${{ inputs.gcp_region }}
+          project: ${{ inputs.gcp_project }}
         EOF
-
-    - name: Generate Observability configuration for Xray
-      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
-      uses: ./bp/cd/deploy/app/observability/xray
-      with:
-        blueprint_path: ${{ inputs.blueprint_path }}
-        source_path: ${{ inputs.source_path }}
-        cloud: 'aws'
-        cloud_type: ${{ inputs.cloud_type }}
-        release_name: ${{ inputs.release_name }}
-        release_version: ${{ inputs.release_version }}
-        project_key: ${{ inputs.project_key }}
-        deployment_name: ${{ inputs.deployment_name }}x
-        environment: ${{ inputs.environment }}
 
     - name: Generate Observability configuration for datadog
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'datadog' }}
@@ -193,7 +168,7 @@ runs:
       with:
         blueprint_path: ${{ inputs.blueprint_path }}
         source_path: ${{ inputs.source_path }}
-        cloud: 'aws'
+        cloud: 'gcp'
         cloud_type: ${{ inputs.cloud_type }}
         release_name: ${{ inputs.release_name }}
         release_version: ${{ inputs.release_version }}
@@ -202,7 +177,7 @@ runs:
         environment: ${{ inputs.environment }}
 
     - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp
       shell: bash
       run: |
         cat > state_conf.yaml << EOF
@@ -232,7 +207,7 @@ runs:
     - name: Terragrunt Plan
       id: plan
       if: ${{ ! cancelled() }}
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
@@ -240,15 +215,14 @@ runs:
         echo "::endgroup::"
       env:
         TG_TF_PATH: tofu
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
-        HELM_CREDS_USER: ${{ inputs.aws_access_key_id }}
-        HELM_CREDS_PASSWORD: ${{ inputs.aws_secret_access_key }}
+        GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
+        HELM_CREDS_USER: '_json_key'
+        HELM_CREDS_PASSWORD: ${{ inputs.gcp_credentials }}
         HELM_EXPERIMENTAL_OCI: "1"
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
     - name: Terragrunt Plan to JSON
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       shell: bash
       run: |
@@ -257,12 +231,11 @@ runs:
         echo "::endgroup::"
       env:
         TG_TF_PATH: tofu
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
     - name: TF Summarize of JSON file
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       shell: bash
       run: |
@@ -278,7 +251,7 @@ runs:
         retention-days: 1
         overwrite: true
         path: |
-          ${{ inputs.blueprint_path }}/terraform/aws/**
+          ${{ inputs.blueprint_path }}/terraform/gcp/**
           !**/.terragrunt-cache/**
           !**/.terraform/**
 
@@ -287,38 +260,11 @@ runs:
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}
-        path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
-
-    - name: Generate Bundle ZipFile - Upload S3
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' }}
-      id: bundle
-      uses: ./bp/cd/deploy/app/pack
-      with:
-        source_path: ${{ inputs.source_path }}
-        blueprint_path: ${{ inputs.blueprint_path }}
-        cloud: 'aws'
-        cloud_type: ${{ inputs.cloud_type }}
-        release_name: ${{ inputs.release_name }}
-        release_version: ${{ inputs.release_version }}
-        project_key: ${{ inputs.project_key }}
-        aws_access_key_id: ${{ inputs.aws_access_key_id }}
-        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
-        aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
-        environment: ${{ inputs.environment }}
-        aws_region: ${{ inputs.aws_region }}
-        observability_enabled: ${{ inputs.observability_enabled }}
-        observability_agent: ${{ inputs.observability_agent }}
-
-    - name: Validate Bundle Outcome
-      if: ${{ ( contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true') && steps.bundle.outcome == 'failure' }}
-      shell: bash
-      run: |
-        echo "::error::Bundle creation failed, please check the logs for details."
-        exit 1
+        path: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/release
 
     - name: Terragrunt Apply
       id: apply
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' && ! cancelled() && steps.plan.outcome == 'success' }}
       shell: bash
       run: |
@@ -328,10 +274,9 @@ runs:
       continue-on-error: false
       env:
         TG_TF_PATH: tofu
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
-        HELM_CREDS_USER: ${{ inputs.aws_access_key_id }}
-        HELM_CREDS_PASSWORD: ${{ inputs.aws_secret_access_key }}
+        GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
+        HELM_CREDS_USER: '_json_key'
+        HELM_CREDS_PASSWORD: ${{ inputs.gcp_credentials }}
         HELM_EXPERIMENTAL_OCI: "1"
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
