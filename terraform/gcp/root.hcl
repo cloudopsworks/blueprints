@@ -26,12 +26,15 @@ generate "provider" {
   path      = "provider.g.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
-provider "aws" {
-  region = "${local.global_vars.default.region}"
-  assume_role {
-    role_arn     = "${local.global_vars.default.sts_role_arn}"
-    session_name = "terragrunt"
-  }
+provider "google" {
+  project                     = "${local.global_vars.default.project}"
+  region                      = "${local.global_vars.default.region}"
+  impersonate_service_account = "${local.global_vars.default.impersonate_sa}"
+}
+provider "google-beta" {
+  project                     = "${local.global_vars.default.project}"
+  region                      = "${local.global_vars.default.region}"
+  impersonate_service_account = "${local.global_vars.default.impersonate_sa}"
 }
 EOF
 }
