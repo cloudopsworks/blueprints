@@ -63,12 +63,21 @@ outputs:
   deploy_aws_sts_role_arn:
     description: 'The AWS STS Role ARN value, only on AWS deployment'
     value: ${{ steps.deploy_aws_sts_role_arn.outputs.result }}
-  build_azure_resource_group:
+  build_azure_rg:
     description: 'The Azure Resource Group value, only on Azure build'
     value: ${{ steps.build_azure_rg.outputs.result }}
-  deploy_azure_resource_group:
+  deploy_azure_rg:
     description: 'The Azure Resource Group value, only on Azure deployment'
     value: ${{ steps.deploy_azure_rg.outputs.result }}
+  build_gcp_project:
+    description: 'The Google Project ID, only on GCP build'
+    value: ${{ steps.build_gcp_project.outputs.result }}
+  build_gcp_region:
+    description: 'The Google Project Region, only on GCP build'
+    value: ${{ steps.build_gcp_region.outputs.result }}
+  build_gcp_impersonate_sa:
+    description: 'The Google Service Account to impersonate, only on GCP build'
+    value: ${{ steps.build_gcp_impersonate_sa.outputs.result }}
   runner_set:
     description: 'The runner set for the build'
     value: ${{ steps.runner_set_env.outputs.result != '' && steps.runner_set_env.outputs.result || steps.runner_set.outputs.result }}
@@ -345,6 +354,46 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         RET=$(yq -I=0 '.aws.deploy_sts_role_arn // .aws.sts_role_arn  // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Google Cloud Region
+    - name: Set the appropriate Region for google cloud
+      id: default_gcp_region
+      if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -I=0 '.gcp.region // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Google Cloud Project
+    - name: Set the appropriate Project for google cloud
+      id: default_gcp_region
+      if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -I=0 '.gcp.project // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Google Cloud Impersonate Service Account for the build
+    - name: Set the appropriate Impersonate Service Account for google cloud (Build)
+      id: build_gcp_impersonate_sa
+      if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -I=0 '.gcp.build_impersonate_sa // .gcp.impersonate_sa // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Google Cloud Impersonate Service Account for the build
+    - name: Set the appropriate Impersonate Service Account for google cloud (Build)
+      id: deploy_gcp_impersonate_sa
+      if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -I=0 '.gcp.deploy_impersonate_sa // .gcp.impersonate_sa // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Azure Build RG value from the inputs-<environment>.yaml file
