@@ -163,6 +163,7 @@ runs:
         default:
           region: ${{ inputs.gcp_region }}
           project: ${{ inputs.gcp_project }}
+          impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
         EOF
 
     - name: Generate Observability configuration for datadog
