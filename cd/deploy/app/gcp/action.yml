@@ -36,6 +36,9 @@ inputs:
   gcp_region:
     description: 'Google Cloud Region'
     required: true
+  gcp_impersonate_sa:
+    description: 'Google Cloud SA Impersonation account'
+    required: true
   unlock:
     description: 'Unlock the state'
     required: false
