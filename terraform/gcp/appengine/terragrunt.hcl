@@ -32,6 +32,7 @@ inputs = {
   repository_owner = local.base_vars.repository_owner
   namespace        = local.local_vars.environment
   region           = local.global_vars.default.region
+  versions_bucket  = local.local_vars.versions_bucket
   appengine        = local.local_vars.appengine
   dns              = local.local_vars.dns
   alarms           = local.local_vars.alarms
