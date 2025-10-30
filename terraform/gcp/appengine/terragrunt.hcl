@@ -19,7 +19,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-gcp-appengine-deploy.git//?ref=v1.0.0"
+  source = "git::https://github.com/cloudopsworks/terraform-module-gcp-appengine-deploy.git//?ref=develop"
 }
 
 inputs = {
@@ -31,16 +31,11 @@ inputs = {
   }
   repository_owner = local.base_vars.repository_owner
   namespace        = local.local_vars.environment
-  versions_bucket  = local.local_vars.versions_bucket
-  logs_bucket      = try(local.local_vars.logs_bucket, "")
   region           = local.global_vars.default.region
-  sts_assume_role  = local.global_vars.default.sts_role_arn
-  beanstalk        = local.local_vars.beanstalk
+  appengine        = local.local_vars.appengine
   dns              = local.local_vars.dns
-  api_gateway      = local.local_vars.api_gateway
   alarms           = local.local_vars.alarms
   release          = local.release_vars.release
-  bucket_path      = local.release_vars.bucket_path
   version_label    = local.release_vars.version_label
   absolute_path    = get_terragrunt_dir()
   observability    = try(local.base_vars.observability, {})
