@@ -177,3 +177,36 @@ job:
 cronjob:
   enabled: false
   restartPolicy: OnFailure
+
+# KEDA ScaledObject Configuration
+keda:
+  enabled: false
+#  annotations:
+#    scaledobject.keda.sh/transfer-hpa-ownership: "true"     # Optional. Use to transfer an existing HPA ownership to this ScaledObject
+#    validations.keda.sh/hpa-ownership: "true"               # Optional. Use to disable HPA ownership validation on this ScaledObject
+#    autoscaling.keda.sh/paused: "true"                      # Optional. Use to pause autoscaling of objects explicitly
+#  envSourceContainerName: {container-name}                # Optional. Default: .spec.template.spec.containers[0]
+#  pollingInterval:  30                                      # Optional. Default: 30 seconds
+#  cooldownPeriod:   300                                     # Optional. Default: 300 seconds
+#  initialCooldownPeriod:  0                                 # Optional. Default: 0 seconds
+#  idleReplicaCount: 0                                       # Optional. Default: ignored, must be less than minReplicaCount
+#  minReplicaCount:  1                                       # Optional. Default: 0
+#  maxReplicaCount:  100                                     # Optional. Default: 100
+#  fallback:                                                 # Optional. Section to specify fallback options
+#    failureThreshold: 3                                     # Mandatory if fallback section is included
+#    replicas: 6                                             # Mandatory if fallback section is included
+#    behavior: {kind-of-behavior}                            # Optional. Default: "static"
+#  advanced:                                                 # Optional. Section to specify advanced options
+#    restoreToOriginalReplicaCount: true/false               # Optional. Default: false
+#    horizontalPodAutoscalerConfig:                          # Optional. Section to specify HPA related options
+#      name: {name-of-hpa-resource}                          # Optional. Default: keda-hpa-{scaled-object-name}
+#      behavior:                                             # Optional. Use to modify HPA's scaling behavior
+#        scaleDown:
+#          stabilizationWindowSeconds: 300
+#          policies:
+#            - type: Percent
+#              value: 100
+#              periodSeconds: 15
+  triggers: {}
+  # {list of triggers to activate scaling of the target resource, see keda documentation for details}
+

@@ -6,7 +6,7 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Patchwork action AI Agentic Patch Management Process - AutoFix
+name: Patchwork action AI Agentic Patch Management Process - Generate UnitTests
 author: cloudopsworks
 description: This action runs the Patchwork AI Agentic Patch Management Process
 inputs:
@@ -32,13 +32,18 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: DocStrings Params
+    - name: GenerateUnitTests Params
       shell: bash
       run: |
         echo "branch_prefix: feature/unit-tests-" >> patchwork-setting.yaml
+        echo -n "filter: \"*.${{ inputs.file_extension }}" >> patchwork-setting.yaml
+        if [[ "${{ inputs.file_extension }}" == "js" ]] ; then
+          echo -n ",*.ts" >> patchwork-setting.yaml
+        fi
+        echo "\"" >> patchwork-setting.yaml
         echo "test_file_extension: ${{ inputs.file_extension }}" >> patchwork-setting.yaml
 
-    - name: Patchwork DocStrings
+    - name: Patchwork GenerateUnitTests
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.patched_token == '' }}
@@ -47,7 +52,7 @@ runs:
       run: |
         patchwork GenerateUnitTests github_api_key=$GIT_TOKEN --config ../patchwork-setting.yaml --plain
 
-    - name: Patchwork DocStrings - Patched-Codes
+    - name: Patchwork GenerateUnitTests - Patched-Codes
       working-directory: ${{ inputs.source_path }}
       shell: bash
       if: ${{ inputs.patched_token != '' }}
