@@ -1,0 +1,61 @@
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  {{- if .Values.service.name }}
+  name: {{ .Values.service.name }}
+  {{- else }}
+  name: {{ template "fullname" . }}
+  {{- end }}
+  labels:
+    draft: {{ default "draft-app" .Values.draft }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+  {{- if or .Values.annotations .Values.keda.annotations }}
+  annotations:
+  {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.keda.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    {{- if or .Values.job.enabled .Values.cronjob.enabled }}
+    apiVersion: batch/v1
+    {{- else }}
+    apiVersion: apps/v1
+    {{- if .Values.statefulset.enabled}}
+    kind: StatefulSet
+    {{- else if .Values.daemonset.enabled }}
+    kind: Daemonset
+    {{- else }}
+    kind: Deployment
+    {{- end }}
+    {{- end }}
+    {{- if .Values.service.name }}
+    name: {{ .Values.service.name }}
+    {{- else }}
+    name: {{ template "fullname" . }}
+    {{- end }}
+    {{- if .Values.keda.envSourceContainerName }}
+    envSourceContainerName: {{ .Values.keda.envSourceContainerName }}
+    {{- end }}
+  pollingInterval: {{ .Values.keda.pollingInterval | default 30 }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod | default 300 }}
+  minReplicaCount: {{ .Values.keda.minReplicaCount | default 0 }}
+  maxReplicaCount: {{ .Values.keda.maxReplicaCount | default 100 }}
+  initialCooldownPeriod: {{ .Values.keda.initialCooldownPeriod | default 0 }}
+  idleReplicaCount: {{ .Values.keda.idleReplicaCount | default 0 }}
+  {{- with .Values.keda.fallback }}
+  fallback:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.keda.advanced }}
+  advanced:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  triggers:
+    {{- toYaml .Values.keda.triggers | nindent 4 }}
+{{- end }}
