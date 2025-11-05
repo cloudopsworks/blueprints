@@ -49,12 +49,12 @@ spec:
   idleReplicaCount: {{ .Values.keda.idleReplicaCount | default 0 }}
   {{- with .Values.keda.fallback }}
   fallback:
-    {{- toyaml . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with .Values.keda.advanced }}
   advanced:
-    {{- toyaml . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   triggers:
-    {{- toyaml .Values.keda.triggers | nindent 4 }}
+    {{- toYaml .Values.keda.triggers | nindent 4 }}
 {{- end }}
