@@ -368,7 +368,7 @@ runs:
 
     # Get the Google Cloud Project
     - name: Set the appropriate Project for google cloud
-      id: default_gcp_region
+      id: default_gcp_project
       if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
