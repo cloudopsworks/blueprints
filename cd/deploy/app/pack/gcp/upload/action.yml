@@ -54,7 +54,7 @@ runs:
     - name: Upload to Cloud Storage
       uses: google-github-actions/upload-cloud-storage@v3
       with:
-        path: ${{ inputs.temp_dir }}/${{ inputs.dest_zip }}
+        path: ${{ inputs.dest_zip }}
         destination: ${{ inputs.versions_bucket }}/${{ inputs.bucket_path }}
 
     - name: Upload to Cloud Storage
