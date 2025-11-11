@@ -296,6 +296,7 @@ runs:
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: 'aws'
         cloud_type: ${{ inputs.cloud_type }}
         release_name: ${{ inputs.release_name }}
         release_version: ${{ inputs.release_version }}
