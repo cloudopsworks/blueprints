@@ -52,12 +52,6 @@ runs:
         credentials_json: ${{ inputs.gcp_credentials }}
 
     - name: Upload to Cloud Storage
-      uses: google-github-actions/upload-cloud-storage@v3
-      with:
-        path: ${{ inputs.dest_zip }}
-        destination: ${{ inputs.versions_bucket }}/${{ inputs.bucket_path }}
-
-    - name: Upload to Cloud Storage
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
       run: |
