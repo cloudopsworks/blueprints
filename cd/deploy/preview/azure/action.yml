@@ -111,35 +111,35 @@ runs:
     - name: Copy configurations
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/preview/inputs.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs-global.yaml
-        yq e '.helm_values_overrides += { "image.repository": "${{ inputs.container_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.helm_values_overrides += { "ingress.host": "${{ inputs.release_name }}-${{ inputs.pull_request_name }}.${{ steps.preview_domain.outputs.result }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.helm_values_overrides += { "ingress.rules[0].host": "${{ inputs.release_name }}-${{ inputs.pull_request_name }}.${{ steps.preview_domain.outputs.result }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.helm_values_overrides += { "ingress.annotations.cert-manager\\.io/cluster-issuer":"letsencrypt-prod" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.helm_values_overrides += { "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/ssl-redirect":"true" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.helm_values_overrides += { "ingress.tls.secretName":"${{ inputs.release_name }}-${{ inputs.pull_request_name }}-tls"}' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.helm_values_overrides += { "ingress.tls.enabled":true}' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.namespace_annotations += { "field.cattle.io/projectId": "${{ inputs.rancher_project_id }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.container_registry = "${{ inputs.container_registry }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.cluster_name = "${{ inputs.cluster_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.namespace = "${{ inputs.release_name }}-${{ inputs.pull_request_name }}"' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        yq e '.create_namespace = true' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        cp -pf ${{ inputs.source_path }}/.github/vars/preview/inputs.yaml ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs-global.yaml
+        yq e '.helm_values_overrides += { "image.repository": "${{ inputs.container_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}" }' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.host": "${{ inputs.release_name }}-${{ inputs.pull_request_name }}.${{ steps.preview_domain.outputs.result }}" }' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.rules[0].host": "${{ inputs.release_name }}-${{ inputs.pull_request_name }}.${{ steps.preview_domain.outputs.result }}" }' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.annotations.cert-manager\\.io/cluster-issuer":"letsencrypt-prod" }' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/ssl-redirect":"true" }' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.tls.secretName":"${{ inputs.release_name }}-${{ inputs.pull_request_name }}-tls"}' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.helm_values_overrides += { "ingress.tls.enabled":true}' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.namespace_annotations += { "field.cattle.io/projectId": "${{ inputs.rancher_project_id }}" }' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.container_registry = "${{ inputs.container_registry }}"' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.cluster_name = "${{ inputs.cluster_name }}"' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.namespace = "${{ inputs.release_name }}-${{ inputs.pull_request_name }}"' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
+        yq e '.create_namespace = true' -i ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/inputs.yaml
 
     - name: Copy Values Bundle
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/preview/values.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/helm-values.yaml
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/
+        cp -pf ${{ inputs.source_path }}/.github/vars/preview/values.yaml ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/helm-values.yaml
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/values/
         if [ -d ${{ inputs.source_path }}/.github/vars/preview/values ]; then
-          cp -pfR ${{ inputs.source_path }}/.github/vars/preview/values/ ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/
+          cp -pfR ${{ inputs.source_path }}/.github/vars/preview/values/ ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/
         else
           echo "No values found for ${{ inputs.source_path }}/.github/vars/preview/values, skipping..."
-          touch ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/.empty
+          touch ${{ inputs.blueprint_path }}/terraform/azure/kubernetes/values/.empty
         fi
 
     - name: Generate release.yaml
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      working-directory: ${{ inputs.blueprint_path }}/terraform/azure/kubernetes
       shell: bash
       run: |
         cat > release.yaml << EOF 
@@ -151,7 +151,7 @@ runs:
         EOF
 
     - name: Generate Global Inputs global-inputs.yaml
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws
+      working-directory: ${{ inputs.blueprint_path }}/terraform/azure
       shell: bash
       run: |
         cat > global-inputs.yaml << EOF
@@ -163,7 +163,7 @@ runs:
         EOF
 
     - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws
+      working-directory: ${{ inputs.blueprint_path }}/terraform/azure
       shell: bash
       run: |
         cat > state_conf.yaml << EOF
@@ -192,7 +192,7 @@ runs:
 
     - name: Terragrunt Plan
       id: plan
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      working-directory: ${{ inputs.blueprint_path }}/terraform/azure/kubernetes
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
@@ -208,7 +208,7 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
     - name: Terragrunt Plan to JSON
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      working-directory: ${{ inputs.blueprint_path }}/terraform/azure/kubernetes
       if: ${{ inputs.unlock != 'true' }}
       shell: bash
       run: |
@@ -222,7 +222,7 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
     - name: TF Summarize of JSON file
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      working-directory: ${{ inputs.blueprint_path }}/terraform/azure/kubernetes
       if: ${{ inputs.unlock != 'true' }}
       shell: bash
       run: |
@@ -232,7 +232,7 @@ runs:
 
     - name: Terragrunt Apply
       id: apply
-      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
+      working-directory: ${{ inputs.blueprint_path }}/terraform/azure/kubernetes
       shell: bash
       run: |
         echo "::group::Terragrunt Apply"

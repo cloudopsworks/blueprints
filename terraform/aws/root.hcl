@@ -55,7 +55,7 @@ generate "backend" {
       "  backend \"gcs\" {",
       "    bucket             = \"${local.state_conf.gcs.bucket}\"",
       "    kms_encryption_key = \"${local.state_conf.gcs.kms_encryption_key}\"",
-      "    prefix             = \"${local.state_prefix}\"",
+      "    prefix             = \"${local.state_prefix}/terraform.tfstate\"",
       "  }",
       "}",
       ]) : (local.remote_state_type == "azurerm" ? join("\n", [
@@ -68,7 +68,7 @@ generate "backend" {
         "    resource_group_name  = \"${local.state_conf.azurerm.resource_group_name}\"",
         "    storage_account_name = \"${local.state_conf.azurerm.storage_account_name}\"",
         "    container_name       = \"${local.state_conf.azurerm.container_name}\"",
-        "    key                  = \"${local.state_prefix}/terraform.state\"",
+        "    key                  = \"${local.state_prefix}/terraform.tfstate\"",
         "  }",
         "}",
     ]) : "")
