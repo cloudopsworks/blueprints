@@ -159,7 +159,7 @@ runs:
       shell: bash
       run: |
         yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
-        yq e -i '.version_label = "${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
+        yq e -i '.version_label = "${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp
