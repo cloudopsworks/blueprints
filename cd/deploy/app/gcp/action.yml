@@ -277,7 +277,7 @@ runs:
     - name: Generate Bundle ZipFile - Upload GCP Bucket
       if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       id: bundle
-      uses: ./bp/cd/deploy/app/gcp/pack
+      uses: ./bp/cd/deploy/app/pack
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
