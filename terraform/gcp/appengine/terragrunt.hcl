@@ -38,6 +38,7 @@ inputs = {
   alarms           = local.local_vars.alarms
   release          = local.release_vars.release
   version_label    = local.release_vars.version_label
+  bucket_path      = local.release_vars.bucket_path
   absolute_path    = get_terragrunt_dir()
   observability    = try(local.base_vars.observability, {})
   extra_tags       = try(local.local_vars.tags, {})
