@@ -1,0 +1,66 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Procfile creation for ElasticBeanstalk
+author: cloudopsworks
+description: Create Procfile for ElasticBeanstalk
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  gcp_credentials:
+    description: 'Google Cloud Credentials'
+    required: true
+  gcp_project:
+    description: 'Google Cloud Project Name'
+    required: true
+  gcp_region:
+    description: 'Google Cloud Region'
+    required: true
+  gcp_impersonate_sa:
+    description: 'Google Cloud SA Impersonation account'
+    required: true
+  temp_dir:
+    description: 'The temporary working directory'
+    required: true
+  dest_zip:
+    description: 'The destination zip file'
+    required: true
+  versions_bucket:
+    description: 'The S3 bucket for versions'
+    required: true
+  bucket_path:
+    description: 'The S3 bucket path'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Google Authorization
+      uses: google-github-actions/auth@v3
+      with:
+        project_id: ${{ inputs.gcp_project }}
+        credentials_json: ${{ inputs.gcp_credentials }}
+
+    - name: Upload to Cloud Storage
+      uses: google-github-actions/upload-cloud-storage@v3
+      with:
+        path: ${{ inputs.temp_dir }}/${{ inputs.dest_zip }}
+        destination: ${{ inputs.versions_bucket }}/${{ inputs.bucket_path }}
+
+    - name: Upload to Cloud Storage
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        echo "::group::Uploading to GCP Cloud Storage"
+        gcloud storage cp --impersonate-service-account=${{ inputs.gcp_impersonate_sa }} ${{ inputs.dest_zip }} gs://${{ inputs.versions_bucket }}/${{ inputs.bucket_path }}
+        echo "::endgroup::"

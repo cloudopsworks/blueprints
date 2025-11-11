@@ -274,6 +274,32 @@ runs:
         name: ${{ inputs.artifacts_name }}
         path: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/release
 
+    - name: Generate Bundle ZipFile - Upload GCP Bucket
+      if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      id: bundle
+      uses: ./bp/cd/deploy/app/gcp/pack
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        gcp_credentials: ${{ inputs.gcp_credentials }}
+        gcp_impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
+        gcp_project: ${{ inputs.gcp_project }}
+        environment: ${{ inputs.environment }}
+        gcp_region: ${{ inputs.gcp_region }}
+        observability_enabled: ${{ inputs.observability_enabled }}
+        observability_agent: ${{ inputs.observability_agent }}
+
+    - name: Validate Bundle Outcome
+      if: ${{ ( contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true') && steps.bundle.outcome == 'failure' }}
+      shell: bash
+      run: |
+        echo "::error::Bundle creation failed, please check the logs for details."
+        exit 1
+
     - name: Terragrunt Apply
       id: apply
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}

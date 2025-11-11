@@ -292,11 +292,10 @@ runs:
     - name: Generate Bundle ZipFile - Upload S3
       if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       id: bundle
-      uses: ./bp/cd/deploy/app/pack
+      uses: ./bp/cd/deploy/app/aws/pack
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
-        cloud: 'aws'
         cloud_type: ${{ inputs.cloud_type }}
         release_name: ${{ inputs.release_name }}
         release_version: ${{ inputs.release_version }}
