@@ -40,7 +40,7 @@ EOF
 generate "backend" {
   path      = "remote_state.g.tf"
   if_exists = "overwrite_terragrunt"
-  content = local.remote_state_type == "s3" ? join("\n", [
+  contents = local.remote_state_type == "s3" ? join("\n", [
     "terraform {",
     "  backend \"s3\" {",
     "    bucket         = \"${local.state_conf.s3.bucket}\"",
