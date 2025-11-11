@@ -47,7 +47,7 @@ generate "backend" {
     "    region         = \"${local.state_conf.s3.region}\"",
     "    kms_key_id     = \"${local.state_conf.s3.kms_key_id}\"",
     "    dynamodb_table = \"${local.state_conf.s3.dynamodb_table}\"",
-    "    key            = \"$(local.state_prefix}/terraform.tfstate\"",
+    "    key            = \"${local.state_prefix}/terraform.tfstate\"",
     "  }",
     "}",
     ]) : (local.remote_state_type == "gcs" ? join("\n", [
