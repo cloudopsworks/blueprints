@@ -69,15 +69,18 @@ outputs:
   deploy_azure_rg:
     description: 'The Azure Resource Group value, only on Azure deployment'
     value: ${{ steps.deploy_azure_rg.outputs.result }}
-  build_gcp_project:
+  gcp_project:
     description: 'The Google Project ID, only on GCP build'
-    value: ${{ steps.build_gcp_project.outputs.result }}
-  build_gcp_region:
+    value: ${{ steps.default_gcp_project.outputs.result }}
+  gcp_region:
     description: 'The Google Project Region, only on GCP build'
-    value: ${{ steps.build_gcp_region.outputs.result }}
+    value: ${{ steps.default_gcp_region.outputs.result }}
   build_gcp_impersonate_sa:
     description: 'The Google Service Account to impersonate, only on GCP build'
     value: ${{ steps.build_gcp_impersonate_sa.outputs.result }}
+  deploy_gcp_impersonate_sa:
+    description: 'The Google Service Account to impersonate, only on GCP deployment'
+    value: ${{ steps.deploy_gcp_impersonate_sa.outputs.result }}
   runner_set:
     description: 'The runner set for the build'
     value: ${{ steps.runner_set_env.outputs.result != '' && steps.runner_set_env.outputs.result || steps.runner_set.outputs.result }}
