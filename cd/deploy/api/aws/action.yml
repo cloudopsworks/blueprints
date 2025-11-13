@@ -210,7 +210,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
-        terragrunt --non-interactive run --all --out-dir=${{ github.workspace }}/.tfplan ${{ steps.plan_action.outputs.value }}
+        terragrunt --non-interactive run --all --out-dir=${{ github.workspace }}/.tfplan -- ${{ steps.plan_action.outputs.value }}
         echo "::endgroup::"
       continue-on-error: false
       env:
@@ -260,7 +260,7 @@ runs:
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       run: |
         echo "::group::Terragrunt Apply"
-        terragrunt --non-interactive run --all --out-dir=${{ github.workspace }}/.tfplan apply -no-color
+        terragrunt --non-interactive run --all --out-dir=${{ github.workspace }}/.tfplan -- apply -no-color
         echo "::endgroup::"
       shell: bash
       continue-on-error: false
