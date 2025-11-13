@@ -225,6 +225,7 @@ runs:
         bucket_path: ${{ steps.bucket_config.outputs.bucket_path }}
 
     - name: Upload to GCP Cloud Storage
+      if: ${{ inputs.cloud == 'gcp' }}
       uses: ./bp/cd/deploy/app/pack/gcp/upload
       with:
         gcp_credentials: ${{ inputs.gcp_credentials }}
