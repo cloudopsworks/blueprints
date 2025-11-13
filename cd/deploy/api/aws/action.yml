@@ -174,7 +174,7 @@ runs:
               echo "::error::Failed to migrate APIGW Terraform state for API: $api_name version: $api_version"
               exit 1
             fi
-            echo "::info::APIGW Terraform state migrated for API: $api_name version: $api_version"
+            echo "::notice::APIGW Terraform state migrated for API: $api_name version: $api_version"
           else
             echo "No APIGW Terraform state found for API: $api_name version: $api_version, no migration needed."
           fi
