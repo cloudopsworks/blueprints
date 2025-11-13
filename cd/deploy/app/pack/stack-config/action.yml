@@ -26,30 +26,31 @@ inputs:
 outputs:
   java_stack:
     description: 'The Java stack'
-    value: ${{ steps.java_stack_eb.outputs.result != '' && steps.java_stack_eb.outputs.result || steps.java_stack_lambda.outputs.result }}
+    value: ${{ (steps.java_stack_eb.outputs.result != '' && steps.java_stack_eb.outputs.result || steps.java_stack_lambda.outputs.result) || steps.java_stack_appengine.outputs.result }}
   node_stack:
     description: 'The Node stack'
-    value: ${{ steps.node_stack_eb.outputs.result != '' && steps.node_stack_eb.outputs.result || steps.node_stack_lambda.outputs.result }}
+    value: ${{ (steps.node_stack_eb.outputs.result != '' && steps.node_stack_eb.outputs.result || steps.node_stack_lambda.outputs.result) || steps.node_stack_appengine.outputs.result }}
   python_stack:
     description: 'The Python stack'
-    value: ${{ steps.python_stack_eb.outputs.result != '' && steps.python_stack_eb.outputs.result || steps.python_stack_lambda.outputs.result }}
+    value: ${{ (steps.python_stack_eb.outputs.result != '' && steps.python_stack_eb.outputs.result || steps.python_stack_lambda.outputs.result) || steps.node_stack_appengine.outputs.result }}
   dotnet_stack:
     description: 'The Python stack'
-    value: ${{ steps.dotnet_stack_eb.outputs.result != '' && steps.dotnet_stack_eb.outputs.result || steps.dotnet_stack_lambda.outputs.result }}
+    value: ${{ (steps.dotnet_stack_eb.outputs.result != '' && steps.dotnet_stack_eb.outputs.result || steps.dotnet_stack_lambda.outputs.result) || steps.dotnet_stack_appengine.outputs.result }}
   go_stack:
     description: 'The GoLang stack'
-    value: ${{ steps.go_stack_eb.outputs.result != '' && steps.go_stack_eb.outputs.result || steps.go_stack_lambda.outputs.result }}
+    value: ${{ (steps.go_stack_eb.outputs.result != '' && steps.go_stack_eb.outputs.result || steps.go_stack_lambda.outputs.result) || steps.go_stack_appengine.outputs.result }}
   rust_stack:
     description: 'The Rust stack'
-    value: ${{ steps.rust_stack_eb.outputs.result != '' && steps.rust_stack_eb.outputs.result || steps.rust_stack_lambda.outputs.result }}
+    value: ${{ (steps.rust_stack_eb.outputs.result != '' && steps.rust_stack_eb.outputs.result || steps.rust_stack_lambda.outputs.result) || steps.rust_stack_appengine.outputs.result }}
 
 runs:
   using: 'composite'
   steps:
+    ## AWS CLOUD
     # Get Stacks for Java, Node, and Python if beanstalk is in cloud_type
     - name: Get Elastic Beanstalk Java  Stack from inputs-${{ inputs.environment }}.yaml
       id: java_stack_eb
-      if: ${{ inputs.cloud_type == 'beanstalk' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -58,7 +59,7 @@ runs:
 
     - name: Get Elastic Beanstalk Node Stack from inputs-${{ inputs.environment }}.yaml
       id: node_stack_eb
-      if: ${{ inputs.cloud_type == 'beanstalk' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -67,7 +68,7 @@ runs:
 
     - name: Get Elastic Beanstalk Python Stack from inputs-${{ inputs.environment }}.yaml
       id: python_stack_eb
-      if: ${{ inputs.cloud_type == 'beanstalk' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -76,7 +77,7 @@ runs:
 
     - name: Get Elastic Beanstalk .Net Stack from inputs-${{ inputs.environment }}.yaml
       id: dotnet_stack_eb
-      if: ${{ inputs.cloud_type == 'beanstalk' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -85,7 +86,7 @@ runs:
 
     - name: Get Elastic Beanstalk Go Stack from inputs-${{ inputs.environment }}.yaml
       id: go_stack_eb
-      if: ${{ inputs.cloud_type == 'beanstalk' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -94,7 +95,7 @@ runs:
 
 #    - name: Get Elastic Beanstalk Rust Stack from inputs-${{ inputs.environment }}.yaml
 #      id: rust_stack_eb
-#      if: ${{ inputs.cloud_type == 'beanstalk' }}
+#      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
 #      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
 #      shell: bash
 #      run: |
@@ -104,7 +105,7 @@ runs:
     # Get Stacks for Java, Node, and Python if lambda is in cloud_type
     - name: Get Lambda Java Stack from inputs-${{ inputs.environment }}.yaml
       id: java_stack_lambda
-      if: ${{ inputs.cloud_type == 'lambda' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'lambda' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -113,7 +114,7 @@ runs:
 
     - name: Get Lambda Node Stack from inputs-${{ inputs.environment }}.yaml
       id: node_stack_lambda
-      if: ${{ inputs.cloud_type == 'lambda' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'lambda' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -122,7 +123,7 @@ runs:
 
     - name: Get Lambda Python Stack from inputs-${{ inputs.environment }}.yaml
       id: python_stack_lambda
-      if: ${{ inputs.cloud_type == 'lambda' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'lambda' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -131,7 +132,7 @@ runs:
 
     - name: Get Lambda .Net Stack from inputs-${{ inputs.environment }}.yaml
       id: dotnet_stack_lambda
-      if: ${{ inputs.cloud_type == 'lambda' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'lambda' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -140,7 +141,7 @@ runs:
 
     - name: Get Lambda Go Stack from inputs-${{ inputs.environment }}.yaml
       id: go_stack_lambda
-      if: ${{ inputs.cloud_type == 'lambda' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'lambda' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -149,9 +150,67 @@ runs:
 
     - name: Get Lambda Rust Stack from inputs-${{ inputs.environment }}.yaml
       id: rust_stack_lambda
-      if: ${{ inputs.cloud_type == 'lambda' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'lambda' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
       run: |
         VAL=$(yq eval '.lambda.runtime | test("(?i:.*provided.*)")' inputs.yaml)
         echo "result=$VAL" >> $GITHUB_OUTPUT
+    ## AWS CLOUD - end
+
+    ## GOOGLE CLOUD
+    # Get Stacks for Java, Node, and Python if lambda is in cloud_type
+    - name: Get AppEngine Java Stack from inputs-${{ inputs.environment }}.yaml
+      id: java_stack_appengine
+      if: ${{ inputs.cloud == 'gcp' && inputs.cloud_type == 'appengine' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.appengine.runtime | test("(?i:.*java.*)")' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Get AppEngine Node Stack from inputs-${{ inputs.environment }}.yaml
+      id: node_stack_appengine
+      if: ${{ inputs.cloud == 'gcp' && inputs.cloud_type == 'appengine' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.appengine.runtime | test("(?i:.*node.*)")' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Get AppEngine Python Stack from inputs-${{ inputs.environment }}.yaml
+      id: python_stack_appengine
+      if: ${{ inputs.cloud == 'gcp' && inputs.cloud_type == 'appengine' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.appengine.runtime | test("(?i:.*python.*)")' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Get AppEngine .Net Stack from inputs-${{ inputs.environment }}.yaml
+      id: dotnet_stack_appengine
+      if: ${{ inputs.cloud == 'gcp' && inputs.cloud_type == 'appengine' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.appengine.runtime | test("(?i:.*dotnet.*|.*\.Net.*)")' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Get AppEngine Go Stack from inputs-${{ inputs.environment }}.yaml
+      id: go_stack_appengine
+      if: ${{ inputs.cloud == 'gcp' && inputs.cloud_type == 'appengine' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.appengine.runtime | test("(?i:.*provided.*)")' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+
+    - name: Get AppEngine Rust Stack from inputs-${{ inputs.environment }}.yaml
+      id: rust_stack_appengine
+      if: ${{ inputs.cloud == 'gcp' && inputs.cloud_type == 'appengine' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        VAL=$(yq eval '.appengine.runtime | test("(?i:.*provided.*)")' inputs.yaml)
+        echo "result=$VAL" >> $GITHUB_OUTPUT
+    ## GOOGLE CLOUD - end
