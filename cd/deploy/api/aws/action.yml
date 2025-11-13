@@ -210,7 +210,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
-        terragrunt --non-interactive run --all --out-dir=${{ github.workspace }}/.tfplan ${{ steps.plan_action.outputs.value }} -input=false
+        terragrunt --non-interactive run --all --out-dir=${{ github.workspace }}/.tfplan ${{ steps.plan_action.outputs.value }}
         echo "::endgroup::"
       continue-on-error: false
       env:
