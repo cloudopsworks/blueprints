@@ -33,7 +33,7 @@ runs:
   using: 'composite'
   steps:
     - name: Checkout Source Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       if: ${{ inputs.token == '' }}
       with:
         ref: ${{ inputs.source_ref }}
@@ -42,7 +42,7 @@ runs:
         path: source
 
     - name: Checkout Source Code w/PAT
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       if: ${{ inputs.token != '' }}
       with:
         token: ${{ inputs.token }}
@@ -52,7 +52,7 @@ runs:
         path: source
 
     - name: Checkout Blueprint
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         repository: 'cloudopsworks/blueprints'
         ref: ${{ inputs.blueprint_ref }}
