@@ -164,7 +164,7 @@ runs:
         RET=$(yq e '.cloud' .cloudopsworks/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
         echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the cloud type from github/vars/inputs-global.yaml as plain text
+    # Get the cloud type from .cloudopsworks/vars/inputs-global.yaml as plain text
     - name: Get Cloud Type
       id: cloud_type
       shell: bash
