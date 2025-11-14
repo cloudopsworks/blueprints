@@ -153,7 +153,7 @@ runs:
           if [[ -z "$latest" ]]; then
             echo "::error::No semantic version tags found for $repo"
           else
-            if [[ "$ref" != "$latest" ]]; then
+            if [[ "$ref" < "$latest" ]]; then
               echo "::warning::⚠️ Repository Workflow is Outdated: Template: $repo | Current: $ref | Latest: $latest"
             fi
           fi
