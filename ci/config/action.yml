@@ -69,6 +69,9 @@ outputs:
   deploy_azure_rg:
     description: 'The Azure Resource Group value, only on Azure deployment'
     value: ${{ steps.deploy_azure_rg.outputs.result }}
+  preview_azure_rg:
+    description: 'The Azure Resource Group value for preview environments, can be blank, only on Azure deployment'
+    value: ${{ steps.preview_azure_rg.ouputs.result }}
   gcp_project:
     description: 'The Google Project ID, only on GCP build'
     value: ${{ steps.default_gcp_project.outputs.result }}
@@ -417,6 +420,16 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         RET=$(yq -I=0 '.azure.deploy_resource_group // .azure.resource_group // "no-resource-group"' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the Azure Preview RG value from the inputs-global.yaml file
+    - name: Set the appropriate values for Azure RG (Preview)
+      id: preview_azure_rg
+      if: ${{ steps.cloud.outputs.result == 'AZURE' && steps.check_env_file.outputs.result == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -I=0 '.preview.azure.resource_group // ""' .github/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get the Runner Set for this build
