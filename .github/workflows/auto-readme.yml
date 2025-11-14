@@ -1,3 +1,11 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
 name: 'auto-readme'
 
 on:
@@ -17,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: readme/update
         shell: bash
         env:
@@ -37,5 +45,5 @@ jobs:
           body: |-
             This is an auto-generated PR which updates the `README.md` from the `README.yaml` 
             using the [`cloudopsworks/tronador`](https://github.com/cloudopsworks/tronador).
-          branch: github-actions/auto-readme
+          branch: feature/auto-readme
           #branch-suffix: none
