@@ -40,7 +40,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        # Check the the existence of module marker in .github directory
+        # Check the the existence of module marker in .cloudopsworks directory
         # Supported marker files are:
         #   - .golang
         #   - .python
