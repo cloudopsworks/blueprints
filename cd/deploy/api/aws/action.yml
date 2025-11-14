@@ -93,15 +93,15 @@ runs:
     - name: Copy configurations
       shell: bash
       run: |
-        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
+        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.cloudopsworks/vars/apigw/apis-global.yaml)
         for api in $apis; do
           api_name=$(echo $api | cut -d'/' -f1)
           api_version=$(echo $api | cut -d'/' -f2)
           echo "Copying API: $api_name version: $api_version"
           mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}
-          yq eval 'with_entries(select(.key != "apigw_definitions"))'  ${{ inputs.source_path }}/.github/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-cloud.yaml
-          yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.github/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
-          cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-base.yaml
+          yq eval 'with_entries(select(.key != "apigw_definitions"))'  ${{ inputs.source_path }}/.cloudopsworks/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-cloud.yaml
+          yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.cloudopsworks/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
+          cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-base.yaml
           cp -p ${{ inputs.blueprint_path }}/terraform/aws/apigw_template/*.hcl ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/
           file_name_stub=$(yq eval -I=0 -r -oj '.file_name' ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml)
           echo "Rewriting API name and version in openapi file ${file_name_stub}"
@@ -120,7 +120,7 @@ runs:
       id: cloud_type
       shell: bash
       run: |
-        ret=$(yq eval -I=0 -r -oj '.cloud_type' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        ret=$(yq eval -I=0 -r -oj '.cloud_type' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
         echo "result=${ret}" >> $GITHUB_OUTPUT
 
     - name: Generate release.yaml
@@ -160,7 +160,7 @@ runs:
     - name: Migrate APIGW Terraform state
       shell: bash
       run: |
-        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
+        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.cloudopsworks/vars/apigw/apis-global.yaml)
         for api in $apis; do
           api_name=$(echo $api | cut -d'/' -f1)
           api_version=$(echo $api | cut -d'/' -f2)

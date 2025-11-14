@@ -35,14 +35,14 @@ runs:
       id: zip_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Get pipeline conf exclude globs
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Perform of upload of artfiacts for GoLang
     - name: Upload Artifacts to workflow

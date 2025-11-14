@@ -48,9 +48,9 @@ runs:
         git config --global user.email "${{ inputs.bot_email }}"
         git branch $branch develop
         git checkout $branch
-        prev_ver=$(cat .github/_VERSION)
+        prev_ver=$(cat .cloudopsworks/_VERSION)
         make repos/upgrade
-        ver=$(cat .github/_VERSION)
+        ver=$(cat .cloudopsworks/_VERSION)
         echo "prev_ver=$prev_ver" >> $GITHUB_OUTPUT
         echo "ver=$ver" >> $GITHUB_OUTPUT
         echo "branch=$branch" >> $GITHUB_OUTPUT

@@ -41,7 +41,7 @@ runs:
       id: is_library
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '(.isLibrary or .is_library) and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '(.isLibrary or .is_library) and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Deploy release to .Net Repository (defaults to Github repo)
     - name: Register to NuGet Repo

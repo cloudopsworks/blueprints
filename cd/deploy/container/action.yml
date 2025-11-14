@@ -87,7 +87,7 @@ runs:
       id: docker_registry
       shell: bash
       run: |
-        RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml)
+        RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Docker Build Login GCP

@@ -96,18 +96,18 @@ runs:
     - name: Copy configurations
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/inputs.yaml
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/inputs.yaml
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/
 
     - name: Copy Values Bundle
       if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) }}
       shell: bash
       run: |
         mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
-        if [ -d ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ] ; then
-          cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
+        if [ -d ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }} ] ; then
+          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
         else
-          echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
+          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/, skipping..."
           touch ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/.empty
         fi
 
@@ -126,12 +126,12 @@ runs:
       if: ${{ contains(fromJSON('["kubernetes","k8s","gke"]'), inputs.cloud_type) }}
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/helm-values.yaml
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/helm-values.yaml
         mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
-        if [ -d ${{ inputs.source_path }}/.github/values/${{ inputs.environment }} ]; then
-          cp -vpfR ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
+        if [ -d ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }} ]; then
+          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
         else
-          echo "No values found for ${{ inputs.source_path }}/.github/values/${{ inputs.environment }}/, skipping..."
+          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/, skipping..."
           touch ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/.empty
         fi
 

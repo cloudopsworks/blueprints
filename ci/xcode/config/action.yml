@@ -51,7 +51,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        OUT=$(yq e -I=0 -o=j '.xcode.schemes // ""' .github/vars/inputs-global.yaml)
+        OUT=$(yq e -I=0 -o=j '.xcode.schemes // ""' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Xcode SDK list with yq
@@ -59,7 +59,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        OUT=$(yq e -I=0 -o=j '.xcode.sdks // ["iphoneos"]' .github/vars/inputs-global.yaml)
+        OUT=$(yq e -I=0 -o=j '.xcode.sdks // ["iphoneos"]' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Xcode Configuration for the build
@@ -67,7 +67,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        OUT=$(yq e '.xcode.configuration // "Release"' .github/vars/inputs-${{ inputs.environment }}.yaml)
+        OUT=$(yq e '.xcode.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get xcode_destinations from inputs-global.yaml with yq
@@ -75,7 +75,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        OUT=$(yq e -I=0 -o=j '.xcode.destinations // ["generic/platform=iOS"]' .github/vars/inputs-global.yaml)
+        OUT=$(yq e -I=0 -o=j '.xcode.destinations // ["generic/platform=iOS"]' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get xcode_dev_team ID from inputs-global.yaml with yq
@@ -83,7 +83,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        OUT=$(yq e '.xcode.dev_team // ""' .github/vars/inputs-global.yaml)
+        OUT=$(yq e '.xcode.dev_team // ""' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get xcode product bundle ID from inputs-global.yaml with yq
@@ -91,7 +91,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        OUT=$(yq e '.xcode.product_bundle // ""' .github/vars/inputs-global.yaml)
+        OUT=$(yq e '.xcode.product_bundle // ""' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: get xcode extra args from inputs-global.yaml with yq
@@ -99,7 +99,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        OUT=$(yq e '.xcode.extra_args // ""' .github/vars/inputs-global.yaml)
+        OUT=$(yq e '.xcode.extra_args // ""' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get Specified XCode Version
@@ -107,5 +107,5 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-          OUT=$(yq e '.xcode.version // "14.1"' .github/vars/inputs-global.yaml)
+          OUT=$(yq e '.xcode.version // "14.1"' .cloudopsworks/vars/inputs-global.yaml)
           echo "result=$OUT" >> $GITHUB_OUTPUT

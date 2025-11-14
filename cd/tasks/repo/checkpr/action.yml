@@ -28,7 +28,7 @@ runs:
     - uses: actions/labeler@v5
       with:
         repo-token: ${{ inputs.token }}
-        configuration-path: '${{ inputs.source_path }}/.github/labeler.yml'
+        configuration-path: '${{ inputs.source_path }}/.cloudopsworks/labeler.yml'
 
     - name: test
       shell: bash
@@ -42,19 +42,19 @@ runs:
       id: check_automatic
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.cd.automatic' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.cd.automatic' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Get Reviewers count
       id: reviewers_count
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.config.requiredReviewers' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.config.requiredReviewers' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Get Reviewers list
       id: reviewers
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -o=json -I=0 '[.config.reviewers[] | select(. != "${{ github.event.pull_request.user.login }}") ]' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e -o=json -I=0 '[.config.reviewers[] | select(. != "${{ github.event.pull_request.user.login }}") ]' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Assign Milestone to the PR
       uses: actions/github-script@v7

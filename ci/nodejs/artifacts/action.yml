@@ -35,28 +35,28 @@ runs:
       id: zip_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Get pipeline conf exclude globs
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Get pipeline conf for TAR
     - name: Get pipeline zip packaging globs for TAR
       id: zip_globs_line
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml | tr '\n' ' '
+        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml | tr '\n' ' '
 
     # Get pipeline conf exclude globs (RAW) for TAR
     - name: Get pipeline zip packaging exclude globs (RAW)
       id: raw_exclude_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # TODO: make this passed by param
     # get from global inputs the setting if it is frontend target
@@ -64,7 +64,7 @@ runs:
       id: front_end
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.frontend and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.frontend and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # TODO: make this passed by param
     # get from global inputs the path where to find the node build result
@@ -72,7 +72,7 @@ runs:
       id: node_build_dir
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.node_build_dir // "build"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.node_build_dir // "build"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # The problem with NodeJS are the symlinks, so we need first to create a TAR file
     # with including the zip_globs and excluding the exclude_globs with -X option

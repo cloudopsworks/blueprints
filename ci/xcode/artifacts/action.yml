@@ -36,7 +36,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        GLOBS=$(yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' .github/cloudopsworks-ci.yaml)
+        GLOBS=$(yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$GLOBS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -47,7 +47,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        GLOBS=$(yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' .github/cloudopsworks-ci.yaml)
+        GLOBS=$(yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$GLOBS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT

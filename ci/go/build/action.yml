@@ -72,42 +72,42 @@ runs:
       id: golang_version
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.golang.version // "1.23"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.golang.version // "1.23"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf GoLang dist defaults to linux (supported: linux windows darwin)
     - name: Get pipeline GoLang dist
       id: golang_dist
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.golang.dist // "linux"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.golang.dist // "linux"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf GoLang arch defaults to x64
     - name: Get pipeline GoLang arch
       id: golang_arch
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.golang.arch // "amd64"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.golang.arch // "amd64"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf GoLang image variant defaults to alpine
     - name: Get pipeline GoLang image variant
       id: golang_image_variant
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.golang.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.golang.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf GoLang main file defaults to main.go
     - name: Get pipeline GoLang main file
       id: main_file
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.golang.main_file // "main.go"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.golang.main_file // "main.go"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf GoLang if CGO is disabled or not
     - name: Get pipeline GoLang main file
       id: disable_cgo
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.golang.disable_cgo // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.golang.disable_cgo // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get the Package name from go.mod
     - name: Get Package name
@@ -139,14 +139,14 @@ runs:
       id: build_opts
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Setup GoLang GoLang SDK for builds
     - name: Set GoLang SDK

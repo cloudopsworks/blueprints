@@ -131,7 +131,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.repository_owner' .github/vars/inputs-global.yaml)
+        RET=$(yq e '.repository_owner' .cloudopsworks/vars/inputs-global.yaml)
         if [[ "${{ steps.getowner.outputs.owner }}" != "$RET" ]] ; then
           echo "::error::Project owner from inputs-global.yaml does not match the repository owner. Validation Failed. Expected repository_owner: '${{ steps.getowner.outputs.owner }}'... Build may fail."
         fi
@@ -141,7 +141,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.environment_name' .github/vars/inputs-global.yaml)
+        RET=$(yq e '.environment_name' .cloudopsworks/vars/inputs-global.yaml)
         if [[ "${{ steps.getowner.outputs.repo_name }}" != "$RET" ]] ; then
           echo "::warning::Environment name from inputs-global.yaml does not match the repository name. Pipeline Outcomes are not aligned."
         fi
@@ -152,16 +152,16 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 '.cd.deployments' .github/cloudopsworks-ci.yaml)
+        RET=$(yq -o=json -I=0 '.cd.deployments' .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the cloud entry from .github/vars/inputs-global.yaml as plain text
+    # Get the cloud entry from .cloudopsworks/vars/inputs-global.yaml as plain text
     - name: Get Cloud Entry
       id: cloud
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.cloud' .github/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
+        RET=$(yq e '.cloud' .cloudopsworks/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the cloud type from github/vars/inputs-global.yaml as plain text
@@ -170,30 +170,30 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.cloud_type' .github/vars/inputs-global.yaml)
+        RET=$(yq e '.cloud_type' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the apis enabled from .github/cloudopsworks-ci.yaml as plain text
+    # Get the apis enabled from .cloudopsworks/cloudopsworks-ci.yaml as plain text
     - name: Get APIs Enabled
       id: apis_enabled
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.apis.enabled and true' .github/vars/inputs-global.yaml)
+        RET=$(yq e '.apis.enabled and true' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the automatic setting from .github/cloudopsworks-ci.yaml as plain text
+    # Get the automatic setting from .cloudopsworks/cloudopsworks-ci.yaml as plain text
     - name: Get Automatic Setting
       id: automatic
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.cd.automatic and true' .github/cloudopsworks-ci.yaml)
+        RET=$(yq e '.cd.automatic and true' .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # TODO: deprecate isEnabled output and parsing
     # Set the appropriate workspace from what is configured from the deploy_conf step
-    # Result is stored as JSON with the format found on the cd.deployments section on .github/cloudopsworks-ci.yaml
+    # Result is stored as JSON with the format found on the cd.deployments section on .cloudopsworks/cloudopsworks-ci.yaml
     - name: Set the appropriate workspace
       id: workspace
       uses: actions/github-script@v7
@@ -315,8 +315,8 @@ runs:
       shell: bash
       run: |
         fexist=false
-        if [ ! -f .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml ]; then
-          echo "::warning::File .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml does not exist. Most configurations will not be available."
+        if [ ! -f .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml ]; then
+          echo "::warning::File .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml does not exist. Most configurations will not be available."
         else
           fexist=true
         fi
@@ -329,7 +329,7 @@ runs:
       if: steps.check_env_file.outputs.result == 'true'
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.blue_green and true' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.blue_green and true' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the AWS Region value from the inputs-<environment>.yaml file
@@ -339,7 +339,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.aws.region // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.aws.region // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the AWS Build STS Role ARN value from the inputs-<environment>.yaml file
@@ -349,7 +349,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the AWS Deployment STS Role ARN value from the inputs-<environment>.yaml file
@@ -359,7 +359,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.aws.deploy_sts_role_arn // .aws.sts_role_arn  // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.aws.deploy_sts_role_arn // .aws.sts_role_arn  // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Google Cloud Region
@@ -369,7 +369,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.gcp.region // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.gcp.region // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Google Cloud Project
@@ -379,7 +379,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.gcp.project // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.gcp.project // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Google Cloud Impersonate Service Account for the build
@@ -389,7 +389,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.gcp.build_impersonate_sa // .gcp.impersonate_sa // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.gcp.build_impersonate_sa // .gcp.impersonate_sa // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Google Cloud Impersonate Service Account for the build
@@ -399,7 +399,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.gcp.deploy_impersonate_sa // .gcp.impersonate_sa // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.gcp.deploy_impersonate_sa // .gcp.impersonate_sa // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Azure Build RG value from the inputs-<environment>.yaml file
@@ -409,7 +409,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.azure.build_resource_group // .azure.resource_group // "no-resource-group"' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.azure.build_resource_group // .azure.resource_group // "no-resource-group"' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Azure Deploy RG value from the inputs-<environment>.yaml file
@@ -419,7 +419,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.azure.deploy_resource_group // .azure.resource_group // "no-resource-group"' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.azure.deploy_resource_group // .azure.resource_group // "no-resource-group"' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Azure Preview RG value from the inputs-global.yaml file
@@ -429,7 +429,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.preview.azure.resource_group // ""' .github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '.preview.azure.resource_group // ""' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get the Runner Set for this build
@@ -437,7 +437,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.runner_set // "ubuntu-latest"' .github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '.runner_set // "ubuntu-latest"' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get the Runner Set for the environment
@@ -446,7 +446,7 @@ runs:
       if: steps.check_env_file.outputs.result == 'true'
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.runner_set // ""' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.runner_set // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get if the build is for library
@@ -454,7 +454,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '(.isLibrary or .is_library) and true' .github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '(.isLibrary or .is_library) and true' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get preview enabled
@@ -463,7 +463,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.preview.enabled and true' .github/vars/inputs-global.yaml)
+        RET=$(yq e '.preview.enabled and true' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get if deployment is disabled:
@@ -473,7 +473,7 @@ runs:
       if: steps.check_env_file.outputs.result == 'true'
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.disable_deploy and true' .github/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.disable_deploy and true' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get if is automatic environment:
@@ -482,7 +482,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.cd.automatc and true' .github/cloudopsworks-ci.yaml)
+        RET=$(yq -I=0 '.cd.automatc and true' .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get Observability Configuration
@@ -491,7 +491,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.observability.enabled // "false"' .github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '.observability.enabled // "false"' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get Observability Agent Type
@@ -500,5 +500,5 @@ runs:
       working-directory: ${{ inputs.source_path }}
       if: steps.observability.outputs.result == 'true'
       run: |
-        RET=$(yq -I=0 '.observability.agent // "xray"' .github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '.observability.agent // "xray"' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT

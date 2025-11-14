@@ -41,14 +41,14 @@ runs:
       id: is_library
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '(.isLibrary or .is_library) and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '(.isLibrary or .is_library) and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get from global inputs the custom Maven Options
     - name: Get Maven options
       id: maven_opts
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Deploy release to Maven Repository (defaults to Github repo)
     - name: Deploy to Maven Repo
