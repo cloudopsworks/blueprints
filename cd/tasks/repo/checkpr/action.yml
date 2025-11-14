@@ -25,7 +25,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - uses: actions/labeler@v5
+    - uses: actions/labeler@v6
       with:
         repo-token: ${{ inputs.token }}
         configuration-path: '${{ inputs.source_path }}/.cloudopsworks/labeler.yml'
