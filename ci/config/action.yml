@@ -92,7 +92,7 @@ outputs:
     value: ${{ steps.is_library.outputs.result }}
   container_enabled:
     description: 'The container enabled flag'
-    value: ${{ steps.cloud_type.outputs.result == 'eks' || steps.cloud_type.outputs.result == 'aks' || steps.cloud_type.outputs.result == 'gke' || steps.cloud_type.outputs.result == 'kubernetes' || steps.has_preview.outputs.result == 'true' }}
+    value: ${{ (steps.cloud.outputs.result == 'gcp' && steps.cloud_type.outputs.result == 'cloudrun') || steps.cloud_type.outputs.result == 'kubernetes' || steps.has_preview.outputs.result == 'true' }}
   blue_green_enabled:
     description: 'The blue-green deployment enabled flag'
     value: ${{ steps.blue_green.outputs.result }}
