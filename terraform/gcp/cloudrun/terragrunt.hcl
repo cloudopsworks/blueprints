@@ -32,13 +32,11 @@ inputs = {
   repository_owner   = local.base_vars.repository_owner
   namespace          = local.local_vars.environment
   region             = local.global_vars.default.region
-  versions_bucket    = local.local_vars.versions_bucket
   cloudrun           = local.local_vars.cloudrun
   container_registry = local.local_vars.container_registry
   dns                = local.local_vars.dns
   alarms             = local.local_vars.alarms
   release            = local.release_vars.release
-  version_label      = local.release_vars.version_label
   observability      = try(local.base_vars.observability, {})
   extra_tags         = try(local.local_vars.tags, {})
 }
