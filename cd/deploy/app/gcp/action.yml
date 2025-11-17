@@ -100,7 +100,7 @@ runs:
         cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/
 
     - name: Copy Values Bundle
-      if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
       shell: bash
       run: |
         mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
@@ -113,7 +113,7 @@ runs:
 
     - name: Create Hash value for values bundle
       id: hash_value
-      if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -154,7 +154,7 @@ runs:
       run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
 
     - name: Insert bucket name & bucket path for beanstalk & lambda
-      if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -275,7 +275,7 @@ runs:
         path: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/release
 
     - name: Generate Bundle ZipFile - Upload GCP Bucket
-      if: ${{ contains(fromJSON('["function","appengine"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       id: bundle
       uses: ./bp/cd/deploy/app/pack
       with:
