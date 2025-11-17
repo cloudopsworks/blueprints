@@ -121,6 +121,7 @@ runs:
       shell: bash
       run: |
         ret=$(yq eval -I=0 -r -oj '.cloud_type' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
+        [[ "$RET" =~ "gke|kubernetes|k8s|eks|aks" ]] && RET=kubernetes
         echo "result=${ret}" >> $GITHUB_OUTPUT
 
     - name: Generate release.yaml

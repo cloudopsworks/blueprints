@@ -1,0 +1,11 @@
+organization_name: "ORG_NAME"
+organization_unit: "ORG_UNIT"
+environment_name: "ENV_NAME"
+repository_owner: "REPO_OWNER"
+#NODEJS
+# Optional Additional ENV variables
+#node_extra_env: |
+#  ENV_VAR1=value1
+#  ENV_VAR2=value2
+#custom_install_command: npm install
+#custom_build_command: npm run build
