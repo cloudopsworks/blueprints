@@ -123,7 +123,7 @@ runs:
           if [[ -z "$latest" ]]; then
             echo "::error::No semantic version tags found for cloudopsworks/blueprints"
           else
-            if [[ "$blueprint_version" != "$latest" ]]; then
+            if [[ "$blueprint_version" < "$latest" ]]; then
               echo "::warning::⚠️ Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $blueprint_version | Latest: $latest"
             fi
           fi          
