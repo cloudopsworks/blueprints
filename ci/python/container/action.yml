@@ -95,8 +95,8 @@ runs:
     - name: Copy Dockerfile Python App
       shell: bash
       run: |
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/* ${{ inputs.source_path }}/
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/java/.dockerignore ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/python/* ${{ inputs.source_path }}/
+        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/python/.dockerignore ${{ inputs.source_path }}/
 
     - name: Dockerfile Python Specific Injection
       working-directory: ${{ inputs.source_path }}
