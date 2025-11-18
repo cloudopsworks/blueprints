@@ -105,6 +105,15 @@ outputs:
   observability_agent:
     description: 'The observability agent type, can be one of: xray, datadog, newrelic, dynatrace'
     value: ${{ steps.observability_agent.outputs.result }}
+  jira_integration:
+    description: 'The Jira integration flag, true or false'
+    value: ${{ steps.jira_integration.outputs.result }}
+  jira_project_key:
+    description: 'The Jira project key value'
+    value: ${{ steps.jira_project_key.ouputs.result }}
+  jira_project_id:
+    description: 'The Jira project ID value'
+    value: ${{ steps.jira_project_id.ouputs.result }}
 
 runs:
   using: 'composite'
@@ -503,4 +512,32 @@ runs:
       if: steps.observability.outputs.result == 'true'
       run: |
         RET=$(yq -I=0 '.observability.agent // "xray"' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the JIRA configuration
+    # Get JIRA is enabled or not defaults to true
+    - name: Is JIRA Enabled?
+      id: jira_integration
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 '.jira.enabled // "true"' .cloudopsworks/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the JIRA Project KEY
+    - name: Get JIRA Project KEY
+      id: jira_project_key
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 '.jira.project_key // ""' .cloudopsworks/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the JIRA Project ID
+    - name: Get JIRA Project ID
+      id: jira_project_id
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 '.jira.project_id // ""' .cloudopsworks/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
