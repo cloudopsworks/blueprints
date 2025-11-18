@@ -35,10 +35,6 @@ inputs:
   token:
     description: 'The github token to use for the release'
     required: true
-  jira_integration:
-    description: 'Enable JIRA integration for changelog generation'
-    required: false
-    default: 'false'
 
 runs:
   using: 'composite'
@@ -95,17 +91,3 @@ runs:
         tag_name: ${{ steps.normalize.outputs.result }}
         prerelease: ${{ inputs.is_pre_release }}
         files: ${{ inputs.files_globs }}
-
-    # Sync JIRA if integration is configured
-    # Pre Requisite to have following global ENV variables configured in the repository secrets
-    # JIRA_API_USER
-    # JIRA_API_TOKEN
-    # ATLASSIAN_CLOUD_DOMAIN
-    - name: Sync JIRA if Configured
-      if: ${{ inputs.jira_integration == 'true' }}
-      uses: rodush/github-action-jira-release@v2
-      with:
-        project_id: ${{ inputs.jira_project_id }}
-        project_key: ${{ inputs.jira_project_key }}
-      env:
-        GITHUB_TOKEN: ${{ inputs.token }}
