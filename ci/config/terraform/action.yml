@@ -1,0 +1,65 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Get Configuration Values for Terraform Modules
+author: cloudopsworks
+description: Get configuration values for the workflow from the source vars, specific for Terraform Modules
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  checkov_enabled:
+    description: 'The Checkov enabled flag, true or false'
+    value: ${{ steps.checkov.outputs.result }}
+  jira_integration:
+    description: 'The Jira integration flag, true or false'
+    value: ${{ steps.jira_integration.outputs.result }}
+  jira_project_key:
+    description: 'The Jira project key value'
+    value: ${{ steps.jira_project_key.ouputs.result }}
+  jira_project_id:
+    description: 'The Jira project ID value'
+    value: ${{ steps.jira_project_id.ouputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install runner-tools
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5.10
+      with:
+        source_path: ${{ inputs.source_path }}
+
+    # Get the JIRA configuration
+    # Get JIRA is enabled or not defaults to true
+    - name: Is JIRA Enabled?
+      id: jira_integration
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.jira.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+
+    # Get the JIRA Project KEY
+    - name: Get JIRA Project KEY
+      id: jira_project_key
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.jira.project_key // ""' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+
+    # Get the JIRA Project ID
+    - name: Get JIRA Project ID
+      id: jira_project_id
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.jira.project_id // ""' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+
+    # Get Checkov Enablement defaults to true
+    - name: Get Checkov Config
+      id: checkov
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.checkov.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
