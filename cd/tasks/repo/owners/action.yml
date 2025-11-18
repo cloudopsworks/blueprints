@@ -102,7 +102,7 @@ runs:
         fi
 
     - name: Contributor list form JSON
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         github-token: ${{ inputs.token }}
         script: |
@@ -142,7 +142,7 @@ runs:
 
     - name: Advanced Protection on GitFlow
       if: ${{ steps.branch_protection_rules.outputs.result == 1 }}
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         github-token: ${{ inputs.token }}
         script: |
@@ -467,7 +467,7 @@ runs:
 
     - name: Advanced Deployment Environments Creation
       id: envs
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         github-token: ${{ inputs.token }}
         script: |

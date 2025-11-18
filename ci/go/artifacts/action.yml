@@ -46,7 +46,7 @@ runs:
 
     # Perform of upload of artfiacts for GoLang
     - name: Upload Artifacts to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.artifacts_name }}
         path: |
@@ -60,7 +60,7 @@ runs:
 
     # Perform of upload of sources
     - name: Upload Sources to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
@@ -73,7 +73,7 @@ runs:
 
     # Perform of upload of target generated sources
     - name: Upload Sources to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |

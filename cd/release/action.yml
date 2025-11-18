@@ -40,7 +40,7 @@ runs:
   steps:
     - name: Normalize version Tag
       id: normalize
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         result-encoding: string
         script: |
@@ -74,7 +74,7 @@ runs:
         excludeTypes: 'build,docs,style'
 
     - name: Upload artifact to workflow run
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: changelog
         retention-days: 1
@@ -85,7 +85,7 @@ runs:
       uses: softprops/action-gh-release@v2
       with:
         token: ${{ inputs.token }}
-        file: CHANGELOG.md
+        body_path: CHANGELOG.md
         name: "Release ${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
         prerelease: ${{ inputs.is_pre_release }}

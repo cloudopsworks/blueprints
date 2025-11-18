@@ -171,7 +171,7 @@ runs:
         EOF
 
     - name: Determine Plan Action
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       id: plan_action
       with:
         script: |

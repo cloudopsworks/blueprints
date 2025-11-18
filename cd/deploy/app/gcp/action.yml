@@ -197,7 +197,7 @@ runs:
         EOF
 
     - name: Determine Plan Action
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       id: plan_action
       with:
         script: |
@@ -257,7 +257,7 @@ runs:
 
     - name: Save Plan Artifacts
       if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.artifacts_name }}_iac
         retention-days: 1

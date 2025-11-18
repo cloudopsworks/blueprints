@@ -197,7 +197,7 @@ runs:
     # Result is stored as JSON with the format found on the cd.deployments section on .cloudopsworks/cloudopsworks-ci.yaml
     - name: Set the appropriate workspace
       id: workspace
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const deployments = JSON.parse('${{ steps.deploy_conf.outputs.result }}');
@@ -254,6 +254,7 @@ runs:
               } else if ( pre != null ) {
                 isEnabled = (deployments.prerelease['enabled'] == null ? true : (deployments.prerelease['enabled'] === 'true'));
                 // Regular expression to match following semver pattern: v1.0.2-alpha.10-uoiretu834u
+                isRelease = true;
                 isPreRelease = true;
                 environment = deployments.prerelease.env;
                 if ( 'targetName' in deployments.prerelease ) {
