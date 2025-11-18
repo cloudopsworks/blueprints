@@ -521,7 +521,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 '.jira.enabled // "true"' .cloudopsworks/inputs-global.yaml)
+        RET=$(yq -o=json -I=0 '.jira.enabled // "true"' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the JIRA Project KEY
@@ -530,7 +530,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 '.jira.project_key // ""' .cloudopsworks/inputs-global.yaml)
+        RET=$(yq -o=json -I=0 '.jira.project_key // ""' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the JIRA Project ID
@@ -539,5 +539,5 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 '.jira.project_id // ""' .cloudopsworks/inputs-global.yaml)
+        RET=$(yq -o=json -I=0 '.jira.project_id // ""' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
