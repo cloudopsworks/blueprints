@@ -67,6 +67,9 @@ runs:
         elif [ -f ".cloudopsworks/.terraform" ]; then
           echo "Module type is terraform"
           echo "repo=cloudopsworks/terraform-project-template" >> $GITHUB_OUTPUT
+        elif [ -f ".cloudopsworks/.terraform-module" ]; then
+          echo "Module type is terraform"
+          echo "repo=cloudopsworks/terraform-project-template" >> $GITHUB_OUTPUT
         elif [ -f ".cloudopsworks/.java" ]; then
           echo "Module type is java"
           echo "repo=cloudopsworks/java-app-template" >> $GITHUB_OUTPUT
@@ -86,14 +89,14 @@ runs:
           echo "Module type is iac"
           echo "repo=cloudopsworks/terragrunt-project-template" >> $GITHUB_OUTPUT
         else
-          echo "::warning::🚨 No module marker file found in .github directory"
+          echo "::warning::🚨 No module marker file found in .cloudopsworks directory"
         fi
         
         mod_version=""
         if [ -f ".cloudopsworks/_VERSION" ]; then
           mod_version=$(cat .cloudopsworks/_VERSION)
         else
-          echo "::warning::🚨 No version file (_VERSION) found in .github directory"
+          echo "::warning::🚨 No version file (_VERSION) found in .cloudopsworks directory"
         fi
         echo "current_version=$mod_version" >> $GITHUB_OUTPUT
 
