@@ -38,5 +38,6 @@ inputs = {
   alarms             = local.local_vars.alarms
   release            = local.release_vars.release
   observability      = try(local.base_vars.observability, {})
+  deployment_sa      = try(local.global_vars.default.impersonate_sa, null)
   extra_tags         = try(local.local_vars.tags, {})
 }
