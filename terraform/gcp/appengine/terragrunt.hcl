@@ -19,7 +19,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-gcp-appengine-deploy.git//?ref=develop"
+  source = "git::https://github.com/cloudopsworks/terraform-module-gcp-appengine-deploy.git//?ref=v1.0.0"
 }
 
 inputs = {

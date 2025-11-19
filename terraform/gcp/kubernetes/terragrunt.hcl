@@ -23,32 +23,32 @@ generate "kubernetes_provider" {
   path      = "provider.l.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
-data "aws_eks_cluster" "cluster" {
-  name = "${local.local_vars.cluster_name}"
+data "google_client_config" "cli_config" {}
+
+data "google_container_cluster" "cluster" {
+  name     = "${local.local_vars.cluster_name}"
+  location = "${local.global_vars.default.region}"
 }
 
-data "aws_eks_cluster_auth" "cluster" {
-  name = "${local.local_vars.cluster_name}"
-}
 
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
-  token                  = data.aws_eks_cluster_auth.cluster.token
+  host                   = format("https://%s", data.google_container_cluster.cluster.endpoint)
+  token                  = data.google_client_config.cli_config.access_token
+  cluster_ca_certificate = base64decode(data.google_container_cluster.cluster.master_auth[0].cluster_ca_certificate)
 }
 
 provider "helm" {
   kubernetes = {
-    host                   = data.aws_eks_cluster.cluster.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
-    token                  = data.aws_eks_cluster_auth.cluster.token
+    host                   = format("https://%s", data.google_container_cluster.cluster.endpoint)
+    token                  = data.google_client_config.cli_config.access_token
+    cluster_ca_certificate = base64decode(data.google_container_cluster.cluster.master_auth[0].cluster_ca_certificate)
   }
 }
 EOF
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-gcp-gke-helm-deploy.git//?ref=develop"
+  source = "git::https://github.com/cloudopsworks/terraform-module-gcp-gke-helm-deploy.git//?ref=v1.0.0"
 }
 
 inputs = {
@@ -79,7 +79,7 @@ inputs = {
   create_namespace      = try(local.local_vars.create_namespace, false)
   config_map            = try(local.local_vars.config_map, {})
   secret_files          = try(local.local_vars.secret_files, {})
-  secrets               = try(local.local_vars.aws, {})
+  secrets               = try(local.local_vars.gcp, {})
   absolute_path         = get_terragrunt_dir()
   observability         = try(local.base_vars.observability, {})
   extra_tags            = try(local.local_vars.tags, {})
