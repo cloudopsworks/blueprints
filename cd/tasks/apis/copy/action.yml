@@ -33,9 +33,17 @@ runs:
         RET=$(yq e '.api_files_dir // "apifiles"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
+    # Get cloud provider from inputs-global.yaml
+    - name: Get Cloud Provider
+      id: cloud_provider
+      shell: bash
+      run: |
+        RET=$(yq e '.cloud // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
     - name: Move Api Files
       shell: bash
       run: |
         echo "Copying API files from source to blueprint..."
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/apigw/apifiles
-        cp -r ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/* ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/apigw/apifiles/
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/${{ steps.cloud_provider.outputs.result }}/apigw/apifiles
+        cp -r ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/* ${{ inputs.blueprint_path }}/terraform/${{ steps.cloud_provider.outputs.result }}/apigw/apifiles/
