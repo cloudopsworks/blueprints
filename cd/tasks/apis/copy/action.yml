@@ -1,0 +1,41 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Copy APIs to blueprint
+author: cloudopsworks
+description: Copy APIs from source path to blueprint path
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  cloud:
+    description: 'The cloud provider to use'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    # Get api_files_dir from inputs-global.yaml
+    - name: Get api_files_dir
+      id: api_files_dir
+      shell: bash
+      run: |
+        RET=$(yq e '.api_files_dir // "apifiles"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    - name: Move Api Files
+      shell: bash
+      run: |
+        echo "Copying API files from source to blueprint..."
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/apigw/apifiles
+        cp -r ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/* ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/apigw/apifiles/
