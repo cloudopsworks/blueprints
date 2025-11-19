@@ -109,7 +109,7 @@ runs:
         while IFS= read -r line; do
           if [[ "$line" =~ $INJECTION_POINT ]]; then
             # Run pip install with requirements.txt
-            echo "RUN cd /app/webapp && pip install -r requirements.txt"
+            echo "RUN pip install -r /app/webapp/requirements.txt --target /app/webapp --python-version ${{ inputs.python_version }} --implementation cp --only-binary=:all: --upgrade"
             echo "${{ inputs.docker_inline }}"
           else
             # Print the current line
