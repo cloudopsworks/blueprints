@@ -22,7 +22,7 @@ USER root
 
 # Copy the application configuarion as per the application
 # Build process must ensure output python app is unique for each build
-COPY app/ *.py* *.txt *.toml /app/webapp/
+COPY . /app/webapp/
 #<PYTHON-INJECTION-POINT>
 
 # Stage 2: Customized configuation injection occurs at command line
