@@ -66,7 +66,7 @@ inputs = {
   cluster_name     = local.local_vars.cluster_name
   helm_repo_url    = try(local.local_vars.helm_repo_url, "")
   helm_chart_name  = try(local.local_vars.helm_chart_name, "")
-  helm_chart_path  = try(local.local_vars.helm_chart_path, "${path_relative_from_include("root")}/../../kubernetes/helm")
+  helm_chart_path  = try(local.local_vars.helm_chart_path, "${get_parent_terragrunt_dir("root")}/../../kubernetes/helm")
   values_file      = local.values_file
   values_overrides = merge(
     local.local_vars.helm_values_overrides,
