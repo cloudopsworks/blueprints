@@ -70,7 +70,7 @@ runs:
       id: python_version
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.python.version // "3.12"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+        cmd: yq eval '.python.version // "3.14"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf Python dist
     - name: Get pipeline Python dist
