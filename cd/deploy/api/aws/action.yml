@@ -67,6 +67,10 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'api_artifacts'
+  api_lock:
+    description: 'The name of the API that should unlock'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -204,9 +208,25 @@ runs:
               console.log('apply');
             }
           }
+    - name: Terragrunt Unlock
+      id: unlock
+      if: ${{ inputs.unlock == 'true' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw/${{ inputs.api_lock }}
+      shell: bash
+      run: |
+        echo "::group::Terragrunt Unlock"
+        terragrunt --non-interactive -- ${{ steps.plan_action.outputs.value }}
+        echo "::endgroup::"
+      continue-on-error: false
+      env:
+        TG_TF_PATH: tofu
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        GITHUB_API_TOKEN: ${{ inputs.token }}
 
     - name: Terragrunt Plan
       id: plan
+      if: ${{ inputs.unlock != 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       shell: bash
       run: |
