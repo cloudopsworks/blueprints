@@ -69,7 +69,7 @@ runs:
       id: dotnet_version
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dotnet.version // "9.0"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+        cmd: yq e '.dotnet.version // "10.0"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf .Net dist defaults to aspnet
     - name: Get pipeline .Net dist

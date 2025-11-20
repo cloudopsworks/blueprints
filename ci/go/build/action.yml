@@ -72,7 +72,7 @@ runs:
       id: golang_version
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.golang.version // "1.23"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+        cmd: yq e '.golang.version // "1.25"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf GoLang dist defaults to linux (supported: linux windows darwin)
     - name: Get pipeline GoLang dist
