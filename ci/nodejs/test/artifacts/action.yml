@@ -30,7 +30,7 @@ runs:
     steps:
       # Upload test artifacts:
       - name: Upload Test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test_artifacts
           if-no-files-found: 'warn'

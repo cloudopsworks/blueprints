@@ -29,7 +29,7 @@ FROM base AS customized
 ARG NODE_OPTS
 ARG APM_OPTS
 
-WORKDIR /app
+WORKDIR /app/webapp
 #<DOCKER-INJECTION-POINT>
 
 # Stage 3: Final image

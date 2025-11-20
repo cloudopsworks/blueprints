@@ -95,6 +95,7 @@ resources: {}
 #  requests:
 #    cpu: 400m
 #    memory: 512Mi
+# Probes: liveness readines and startup
 probe:
   type: http
   scheme: HTTP

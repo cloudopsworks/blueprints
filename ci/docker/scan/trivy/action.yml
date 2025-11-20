@@ -30,4 +30,4 @@ runs:
   steps:
     - name: Trivy Scan
       shell: bash
-      run: echo "::info::Trivy scan is not implemented yet. Will be released Soon!."
+      run: echo "::notice::Trivy scan is not implemented yet. Will be released Soon!."

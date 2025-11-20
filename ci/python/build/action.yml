@@ -70,70 +70,70 @@ runs:
       id: python_version
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.python.version // "3.12"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.python.version // "3.14"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf Python dist
     - name: Get pipeline Python dist
       id: python_dist
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.python.dist // "pip"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.python.dist // "pip"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf Python test ruff linter
     - name: Get pipeline Python test ruff linter
       id: python_test_ruff
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.python.ruff // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.python.ruff // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf Python test mypy test
     - name: Get pipeline Python test mypy test
       id: python_test_mypy
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.python.mypy // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.python.mypy // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf java image variant defaults to alpine
     - name: Get pipeline Python image variant
       id: python_image_variant
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.python.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.python.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf java image variant defaults to alpine
     - name: Get pipeline Python require packing dependencies
       id: python_with_dependencies
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.python.with_dependencies // "false"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.python.with_dependencies // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf Python tests tooling: pytest , unittest (pyunit), nose
     - name: Get pipeline Python tests tooling
       id: python_tests
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.python.tests // "pytest"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.python.tests // "pytest"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs_line
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml | tr '\n' ' '
+        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml | tr '\n' ' '
 
     # Get pipeline conf
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.excludeGlobs[] | "!" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.excludeGlobs[] | "!" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Get pipeline conf
     - name: Get pipeline zip packaging exclude globs
       id: raw_exclude_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Get Package Name from pyproject.toml
     - name: Get package Name

@@ -42,7 +42,7 @@ runs:
         id: maven_opts
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+          cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
       # Build the code!
       - name: Build Code

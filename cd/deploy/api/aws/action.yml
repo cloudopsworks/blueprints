@@ -18,18 +18,6 @@ inputs:
     description: 'The path to the blueprint'
     required: false
     default: 'bp'
-  tofu_version:
-    description: 'The version of OpenTofu to use'
-    required: false
-    default: '1.7.7'
-  tg_version:
-    description: 'The version of Terragrunt to use'
-    required: false
-    default: '0.76.3'
-  tf_summarize_version:
-    description: 'The version of tf-summarize to use'
-    required: false
-    default: '0.3.10'
   token:
     description: 'The GitHub token'
     required: true
@@ -79,29 +67,20 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'api_artifacts'
+  api_lock:
+    description: 'The name of the API that should unlock'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
   steps:
-    - name: Terraform Plan prettifier
-      uses: kishaningithub/setup-tf-summarize@v2
+    - name: IAC Setup
+      uses: cloudopsworks/blueprints/cd/deploy/common/iac@v5.10
       with:
-        github-token: ${{ inputs.token }}
-        tf-summarize-version: v${{ inputs.tf_summarize_version }}
-
-    - name: Setup OpenTofu
-      id: setup_opentofu
-      uses: opentofu/setup-opentofu@v1
-      with:
-        tofu_version: ${{ inputs.tofu_version }}
-        tofu_wrapper: false
-
-    - name: Setup Terragrunt v${{ inputs.tg_version }}
-      shell: bash
-      run: |
-        sudo wget -q -O /bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/v${{ inputs.tg_version }}/terragrunt_linux_amd64"
-        sudo chmod +x /bin/terragrunt
-        terragrunt -v
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        token: ${{ inputs.token }}
 
     - name: Create apigw directory
       shell: bash
@@ -118,15 +97,15 @@ runs:
     - name: Copy configurations
       shell: bash
       run: |
-        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
+        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.cloudopsworks/vars/apigw/apis-global.yaml)
         for api in $apis; do
           api_name=$(echo $api | cut -d'/' -f1)
           api_version=$(echo $api | cut -d'/' -f2)
           echo "Copying API: $api_name version: $api_version"
           mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}
-          yq eval 'with_entries(select(.key != "apigw_definitions"))'  ${{ inputs.source_path }}/.github/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-cloud.yaml
-          yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.github/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
-          cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-base.yaml
+          yq eval 'with_entries(select(.key != "apigw_definitions"))'  ${{ inputs.source_path }}/.cloudopsworks/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-cloud.yaml
+          yq eval ".apigw_definitions[] | select(.name + \"/\" + .version == \"$api\")" ${{ inputs.source_path }}/.cloudopsworks/vars/apigw/apis-${{ inputs.environment }}.yaml > ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml
+          cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-base.yaml
           cp -p ${{ inputs.blueprint_path }}/terraform/aws/apigw_template/*.hcl ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/
           file_name_stub=$(yq eval -I=0 -r -oj '.file_name' ${{ inputs.blueprint_path }}/terraform/aws/apigw/${api_name}/${api_version}/inputs-api.yaml)
           echo "Rewriting API name and version in openapi file ${file_name_stub}"
@@ -145,7 +124,8 @@ runs:
       id: cloud_type
       shell: bash
       run: |
-        ret=$(yq eval -I=0 -r -oj '.cloud_type' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        ret=$(yq eval -I=0 -r -oj '.cloud_type' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
+        [[ "$RET" =~ "gke|kubernetes|k8s|eks|aks" ]] && RET=kubernetes
         echo "result=${ret}" >> $GITHUB_OUTPUT
 
     - name: Generate release.yaml
@@ -185,7 +165,7 @@ runs:
     - name: Migrate APIGW Terraform state
       shell: bash
       run: |
-        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.github/vars/apigw/apis-global.yaml)
+        apis=$(yq eval -I=0 -r -oj '.apis[] | .name + "/" + .version' ${{ inputs.source_path }}/.cloudopsworks/vars/apigw/apis-global.yaml)
         for api in $apis; do
           api_name=$(echo $api | cut -d'/' -f1)
           api_version=$(echo $api | cut -d'/' -f2)
@@ -199,7 +179,7 @@ runs:
               echo "::error::Failed to migrate APIGW Terraform state for API: $api_name version: $api_version"
               exit 1
             fi
-            echo "::info::APIGW Terraform state migrated for API: $api_name version: $api_version"
+            echo "::notice::APIGW Terraform state migrated for API: $api_name version: $api_version"
           else
             echo "No APIGW Terraform state found for API: $api_name version: $api_version, no migration needed."
           fi
@@ -210,7 +190,7 @@ runs:
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
 
     - name: Determine Plan Action
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       id: plan_action
       with:
         script: |
@@ -228,14 +208,30 @@ runs:
               console.log('apply');
             }
           }
+    - name: Terragrunt Unlock
+      id: unlock
+      if: ${{ inputs.unlock == 'true' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw/${{ inputs.api_lock }}
+      shell: bash
+      run: |
+        echo "::group::Terragrunt Unlock"
+        terragrunt --non-interactive -- ${{ steps.plan_action.outputs.value }}
+        echo "::endgroup::"
+      continue-on-error: false
+      env:
+        TG_TF_PATH: tofu
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        GITHUB_API_TOKEN: ${{ inputs.token }}
 
     - name: Terragrunt Plan
       id: plan
+      if: ${{ inputs.unlock != 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
-        terragrunt --non-interactive run-all --out-dir=${{ github.workspace }}/.tfplan ${{ steps.plan_action.outputs.value }} -input=false
+        terragrunt --non-interactive run --all --out-dir=${{ github.workspace }}/.tfplan -- ${{ steps.plan_action.outputs.value }}
         echo "::endgroup::"
       continue-on-error: false
       env:
@@ -269,7 +265,7 @@ runs:
 
     - name: Save Plan Artifacts
       if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.artifacts_name }}_iac
         retention-days: 1
@@ -285,7 +281,7 @@ runs:
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       run: |
         echo "::group::Terragrunt Apply"
-        terragrunt --non-interactive run-all --out-dir=${{ github.workspace }}/.tfplan apply -no-color
+        terragrunt --non-interactive run --all --out-dir=${{ github.workspace }}/.tfplan -- apply -no-color
         echo "::endgroup::"
       shell: bash
       continue-on-error: false

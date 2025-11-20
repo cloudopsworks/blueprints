@@ -68,42 +68,42 @@ runs:
       id: docker_registry
       uses: mikefarah/yq@master
       with:
-        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
 
     # get from global inputs the docker inline specification as text
     - name: Get Docker Inline Setting
       id: docker_inline
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.docker_inline // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.docker_inline // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # get from global inputs docker arguments, also as text
     - name: Get Docker Arguments
       id: docker_args_global
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # get from environmental inputs the docker arguments will override the one set on docker_args,also as text
     - name: Get Docker Arguments for ${{ inputs.environment }}
       id: docker_args_env
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
 
     # get custom_run_command from global inputs
     - name: Get Custom Run Command
       id: custom_run_command
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get custom_usergroup Line item from configuration
     - name: Get Custom Usergroup
       id: custom_usergroup
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Copy Dockerfile from blueprint to current dir
     - name: Copy Dockerfile Rust App
@@ -116,14 +116,14 @@ runs:
       id: config_map_mount_point
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.config_map.mount_point // "/app/configmap"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+        cmd: yq e -I=0 '.config_map.mount_point // "/app/configmap"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
 
     - name: Get xray config file from inputs-global.yaml
       id: xray_config_file
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-agent.json"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-agent.json"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Dockerfile Rust Specific Injection
       working-directory: ${{ inputs.source_path }}

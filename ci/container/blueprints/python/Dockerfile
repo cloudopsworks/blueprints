@@ -22,7 +22,7 @@ USER root
 
 # Copy the application configuarion as per the application
 # Build process must ensure output python app is unique for each build
-COPY app/ *.py* *.txt *.toml /app/webapp/
+COPY . /app/webapp/
 #<PYTHON-INJECTION-POINT>
 
 # Stage 2: Customized configuation injection occurs at command line
@@ -30,7 +30,7 @@ FROM base AS customized
 ARG PYTHON_OPTS
 ARG APM_OPTS
 
-WORKDIR /app
+WORKDIR /app/webapp
 #<DOCKER-INJECTION-POINT>
 
 # Stage 3: Final image

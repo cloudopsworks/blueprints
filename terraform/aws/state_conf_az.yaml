@@ -1,0 +1,6 @@
+az:
+  storage_account_name: 'BUCKET_NAME'
+  container_name: 'STORAGE_ACCOUNT_CONTAINER'
+  subscription_id: 'Azure RM Subscription ID'
+  resource_group_name: 'Azure RM Resource Group of StorageAccount'
+  tenant_id: 'Azure Tenant ID'

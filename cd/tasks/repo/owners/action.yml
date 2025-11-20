@@ -35,74 +35,74 @@ runs:
       uses: mikefarah/yq@master
       id: branch_protection_rules
       with:
-        cmd: yq e '.config.branchProtection' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml | grep true | wc -l
+        cmd: yq e '.config.branchProtection' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml | grep true | wc -l
     
     #      - name: Retrieve branch protection rule
     #        uses: mikefarah/yq@master
     #        id: gitflow_protection
     #        with:
-    #          cmd: yq e '.config.gitFlow' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml | grep true | wc -l
+    #          cmd: yq e '.config.gitFlow' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml | grep true | wc -l
 
     - name: Retrieve protected sources
       uses: mikefarah/yq@master
       id: protected_sources
       with:
-        cmd: yq -o=json -I=0 '.config.protectedSources' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq -o=json -I=0 '.config.protectedSources' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Check if automatic
       uses: mikefarah/yq@master
       id: check_automatic
       with:
-        cmd: yq e '.cd.automatic and true' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.cd.automatic and true' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Reviewers Count
       uses: mikefarah/yq@master
       id: reviewers_count
       if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
       with:
-        cmd: yq e '.config.requiredReviewers' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.config.requiredReviewers' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Reviewers list as JSON
       uses: mikefarah/yq@master
       id: reviewers_list
       if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
       with:
-        cmd: yq -o=json -I=0 '.config.reviewers' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq -o=json -I=0 '.config.reviewers' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Owners list as JSON
       uses: mikefarah/yq@master
       id: owners_list
       if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
       with:
-        cmd: yq -o=json -I=0 '.config.owners' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq -o=json -I=0 '.config.owners' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Contributors list as JSON
       uses: mikefarah/yq@master
       id: contrib_list
       with:
-        cmd: yq -o=json -I=0 '.config.contributors' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq -o=json -I=0 '.config.contributors' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Deployments JSON
       uses: mikefarah/yq@master
       id: deployments_json
       with:
-        cmd: yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     - name: Get repository type
       id: repo_type
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        if [ -f .github/.iac ]; then
+        if [ -f .cloudopsworks/.iac ]; then
           echo "result=iac" >> $GITHUB_OUTPUT
-        elif [ -f .github/.docker ]; then
+        elif [ -f .cloudopsworks/.docker ]; then
           echo "result=dockeronly" >> $GITHUB_OUTPUT
         else
           echo "result=sourcecode" >> $GITHUB_OUTPUT
         fi
 
     - name: Contributor list form JSON
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         github-token: ${{ inputs.token }}
         script: |
@@ -142,7 +142,7 @@ runs:
 
     - name: Advanced Protection on GitFlow
       if: ${{ steps.branch_protection_rules.outputs.result == 1 }}
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         github-token: ${{ inputs.token }}
         script: |
@@ -467,7 +467,7 @@ runs:
 
     - name: Advanced Deployment Environments Creation
       id: envs
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         github-token: ${{ inputs.token }}
         script: |
@@ -519,7 +519,7 @@ runs:
             }
           }
           
-          // The following loop will iterate the dict located in the deployments section of the ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml file
+          // The following loop will iterate the dict located in the deployments section of the ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml file
           // and will create the environments and the targets for each environment
           // The JSON Format is as follows:
           //   {"develop":{"env":"dev","targetName":"dev-target"},"release":{"env":"production","targets":{"mastercard":{"env":"production","targetName":"sink-demo"}}},"test":{"env":"staging"},"prerelease":{"env":"staging"},"hotfix":{"env":"hotfix"},"pull_request":{"env":"pull_request"},"support":[{"match":"1.5.*","env":"demo","targetName":"demo"},{"match":"1.3.*","env":"demo2","targetName":"demo2"}]}
@@ -747,31 +747,32 @@ runs:
 #      uses: mikefarah/yq@master
 #      with:
 #        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_env_list }}' ${{ inputs.source_path }}/.github/workflows/deploy.yml
-    
-    # Modify deploy YML wit yq command in order to insert the output from terragrunt_folders script
-    # into the deploy.yml file on the yaml address: on.workflow_dispatch.inputs.working_directory.options
-    - name: Modify environment-destroy.yml with env_env_list
-      if: ${{ steps.repo_type.outputs.result == 'sourcecode' }}
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_env_list }}' ${{ inputs.source_path }}/.github/workflows/environment-destroy.yml
 
-    # Modify deploy YML wit yq command in order to insert the output from terragrunt_folders script
-    # into the deploy.yml file on the yaml address: on.workflow_dispatch.inputs.working_directory.options
-    - name: Modify environment-unlock.yml with env_env_list
-      if: ${{ steps.repo_type.outputs.result == 'sourcecode' }}
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_env_list }}' ${{ inputs.source_path }}/.github/workflows/environment-unlock.yml
-
-    # Push the change to the repository using plain git commands
-    - name: Push Deploy Workflow
-      continue-on-error: true
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        git config --global user.name "${{ inputs.bot_user }}"
-        git config --global user.email "${{ inputs.bot_email }}"
-        git add .github/workflows/*
-        git commit -m "chore: Update workflow files with all environments set"
-        git push origin ${{ github.head_ref }}
+# DEPRECATED: environment will be extracted by preload process from GitHub Environment
+#    # Modify deploy YML wit yq command in order to insert the output from terragrunt_folders script
+#    # into the deploy.yml file on the yaml address: on.workflow_dispatch.inputs.working_directory.options
+#    - name: Modify environment-destroy.yml with env_env_list
+#      if: ${{ steps.repo_type.outputs.result == 'sourcecode' }}
+#      uses: mikefarah/yq@master
+#      with:
+#        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_env_list }}' ${{ inputs.source_path }}/.github/workflows/environment-destroy.yml
+#
+#    # Modify deploy YML wit yq command in order to insert the output from terragrunt_folders script
+#    # into the deploy.yml file on the yaml address: on.workflow_dispatch.inputs.working_directory.options
+#    - name: Modify environment-unlock.yml with env_env_list
+#      if: ${{ steps.repo_type.outputs.result == 'sourcecode' }}
+#      uses: mikefarah/yq@master
+#      with:
+#        cmd: yq -i '.on.workflow_dispatch.inputs.environment.options = ${{ steps.envs.outputs.env_env_list }}' ${{ inputs.source_path }}/.github/workflows/environment-unlock.yml
+#
+#    # Push the change to the repository using plain git commands
+#    - name: Push Deploy Workflow
+#      continue-on-error: true
+#      working-directory: ${{ inputs.source_path }}
+#      shell: bash
+#      run: |
+#        git config --global user.name "${{ inputs.bot_user }}"
+#        git config --global user.email "${{ inputs.bot_email }}"
+#        git add .github/workflows/*
+#        git commit -m "chore: Update workflow files with all environments set"
+#        git push origin ${{ github.head_ref }}

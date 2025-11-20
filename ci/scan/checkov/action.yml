@@ -1,0 +1,67 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Run Checkov Scan
+author: cloudopsworks
+description: Runs Checkov security scans on Terraform code, selecting appropriate checks based on cloud provider (AWS, GCP, Azure) and uploads scan results as artifacts and SARIF reports
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+
+runs: 
+  using: 'composite'
+  steps:
+    - name: Determine Checkov checks
+      id: checkov-checks
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        if [ -f ".cloudopsworks/.provider" ]; then
+          PROVIDER=$(cat .cloudopsworks/.provider | tr -d '\n' | tr -d '\r')
+          case $PROVIDER in
+            aws)
+              echo "checks=CKV_AWS_*,CKV2_AWS_*" >> $GITHUB_OUTPUT
+              ;;
+            gcp)
+              echo "checks=CKV_GCP_*,CKV2_GCP_*" >> $GITHUB_OUTPUT
+              ;;
+            azurerm)
+              echo "checks=CKV_AZURE_*,CKV2_AZURE_*,CKV2_ADO_*" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "checks=CKV_AWS_*" >> $GITHUB_OUTPUT
+              ;;
+          esac
+        else
+          echo "checks=CKV_AWS_*" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Run Checkov
+      uses: bridgecrewio/checkov-action@v12
+      with:
+        directory: ${{ inputs.source_path }}
+        framework: terraform
+        output_format: cli,sarif
+        output_file_path: checkov_results.txt,checkov_results.sarif
+        check: ${{ steps.checkov-checks.outputs.checks }}
+        download_external_modules: true
+
+    - name: Upload Checkov results
+      if: success() || failure()
+      uses: actions/upload-artifact@v5
+      with:
+        name: checkov-results
+        path: checkov_results.txt
+
+    - name: Upload SARIF file
+      if: success() || failure()
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file:  checkov_results.sarif

@@ -79,49 +79,49 @@ runs:
       id: repo_owner
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.repository_owner // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.repository_owner // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf node version
     - name: Get pipeline node version
       id: node_version
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.node.version // "20"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.node.version // "24"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf node dist
     - name: Get pipeline node dist
       id: node_dist
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.node.dist // "adopt"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.node.dist // "adopt"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf java image variant defaults to alpine
     - name: Get pipeline NodeJS image variant
       id: node_image_variant
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.node.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.node.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs_line
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml | tr '\n' ' '
+        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml | tr '\n' ' '
 
     # Get pipeline conf
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.excludeGlobs[] | "!" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.excludeGlobs[] | "!" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Get pipeline conf
     - name: Get pipeline zip packaging exclude globs
       id: raw_exclude_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Get Package Name from package.json
     - name: Get package Name

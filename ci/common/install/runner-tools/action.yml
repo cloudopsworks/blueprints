@@ -34,20 +34,20 @@ runs:
       id: sourcedir
       shell: bash
       run: |
-        if [ ! -f ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ]; then
+        if [ ! -f ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ]; then
           echo "Source directory does not exist. will omit cloudentry."
           echo "result=false" >> $GITHUB_OUTPUT
         else
           echo "result=true" >> $GITHUB_OUTPUT
         fi
 
-    # Get the cloud entry from .github/vars/inputs-global.yaml as plain text
+    # Get the cloud entry from .cloudopsworks/vars/inputs-global.yaml as plain text
     - name: Get Cloud Entry
       id: cloud_src
       shell: bash
       if: ${{ steps.sourcedir.outputs.result == 'true' }}
       run: |
-        RET=$(yq e '.cloud // "all"' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
+        RET=$(yq e '.cloud // "all"' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Set Cloud Entry

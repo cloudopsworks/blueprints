@@ -41,43 +41,43 @@ runs:
       id: repo_owner
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Get Sonar sources form inputs-global.yaml
       id: source_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.sources_path // "."' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.sources_path // "."' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Get Sonar tests from inputs-global.yaml (defaults to source_path)
       id: tests_path
       uses: mikefarah/yq@master
       with:
-          cmd: yq e -I=0 '.sonarqube.tests_path // "${{ steps.source_path.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+          cmd: yq e -I=0 '.sonarqube.tests_path // "${{ steps.source_path.outputs.result }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Get Sonar test inclusions from inputs-global.yaml
       id: test_inclusions_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.tests_inclusions // "__tests__/**"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.tests_inclusions // "__tests__/**"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Get Sonar extra exclusions from inputs-global.yaml
       id: extra_exclusions_paths
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.extra_exclusions // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.extra_exclusions // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Get Sonar exclusions from inputs-global.yaml
       id: exclusions_paths
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.exclusions // "**/__init__.py,**/main.py,**/enum/*,**/model/*,apifiles/**/*"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.exclusions // "**/__init__.py,**/main.py,**/enum/*,**/model/*,apifiles/**/*"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Get if sonar branch setting is disabled
       id: branch_disabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.sonarqube.branch_disabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.sonarqube.branch_disabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # TODO: enable branch.name must buy Developer/Pro plan
     # Scan the code
