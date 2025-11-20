@@ -95,6 +95,7 @@ resources: {}
 #  requests:
 #    cpu: 400m
 #    memory: 512Mi
+# Probes: liveness readines and startup
 probe:
   type: http
   scheme: HTTP
@@ -207,6 +208,6 @@ keda:
 #            - type: Percent
 #              value: 100
 #              periodSeconds: 15
-  triggers: {}
-  # {list of triggers to activate scaling of the target resource, see keda documentation for details}
+#  triggers: {}
+#  # {list of triggers to activate scaling of the target resource, see keda documentation for details}
 
