@@ -26,16 +26,28 @@ inputs:
     required: true
   aws_region:
     description: 'The AWS region'
-    required: true
+    required: false
   aws_access_key_id:
     description: 'AWS Access Key ID'
-    required: true
+    required: false
   aws_secret_access_key:
     description: 'AWS Secret Access Key'
-    required: true
+    required: false
   aws_sts_role_arn:
     description: 'AWS STS Role ARN'
-    required: true
+    required: false
+  gcp_credentials:
+    description: 'Google Cloud Credentials'
+    required: false
+  gcp_project:
+    description: 'Google Cloud Project Name'
+    required: false
+  gcp_region:
+    description: 'Google Cloud Region'
+    required: false
+  gcp_impersonate_sa:
+    description: 'Google Cloud SA Impersonation account'
+    required: false
   release_name:
     description: 'The release name'
     required: true
@@ -90,13 +102,6 @@ runs:
         temp_dir=$(mktemp -d)
         echo "result=$temp_dir" >> $GITHUB_OUTPUT
 
-#    - name: DEBUG
-#      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
-#      shell: bash
-#      run: |
-#        pwd
-#        ls -ltR
-#
     - name: Copy NodeJS Application Release
       working-directory: ${{ steps.temp_dir.outputs.result }}
       if: ${{ steps.stack.outputs.node_stack == 'true' }}
@@ -180,8 +185,8 @@ runs:
         cp -vpfR . ${{ steps.temp_dir.outputs.result }}
 
     - name: Generate Procfile for ElasticBeanstalk
-      if: ${{ inputs.cloud_type == 'beanstalk' }}
-      uses: ./bp/cd/deploy/app/pack/procfile
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
+      uses: ./bp/cd/deploy/app/pack/aws/procfile
       with:
         temp_dir: ${{ steps.temp_dir.outputs.result }}
         java_stack: ${{ steps.stack.outputs.java_stack }}
@@ -206,30 +211,28 @@ runs:
         zip -1 -q -y -r $tmp_dir/app.zip .
         echo "result=$tmp_dir/app.zip" >> $GITHUB_OUTPUT
 
-    - name: Temporary STS Assume Role
-      id: sts
-      shell: bash
-      run: |
-        TEMP_ROLE=$(aws sts assume-role --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "${ROLE_SESSION_NAME:-AssumingRole}")
-        echo "aws_access_key_id=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')" >> $GITHUB_OUTPUT
-        echo "aws_secret_access_key=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')" >> $GITHUB_OUTPUT
-        echo "aws_session_token=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')" >> $GITHUB_OUTPUT
-      env:
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
-        ASSUME_ROLE_ARN: ${{ inputs.aws_sts_role_arn }}
-        ROLE_SESSION_NAME: s3-upload-pipeline
-        AWS_REGION: ${{ inputs.aws_region }}
+    - name: Upload to AWS S3
+      if: ${{ inputs.cloud == 'aws' }}
+      uses: ./bp/cd/deploy/app/pack/aws/upload
+      with:
+        aws_access_key_id: ${{ inputs.aws_access_key_id }}
+        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
+        aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+        aws_region: ${{ inputs.aws_region }}
+        temp_dir: ${{ steps.temp_dir.outputs.result }}
+        dest_zip: ${{ steps.dest_zip.outputs.result }}
+        versions_bucket: ${{ steps.bucket_config.outputs.versions_bucket }}
+        bucket_path: ${{ steps.bucket_config.outputs.bucket_path }}
 
-    - name: Upload to S3
-      working-directory: ${{ steps.temp_dir.outputs.result }}
-      shell: bash
-      run: |
-        echo "::group::Uploading to S3"
-        aws s3 cp ${{ steps.dest_zip.outputs.result }} s3://${{ steps.bucket_config.outputs.versions_bucket }}/${{ steps.bucket_config.outputs.bucket_path }}
-        echo "::endgroup::"
-      env:
-        AWS_ACCESS_KEY_ID: ${{ steps.sts.outputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ steps.sts.outputs.aws_secret_access_key }}
-        AWS_SESSION_TOKEN: ${{ steps.sts.outputs.aws_session_token }}
-        AWS_REGION: ${{ inputs.aws_region }}
+    - name: Upload to GCP Cloud Storage
+      if: ${{ inputs.cloud == 'gcp' }}
+      uses: ./bp/cd/deploy/app/pack/gcp/upload
+      with:
+        gcp_credentials: ${{ inputs.gcp_credentials }}
+        gcp_impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
+        gcp_project: ${{ inputs.gcp_project }}
+        gcp_region: ${{ inputs.gcp_region }}
+        temp_dir: ${{ steps.temp_dir.outputs.result }}
+        dest_zip: ${{ steps.dest_zip.outputs.result }}
+        versions_bucket: ${{ steps.bucket_config.outputs.versions_bucket }}
+        bucket_path: ${{ steps.bucket_config.outputs.bucket_path }}

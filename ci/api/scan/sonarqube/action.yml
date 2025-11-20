@@ -41,7 +41,7 @@ runs:
       id: repo_owner
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Apis Sonar Scan
       uses: sonarsource/sonarqube-scan-action@v2

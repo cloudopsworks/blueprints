@@ -48,6 +48,10 @@ inputs:
     description: 'The Azure Service Secret'
     required: false
     default: ''
+  gcp_credentials:
+    description: 'Google Cloud Platform credenials JSON'
+    required: false
+    default: ''
   default_registry_address:
     description: 'The default registry'
     required: true
@@ -83,9 +87,19 @@ runs:
       id: docker_registry
       shell: bash
       run: |
-        RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml)
+        RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
+    # Docker Build Login GCP
+    - name: Docker Login GCP
+      env:
+        TARGET: ${{ inputs.cloud }}
+      if: ${{ inputs.cloud == 'GCP' }}
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ steps.docker_registry.outputs.result }}
+        username: _json_key
+        password: ${{ inputs.gcp_credentials }}
     #
     # Docker Build login Azure
     - name: Docker Login Azure

@@ -35,18 +35,18 @@ runs:
       id: zip_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Get pipeline conf exclude globs
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml
+        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
     # Perform of upload of artfiacts for .Net
     - name: Upload Artifacts to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.artifacts_name }}
         path: |
@@ -60,7 +60,7 @@ runs:
 
     # Perform of upload of sources
     - name: Upload Sources to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
@@ -74,7 +74,7 @@ runs:
 
     # Perform of upload of target generated sources
     - name: Upload Sources to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |

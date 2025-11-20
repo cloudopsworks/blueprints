@@ -68,59 +68,74 @@ they should be declared preferably at organization level, and then used in the
 
 Required GitHub Secrets and Variables, in the below table:
 
-| Name                             |   Type   | Description                                                                                                                                  | Required |
-|----------------------------------|:--------:|----------------------------------------------------------------------------------------------------------------------------------------------|:--------:|
-| __Dependency track__             |          |                                                                                                                                              |
-| DEPENDENCYTRACK_TOKEN            |  Secret  | Dependency track token                                                                                                                       |   Yes    |
-| DEPENDENCYTRACK_URL              | Variable | Dependency track URL                                                                                                                         |   Yes    |
-| __SonarQube__                    |
-| SONARQUBE_TOKEN                  |  Secret  | SonarQube token                                                                                                                              |   Yes    |
-| SONARQUBE_URL                    | Variable | SonarQube URL                                                                                                                                |   Yes    |
-| __Semgrep__                      |
-| SEMGREP_TOKEN                    |  Secret  | Semgrep token                                                                                                                                |   Yes    |
-| __Snyk__                         |
-| SNYK_TOKEN                       |  Secret  | Snyk token                                                                                                                                   |   Yes    |
-| __GitHub__                       |          |                                                                                                                                              |          |
-| BOT_TOKEN                        |  Secret  | GitHub token                                                                                                                                 |   Yes    |
-| BOT_USER                         | Variable | GitHub user for commits                                                                                                                      |   Yes    |
-| BOT_EMAIL                        | Variable | GitHub email for commits                                                                                                                     |   Yes    |
-| BOT_TOKEN_SCOPED                 |  Secret  | GitHub token with repo scope, this Token is a Fine-Grained Token                                                                             |   Yes    |
-| __AWS__                          |          | - AWS Based Resources                                                                                                                        |          |
-| BUILD_AWS_ACCESS_KEY_ID          |  Secret  | AWS Access Key ID, used for builds (ECR deploy, Repositories)                                                                                |   Yes    |
-| BUILD_AWS_SECRET_ACCESS_KEY      |  Secret  | AWS Secret Access Key                                                                                                                        |   Yes    |
-| BUILD_AWS_REGION                 | Variable | AWS Region                                                                                                                                   |   Yes    |
-| BUILD_AWS_STS_ROLE_ARN           | Variable | AWS STS Role ARN, Only needded if all actions are performed throug STS Assume Role                                                           |    No    |
-|                                  |
-| DEPLOYMENT_STATE_CONF            | Variable | Deployment State Configuration, This is a YAML representation of Terraform Remote state configuration                                        |    No    |
-| DEPLOYMENT_AWS_REGION            | Variable | Default AWS Region used for deployments                                                                                                      |   Yes    |
-| DEPLOYMENT_AWS_STS_ROLE_ARN      | Variable | Default AWS STS Role ARN, Only needded if all actions are performed throug STS Assume Role                                                   |    No    |
-| DEPLOYMENT_AWS_ACCESS_KEY_ID     |  Secret  | AWS Access Key ID used for deployments                                                                                                       |   Yes    |
-| DEPLOYMENT_AWS_SECRET_ACCESS_KEY |  Secret  | AWS Secret Access Key used for deployments                                                                                                   |   Yes    |
-|                                  |
-| PREVIEW_AWS_REGION               | Variable | AWS Region used for preview deployments, defaults to `us-east-1`                                                                              |   Yes    |
-| PREVIEW_AWS_STS_ROLE_ARN         | Variable | AWS STS Role ARN, Only needded if all actions are performed throug STS Assume Role                                                           |    No    |
-| PREVIEW_AWS_ACCESS_KEY_ID        |  Secret  | AWS Access Key ID used for preview deployments                                                                                               |   Yes    |
-| PREVIEW_AWS_SECRET_ACCESS_KEY    |  Secret  | AWS Secret Access Key used for preview deployments                                                                                           |   Yes    |
-| __Azure__                        |          | - Azure Based Resources                                                                                                                      |          |
-| DEPLOYMENT_AZURE_SERVICE_ID      |  Secret  | Azure Client ID used for deployments                                                                                                         |   Yes    |
-| DEPLOYMENT_AZURE_SERVICE_SECRET  |  Secret  | Azure Client Secret used for deployments                                                                                                     |   Yes    |
-| DEPLOYMENT_AZURE_RESOURCE_GROUP  | Variable | Default Azure Resource Group used for deployments                                                                                            |   Yes    |
-|                                  |          
-| PREVIEW_AZURE_SERVICE_ID         |  Secret  | Azure Client ID used for preview deployments                                                                                                 |   Yes    |
-| PREVIEW_AZURE_SERVICE_SECRET     |  Secret  | Azure Client Secret used for preview deployments                                                                                             |   Yes    |
-| PREVIEW_AZURE_RESOURCE_GROUP     | Variable | Default Azure Resource Group used for preview deployments                                                                                    |   Yes    |
-| __Independent of Provider__      | 
-| PREVIEW_DOCKER_REGISTRY_ADDRESS  | Variable | Docker Registry Address for preview deployments                                                                                              |   Yes    |
-| DOCKER_REGISTRY_ADDRESS          | Variable | Default Docker Registry Address for deployments                                                                                              |   Yes    |
-| DEPLOYMENT_RUNNER_SET            | Variable | Default Runner set for deployment, used to identify the runner set for deployment, can be overriden at pipeline, defaults to `ubuntu-latest` |    No    |
-| PREVIEW_RUNNER_SET               | Variable | Default Runner set for preview deployments, used to identify the runner set for preview deployments, defaults to `ubuntu-latest`             |    No    |
-| __AI Patching Management__       |          | - Supported by Patchwork                                                                                                                     |          |
-| PATCHWORK_ENABLED                | Variable | Enable / Disable Patchwork AI Patching features, defaults to `false`                                                                         |    No    |
-| OPENAI_API_KEY                   |  Secret  | OpenAI API KEY or Hosted LLM API Key for the provided URL.                                                                                   |    No    |
-| LIBRARIES_IO_API_KEY             |  Secret  | libraries.io API KEY, if set the DependencyUpgrade process will set analyze_impact=true                                                      |    No    |
-| PATCHED_CODES_TOKEN              |  Secret  | Patched Codes Token, if set the AutoFix and DependencyUpgrade processes will use the SAAS service at https://www.patched.codes/              |    No    |
-| HOSTED_LLM_BASE_URL              | Variable | Hosted LLMs Local or remote different from OpenAI's provided, if this is set, HOSTED_LLM_MODEL must be set.                                  |    No    |
-| HOSTED_LLM_MODEL                 | Variable | Hosted LLM Local or Remote Model, can be used also to change default OpenAI's Model used in actions.                                         |    No    |
+| Name                                 |   Type   | Description                                                                                                                                  | Required |
+|--------------------------------------|:--------:|----------------------------------------------------------------------------------------------------------------------------------------------|:--------:|
+| __Dependency track__                 |          |                                                                                                                                              |          |
+| DEPENDENCYTRACK_TOKEN                |  Secret  | Dependency track token                                                                                                                       |   Yes    |
+| DEPENDENCYTRACK_URL                  | Variable | Dependency track URL                                                                                                                         |   Yes    |
+| __SonarQube__                        |          |                                                                                                                                              |          |
+| SONARQUBE_TOKEN                      |  Secret  | SonarQube token                                                                                                                              |   Yes    |
+| SONARQUBE_URL                        | Variable | SonarQube URL                                                                                                                                |   Yes    |
+| __Semgrep__                          |          |                                                                                                                                              |          |
+| SEMGREP_TOKEN                        |  Secret  | Semgrep token                                                                                                                                |   Yes    |
+| __Snyk__                             |          |                                                                                                                                              |          |
+| SNYK_TOKEN                           |  Secret  | Snyk token                                                                                                                                   |   Yes    |
+| __GitHub__                           |          |                                                                                                                                              |          |
+| BOT_TOKEN                            |  Secret  | GitHub token                                                                                                                                 |   Yes    |
+| BOT_USER                             | Variable | GitHub user for commits                                                                                                                      |   Yes    |
+| BOT_EMAIL                            | Variable | GitHub email for commits                                                                                                                     |   Yes    |
+| BOT_TOKEN_SCOPED                     |  Secret  | GitHub token with repo scope, this Token is a Fine-Grained Token                                                                             |   Yes    |
+| __AWS__                              |          | - AWS Based Resources                                                                                                                        |          |
+| BUILD_AWS_ACCESS_KEY_ID              |  Secret  | AWS Access Key ID, used for builds (ECR deploy, Repositories)                                                                                |   Yes    |
+| BUILD_AWS_SECRET_ACCESS_KEY          |  Secret  | AWS Secret Access Key                                                                                                                        |   Yes    |
+| BUILD_AWS_REGION                     | Variable | AWS Region                                                                                                                                   |   Yes    |
+| BUILD_AWS_STS_ROLE_ARN               | Variable | AWS STS Role ARN, Only needded if all actions are performed throug STS Assume Role                                                           |    No    |
+|                                      |          |                                                                                                                                              |          |
+| DEPLOYMENT_STATE_CONF                | Variable | Deployment State Configuration, This is a YAML representation of Terraform Remote state configuration                                        |    No    |
+| DEPLOYMENT_AWS_REGION                | Variable | Default AWS Region used for deployments                                                                                                      |   Yes    |
+| DEPLOYMENT_AWS_STS_ROLE_ARN          | Variable | Default AWS STS Role ARN, Only needded if all actions are performed throug STS Assume Role                                                   |    No    |
+| DEPLOYMENT_AWS_ACCESS_KEY_ID         |  Secret  | AWS Access Key ID used for deployments                                                                                                       |   Yes    |
+| DEPLOYMENT_AWS_SECRET_ACCESS_KEY     |  Secret  | AWS Secret Access Key used for deployments                                                                                                   |   Yes    |
+|                                      |          |                                                                                                                                              |          |
+| PREVIEW_AWS_REGION                   | Variable | AWS Region used for preview deployments, defaults to `us-east-1`                                                                             |   Yes    |
+| PREVIEW_AWS_STS_ROLE_ARN             | Variable | AWS STS Role ARN, Only needded if all actions are performed throug STS Assume Role                                                           |    No    |
+| PREVIEW_AWS_ACCESS_KEY_ID            |  Secret  | AWS Access Key ID used for preview deployments                                                                                               |   Yes    |
+| PREVIEW_AWS_SECRET_ACCESS_KEY        |  Secret  | AWS Secret Access Key used for preview deployments                                                                                           |   Yes    |
+| __Azure__                            |          | - Azure Based Resources                                                                                                                      |          |
+| BUILD_AZURE_SERVICE_ID               |  Secret  | Azure Client ID used for Build                                                                                                               |   Yes    |
+| BUILD_AZURE_SERVICE_SECRET           |  Secret  | Azure Client Secret used for Builds                                                                                                          |   Yes    |
+| BUILD_AZURE_RESOURCE_GROUP           | Variable | Default Azure Resource Group used for Builds                                                                                                 |   Yes    |
+|                                      |          |                                                                                                                                              |          |
+| DEPLOYMENT_AZURE_SERVICE_ID          |  Secret  | Azure Client ID used for deployments                                                                                                         |   Yes    |
+| DEPLOYMENT_AZURE_SERVICE_SECRET      |  Secret  | Azure Client Secret used for deployments                                                                                                     |   Yes    |
+| DEPLOYMENT_AZURE_RESOURCE_GROUP      | Variable | Default Azure Resource Group used for deployments                                                                                            |   Yes    |
+|                                      |          |                                                                                                                                              |          |
+| PREVIEW_AZURE_SERVICE_ID             |  Secret  | Azure Client ID used for preview deployments                                                                                                 |   Yes    |
+| PREVIEW_AZURE_SERVICE_SECRET         |  Secret  | Azure Client Secret used for preview deployments                                                                                             |   Yes    |
+| PREVIEW_AZURE_RESOURCE_GROUP         | Variable | Default Azure Resource Group used for preview deployments                                                                                    |   Yes    |
+| __Google Cloud__                     |          | - Google Cloud Based Resources                                                                                                               |          |
+| BUILD_GCP_CREDENTIALS                |  Secret  | Google Cloud Platform Credentials JSON for builds (JSON with newlines stripped)                                                              |   Yes    |
+| DEPLOY_GCP_CREDENTIALS               |  Secret  | Google Cloud Platform Credentials JSON for deployments (JSON with newlines stripped)                                                         |   Yes    |
+| PREVIEW_GCP_CREDENTIALS              |  Secret  | Google Cloud Platform Credentials JSON for previews (JSON with newlines stripped)                                                            |   Yes    |
+| __Independent of Provider__          |          |                                                                                                                                              |          |
+| PREVIEW_DOCKER_REGISTRY_ADDRESS      | Variable | Docker Registry Address for preview deployments                                                                                              |   Yes    |
+| DOCKER_REGISTRY_ADDRESS              | Variable | Default Docker Registry Address for deployments                                                                                              |   Yes    |
+| DEPLOYMENT_RUNNER_SET                | Variable | Default Runner set for deployment, used to identify the runner set for deployment, can be overriden at pipeline, defaults to `ubuntu-latest` |    No    |
+| PREVIEW_RUNNER_SET                   | Variable | Default Runner set for preview deployments, used to identify the runner set for preview deployments, defaults to `ubuntu-latest`             |    No    |
+| __AI Patching Management__           |          | - Supported by Patchwork                                                                                                                     |          |
+| PATCHWORK_ENABLED                    | Variable | Enable / Disable Patchwork AI Patching features, defaults to `false`                                                                         |    No    |
+| OPENAI_API_KEY                       |  Secret  | OpenAI API KEY or Hosted LLM API Key for the provided URL.                                                                                   |    No    |
+| LIBRARIES_IO_API_KEY                 |  Secret  | libraries.io API KEY, if set the DependencyUpgrade process will set analyze_impact=true                                                      |    No    |
+| PATCHED_CODES_TOKEN                  |  Secret  | Patched Codes Token, if set the AutoFix and DependencyUpgrade processes will use the SAAS service at https://www.patched.codes/              |    No    |
+| HOSTED_LLM_BASE_URL                  | Variable | Hosted LLMs Local or remote different from OpenAI's provided, if this is set, HOSTED_LLM_MODEL must be set.                                  |    No    |
+| HOSTED_LLM_MODEL                     | Variable | Hosted LLM Local or Remote Model, can be used also to change default OpenAI's Model used in actions.                                         |    No    |
+| __JIRA Integration__                 |          |                                                                                                                                              |          |
+| JIRA_INTEGRATION_ENABLED             | Variable | Enable / Disable JIRA Integration for Release Management                                                                                     |    No    |
+| JIRA_INTEGRATION_API_USER            | Variable | JIRA API User for JIRA Integration                                                                                                           |    No    |
+| JIRA_INTEGRATION_API_TOKEN           |  Secret  | JIRA API Token for Integration                                                                                                               |    No    |
+| JIRA_INTEGRATION_CLOUD_DOMAIN        | Variable | Atlassian Custom Cloud Domain for the project                                                                                                |    No    |
+| JIRA_INTEGRATION_DEFAULT_PROJECT_ID  | Variable | JIRA Project ID (numbers) to set as default Project ID                                                                                       |    No    |
+| JIRA_INTEGRATION_DEFAULT_PROJECT_KEY | Variable | JIRA Project Key (string) to set as default Project Key on commit filtering                                                                  |    No    |
 
 
 

@@ -18,18 +18,6 @@ inputs:
     description: 'The path to the blueprint'
     required: false
     default: 'bp'
-  tofu_version:
-    description: 'The version of OpenTofu to use'
-    required: false
-    default: '1.7.7'
-  tg_version:
-    description: 'The version of Terragrunt to use'
-    required: false
-    default: '0.76.3'
-  tf_summarize_version:
-    description: 'The version of tf-summarize to use'
-    required: false
-    default: '0.3.10'
   token:
     description: 'The GitHub token'
     required: true
@@ -110,34 +98,21 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        VAL=$(yq e '.preview.domain' .github/vars/inputs-global.yaml)
+        VAL=$(yq e '.preview.domain' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$VAL" >> $GITHUB_OUTPUT
 
-    - name: Terraform Plan prettifier
-      uses: kishaningithub/setup-tf-summarize@v2
+    - name: IAC Setup
+      uses: cloudopsworks/blueprints/cd/deploy/common/iac@v5.10
       with:
-        github-token: ${{ inputs.token }}
-        tf-summarize-version: v${{ inputs.tf_summarize_version }}
-
-    - name: Setup OpenTofu
-      id: setup_opentofu
-      uses: opentofu/setup-opentofu@v1
-      with:
-        tofu_version: ${{ inputs.tofu_version }}
-        tofu_wrapper: false
-
-    - name: Setup Terragrunt v${{ inputs.tg_version }}
-      shell: bash
-      run: |
-        sudo wget -q -O /bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/v${{ inputs.tg_version }}/terragrunt_linux_amd64"
-        sudo chmod +x /bin/terragrunt
-        terragrunt -v
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        token: ${{ inputs.token }}
 
     - name: Copy configurations
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/preview/inputs.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
-        cp -pf ${{ inputs.source_path }}/.github/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs-global.yaml
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/preview/inputs.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs-global.yaml
         yq e '.helm_values_overrides += { "image.repository": "${{ inputs.container_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.helm_values_overrides += { "ingress.host": "${{ inputs.release_name }}-${{ inputs.pull_request_name }}.${{ steps.preview_domain.outputs.result }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
         yq e '.helm_values_overrides += { "ingress.rules[0].host": "${{ inputs.release_name }}-${{ inputs.pull_request_name }}.${{ steps.preview_domain.outputs.result }}" }' -i ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/inputs.yaml
@@ -154,12 +129,12 @@ runs:
     - name: Copy Values Bundle
       shell: bash
       run: |
-        cp -pf ${{ inputs.source_path }}/.github/vars/preview/values.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/helm-values.yaml
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/preview/values.yaml ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/helm-values.yaml
         mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/
-        if [ -d ${{ inputs.source_path }}/.github/vars/preview/values ]; then
-          cp -vpfR ${{ inputs.source_path }}/.github/vars/preview/values/. ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/
+        if [ -d ${{ inputs.source_path }}/.cloudopsworks/vars/preview/values ]; then
+          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/vars/preview/values/. ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/
         else
-          echo "No values found for ${{ inputs.source_path }}/.github/vars/preview/values, skipping..."
+          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/vars/preview/values, skipping..."
           touch ${{ inputs.blueprint_path }}/terraform/aws/kubernetes/values/.empty
         fi
 
@@ -196,7 +171,7 @@ runs:
         EOF
 
     - name: Determine Plan Action
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       id: plan_action
       with:
         script: |

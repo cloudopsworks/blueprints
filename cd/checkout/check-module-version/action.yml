@@ -40,7 +40,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        # Check the the existence of module marker in .github directory
+        # Check the the existence of module marker in .cloudopsworks directory
         # Supported marker files are:
         #   - .golang
         #   - .python
@@ -54,46 +54,49 @@ runs:
         #   - .xcode
         # ouptuts are:
         #   - repo = cloudopsworks/<moduletype>-app-template
-        #   - current_version = contenfrom .github/_VERSION file
-        if [ -f ".github/.golang" ]; then
+        #   - current_version = contenfrom .cloudopsworks/_VERSION file
+        if [ -f ".cloudopsworks/.golang" ]; then
           echo "Module type is golang"
           echo "repo=cloudopsworks/go-app-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.python" ]; then
+        elif [ -f ".cloudopsworks/.python" ]; then
           echo "Module type is python"
           echo "repo=cloudopsworks/python-app-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.node" ]; then
+        elif [ -f ".cloudopsworks/.node" ]; then
           echo "Module type is node"
           echo "repo=cloudopsworks/node-app-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.terraform" ]; then
+        elif [ -f ".cloudopsworks/.terraform" ]; then
           echo "Module type is terraform"
           echo "repo=cloudopsworks/terraform-project-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.java" ]; then
+        elif [ -f ".cloudopsworks/.terraform-module" ]; then
+          echo "Module type is terraform"
+          echo "repo=cloudopsworks/terraform-project-template" >> $GITHUB_OUTPUT
+        elif [ -f ".cloudopsworks/.java" ]; then
           echo "Module type is java"
           echo "repo=cloudopsworks/java-app-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.dotnet" ]; then
+        elif [ -f ".cloudopsworks/.dotnet" ]; then
           echo "Module type is dotnet"
           echo "repo=cloudopsworks/dotnet-app-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.rust" ]; then
+        elif [ -f ".cloudopsworks/.rust" ]; then
           echo "Module type is rust"
           echo "repo=cloudopsworks/rust-app-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.docker" ]; then
+        elif [ -f ".cloudopsworks/.docker" ]; then
           echo "Module type is docker"
           echo "repo=cloudopsworks/docker-app-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.xcode" ]; then
+        elif [ -f ".cloudopsworks/.xcode" ]; then
           echo "Module type is Xcode"
           echo "repo=cloudopsworks/xcode-app-template" >> $GITHUB_OUTPUT
-        elif [ -f ".github/.iac" ]; then
+        elif [ -f ".cloudopsworks/.iac" ]; then
           echo "Module type is iac"
           echo "repo=cloudopsworks/terragrunt-project-template" >> $GITHUB_OUTPUT
         else
-          echo "::warning::🚨 No module marker file found in .github directory"
+          echo "::warning::🚨 No module marker file found in .cloudopsworks directory"
         fi
         
         mod_version=""
-        if [ -f ".github/_VERSION" ]; then
-          mod_version=$(cat .github/_VERSION)
+        if [ -f ".cloudopsworks/_VERSION" ]; then
+          mod_version=$(cat .cloudopsworks/_VERSION)
         else
-          echo "::warning::🚨 No version file (_VERSION) found in .github directory"
+          echo "::warning::🚨 No version file (_VERSION) found in .cloudopsworks directory"
         fi
         echo "current_version=$mod_version" >> $GITHUB_OUTPUT
 
@@ -107,8 +110,8 @@ runs:
         # Check module version against the latest tag in the module repo
         # this should be done whith github api but without the 
         blueprint_version=""
-        if [ -f ".github/_VERSION" ]; then
-          blueprint_version=$(cat .github/_VERSION)
+        if [ -f ".cloudopsworks/_VERSION" ]; then
+          blueprint_version=$(cat .cloudopsworks/_VERSION)
         else
           echo "::warning::🚨 No version file (_VERSION) found in .github directory"
         fi
@@ -123,7 +126,7 @@ runs:
           if [[ -z "$latest" ]]; then
             echo "::error::No semantic version tags found for cloudopsworks/blueprints"
           else
-            if [[ "$blueprint_version" != "$latest" ]]; then
+            if [[ "$blueprint_version" < "$latest" ]]; then
               echo "::warning::⚠️ Repository Reference to Blueprints is Outdated: Template: cloudopsworks/blueprints | Current: $blueprint_version | Latest: $latest"
             fi
           fi          
@@ -153,7 +156,7 @@ runs:
           if [[ -z "$latest" ]]; then
             echo "::error::No semantic version tags found for $repo"
           else
-            if [[ "$ref" != "$latest" ]]; then
+            if [[ "$ref" < "$latest" ]]; then
               echo "::warning::⚠️ Repository Workflow is Outdated: Template: $repo | Current: $ref | Latest: $latest"
             fi
           fi

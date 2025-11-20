@@ -56,7 +56,7 @@ runs:
   using: 'composite'
   steps:
     - name: Install runner-tools
-      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5.9
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5.10
       with:
         cloud: 'none'
 
@@ -75,23 +75,23 @@ runs:
       id: deploy_conf
       shell: bash
       run: |
-        RET=$(yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml)
+        RET=$(yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
-    # Get the automatic setting from .github/cloudopsworks-ci.yaml as plain text
+    # Get the automatic setting from .cloudopsworks/cloudopsworks-ci.yaml as plain text
     - name: Get Automatic Setting
       id: automatic
       shell: bash
       run: |
-        RET=$(yq e '.cd.automatic and true' ${{ inputs.source_path }}/.github/cloudopsworks-ci.yaml)
+        RET=$(yq e '.cd.automatic and true' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # TODO: deprecate isEnabled output and parsing
     # Set the appropriate workspace from what is configured from the deploy_conf step
-    # Result is stored as JSON with the format found on the cd.deployments section on .github/cloudopsworks-ci.yaml
+    # Result is stored as JSON with the format found on the cd.deployments section on .cloudopsworks/cloudopsworks-ci.yaml
     - name: Set the appropriate workspace
       id: workspace
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const deployments = JSON.parse('${{ steps.deploy_conf.outputs.result }}');

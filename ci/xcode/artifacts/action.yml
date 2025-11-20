@@ -36,7 +36,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        GLOBS=$(yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' .github/cloudopsworks-ci.yaml)
+        GLOBS=$(yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$GLOBS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -47,7 +47,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        GLOBS=$(yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' .github/cloudopsworks-ci.yaml)
+        GLOBS=$(yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$GLOBS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -55,7 +55,7 @@ runs:
 
     # Perform of upload of artfiacts for xcode
     - name: Upload Artifacts to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.artifacts_name }}
         path: |
@@ -68,7 +68,7 @@ runs:
 
     # Perform of upload of sources
     - name: Upload Sources to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
@@ -82,7 +82,7 @@ runs:
 
     # Perform of upload of all target artfiacts for Xcode
     - name: Upload Target Artifacts to workflow
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
         path: |

@@ -1,0 +1,321 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Deploy Application Google Cloud Platform
+author: cloudopsworks
+description: Deploy Application to Google Cloud Platform
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The GitHub token'
+    required: true
+  cloud_type:
+    description: 'The cloud type'
+    required: true
+  terraform_state_conf:
+    description: 'The Terraform state configuration'
+    required: true
+  gcp_credentials:
+    description: 'Google Cloud Credentials'
+    required: true
+  gcp_project:
+    description: 'Google Cloud Project Name'
+    required: true
+  gcp_region:
+    description: 'Google Cloud Region'
+    required: true
+  gcp_impersonate_sa:
+    description: 'Google Cloud SA Impersonation account'
+    required: true
+  unlock:
+    description: 'Unlock the state'
+    required: false
+    default: 'false'
+  lock_id:
+    description: 'The lock ID'
+    required: false
+    default: ''
+  destroy:
+    description: 'Destroy the state'
+    required: false
+    default: 'false'
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  qualifier:
+    description: 'The release qualifier'
+    required: false
+    default: ''
+  project_key:
+    description: 'The package name'
+    required: true
+  deployment_name:
+    description: 'The deployment name'
+    required: true
+  environment:
+    description: 'The environment'
+    required: true
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'datadog'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: IAC Setup
+      uses: cloudopsworks/blueprints/cd/deploy/common/iac@v5.10
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        token: ${{ inputs.token }}
+
+    - name: Copy configurations
+      shell: bash
+      run: |
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/inputs.yaml
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/
+
+    - name: Copy Values Bundle
+      if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
+      shell: bash
+      run: |
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
+        if [ -d ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }} ] ; then
+          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
+        else
+          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/, skipping..."
+          touch ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/.empty
+        fi
+
+    - name: Create Hash value for values bundle
+      id: hash_value
+      if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        hash=$(find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum)
+        echo "$hash" > .values_hash_${{ inputs.release_name }}
+        short_hash=$(echo $hash | cut -c1-10)
+        echo "result=$short_hash" >> $GITHUB_OUTPUT
+
+    - name: Copy Values Bundle
+      if: ${{ contains(fromJSON('["kubernetes","k8s","gke"]'), inputs.cloud_type) }}
+      shell: bash
+      run: |
+        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/helm-values.yaml
+        mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
+        if [ -d ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }} ]; then
+          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
+        else
+          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/, skipping..."
+          touch ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/.empty
+        fi
+
+    - name: Generate release.yaml
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        cat > release.yaml << EOF 
+        release:
+          name: ${{ inputs.release_name }}
+          source:
+            name: ${{ inputs.project_key }}
+            version: ${{ inputs.release_version }}
+        EOF
+
+    - name: Insert release.qualifier data into release.yaml
+      if: ${{ inputs.qualifier != '' }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
+      shell: bash
+      run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
+
+    - name: Insert bucket name & bucket path for beanstalk & lambda
+      if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
+        yq e -i '.version_label = "${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
+
+    - name: Generate Global Inputs global-inputs.yaml
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp
+      shell: bash
+      run: |
+        cat > global-inputs.yaml << EOF
+        environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
+        release_name: ${{ inputs.release_name }}
+        default:
+          region: ${{ inputs.gcp_region }}
+          project: ${{ inputs.gcp_project }}
+          impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
+        EOF
+
+    - name: Generate Observability configuration for datadog
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'datadog' }}
+      uses: ./bp/cd/deploy/app/observability/datadog
+      with:
+        blueprint_path: ${{ inputs.blueprint_path }}
+        source_path: ${{ inputs.source_path }}
+        cloud: 'gcp'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        deployment_name: ${{ inputs.deployment_name }}
+        environment: ${{ inputs.environment }}
+
+    - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp
+      shell: bash
+      run: |
+        cat > state_conf.yaml << EOF
+        ${{ inputs.terraform_state_conf }}
+        EOF
+
+    - name: Determine Plan Action
+      uses: actions/github-script@v8
+      id: plan_action
+      with:
+        script: |
+          const is_destroy = ${{ inputs.destroy }};
+          const is_unlock = ${{ inputs.unlock }};
+          if (is_destroy) {
+            core.setOutput('value', 'plan -destroy -no-color -input=false')
+            console.log('destroy');
+          } else {
+            if (is_unlock) {
+              core.setOutput('value', 'force-unlock -force ${{ inputs.lock_id }}')
+              console.log('unlock');
+            } else {
+              core.setOutput('value', 'plan -no-color -input=false')
+              console.log('apply');
+            }
+          }
+
+    - name: Terragrunt Plan
+      id: plan
+      if: ${{ ! cancelled() }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        echo "::group::Terragrunt Plan"
+        terragrunt --non-interactive ${{ steps.plan_action.outputs.value }}
+        echo "::endgroup::"
+      env:
+        TG_TF_PATH: tofu
+        GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
+        HELM_CREDS_USER: '_json_key'
+        HELM_CREDS_PASSWORD: ${{ inputs.gcp_credentials }}
+        HELM_EXPERIMENTAL_OCI: "1"
+        GITHUB_API_TOKEN: ${{ inputs.token }}
+
+    - name: Terragrunt Plan to JSON
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
+      shell: bash
+      run: |
+        echo "::group::Terragrunt Plan to JSON"
+        terragrunt --non-interactive show -json plan.tfplan > tfplan.json
+        echo "::endgroup::"
+      env:
+        TG_TF_PATH: tofu
+        GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
+        GITHUB_API_TOKEN: ${{ inputs.token }}
+
+    - name: TF Summarize of JSON file
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
+      shell: bash
+      run: |
+        echo "::group::TF Summarize of JSON file"
+        tf-summarize tfplan.json
+        echo "::endgroup::"
+
+    - name: Save Plan Artifacts
+      if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      uses: actions/upload-artifact@v5
+      with:
+        name: ${{ inputs.artifacts_name }}_iac
+        retention-days: 1
+        overwrite: true
+        path: |
+          ${{ inputs.blueprint_path }}/terraform/gcp/**
+          !**/.terragrunt-cache/**
+          !**/.terraform/**
+
+    - name: Restore Pipeline Artifacts
+      uses: actions/download-artifact@v4
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/release
+
+    - name: Generate Bundle ZipFile - Upload GCP Bucket
+      if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      id: bundle
+      uses: ./bp/cd/deploy/app/pack
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: 'gcp'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        gcp_credentials: ${{ inputs.gcp_credentials }}
+        gcp_impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
+        gcp_project: ${{ inputs.gcp_project }}
+        environment: ${{ inputs.environment }}
+        gcp_region: ${{ inputs.gcp_region }}
+        observability_enabled: ${{ inputs.observability_enabled }}
+        observability_agent: ${{ inputs.observability_agent }}
+
+    - name: Validate Bundle Outcome
+      if: ${{ ( contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true') && steps.bundle.outcome == 'failure' }}
+      shell: bash
+      run: |
+        echo "::error::Bundle creation failed, please check the logs for details."
+        exit 1
+
+    - name: Terragrunt Apply
+      id: apply
+      working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
+      if: ${{ inputs.unlock != 'true' && ! cancelled() && steps.plan.outcome == 'success' }}
+      shell: bash
+      run: |
+        echo "::group::Terragrunt Apply"
+        terragrunt --non-interactive apply -no-color plan.tfplan
+        echo "::endgroup::"
+      continue-on-error: false
+      env:
+        TG_TF_PATH: tofu
+        GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
+        HELM_CREDS_USER: '_json_key'
+        HELM_CREDS_PASSWORD: ${{ inputs.gcp_credentials }}
+        HELM_EXPERIMENTAL_OCI: "1"
+        GITHUB_API_TOKEN: ${{ inputs.token }}
+

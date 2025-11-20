@@ -71,7 +71,7 @@ runs:
       id: project_owner
       shell: bash
       run: |
-        RET=$(yq e '.repository_owner' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        RET=$(yq e '.repository_owner' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get Sonarqube Configuration is enabled
@@ -79,60 +79,60 @@ runs:
       id: sonarqube_enabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.sonarqube.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.sonarqube.enabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get Sonarqube Fail on Quality gate setting
     - name: Get Fail On Quality Gate
       id: fail_on_quality_gate
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.sonarqube.fail_on_quality_gate and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.sonarqube.fail_on_quality_gate and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get Sonarqube Quality Gate enabled setting - defaults to true
     - name: Get Quality Gate Enabled status
       id: quality_gate_enabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.sonarqube.quality_gate_enabled // "true"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.sonarqube.quality_gate_enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get DependencyTrack Configuration is enabled
     - name: Get Pipeline conf DependencyTrack is Enabled
       id: dtrack_enabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dependencyTrack.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.dependencyTrack.enabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dependencyTrack.type // "Application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.dependencyTrack.type // "Application"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get Snyk Configuration is enabled
     - name: Get Pipeline conf Snyk is Enabled
       id: snyk_enabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.snyk.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.snyk.enabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get Semgrep Configuration is enabled
     - name: Get Pipeline conf Semgrep is Enabled
       id: semgrep_enabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.semgrep.enabled and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.semgrep.enabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
-    # Get the apis enabled from .github/cloudopsworks-ci.yaml as plain text
+    # Get the apis enabled from .cloudopsworks/cloudopsworks-ci.yaml as plain text
     - name: Get APIs Enabled
       id: apis_enabled
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.apis.enabled and true' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Get the Runner Set for this build
       id: runner_set
       shell: bash
       run: |
-        RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+        RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT

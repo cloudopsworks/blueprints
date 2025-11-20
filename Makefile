@@ -1,31 +1,19 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
 SHELL := /bin/bash
 TRONADOR_AUTO_INIT := true
 GITVERSION ?= $(INSTALL_PATH)/gitversion
-define PROVIDER_CHOMP
-provider "aws" {
-  alias = "default"
-}
-provider "aws" {
-  alias = "account"
-}
-endef
-export PROVIDER_CHOMP
 
 # List of targets the `readme` target should call before generating the readme
 export README_DEPS ?= docs/targets.md docs/terraform.md
 
 -include $(shell curl -sSL -o .tronador "https://cowk.io/acc"; echo .tronador)
-
-temp_provider:
-	echo "$$PROVIDER_CHOMP" > provider.temp.tf
-
-## Lint terraform/opentofu code
-lint: temp_provider
-	$(SELF) tofu/install tofu/get-modules tofu/get-plugins tofu/lint tofu/validate
-
-# Format terraform/opentofu code
-fmt:
-	$(SELF) tofu/install tofu/fmt
 
 
 get_version: packages/install/gitversion

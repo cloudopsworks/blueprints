@@ -1,0 +1,74 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Procfile creation for ElasticBeanstalk
+author: cloudopsworks
+description: Create Procfile for ElasticBeanstalk
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  aws_region:
+    description: 'The AWS region'
+    required: true
+  aws_access_key_id:
+    description: 'AWS Access Key ID'
+    required: true
+  aws_secret_access_key:
+    description: 'AWS Secret Access Key'
+    required: true
+  aws_sts_role_arn:
+    description: 'AWS STS Role ARN'
+    required: true
+  temp_dir:
+    description: 'The temporary working directory'
+    required: true
+  dest_zip:
+    description: 'The destination zip file'
+    required: true
+  versions_bucket:
+    description: 'The S3 bucket for versions'
+    required: true
+  bucket_path:
+    description: 'The S3 bucket path'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Temporary STS Assume Role
+      id: sts
+      shell: bash
+      run: |
+        TEMP_ROLE=$(aws sts assume-role --role-arn "${ASSUME_ROLE_ARN}" --role-session-name "${ROLE_SESSION_NAME:-AssumingRole}")
+        echo "aws_access_key_id=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.AccessKeyId')" >> $GITHUB_OUTPUT
+        echo "aws_secret_access_key=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')" >> $GITHUB_OUTPUT
+        echo "aws_session_token=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')" >> $GITHUB_OUTPUT
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        ASSUME_ROLE_ARN: ${{ inputs.aws_sts_role_arn }}
+        ROLE_SESSION_NAME: s3-upload-pipeline
+        AWS_REGION: ${{ inputs.aws_region }}
+
+    - name: Upload to S3
+      working-directory: ${{ inputs.temp_dir }}
+      shell: bash
+      run: |
+        echo "::group::Uploading to S3"
+        aws s3 cp ${{ inputs.dest_zip }} s3://${{ inputs.versions_bucket }}/${{ inputs.bucket_path }}
+        echo "::endgroup::"
+      env:
+        AWS_ACCESS_KEY_ID: ${{ steps.sts.outputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ steps.sts.outputs.aws_secret_access_key }}
+        AWS_SESSION_TOKEN: ${{ steps.sts.outputs.aws_session_token }}
+        AWS_REGION: ${{ inputs.aws_region }}

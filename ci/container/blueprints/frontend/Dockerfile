@@ -36,7 +36,7 @@ COPY $BUILD_DIR /usr/share/nginx/html/
 
 # Stage 2: Customized configuation injection occurs at command line
 FROM base AS customized
-WORKDIR /app
+WORKDIR /app/webapp
 #<DOCKER-INJECTION-POINT>
 
 # Stage 3: Final image

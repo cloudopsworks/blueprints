@@ -48,17 +48,17 @@ runs:
         git config --global user.email "${{ inputs.bot_email }}"
         git branch $branch develop
         git checkout $branch
-        prev_ver=$(cat .github/_VERSION)
+        prev_ver=$(cat .cloudopsworks/_VERSION)
         make repos/upgrade
-        ver=$(cat .github/_VERSION)
+        ver=$(cat .cloudopsworks/_VERSION)
         echo "prev_ver=$prev_ver" >> $GITHUB_OUTPUT
         echo "ver=$ver" >> $GITHUB_OUTPUT
         echo "branch=$branch" >> $GITHUB_OUTPUT
         if [[ "$(git ls-remote $GITURL develop | cut -f1)" == "$(git rev-parse HEAD)" ]] ; then
-          echo "::info::No changes detected between local develop and remote develop. Nothing to be done."
+          echo "::notice::No changes detected between local develop and remote develop. Nothing to be done."
           echo "result=false" >> $GITHUB_OUTPUT
         else
-          echo "::info::Changes detected... Will push code to Origin and creating Pull request..."
+          echo "::notice::Changes detected... Will push code to Origin and creating Pull request..."
           echo "result=true" >> $GITHUB_OUTPUT
         fi
 

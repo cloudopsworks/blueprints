@@ -1,0 +1,58 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: IAC Setup Common Actions
+author: cloudopsworks
+description: IAC Setup Common Actions
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  tofu_version:
+    description: 'The version of OpenTofu to use'
+    required: false
+    default: '1.11.0-beta1'
+  tg_version:
+    description: 'The version of Terragrunt to use'
+    required: false
+    default: '0.93.5'
+  tf_summarize_version:
+    description: 'The version of tf-summarize to use'
+    required: false
+    default: '0.3.10'
+  token:
+    description: 'The GitHub token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Terraform Plan prettifier
+      uses: kishaningithub/setup-tf-summarize@v2
+      with:
+        github-token: ${{ inputs.token }}
+        tf-summarize-version: v${{ inputs.tf_summarize_version }}
+
+    - name: Setup OpenTofu
+      id: setup_opentofu
+      uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_version: ${{ inputs.tofu_version }}
+        tofu_wrapper: false
+
+    - name: Setup Terragrunt v${{ inputs.tg_version }}
+      shell: bash
+      run: |
+        sudo wget -q -O /bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/v${{ inputs.tg_version }}/terragrunt_linux_amd64"
+        sudo chmod +x /bin/terragrunt
+        terragrunt -v

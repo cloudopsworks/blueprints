@@ -57,14 +57,14 @@ runs:
       id: node_version
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.node.version // "20"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.node.version // "24"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf node dist
     - name: Get pipeline node dist
       id: node_dist
       uses: mikefarah/yq@master
       with:
-        cmd: yq eval '.node.dist // "adopt"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq eval '.node.dist // "adopt"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get Package Name from package.json
     - name: Get package Name

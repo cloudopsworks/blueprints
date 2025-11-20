@@ -69,28 +69,28 @@ runs:
       id: dotnet_version
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dotnet.version // "9.0"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.dotnet.version // "10.0"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf .Net dist defaults to aspnet
     - name: Get pipeline .Net dist
       id: dotnet_dist
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dotnet.dist // "aspnet"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.dotnet.dist // "aspnet"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf .Net image variant defaults to alpine
     - name: Get pipeline .Net image variant
       id: dotnet_image_variant
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dotnet.image_variant // "alpine"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.dotnet.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf .Net build project path
     - name: Get pipeline .Net build project path
       id: project_path
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dotnet.project_path // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.dotnet.project_path // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
       # Validate project_path must not be blank, othewise fail the entire workflow
     - name: Validate project_path
@@ -114,49 +114,49 @@ runs:
       id: build_opts
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get from global inputs the custom Build Options
     - name: Get .Net Build options
       id: run_opts
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.run_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.run_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get from global inputs the custom Build Options
     - name: Get .Net Publish options
       id: publish_opts
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get from global inputs the custom Test Options
     - name: Get .Net Test options
       id: test_opts
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get from global inputs the default configuration
     - name: Get .Net default configuration
       id: global_default_configuration
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.dotnet.configuration // "Release"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e -I=0 '.dotnet.configuration // "Release"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get from global inputs the default configuration
     - name: Get .Net default configuration
       id: default_configuration
       uses: mikefarah/yq@master
       with:
-        cmd: yq e -I=0 '.dotnet_configuration // "${{ steps.global_default_configuration.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml
+        cmd: yq e -I=0 '.dotnet_configuration // "${{ steps.global_default_configuration.outputs.result }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
 
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
       uses: mikefarah/yq@master
       with:
-        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml
+        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Check existence of packages.lock.json and set to true
     - name: Check for packages.lock.json

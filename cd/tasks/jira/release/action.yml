@@ -1,0 +1,53 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: JIRA Integration for Release Management
+author: cloudopsworks
+description: |
+  Integrates with JIRA to manage software releases by automating version tracking, issue updates, and release notes generation. 
+  Synchronizes GitHub releases with JIRA versions, updates related issues status, and maintains consistency between development and project management workflows.
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    value: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    value: 'bp'
+  jira_api_user:
+    description: 'The JIRA API user email'
+    required: true
+  jira_api_token:
+    description: 'The JIRA API token'
+    required: true
+  atlassian_cloud_domain:
+    description: 'The Atlassian Cloud domain (e.g., your-domain.atlassian.net)'
+    required: true
+  project_key:
+    description: 'The JIRA project key'
+    required: true
+  project_id:
+    description: 'The JIRA project ID'
+    required: true
+  token:
+    description: 'The github token to use for the release'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Jira Release
+      uses: rodush/github-action-jira-release@v2
+      id: jira-rel
+      with:
+        project_id: ${{ inputs.project_id }}
+        project_key: ${{ inputs.project_key }}
+      env:
+        JIRA_API_USER: ${{ inputs.jira_api_user }}
+        JIRA_API_TOKEN: ${{ inputs.jira_api_token }}
+        ATLASSIAN_CLOUD_DOMAIN: ${{ inputs.atlassian_cloud_domain }}
+        GITHUB_TOKEN: ${{ inputs.token }}

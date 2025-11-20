@@ -1,3 +1,11 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
 name: Semgrep
 on:
   workflow_dispatch: {}
@@ -6,6 +14,7 @@ on:
     branches:
       - main
       - master
+      - develop
     paths:
       - .github/workflows/semgrep.yml
   schedule:
@@ -21,5 +30,5 @@ jobs:
       image: semgrep/semgrep
     if: (github.actor != 'dependabot[bot]')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: semgrep ci

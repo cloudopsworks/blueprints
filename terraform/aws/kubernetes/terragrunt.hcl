@@ -48,7 +48,7 @@ EOF
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-eks-helm-deploy.git//?ref=v5.7.0"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-eks-helm-deploy.git//?ref=v5.8.0"
 }
 
 inputs = {
@@ -66,7 +66,7 @@ inputs = {
   cluster_name     = local.local_vars.cluster_name
   helm_repo_url    = try(local.local_vars.helm_repo_url, "")
   helm_chart_name  = try(local.local_vars.helm_chart_name, "")
-  helm_chart_path  = try(local.local_vars.helm_chart_path, "")
+  helm_chart_path  = try(local.local_vars.helm_chart_path, "${get_terragrunt_dir()}/../../../kubernetes/helm/charts")
   values_file      = local.values_file
   values_overrides = merge(
     local.local_vars.helm_values_overrides,
