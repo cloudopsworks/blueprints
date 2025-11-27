@@ -51,6 +51,10 @@ inputs:
     description: 'The APM arguments'
     required: false
     default: ''
+  front_end:
+    description: 'The front end flag, used mainly for NodeJS targets'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -125,7 +129,7 @@ runs:
       id: docker_tags
       shell: bash
       run: |
-        if [[ "${{ inputs.is_release }}" == 'true' ]]; then
+        if [[ "${{ inputs.is_release }}" == "true" && "${{ inputs.front_end }}" != "true" ]]; then
           TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest
         ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}
         ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ steps.semvers.outputs.major }}
@@ -133,6 +137,11 @@ runs:
            echo "${{ inputs.semver }}
         ${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}
         ${{ steps.semvers.outputs.major }}" > docker-tags.list
+        elif [[ "${{ inputs.front_end }}" == "true" ]]; then
+          TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest-${{ inputs.environment }}
+        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}-${{ inputs.environment }}"
+          echo "${{ inputs.semver }}-${{ inputs.environment }}
+        latest-${{ inputs.environment }}" > docker-tags.list
         else
           TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest-${{ inputs.environment }}
         ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}"

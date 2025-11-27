@@ -94,6 +94,10 @@ inputs:
     description: 'The observability agent'
     required: false
     default: 'xray'
+  front_end:
+    description: 'The front end flag, used mainly for NodeJS targets'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -169,7 +173,7 @@ runs:
           name: ${{ inputs.release_name }}
           source:
             name: ${{ inputs.project_key }}
-            version: ${{ inputs.release_version }}
+            version: ${{ inputs.release_version }}${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
         EOF
 
     - name: Insert release.qualifier data into release.yaml
