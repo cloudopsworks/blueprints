@@ -51,7 +51,7 @@ runs:
         id: node_extra_env_global
         shell: bash
         run: |
-          RET=$(yq e -I=0 '.node_extra_env // ""' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml | tr '\n' ' ' | sed 's/.$//')
+          RET=$(yq e -I=0 '.node_extra_env // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml | tr '\n' ' ' | sed 's/.$//')
           echo "result=$RET" >> $GITHUB_OUTPUT
 
       # get from  inputs extra env vars from preview config: node_extra_env entry
@@ -60,7 +60,7 @@ runs:
         id: node_extra_env_preview
         shell: bash
         run: |
-          RET=$(yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/preview/inputs.yaml | tr '\n' ' ' | sed 's/.$//')
+          RET=$(yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/preview/inputs.yaml | tr '\n' ' ' | sed 's/.$//')
           echo "result=$RET" >> $GITHUB_OUTPUT
 
       # get from inputs extra env vars from specific build environment: node_extra_env entry
@@ -69,7 +69,7 @@ runs:
         id: node_extra_env_env
         shell: bash
         run: |
-          RET=$(yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.github/vars/inputs-${{ inputs.environment }}.yaml | tr '\n' ' ' | sed 's/.$//')
+          RET=$(yq e -I=0 '.node_extra_env // "${{ steps.node_extra_env_global.outputs.result }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml | tr '\n' ' ' | sed 's/.$//')
           echo "result=$RET" >> $GITHUB_OUTPUT
 
       - name: Set Optional node_extra_env from properly calulated origin
@@ -82,7 +82,7 @@ runs:
         id: install_command
         shell: bash
         run: |
-          RET=$(yq e -I=0 '.custom_install_command // "npm install --omit=dev"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+          RET=$(yq e -I=0 '.custom_install_command // "npm install --omit=dev"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
           echo "result=$RET" >> $GITHUB_OUTPUT
 
 
@@ -91,7 +91,7 @@ runs:
         id: build_command
         shell: bash
         run: |
-          RET=$(yq e -I=0 '.custom_build_command // "npm run build --if-present"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+          RET=$(yq e -I=0 '.custom_build_command // "npm run build --if-present"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
           echo "result=$RET" >> $GITHUB_OUTPUT
 
 
@@ -100,7 +100,7 @@ runs:
         id: node_build_dir
         shell: bash
         run: |
-          RET=$(yq e -I=0 '.node_build_dir // "./build"' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+          RET=$(yq e -I=0 '.node_build_dir // "./build"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
           echo "result=$RET" >> $GITHUB_OUTPUT
 
       # get from global inputs the setting if it is frontend target
@@ -108,5 +108,5 @@ runs:
         id: front_end
         shell: bash
         run: |
-          RET=$(yq e -I=0 '.frontend and true' ./${{ inputs.source_path }}/.github/vars/inputs-global.yaml)
+          RET=$(yq e -I=0 '.frontend and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
           echo "result=$RET" >> $GITHUB_OUTPUT
