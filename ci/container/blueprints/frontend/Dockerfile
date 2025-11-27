@@ -5,7 +5,7 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-ARG IMAGE_NAME=nginxinc/nginx-unprivileged:1.27-alpine
+ARG IMAGE_NAME=nginxinc/nginx-unprivileged:1.29-alpine
 
 FROM $IMAGE_NAME AS base
 

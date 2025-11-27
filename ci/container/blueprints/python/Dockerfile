@@ -5,7 +5,7 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-ARG IMAGE_NAME=python:3.12-slim
+ARG IMAGE_NAME=python:3.14-slim
 
 FROM $IMAGE_NAME AS base
 
