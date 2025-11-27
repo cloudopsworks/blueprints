@@ -5,7 +5,7 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-ARG IMAGE_NAME=mcr.microsoft.com/dotnet/aspnet:9.0
+ARG IMAGE_NAME=mcr.microsoft.com/dotnet/aspnet:10.0
 
 FROM $IMAGE_NAME AS base
 

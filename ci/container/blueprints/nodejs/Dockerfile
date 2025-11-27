@@ -5,7 +5,7 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-ARG IMAGE_NAME=node:22-alpine
+ARG IMAGE_NAME=node:24-alpine
 
 FROM $IMAGE_NAME AS base
 

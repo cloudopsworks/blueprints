@@ -201,3 +201,4 @@ runs:
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}
         custom_usergroup: ${{ steps.custom_usergroup.outputs.result }}
+        front_end: ${{ inputs.front_end }}
