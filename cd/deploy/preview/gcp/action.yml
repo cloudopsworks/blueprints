@@ -205,7 +205,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Plan"
-        terragrunt --non-interactive ${{ steps.plan_action.outputs.value }}
+        terragrunt --non-interactive run -- ${{ steps.plan_action.outputs.value }}
         echo "::endgroup::"
       env:
         TG_TF_PATH: tofu
@@ -222,7 +222,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Plan to JSON"
-        terragrunt --non-interactive show -json plan.tfplan > tfplan.json
+        terragrunt --non-interactive run -- show -json plan.tfplan > tfplan.json
         echo "::endgroup::"
       env:
         TG_TF_PATH: tofu
@@ -245,7 +245,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Terragrunt Apply"
-        terragrunt --non-interactive apply -no-color plan.tfplan
+        terragrunt --non-interactive run -- apply -no-color plan.tfplan
         echo "::endgroup::"
       continue-on-error: false
       env:
