@@ -172,6 +172,7 @@ runs:
     - name: Save Cache
       uses: actions/cache/save@v4
       id: cache_save
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       with:
         path: .cloudopsworks_wf
         key: ${{ steps.cache.outputs.cache-primary-key }}
