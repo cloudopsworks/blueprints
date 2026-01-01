@@ -174,7 +174,7 @@ Please use the [issue tracker](https://github.com/cloudopsworks/blueprints/issue
 
 ## Copyrights
 
-Copyright © 2024-2025 [Cloud Ops Works LLC](https://cloudops.works)
+Copyright © 2024-2026 [Cloud Ops Works LLC](https://cloudops.works)
 
 
 
