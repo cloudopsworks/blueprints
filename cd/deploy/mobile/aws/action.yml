@@ -244,7 +244,7 @@ runs:
         res=$(aws devicefarm list-device-pools \
           --region ${{ inputs.aws_region }} \
           --arn ${{ steps.device_farm_arn.outputs.result }} \
-          --query "devicePools[?name=='${{ steps.device_farm.outputs.result }}'].arn | [0]" \
+          --query "devicePools[?name=='${{ steps.device_pool.outputs.result }}'].arn | [0]" \
           --output text)
         echo "result=$res" >> $GITHUB_OUTPUT 
 
