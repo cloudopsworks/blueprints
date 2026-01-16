@@ -277,9 +277,6 @@ runs:
       run: |
         ext="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ipa' || 'apk' }}"
         app_type="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'IOS_APP' || 'ANDROID_APP' }}"
-        release=$(ls *.$ext 2>/dev/null)
-        echo "Found: $release, moving to: ${REL}-${RELVER}${QUALI}.$ext" 
-        mv "$release" ${REL}-${RELVER}${QUALI}.$ext
         echo "ext=$ext" >> $GITHUB_OUTPUT
         echo "app_type=$app_type" >> $GITHUB_OUTPUT
 
@@ -297,13 +294,15 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Upload APK to Device Farm"
-        arn=$(aws devicefarm create-upload \
+        aws_result=$(aws devicefarm create-upload \
           --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}.$EXT" \
           --type "$APP_TYPE" \
-          --content-type "application/octet-stream" \
-          --query 'upload.arn' --output text)
+          --content-type "application/octet-stream")
+        arn=$(echo "$aws_result" | jq -r '.upload.arn')
+        upload_url=$(echo "$aws_result" | jq -r '.upload.url')
+        curl -T *.$EXT "$upload_url"
         echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
 
@@ -319,13 +318,15 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Upload Test Package"
-        arn=$(aws devicefarm create-upload \
+        aws_result=$(aws devicefarm create-upload \
           --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}-tests.zip" \
           --type "${{ steps.test_script_type.outputs.result }}" \
-          --content-type "application/octet-stream" \
-          --query 'upload.arn' --output text)
+          --content-type "application/octet-stream")
+        arn=$(echo "$aws_result" | jq -r '.upload.arn')
+        upload_url=$(echo "$aws_result" | jq -r '.upload.url')
+        curl -T ${REL}-${RELVER}${QUALI}-tests.zip "$upload_url"
         echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
 
