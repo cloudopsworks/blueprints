@@ -219,7 +219,10 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
       shell: bash
       run: |
-        res=$(aws devicefarm list-projects --region ${{ inputs.aws_region }} --query "projects[?name=='${{ steps.device_farm.outputs.result }}'].arn | [0]" --output text)
+        res=$(aws devicefarm list-projects \
+          --region ${{ inputs.aws_region }} \
+          --query "projects[?name=='${{ steps.device_farm.outputs.result }}'].arn | [0]" \
+          --output text)
         echo "result=$res" >> $GITHUB_OUTPUT 
 
     - name: Device Pool ARN
@@ -227,8 +230,11 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
       shell: bash
       run: |
-        res=$(aws devicefarm list-device-pools --region ${{ inputs.aws_region }} --arn ${{ steps.device_farm_arn.outputs.result }} \
-          --query "devicePools[?name=='${{ steps.device_farm.outputs.result }}'].arn | [0]" --output text)
+        res=$(aws devicefarm list-device-pools \
+          --region ${{ inputs.aws_region }} \
+          --arn ${{ steps.device_farm_arn.outputs.result }} \
+          --query "devicePools[?name=='${{ steps.device_farm.outputs.result }}'].arn | [0]" \
+          --output text)
         echo "result=$res" >> $GITHUB_OUTPUT 
 
     - name: Restore Pipeline Artifacts
@@ -280,7 +286,9 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Upload APK to Device Farm"
-        arn=$(aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
+        arn=$(aws devicefarm create-upload \
+          --region ${{ inputs.aws_region }} \
+          --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}.$EXT" \
           --type "$APP_TYPE" \
           --content-type "application/octet-stream" \
@@ -300,7 +308,9 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Uplad Test Package"
-        arn=$(aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
+        arn=$(aws devicefarm create-upload \
+          --region ${{ inputs.aws_region }} \
+          --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}-tests.zip" \
           --type "${{ steps.test_script_type.outputs.result }}" \
           --content-type "application/octet-stream" \
@@ -319,9 +329,9 @@ runs:
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run:
         aws devicefarm schedule-run \
+          --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --app-arn ${{ steps.upload_pkg.outputs.result }} \
           --device-pool-arn ${{ steps.device_pool_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}" \
           --test type=${{ steps.test_script_type.outputs.result }},testPackageArn=${{ steps.deploy_test_pkg.outputs.result }} \
-          --region ${{ inputs.aws_region }}
