@@ -1,0 +1,105 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Install Runner tools for Windows
+author: cloudopsworks
+description: Install runner-tools for the workflow
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install runner-tools
+      working-directory: /tmp
+      shell: bash
+      run: |
+        echo "::warning::NOT IMPLEMENTED"
+
+#    - name: Install runner-tools
+#      working-directory: /tmp
+#      shell: bash
+#      env:
+#        DEBIAN_FRONTEND: noninteractive
+#      run: |
+#        echo "::group::Install runner-tools"
+#        (type -p wget >/dev/null || (sudo apt update && sudo apt-get -y install wget))
+#        sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+#        sudo apt install -y gh jq curl zip unzip python3 python3-pip apt-transport-https ca-certificates gnupg lsb-release
+#        echo "::endgroup::"
+#
+#    - name: Check sourcedir existence
+#      id: sourcedir
+#      shell: bash
+#      run: |
+#        if [ ! -f ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ]; then
+#          echo "Source directory does not exist. will omit cloudentry."
+#          echo "result=false" >> $GITHUB_OUTPUT
+#        else
+#          echo "result=true" >> $GITHUB_OUTPUT
+#        fi
+#
+#    # Get the cloud entry from .cloudopsworks/vars/inputs-global.yaml as plain text
+#    - name: Get Cloud Entry
+#      id: cloud_src
+#      shell: bash
+#      if: ${{ steps.sourcedir.outputs.result == 'true' }}
+#      run: |
+#        RET=$(yq e '.cloud // "all"' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
+#        echo "result=$RET" >> $GITHUB_OUTPUT
+#
+#    - name: Set Cloud Entry
+#      id: cloud
+#      shell: bash
+#      run: |
+#        if [ "${{ steps.sourcedir.outputs.result }}" == "true" ]; then
+#          echo "result=${{ steps.cloud_src.outputs.result }}" >> $GITHUB_OUTPUT
+#        else
+#          echo "result=ALL" >> $GITHUB_OUTPUT
+#        fi
+#
+#    - name: Download and Install AWS CLI
+#      working-directory: /tmp
+#      shell: bash
+#      if: ${{ contains(fromJSON('["AWS","ALL"]'), steps.cloud.outputs.result) }}
+#      run: |
+#        echo "::group::Download and install AWS CLI"
+#        curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+#        unzip -qo awscliv2.zip
+#        type -p aws > /dev/null || sudo ./aws/install
+#        type -p aws > /dev/null && sudo ./aws/install --update
+#        aws --version
+#        echo "::endgroup::"
+#
+#    - name: Download and Install Azure CLI
+#      working-directory: /tmp
+#      shell: bash
+#      if: ${{ contains(fromJSON('["AZURE","AZ","ALL"]'), steps.cloud.outputs.result) }}
+#      env:
+#        DEBIAN_FRONTEND: noninteractive
+#      run: |
+#        echo "::group::Download and install Azure CLI"
+#        (type -p az > /dev/null || (echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ jammy main" | sudo tee -a /etc/apt/sources.list.d/azure-cli.list && sudo mkdir -p /etc/apt/keyrings && curl -sLS https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg && sudo chmod go+r /etc/apt/keyrings/microsoft.gpg && sudo apt-get update -y && sudo apt-get install azure-cli -y))
+#        az --version
+#        echo "::endgroup::"
+#
+#    # GCP CLI installation when the GCP CLI is available in the base image
+#    - name: Download and Install GCP CLI
+#      working-directory: /tmp
+#      shell: bash
+#      if: ${{ contains(fromJSON('["GCP","ALL"]'), steps.cloud.outputs.result) }}
+#      env:
+#        DEBIAN_FRONTEND: noninteractive
+#      run: |
+#        echo "::group::Download and install GCP CLI"
+#        (type -p gcloud > /dev/null || (echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && sudo apt-get update -y && sudo apt-get install google-cloud-cli -y))
+#        gcloud --version
+#        echo "::endgroup::"
