@@ -117,7 +117,7 @@ runs:
     - name: Select XCODE version from github macos runner
       shell: bash
       run: |
-        echo "::group::XCode Version SET"
+        echo "::group::Select XCode Version ${{ inputs.xcode_version }} Tooling"
         sudo xcode-select -s /Applications/Xcode_${{ inputs.xcode_version }}.app
         echo "::endgroup::"
 
