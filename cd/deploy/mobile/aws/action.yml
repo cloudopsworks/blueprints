@@ -103,6 +103,14 @@ runs:
         res=$(yq e '.aws.device_farm_name // ""' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
 
+    - name: Device Farm Pool
+      id: device_pool
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        res=$(yq e '.aws.device_farm_pool // ""' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$res" >> $GITHUB_OUTPUT
+
     - name: Test Script Path
       id: test_script_path
       working-directory: ${{ inputs.source_path }}
@@ -214,6 +222,15 @@ runs:
         res=$(aws devicefarm list-projects --region ${{ inputs.aws_region }} --query "projects[?name=='${{ steps.device_farm.outputs.result }}'].arn | [0]" --output text)
         echo "result=$res" >> $GITHUB_OUTPUT 
 
+    - name: Device Pool ARN
+      id: device_pool_arn
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
+      shell: bash
+      run: |
+        res=$(aws devicefarm list-device-pools --region ${{ inputs.aws_region }} --arn ${{ steps.device_farm_arn.outputs.result }} \
+          --query "devicePools[?name=='${{ steps.device_farm.outputs.result }}'].arn | [0]" --output text)
+        echo "result=$res" >> $GITHUB_OUTPUT 
+
     - name: Restore Pipeline Artifacts
       uses: actions/download-artifact@v7
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
@@ -283,8 +300,28 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Uplad Test Package"
-        aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
+        arn=$(aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}-tests.zip" \
           --type "${{ steps.test_script_type.outputs.result }}" \
-          --content-type "application/octet-stream"
+          --content-type "application/octet-stream" \
+          --query 'upload.arn' --output text)
+        echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
+
+    - name: Schedule Run
+      id: run
+      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() && steps.deploy_test_pkg.outcome == 'success' && steps.upload_pkg.outcome == 'success' }}
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      shell: bash
+      env:
+        REL: ${{ inputs.release_name }}
+        RELVER: ${{ inputs.release_version }}
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+      run:
+        aws devicefarm schedule-run \
+          --project-arn ${{ steps.device_farm_arn.outputs.result }} \
+          --app-arn ${{ steps.upload_pkg.outputs.result }} \
+          --device-pool-arn ${{ steps.device_pool_arn.outputs.result }} \
+          --name "${REL}-${RELVER}${QUALI}" \
+          --test type=${{ steps.test_script_type.outputs.result }},testPackageArn=${{ steps.deploy_test_pkg.outputs.result }} \
+          --region ${{ inputs.aws_region }}
