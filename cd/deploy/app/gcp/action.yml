@@ -272,7 +272,7 @@ runs:
           !**/.terraform/**
 
     - name: Restore Pipeline Artifacts
-      uses: actions/download-artifact@v74
+      uses: actions/download-artifact@v7
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}
