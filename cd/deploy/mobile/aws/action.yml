@@ -266,7 +266,7 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Uplad APK"
-        aws devicefarm create-upload --arn ${{ steps.device_farm_arn.outputs.result }} \
+        aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}.$EXT" \
           --type "APP_TYPE" \
           --content-type "application/octet-stream"
@@ -284,7 +284,7 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Uplad Test Package"
-        aws devicefarm create-upload --arn ${{ steps.device_farm_arn.outputs.result }} \
+        aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}-tests.zip" \
           --type "${{ steps.test_script_type.outputs.result }}" \
           --content-type "application/octet-stream"
