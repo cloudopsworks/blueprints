@@ -264,6 +264,8 @@ runs:
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
+        pwd
+        ls -l
         zip -r ${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
 
     - name: Rename IPA/APK
