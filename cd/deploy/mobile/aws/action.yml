@@ -128,7 +128,7 @@ runs:
         # Check dir exists
         if [ -d '${{ steps.test_script_path.outputs.result }}' ] ; then
           # Check dir has content
-          if [ "$(ls -A '${{ steps.test_script_path.outputs.result }})'" ] ; then
+          if [ "$(ls -A '${{ steps.test_script_path.outputs.result }}')" ] ; then
             res=true
           fi
         fi
