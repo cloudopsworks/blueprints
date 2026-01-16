@@ -262,10 +262,10 @@ runs:
         APP_TYPE: ${{ steps.ipa_apk.outputs.app_type }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
-        echo "::group::Uplad APK"
+        echo "::group::Upload APK to Device Farm"
         aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}.$EXT" \
-          --type "APP_TYPE" \
+          --type "$APP_TYPE" \
           --content-type "application/octet-stream"
         echo "::endgroup::"
 
