@@ -346,5 +346,5 @@ runs:
           --app-arn ${{ steps.upload_pkg.outputs.result }} \
           --device-pool-arn ${{ steps.device_pool_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}" \
-          --test type=${{ steps.run_test_type.outputs.result }},testPackageArn=${{ steps.deploy_test_pkg.outputs.result }} \
+          --test type=${{ steps.run_test_type.outputs.result }},testPackageArn=${{ steps.deploy_test_pkg.outputs.result }}
         echo "::endgroup::"
