@@ -226,9 +226,9 @@ runs:
       env:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
-        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}.
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
-        zip -r ${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI }-tests.zip .
+        zip -r ${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
 
     - name: test
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
@@ -242,11 +242,12 @@ runs:
       env:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
-        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}.
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
         ext="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ipa' || 'apk' }}"
         app_type="{{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'IOS_APP' || 'ANDROID_APP' }}"
         release=$(ls *.$ext 2>/dev/null)
+        echo "Found: $release, moving to: ${REL}-${RELVER}${QUALI}.$ext" 
         mv $release ${REL}-${RELVER}${QUALI}.$ext
         echo "ext=$ext" >> $GITHUB_OUTPUT
         echo "app_type=$app_type" >> $GITHUB_OUTPUT
@@ -259,7 +260,7 @@ runs:
       env:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
-        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}.
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
         EXT: ${{ steps.ipa_apk.outputs.ext }}
         APP_TYPE: ${{ steps.ipa_apk.outputs.app_type }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
@@ -279,7 +280,7 @@ runs:
       env:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
-        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}.
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Uplad Test Package"
