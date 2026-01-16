@@ -338,7 +338,7 @@ runs:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
-      run:
+      run: |
         aws devicefarm schedule-run \
           --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
