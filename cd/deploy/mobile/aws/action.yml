@@ -318,7 +318,7 @@ runs:
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
-        echo "::group::Uplad Test Package"
+        echo "::group::Upload Test Package"
         arn=$(aws devicefarm create-upload \
           --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
@@ -339,6 +339,7 @@ runs:
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
+        echo "::group::Schedule Run"
         aws devicefarm schedule-run \
           --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
@@ -346,3 +347,4 @@ runs:
           --device-pool-arn ${{ steps.device_pool_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}" \
           --test type=${{ steps.run_test_type.outputs.result }},testPackageArn=${{ steps.deploy_test_pkg.outputs.result }} \
+        echo "::endgroup::"
