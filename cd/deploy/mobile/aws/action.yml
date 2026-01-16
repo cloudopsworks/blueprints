@@ -263,10 +263,12 @@ runs:
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Upload APK to Device Farm"
-        aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
+        arn=$(aws devicefarm create-upload --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --name "${REL}-${RELVER}${QUALI}.$EXT" \
           --type "$APP_TYPE" \
-          --content-type "application/octet-stream"
+          --content-type "application/octet-stream" \
+          --query 'upload.arn' --output text)
+        echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
 
     - name: Deploy Test Package
