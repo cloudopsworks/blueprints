@@ -213,7 +213,7 @@ runs:
         res=$(aws devicefarm list-projects --region ${{ inputs.aws_region }} --query "projects[?name=='${{ steps.device_farm.outputs.result }}'].arn | [0]" --output text)
 
     - name: Restore Pipeline Artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v74
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}
