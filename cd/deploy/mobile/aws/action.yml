@@ -305,7 +305,7 @@ runs:
           --content-type "application/octet-stream")
         arn=$(echo "$aws_result" | jq -r '.upload.arn')
         upload_url=$(echo "$aws_result" | jq -r '.upload.url')
-        echo "$upload_url"
+        echo "ARN=$arn"
         curl -T "${REL}-${RELVER}${QUALI}.$EXT" -H "Content-Type: application/octet-stream" "$upload_url"
         echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
@@ -330,7 +330,7 @@ runs:
           --content-type "application/octet-stream")
         arn=$(echo "$aws_result" | jq -r '.upload.arn')
         upload_url=$(echo "$aws_result" | jq -r '.upload.url')
-        echo "$upload_url"
+        echo "ARN=$arn"
         curl -T "${REL}-${RELVER}${QUALI}-tests.zip" -H "Content-Type: application/octet-stream" "$upload_url"
         echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
