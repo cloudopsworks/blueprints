@@ -242,7 +242,7 @@ runs:
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
         ext="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ipa' || 'apk' }}"
-        app_type="{{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'IOS_APP' || 'ANDROID_APP' }}"
+        app_type="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'IOS_APP' || 'ANDROID_APP' }}"
         release=$(ls *.$ext 2>/dev/null)
         echo "Found: $release, moving to: ${REL}-${RELVER}${QUALI}.$ext" 
         mv "$release" ${REL}-${RELVER}${QUALI}.$ext
