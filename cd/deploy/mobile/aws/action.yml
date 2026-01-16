@@ -226,6 +226,11 @@ runs:
       run: |
         zip -r ${{ inputs.blueprint_path }}/devicefarms/aws/release/${{ inputs.release_name }}-${{ inputs.release_version }}${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}-tests.zip .
 
+    - name: test
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      shell: bash
+      run: ls -la
+
     - name: Upload IPA/APK
       id: upload_pkg
       if: ${{ ! cancelled() }}
