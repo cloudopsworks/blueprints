@@ -69,7 +69,13 @@ inputs:
   build_provision_profile_b64:
     description: 'The base64 encoded provision profile to use for the build'
     required: true
-  dev_provision_profile_b64:
+  dev_build_certificate_b64:
+    description: 'The base64 encoded certificate to use for the build'
+    required: true
+  dev_build_certificate_pass:
+    description: 'The password for the certificate'
+    required: true
+  dev_build_provision_profile_b64:
     description: 'The base64 encoded development provision profile to use for the build'
     required: true
   keychain_password:
@@ -132,17 +138,24 @@ runs:
         BUILD_CERTIFICATE_BASE64: ${{ inputs.build_certificate_b64 }}
         P12_PASSWORD: ${{ inputs.build_certificate_pass }}
         BUILD_PROVISION_PROFILE_BASE64: ${{ inputs.build_provision_profile_b64 }}
-        DEV_PROVISION_PROFILE_BASE64: ${{ inputs.dev_provision_profile_b64 }}
+        DEV_CERTIFICATE_BASE64: ${{ inputs.dev_build_certificate_b64 }}
+        DEV_P12_PASSWORD: ${{ inputs.dev_build_certificate_pass }}
+        DEV_PROVISION_PROFILE_BASE64: ${{ inputs.dev_build_provision_profile_b64 }}
         KEYCHAIN_PASSWORD: ${{ inputs.keychain_password }}
       run: |
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+        
+        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
+        DEV_CERTIFICATE_PATH=$RUNNER_TEMP/develop_certificate.p12
         
         # import certificate and provisioning profile from secrets
         echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
         echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+        if [ "$DEV_CERTIFICATE_BASE64" != "" ]; then
+          echo -n "$DEV_CERTIFICATE_BASE64" | base64 --decode -o $DEV_CERTIFICATE_PATH
+        fi
         if [ "$DEV_PROVISION_PROFILE_BASE64" != "" ]; then
           echo -n "$DEV_PROVISION_PROFILE_BASE64" | base64 --decode -o $DEVPP_PATH
         fi
@@ -154,6 +167,9 @@ runs:
 
         # import certificate to keychain
         security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        if [ "$DEV_CERTIFICATE_BASE64" != "" ]; then
+          security import $DEV_CERTIFICATE_PATH -P "$DEV_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        fi
         security list-keychain -d user -s $KEYCHAIN_PATH
 
     - name: Set Provissioning Profile - Xcode >= 16
