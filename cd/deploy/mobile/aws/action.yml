@@ -255,16 +255,23 @@ runs:
         name: ${{ inputs.artifacts_name }}
         path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
 
+    - name: Restore Target BuildPipeline Artifacts
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      with:
+        name: ${{ inputs.artifacts_name }}_target
+        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+
     - name: Zip test contents
       if: ${{ steps.test_script_available.outputs.result == 'true' }}
-      working-directory: ${{ inputs.source_path }}/${{ steps.test_script_path.outputs.result }}
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/build/derived-data/Build/Products/Debug-iphoneos
       shell: bash
       env:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip *Tests-Runner.app *.xctestrun
 
     - name: Rename IPA/APK
       id: ipa_apk

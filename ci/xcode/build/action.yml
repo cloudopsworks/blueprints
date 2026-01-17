@@ -199,8 +199,8 @@ runs:
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' ${{ inputs.xcode_extra_args }} \
+          -derivedDataPath build/derived-data \
           clean $for_test archive
-        ls -lR build/
         echo "::endgroup::"
 #          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
 #          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
