@@ -60,6 +60,10 @@ inputs:
     description: 'The XCode extra arguments to use for the build'
     required: false
     default: ''
+  xcode_extra_targets:
+    description: 'The XCode extra target arguments to use for the build'
+    required: false
+    default: ''
   build_certificate_b64:
     description: 'The base64 encoded certificate to use for the build'
     required: true
@@ -205,18 +209,13 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::XCode Build"
-        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
-        for_test=""
-        if [ -f $DEVPP_PATH ] ; then
-          for_test="build-for-testing"
-        fi
         xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
           -archivePath build/${{ inputs.project_key }}.xcarchive \
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' ${{ inputs.xcode_extra_args }} \
           -derivedDataPath build/derived-data \
-          clean $for_test archive
+          clean ${{ inputs.xcode_extra_targets }} archive
         echo "::endgroup::"
 #          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
 #          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
