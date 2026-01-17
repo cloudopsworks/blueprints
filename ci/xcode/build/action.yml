@@ -69,6 +69,9 @@ inputs:
   build_provision_profile_b64:
     description: 'The base64 encoded provision profile to use for the build'
     required: true
+  dev_provision_profile_b64:
+    description: 'The base64 encoded development provision profile to use for the build'
+    required: true
   keychain_password:
     description: 'The keychain password to use for the build'
     required: true
@@ -129,15 +132,20 @@ runs:
         BUILD_CERTIFICATE_BASE64: ${{ inputs.build_certificate_b64 }}
         P12_PASSWORD: ${{ inputs.build_certificate_pass }}
         BUILD_PROVISION_PROFILE_BASE64: ${{ inputs.build_provision_profile_b64 }}
+        DEV_PROVISION_PROFILE_BASE64: ${{ inputs.dev_provision_profile_b64 }}
         KEYCHAIN_PASSWORD: ${{ inputs.keychain_password }}
       run: |
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
         
         # import certificate and provisioning profile from secrets
         echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
         echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+        if [ "$DEV_PROVISION_PROFILE_BASE64" != "" ]; then
+          echo -n "$DEV_PROVISION_PROFILE_BASE64" | base64 --decode -o $DEVPP_PATH
+        fi
 
         # create temporary keychain
         security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
@@ -153,10 +161,14 @@ runs:
       shell: bash
       run: |
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
         cp $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+        if [ -f $DEVPP_PATH ] ; then
+          cp $DEVPP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+        fi
 
     - name: Set Provissioning Profile - Xcode < 16
       if: ${{ ! startsWith(inputs.xcode_version, '16') }}
@@ -177,12 +189,17 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::XCode Build"
+        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
+        for_test=""
+        if [ -f $DEVPP_PATH ] ; then
+          for_test="build-for-testing"
+        fi
         xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
           -archivePath build/${{ inputs.project_key }}.xcarchive \
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' ${{ inputs.xcode_extra_args }} \
-          clean build-for-testing archive
+          clean $for_test archive
         ls -lR build/
         echo "::endgroup::"
 #          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
