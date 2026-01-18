@@ -263,7 +263,7 @@ runs:
         path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
 
     - name: Zip test contents
-      if: ${{ steps.test_script_available.outputs.result == 'true' }}
+      if: ${{ steps.test_script_available.outputs.result == 'true' && contains(fromJSON('["ios"]'), inputs.platform_type) }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/build/derived-data/Build/Products/Debug-iphoneos
       shell: bash
       env:
