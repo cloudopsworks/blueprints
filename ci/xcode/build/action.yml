@@ -165,16 +165,16 @@ runs:
         fi
 
         # create temporary keychain
-        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security -v create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security -v set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security -v unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
         # import certificate to keychain
-        security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security -v import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         if [ "$DEV_CERTIFICATE_BASE64" != "" ]; then
-          security import $DEV_CERTIFICATE_PATH -P "$DEV_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security -v import $DEV_CERTIFICATE_PATH -P "$DEV_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         fi
-        security list-keychain -d user -s $KEYCHAIN_PATH
+        security -v list-keychain -d user -s $KEYCHAIN_PATH
 
     - name: Set Provissioning Profile - Xcode >= 16
       if: ${{ startsWith(inputs.xcode_version, '16') }}
@@ -185,9 +185,9 @@ runs:
 
         # apply provisioning profile
         mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
-        cp $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+        cp -v $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
         if [ -f $DEVPP_PATH ] ; then
-          cp $DEVPP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+          cp -v $DEVPP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
         fi
 
     - name: Set Provissioning Profile - Xcode < 16
@@ -195,10 +195,14 @@ runs:
       shell: bash
       run: |
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+        cp -v $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+        if [ -f $DEVPP_PATH ] ; then
+          cp -v $DEVPP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+        fi
 
     # Build the code!
     - name: Build Code
