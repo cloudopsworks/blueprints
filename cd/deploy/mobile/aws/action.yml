@@ -275,7 +275,7 @@ runs:
         mkdir -p $tmpdir/.xctest
         mv Debug-*/*Tests-Runner.app $tmpdir/.xctest 
         mv *.xctestrun $tmpdir/.xctest
-        cd $tmpdir/.xctest
+        cd $tmpdir/
         zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
 
     - name: Rename IPA/APK
