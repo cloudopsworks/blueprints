@@ -73,7 +73,7 @@ inputs:
   artifacts_name:
     description: 'The name of the artifacts to save'
     required: false
-    default: 'build_artifacts'
+    default: 'source_artifacts'
   front_end:
     description: 'The front end flag, used mainly for NodeJS targets'
     required: false
