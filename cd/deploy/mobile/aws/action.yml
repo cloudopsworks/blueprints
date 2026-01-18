@@ -73,7 +73,7 @@ inputs:
   artifacts_name:
     description: 'The name of the artifacts to save'
     required: false
-    default: 'source_artifacts'
+    default: 'build_artifacts'
   front_end:
     description: 'The front end flag, used mainly for NodeJS targets'
     required: false
@@ -259,7 +259,7 @@ runs:
       uses: actions/download-artifact@v7
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
-        name: ${{ inputs.artifacts_name }}_target
+        name: source_artifacts_target
         path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
 
     - name: Zip test contents
