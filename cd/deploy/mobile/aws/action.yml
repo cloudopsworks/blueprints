@@ -264,14 +264,14 @@ runs:
 
     - name: Zip test contents
       if: ${{ steps.test_script_available.outputs.result == 'true' && contains(fromJSON('["ios"]'), inputs.platform_type) }}
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/build/derived-data/Build/Products/Debug-iphoneos
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/build/derived-data/Build/Products
       shell: bash
       env:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip *Tests-Runner.app *.xctestrun
+        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip Debug-*/*Tests-Runner.app *.xctestrun
 
     - name: Rename IPA/APK
       id: ipa_apk
