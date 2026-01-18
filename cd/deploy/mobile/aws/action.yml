@@ -273,10 +273,18 @@ runs:
       run: |
         tmpdir=$(mktemp -d)
         mkdir -p $tmpdir/.xctest
-        mv Debug-*/*Tests-Runner.app $tmpdir/.xctest 
-        mv *.xctestrun $tmpdir/.xctest
-        cd $tmpdir/
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        if [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST_UI" ]]; then
+          mv Debug-*/*Tests-Runner.app $tmpdir/ 
+          mv *.xctestrun $tmpdir/
+          cd $tmpdir/
+          zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        elif [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST" ]] ; then
+          mv Debug-*/*.app/Plugins/*.xctest $tmpdir/
+          cd $tmpdir/
+          zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        else
+          echo "::warning::Unsupported test script type for iOS Device Farm XCTEST upload: ${{ steps.run_test_type.outputs.result }}"
+        fi
 
     - name: Rename IPA/APK
       id: ipa_apk
