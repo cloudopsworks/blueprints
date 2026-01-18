@@ -335,9 +335,10 @@ runs:
             echo "::error::Upload failed, failing the step."
             exit 1
           elif [[ "$status" == "SUCCEEDED" ]]; then
+            echo "Upload Succeeded!"
             break
           else
-            echo "::warning::Upload status is $status, retrying"
+            echo "Upload status is $status, retrying"
           fi
         done
         echo "result=$arn" >> $GITHUB_OUTPUT
@@ -373,9 +374,10 @@ runs:
             echo "::error::Upload failed, failing the step."
             exit 1
           elif [[ "$status" == "SUCCEEDED" ]]; then
+            echo "Upload Succeeded!"
             break
           else
-            echo "::warning::Upload status is $status, retrying"
+            echo "Upload status is $status, retrying"
           fi
         done
         echo "result=$arn" >> $GITHUB_OUTPUT
