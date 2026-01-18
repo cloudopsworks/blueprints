@@ -327,6 +327,15 @@ runs:
         upload_url=$(echo "$aws_result" | jq -r '.upload.url')
         echo "ARN=$arn"
         curl -T "${REL}-${RELVER}${QUALI}.$EXT" -H "Content-Type: application/octet-stream" "$upload_url"
+        # Retry 3 times with 10 sec - Get status wit aws devicefarm get-upload, depending on query upload.status if FAILED fail the step
+        for i in {1..3}; do
+          sleep 10
+          status=$(aws devicefarm get-upload --arn $arn --query "upload.status" --output text)
+          if [[ "$status" == "FAILED" ]]; then
+            echo "::error::Upload failed, failing the step."
+            exit 1
+          fi
+        done
         echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
 
@@ -352,6 +361,15 @@ runs:
         upload_url=$(echo "$aws_result" | jq -r '.upload.url')
         echo "ARN=$arn"
         curl -T "${REL}-${RELVER}${QUALI}-tests.zip" -H "Content-Type: application/octet-stream" "$upload_url"
+        # Retry 3 times with 10 sec - Get status wit aws devicefarm get-upload, depending on query upload.status if FAILED fail the step
+        for i in {1..3}; do
+          sleep 10
+          status=$(aws devicefarm get-upload --arn $arn --query "upload.status" --output text)
+          if [[ "$status" == "FAILED" ]]; then
+            echo "::error::Upload failed, failing the step."
+            exit 1
+          fi
+        done
         echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
 
