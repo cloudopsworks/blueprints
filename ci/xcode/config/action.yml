@@ -118,5 +118,5 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-          OUT=$(yq e '.xcode.version // "15.2"' .cloudopsworks/vars/inputs-global.yaml)
+          OUT=$(yq e '.xcode.version // "16.4"' .cloudopsworks/vars/inputs-global.yaml)
           echo "result=$OUT" >> $GITHUB_OUTPUT

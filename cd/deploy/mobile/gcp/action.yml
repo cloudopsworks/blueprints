@@ -1,0 +1,272 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Deploy Mobile Application Google Cloud Platform Firebase Test Lab
+author: cloudopsworks
+description: Deploy Mobile Application to Google Cloud Platform Firebase Test Lab
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The GitHub token'
+    required: true
+  platform_type:
+    description: 'The mobile platform type'
+    required: true
+  gcp_credentials:
+    description: 'Google Cloud Credentials'
+    required: true
+  gcp_project:
+    description: 'Google Cloud Project Name'
+    required: true
+  gcp_region:
+    description: 'Google Cloud Region'
+    required: true
+  gcp_impersonate_sa:
+    description: 'Google Cloud SA Impersonation account'
+    required: true
+  terraform_state_conf:
+    description: 'The Terraform state configuration'
+    required: true
+  unlock:
+    description: 'Unlock the state'
+    required: false
+    default: 'false'
+  lock_id:
+    description: 'The lock ID'
+    required: false
+    default: ''
+  destroy:
+    description: 'Destroy the state'
+    required: false
+    default: 'false'
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  qualifier:
+    description: 'The release qualifier'
+    required: false
+    default: ''
+  project_key:
+    description: 'The package name'
+    required: true
+  deployment_name:
+    description: 'The deployment name'
+    required: true
+  environment:
+    description: 'The environment'
+    required: true
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  front_end:
+    description: 'The front end flag, used mainly for NodeJS targets'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: XCode Version
+      id: xcode_version
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        res=$(yq e '.xcode.version // "16.4"' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$res" >> $GITHUB_OUTPUT
+
+    - name: Test Script Path
+      id: test_script_path
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        res=$(yq e '.gcp.test_script_path // "device_tests"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$res" >> $GITHUB_OUTPUT
+
+    - name: Tests Scripts Available
+      id: test_script_available
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        res=false
+        # Check dir exists
+        if [ -d '${{ steps.test_script_path.outputs.result }}' ] ; then
+          # Check dir has content
+          if [ "$(ls -A '${{ steps.test_script_path.outputs.result }}')" ] ; then
+            res=true
+          fi
+        fi
+        echo "result=$res" >> $GITHUB_OUTPUT
+
+    - name: Test Script Type
+      id: test_script_type
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        res=$(yq e '.gcp.test_script_type // "APPIUM_PYTHON_TEST_PACKAGE"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$res" >> $GITHUB_OUTPUT
+
+    - name: Test Script Type for Schedule Run
+      id: run_test_type
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        val=${{ steps.test_script_type.outputs.result }}
+        # strip following from res string: _TEST_SPEC, _TEST_PACKAGE
+        res=${val/_TEST_SPEC/}
+        res=${res/_TEST_PACKAGE/}
+        echo "result=$res" >> $GITHUB_OUTPUT
+
+    - name: Generate release.yaml
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
+      shell: bash
+      run: |
+        cat > release.yaml << EOF 
+        release:
+          name: ${{ inputs.release_name }}
+          source:
+            name: ${{ inputs.project_key }}
+            version: ${{ inputs.release_version }}${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
+        EOF
+
+    - name: Insert release.qualifier data into release.yaml
+      if: ${{ inputs.qualifier != '' }}
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
+      shell: bash
+      run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
+
+    - name: Generate Global Inputs global-inputs.yaml
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
+      shell: bash
+      run: |
+        cat > global-inputs.yaml << EOF
+        environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
+        release_name: ${{ inputs.release_name }}
+        default:
+          region: ${{ inputs.aws_region }}
+          sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+        EOF
+
+    - name: Determine Plan Action
+      uses: actions/github-script@v8
+      id: plan_action
+      with:
+        script: |
+          const is_destroy = ${{ inputs.destroy }};
+          const is_unlock = ${{ inputs.unlock }};
+          if (is_destroy) {
+            core.setOutput('value', 'plan -destroy -no-color -input=false')
+            console.log('destroy');
+          } else {
+            if (is_unlock) {
+              core.setOutput('value', 'force-unlock -force ${{ inputs.lock_id }}')
+              console.log('unlock');
+            } else {
+              core.setOutput('value', 'plan -no-color -input=false')
+              console.log('apply');
+            }
+          }
+
+    - name: Gcloud Impersonate Session
+      id: impersonate
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ inputs.gcp_credentials }}
+        service_account: ${{ inputs.gcp_impersonate_sa }}
+        project_id: ${{ inputs.gcp_project }}
+
+    - name: Restore Pipeline Artifacts
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+
+    - name: Restore Target BuildPipeline Artifacts
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      with:
+        name: source_artifacts_target
+        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+
+    - name: Zip test contents - IOS
+      if: ${{ steps.test_script_available.outputs.result == 'true' && contains(fromJSON('["ios"]'), inputs.platform_type) }}
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/derived-data/Build/Products
+      shell: bash
+      env:
+        REL: ${{ inputs.release_name }}
+        RELVER: ${{ inputs.release_version }}
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+      run: |
+        tmpdir=$(mktemp -d)
+        mkdir -p $tmpdir/.xctest
+        if [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST_UI" ]]; then
+          mv Debug-*/*Tests-Runner.app $tmpdir/ 
+          mv *.xctestrun $tmpdir/
+          cd $tmpdir/
+          zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        elif [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST" ]] ; then
+          mv Debug-*/*.app/Plugins/*.xctest $tmpdir/
+          cd $tmpdir/
+          zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        else
+          echo "::warning::Unsupported test script type for iOS Device Farm XCTEST upload: ${{ steps.run_test_type.outputs.result }}"
+        fi
+
+    - name: Zip test contents - Android
+      if: ${{ steps.test_script_available.outputs.result == 'true' && ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
+      working-directory: ${{ inputs.source_path }}/${{ steps.test_script_path.outputs.result }}
+      shell: bash
+      run: |
+        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+
+    - name: Rename IPA/APK
+      id: ipa_apk
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      shell: bash
+      env:
+        REL: ${{ inputs.release_name }}
+        RELVER: ${{ inputs.release_version }}
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+      run: |
+        ext="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ipa' || 'apk' }}"
+        app_type="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'IOS_APP' || 'ANDROID_APP' }}"
+        release=$(ls *.$ext 2>/dev/null)
+        echo "Found: $release, moving to: ${REL}-${RELVER}${QUALI}.$ext" 
+        mv "$release" ${REL}-${RELVER}${QUALI}.$ext
+        echo "ext=$ext" >> $GITHUB_OUTPUT
+        echo "app_type=$app_type" >> $GITHUB_OUTPUT
+
+    - name: Schedule Run - Firebase Test Lab
+      id: run_pool
+      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() && steps.deploy_test_pkg.outcome == 'success' && steps.upload_pkg.outcome == 'success' }}
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      shell: bash
+      env:
+        REL: ${{ inputs.release_name }}
+        RELVER: ${{ inputs.release_version }}
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+      run: |
+        echo "::group::Schedule Run - Firebase Test Lab"
+        target=ext="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
+        devices=$(yq e '.gcp.devices[] | . as $item | "--device model=" + $item.model_id + ($item.version_id // "" | select(length > 0) | ",version=" + .) + ($item.locale_id // "" | select(length > 0) | ",locale=" + .) + ($item.orientation // "" | select(length > 0) | ",orientation=" + .)' .cloudopsworks/vars/inputs-dev.yaml | tr '\n' ' ')
+        gcloud firebase test $target run \
+          --test ${REL}-${RELVER}${QUALI}-tests.zip \
+          $devices \
+          --xcode-version=${{ steps.xcode_version.outputs.result }}
+        echo "::endgroup::"
