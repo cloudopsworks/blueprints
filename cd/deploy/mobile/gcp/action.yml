@@ -182,13 +182,24 @@ runs:
             }
           }
 
-    - name: Gcloud Impersonate Session
+    - name: GCloud Session
+      id: session
+      if: ${{ inputs.gcp_impersonate_sa == '' }}
+      uses: google-github-actions/auth@v3
+      with:
+        credentials_json: ${{ inputs.gcp_credentials }}
+        project_id: ${{ inputs.gcp_project }}
+        export_environment_variables: true
+
+    - name: GCloud Impersonate Session
       id: impersonate
-      uses: google-github-actions/auth@v1
+      if: ${{ inputs.gcp_impersonate_sa != '' }}
+      uses: google-github-actions/auth@v3
       with:
         credentials_json: ${{ inputs.gcp_credentials }}
         service_account: ${{ inputs.gcp_impersonate_sa }}
         project_id: ${{ inputs.gcp_project }}
+        export_environment_variables: true
 
     - name: Restore Pipeline Artifacts
       uses: actions/download-artifact@v7
