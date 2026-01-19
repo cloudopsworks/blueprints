@@ -118,7 +118,8 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        res=$(yq e '.gcp.test_script_type // "APPIUM_PYTHON_TEST_PACKAGE"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        res=$(yq e '.gcp.test_script_type // "robo"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$res" >> $GITHUB_OUTPUT
         echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Test Script Type for Schedule Run
@@ -275,7 +276,8 @@ runs:
         echo "::group::Schedule Run - Firebase Test Lab"
         target="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
         gcloud firebase test $target run \
-          --test ${REL}-${RELVER}${QUALI}-tests.zip \
+          --test=${REL}-${RELVER}${QUALI}-tests.zip \
           ${{ steps.device_config.outputs.result  }} \
-          --xcode-version=${{ steps.xcode_version.outputs.result }}
+          --xcode-version=${{ steps.xcode_version.outputs.result }} \ 
+          --type=${{ steps.run_test_type.outputs.result }}
         echo "::endgroup::"
