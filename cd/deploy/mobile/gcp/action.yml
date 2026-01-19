@@ -267,7 +267,7 @@ runs:
           --impersonate-service-account=${{ inputs.gcp_impersonate_sa }} \
           --test=${REL}-${RELVER}${QUALI}-tests.zip \
           ${{ steps.device_config.outputs.result  }} \
-          --xcode-version=${{ steps.xcode_version.outputs.result }} \ 
+          --xcode-version=${{ steps.xcode_version.outputs.result }} \
           --type=${{ steps.run_test_type.outputs.result }} \
           --client-details=matrixLabel="${REL}-${RELVER}${QUALI}" \
           --async
