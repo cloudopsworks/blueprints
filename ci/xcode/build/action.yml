@@ -60,6 +60,10 @@ inputs:
     description: 'The XCode extra arguments to use for the build'
     required: false
     default: ''
+  xcode_extra_targets:
+    description: 'The XCode extra target arguments to use for the build'
+    required: false
+    default: ''
   build_certificate_b64:
     description: 'The base64 encoded certificate to use for the build'
     required: true
@@ -68,6 +72,15 @@ inputs:
     required: true
   build_provision_profile_b64:
     description: 'The base64 encoded provision profile to use for the build'
+    required: true
+  dev_build_certificate_b64:
+    description: 'The base64 encoded certificate to use for the build'
+    required: true
+  dev_build_certificate_pass:
+    description: 'The password for the certificate'
+    required: true
+  dev_build_provision_profile_b64:
+    description: 'The base64 encoded development provision profile to use for the build'
     required: true
   keychain_password:
     description: 'The keychain password to use for the build'
@@ -117,7 +130,7 @@ runs:
     - name: Select XCODE version from github macos runner
       shell: bash
       run: |
-        echo "::group::XCode Version SET"
+        echo "::group::Select XCode Version ${{ inputs.xcode_version }} Tooling"
         sudo xcode-select -s /Applications/Xcode_${{ inputs.xcode_version }}.app
         echo "::endgroup::"
 
@@ -129,44 +142,67 @@ runs:
         BUILD_CERTIFICATE_BASE64: ${{ inputs.build_certificate_b64 }}
         P12_PASSWORD: ${{ inputs.build_certificate_pass }}
         BUILD_PROVISION_PROFILE_BASE64: ${{ inputs.build_provision_profile_b64 }}
+        DEV_CERTIFICATE_BASE64: ${{ inputs.dev_build_certificate_b64 }}
+        DEV_P12_PASSWORD: ${{ inputs.dev_build_certificate_pass }}
+        DEV_PROVISION_PROFILE_BASE64: ${{ inputs.dev_build_provision_profile_b64 }}
         KEYCHAIN_PASSWORD: ${{ inputs.keychain_password }}
       run: |
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
         
+        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
+        DEV_CERTIFICATE_PATH=$RUNNER_TEMP/develop_certificate.p12
+        
         # import certificate and provisioning profile from secrets
         echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
         echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+        if [ "$DEV_CERTIFICATE_BASE64" != "" ]; then
+          echo -n "$DEV_CERTIFICATE_BASE64" | base64 --decode -o $DEV_CERTIFICATE_PATH
+        fi
+        if [ "$DEV_PROVISION_PROFILE_BASE64" != "" ]; then
+          echo -n "$DEV_PROVISION_PROFILE_BASE64" | base64 --decode -o $DEVPP_PATH
+        fi
 
         # create temporary keychain
-        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security -v create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security -v set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security -v unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
         # import certificate to keychain
-        security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-        security list-keychain -d user -s $KEYCHAIN_PATH
+        security -v import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        if [ "$DEV_CERTIFICATE_BASE64" != "" ]; then
+          security -v import $DEV_CERTIFICATE_PATH -P "$DEV_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        fi
+        security -v list-keychain -d user -s $KEYCHAIN_PATH
 
     - name: Set Provissioning Profile - Xcode >= 16
       if: ${{ startsWith(inputs.xcode_version, '16') }}
       shell: bash
       run: |
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles
-        cp $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+        cp -v $PP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+        if [ -f $DEVPP_PATH ] ; then
+          cp -v $DEVPP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+        fi
 
     - name: Set Provissioning Profile - Xcode < 16
       if: ${{ ! startsWith(inputs.xcode_version, '16') }}
       shell: bash
       run: |
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+        DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
 
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+        cp -v $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+        if [ -f $DEVPP_PATH ] ; then
+          cp -v $DEVPP_PATH ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/
+        fi
 
     # Build the code!
     - name: Build Code
@@ -182,7 +218,8 @@ runs:
           -sdk ${{ inputs.xcode_sdk }} \
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' ${{ inputs.xcode_extra_args }} \
-          clean archive
+          -derivedDataPath build/derived-data \
+          clean ${{ inputs.xcode_extra_targets }} archive
         echo "::endgroup::"
 #          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
 #          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \

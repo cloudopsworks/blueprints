@@ -42,6 +42,9 @@ outputs:
   xcode_extra_args:
     description: 'The XCode extra arguments to use for the build'
     value: ${{ steps.xcode_extra_args.outputs.result }}
+  xcode_extra_targets:
+    description: 'The XCode extra target arguments to use for the build'
+    value: ${{ steps.xcode_extra_targets.outputs.result }}
 
 runs:
   using: 'composite'
@@ -102,10 +105,18 @@ runs:
         OUT=$(yq e '.xcode.extra_args // ""' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
+    - name: get xcode extra target args from inputs-global.yaml with yq
+      id: xcode_extra_targets
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.extra_targets // ""' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
     - name: Get Specified XCode Version
       id: xcode_version
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-          OUT=$(yq e '.xcode.version // "14.1"' .cloudopsworks/vars/inputs-global.yaml)
+          OUT=$(yq e '.xcode.version // "16.4"' .cloudopsworks/vars/inputs-global.yaml)
           echo "result=$OUT" >> $GITHUB_OUTPUT

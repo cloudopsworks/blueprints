@@ -276,7 +276,7 @@ runs:
 
     - name: Save Plan Artifacts
       if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.artifacts_name }}_iac
         retention-days: 1
@@ -287,7 +287,7 @@ runs:
           !**/.terraform/**
 
     - name: Restore Pipeline Artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}

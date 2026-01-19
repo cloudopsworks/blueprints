@@ -27,7 +27,7 @@ runs:
   using: 'composite'
   steps:
     - name: Restore Cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       id: cache
       with:
         path: .cloudopsworks_wf
@@ -170,7 +170,7 @@ runs:
         touch .cloudopsworks_wf/.check-module-version
 
     - name: Save Cache
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       id: cache_save
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       with:

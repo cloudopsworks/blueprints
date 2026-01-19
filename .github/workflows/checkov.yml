@@ -28,7 +28,7 @@ jobs:
     if: (github.actor != 'dependabot[bot]')
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Determine Checkov checks
         id: checkov-checks
@@ -64,7 +64,7 @@ jobs:
 
       - name: Upload Checkov results
         if: success() || failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: checkov-results
           path: checkov_results.txt

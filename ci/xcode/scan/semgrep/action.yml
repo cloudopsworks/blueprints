@@ -55,5 +55,5 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        semgrep --config=p/default . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
+        semgrep --config=p/swift . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
         semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.split_excludes.outputs.result }}
