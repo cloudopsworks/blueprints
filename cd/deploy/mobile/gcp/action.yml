@@ -158,8 +158,9 @@ runs:
         environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
         release_name: ${{ inputs.release_name }}
         default:
-          region: ${{ inputs.aws_region }}
-          sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+          region: ${{ inputs.gcp_region }}
+          project: ${{ inputs.gcp_project }}
+          impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
         EOF
 
     - name: Determine Plan Action
