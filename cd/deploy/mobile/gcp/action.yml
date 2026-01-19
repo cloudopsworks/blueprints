@@ -254,7 +254,7 @@ runs:
 
     - name: Schedule Run - Firebase Test Lab
       id: run_pool
-      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() && steps.deploy_test_pkg.outcome == 'success' && steps.upload_pkg.outcome == 'success' }}
+      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
       shell: bash
       env:
