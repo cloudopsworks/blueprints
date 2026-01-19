@@ -427,7 +427,7 @@ runs:
           --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --app-arn ${{ steps.upload_pkg.outputs.result }} \
-          --device-selection-configuration ${{ steps.device_config_filter.outputs.filter }}
+          --device-selection-configuration ${{ steps.device_config_filter.outputs.filter }} \
           --name "${REL}-${RELVER}${QUALI}" \
           --test type=${{ steps.run_test_type.outputs.result }},testPackageArn=${{ steps.deploy_test_pkg.outputs.result }}
         echo "::endgroup::"
