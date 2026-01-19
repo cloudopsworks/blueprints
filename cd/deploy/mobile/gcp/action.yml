@@ -225,18 +225,10 @@ runs:
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
         tmpdir=$(mktemp -d)
-        if [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST_UI" ]]; then
-          mv Debug-* $tmpdir/ 
-          mv *.xctestrun $tmpdir/
-          cd $tmpdir/
-          zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
-        elif [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST" ]] ; then
-          mv Debug-* $tmpdir/
-          cd $tmpdir/
-          zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
-        else
-          echo "::warning::Unsupported test script type for iOS Device Farm XCTEST upload: ${{ steps.run_test_type.outputs.result }}"
-        fi
+        mv Debug-* $tmpdir/ 
+        mv *.xctestrun $tmpdir/
+        cd $tmpdir/
+        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
 
     - name: Zip test contents - Android
       if: ${{ steps.test_script_available.outputs.result == 'true' && ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
