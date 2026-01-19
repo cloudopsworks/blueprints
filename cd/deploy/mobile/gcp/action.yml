@@ -114,27 +114,15 @@ runs:
         echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Test Script Type
-      id: test_script_type
+      id: run_test_type
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         res=$(yq e '.gcp.test_script_type // "robo"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
-        echo "result=$res" >> $GITHUB_OUTPUT
-
-    - name: Test Script Type for Schedule Run
-      id: run_test_type
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        val=${{ steps.test_script_type.outputs.result }}
-        # strip following from res string: _TEST_SPEC, _TEST_PACKAGE
-        res=${val/_TEST_SPEC/}
-        res=${res/_TEST_PACKAGE/}
-        echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Generate release.yaml
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp
       shell: bash
       run: |
         cat > release.yaml << EOF 
@@ -147,12 +135,12 @@ runs:
 
     - name: Insert release.qualifier data into release.yaml
       if: ${{ inputs.qualifier != '' }}
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp
       shell: bash
       run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp
       shell: bash
       run: |
         cat > global-inputs.yaml << EOF
@@ -207,18 +195,18 @@ runs:
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}
-        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+        path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
 
     - name: Restore Target BuildPipeline Artifacts
       uses: actions/download-artifact@v7
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: source_artifacts_target
-        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+        path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
 
     - name: Zip test contents - IOS
       if: ${{ steps.test_script_available.outputs.result == 'true' && contains(fromJSON('["ios"]'), inputs.platform_type) }}
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/derived-data/Build/Products
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release/derived-data/Build/Products
       shell: bash
       env:
         REL: ${{ inputs.release_name }}
@@ -229,18 +217,18 @@ runs:
         mv Debug-* $tmpdir/ 
         mv *.xctestrun $tmpdir/
         cd $tmpdir/
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .
 
     - name: Zip test contents - Android
       if: ${{ steps.test_script_available.outputs.result == 'true' && ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
       working-directory: ${{ inputs.source_path }}/${{ steps.test_script_path.outputs.result }}
       shell: bash
       run: |
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .
 
     - name: Rename IPA/APK
       id: ipa_apk
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
       shell: bash
       env:
         REL: ${{ inputs.release_name }}
@@ -266,7 +254,7 @@ runs:
     - name: Schedule Run - Firebase Test Lab
       id: run_pool
       if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() }}
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
       shell: bash
       env:
         REL: ${{ inputs.release_name }}
