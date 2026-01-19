@@ -409,7 +409,7 @@ runs:
         osver=$(yq e '.aws.device.os_version' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         max=$(yq e '.aws.device.max_devices' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         plat="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'iOS' || 'Android' }}"
-        echo "filter={\"filters\":[{\"attribute\":\"PLATFORM\",\"operator\":\"EQUALS\",\"value\":\"$plat\"},{\"attribute\":\"FORM_FACTOR\",\"operator\":\"EQUALS\",\"value\":\"$ff\"},{\"attribute\":\"MODEL\",\"operator\":\"EQUALS\",\"value\":\"$model\"},{\"attribute\":\"OS_VERSION\",\"operator\":\"EQUALS\",\"value\":\"$osver\"}],\"maxDevices\":$max}" >> $GITHUB_OUTPUT
+        echo "filter={\"filters\":[{\"attribute\":\"PLATFORM\",\"operator\":\"EQUALS\",\"values\":[\"$plat\"]},{\"attribute\":\"FORM_FACTOR\",\"operator\":\"EQUALS\",\"values\":[\"$ff\"]},{\"attribute\":\"MODEL\",\"operator\":\"EQUALS\",\"values\":[\"$model\"]},{\"attribute\":\"OS_VERSION\",\"operator\":\"EQUALS\",\"values\":[\"$osver\"]}],\"maxDevices\":$max}" >> $GITHUB_OUTPUT
 
     - name: Schedule Run - Specific Devices
       id: run_device
