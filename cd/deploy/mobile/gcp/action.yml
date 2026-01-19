@@ -225,14 +225,13 @@ runs:
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
         tmpdir=$(mktemp -d)
-        mkdir -p $tmpdir/.xctest
         if [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST_UI" ]]; then
-          mv Debug-*/*Tests-Runner.app $tmpdir/ 
+          mv Debug-* $tmpdir/ 
           mv *.xctestrun $tmpdir/
           cd $tmpdir/
           zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
         elif [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST" ]] ; then
-          mv Debug-*/*.app/Plugins/*.xctest $tmpdir/
+          mv Debug-* $tmpdir/
           cd $tmpdir/
           zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
         else
