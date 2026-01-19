@@ -121,6 +121,17 @@ runs:
         res=$(yq e '.gcp.test_script_type // "robo"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
 
+    - name: Results Bucket Location
+      id: results_bucket_option
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        res=$(yq e '.gcp.test_lab_bucket // ""' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        if [[ "$res" != "" ]] ; then
+          res="--results-bucket=$res"
+        fi
+        echo "result=$res" >> $GITHUB_OUTPUT
+
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp
       shell: bash
@@ -269,6 +280,6 @@ runs:
           ${{ steps.device_config.outputs.result  }} \
           --xcode-version=${{ steps.xcode_version.outputs.result }} \
           --type=${{ steps.run_test_type.outputs.result }} \
-          --client-details=matrixLabel="${REL}-${RELVER}${QUALI}" \
+          --client-details=matrixLabel="${REL}-${RELVER}${QUALI}" ${{ steps.results_bucket_option.outputs.result }} \
           --async
         echo "::endgroup::"
