@@ -82,19 +82,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-#    - name: IAC Setup
-#      uses: cloudopsworks/blueprints/cd/deploy/common/iac@v5.10
-#      with:
-#        source_path: ${{ inputs.source_path }}
-#        blueprint_path: ${{ inputs.blueprint_path }}
-#        token: ${{ inputs.token }}
-
-#    - name: Copy configurations
-#      shell: bash
-#      run: |
-#        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/devicefarms/aws/inputs.yaml
-#        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/devicefarms/aws/
-
     - name: Device Farm Name
       id: device_farm
       working-directory: ${{ inputs.source_path }}
@@ -239,6 +226,7 @@ runs:
     - name: Device Pool ARN
       id: device_pool_arn
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
+      if: ${{ steps.device_pool.outputs.result != '' }}
       shell: bash
       run: |
         res=$(aws devicefarm list-device-pools \
@@ -262,7 +250,7 @@ runs:
         name: source_artifacts_target
         path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
 
-    - name: Zip test contents
+    - name: Zip test contents - IOS
       if: ${{ steps.test_script_available.outputs.result == 'true' && contains(fromJSON('["ios"]'), inputs.platform_type) }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/derived-data/Build/Products
       shell: bash
@@ -285,6 +273,13 @@ runs:
         else
           echo "::warning::Unsupported test script type for iOS Device Farm XCTEST upload: ${{ steps.run_test_type.outputs.result }}"
         fi
+
+    - name: Zip test contents - Android
+      if: ${{ steps.test_script_available.outputs.result == 'true' && ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
+      working-directory: ${{ inputs.source_path }}/${{ steps.test_script_path.outputs.result }}
+      shell: bash
+      run: |
+        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
 
     - name: Rename IPA/APK
       id: ipa_apk
@@ -316,7 +311,7 @@ runs:
         APP_TYPE: ${{ steps.ipa_apk.outputs.app_type }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
       run: |
-        echo "::group::Upload APK to Device Farm"
+        echo "::group::Upload IPA/APK to Device Farm"
         aws_result=$(aws devicefarm create-upload \
           --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
@@ -383,9 +378,9 @@ runs:
         echo "result=$arn" >> $GITHUB_OUTPUT
         echo "::endgroup::"
 
-    - name: Schedule Run
+    - name: Schedule Run - Device Pool
       id: run
-      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() && steps.deploy_test_pkg.outcome == 'success' && steps.upload_pkg.outcome == 'success' }}
+      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() && steps.deploy_test_pkg.outcome == 'success' && steps.upload_pkg.outcome == 'success' && steps.device_pool_arn.outputs.result != '' }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
       shell: bash
       env:
@@ -393,12 +388,38 @@ runs:
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
-        echo "::group::Schedule Run"
+        echo "::group::Schedule Run - Device Pool"
         aws devicefarm schedule-run \
           --region ${{ inputs.aws_region }} \
           --project-arn ${{ steps.device_farm_arn.outputs.result }} \
           --app-arn ${{ steps.upload_pkg.outputs.result }} \
           --device-pool-arn ${{ steps.device_pool_arn.outputs.result }} \
+          --name "${REL}-${RELVER}${QUALI}" \
+          --test type=${{ steps.run_test_type.outputs.result }},testPackageArn=${{ steps.deploy_test_pkg.outputs.result }}
+        echo "::endgroup::"
+
+    - name: Schedule Run - Specific Devices
+      id: run
+      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() && steps.deploy_test_pkg.outcome == 'success' && steps.upload_pkg.outcome == 'success' && steps.device_pool_arn.outputs.result == '' }}
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      shell: bash
+      env:
+        REL: ${{ inputs.release_name }}
+        RELVER: ${{ inputs.release_version }}
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+      run: |
+        echo "::group::Schedule Run - Specific Devices"
+        ff=$(yq e '.aws.device.form_factor' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        model=$(yq e '.aws.device.model' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        osver=$(yq e '.aws.device.os_version' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        max=$(yq e '.aws.device.max_devices' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        # Generate Filter Device - escape with \"
+        filter="{\"filters\":[{\"attribute\":\"FORM_FACTOR\",\"operator\":\"EQUALS\",\"value\":\"$ff\"},{\"attribute\":\"MODEL\",\"operator\":\"EQUALS\",\"value\":\"$model\"},{\"attribute\":\"OS_VERSION\",\"operator\":\"EQUALS\",\"value\":\"$osver\"}],\"maxDevices\":$max}"
+        aws devicefarm schedule-run \
+          --region ${{ inputs.aws_region }} \
+          --project-arn ${{ steps.device_farm_arn.outputs.result }} \
+          --app-arn ${{ steps.upload_pkg.outputs.result }} \
+          --device-selection-configuration $filter
           --name "${REL}-${RELVER}${QUALI}" \
           --test type=${{ steps.run_test_type.outputs.result }},testPackageArn=${{ steps.deploy_test_pkg.outputs.result }}
         echo "::endgroup::"
