@@ -271,7 +271,7 @@ runs:
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
         echo "::group::Schedule Run - Firebase Test Lab"
-        target=ext="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
+        target="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
         gcloud firebase test $target run \
           --test ${REL}-${RELVER}${QUALI}-tests.zip \
           ${{ steps.device_config.outputs.result  }} \
