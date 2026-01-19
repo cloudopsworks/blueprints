@@ -379,7 +379,7 @@ runs:
         echo "::endgroup::"
 
     - name: Schedule Run - Device Pool
-      id: run
+      id: run_pool
       if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() && steps.deploy_test_pkg.outcome == 'success' && steps.upload_pkg.outcome == 'success' && steps.device_pool_arn.outputs.result != '' }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
       shell: bash
@@ -399,7 +399,7 @@ runs:
         echo "::endgroup::"
 
     - name: Schedule Run - Specific Devices
-      id: run
+      id: run_device
       if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() && steps.deploy_test_pkg.outcome == 'success' && steps.upload_pkg.outcome == 'success' && steps.device_pool_arn.outputs.result == '' }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
       shell: bash
