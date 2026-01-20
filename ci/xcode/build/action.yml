@@ -254,7 +254,7 @@ runs:
         EXPORT_OPTS_PATH=$RUNNER_TEMP/ExportOptions.plist
         cp -v ExportOptions.plist.xml $EXPORT_OPTS_PATH 
         sed -i "" -e 's|__METHOD__|${{ steps.export_options.outputs.method }}|g' $EXPORT_OPTS_PATH
-        sed -i "" -e 's|__PROFILE__|${{ steps.export_options.outputs.profile }}|g' $EXPORT_OPTS_PATH
+        sed -i "" -e 's|__PROFILE_NAME__|${{ steps.export_options.outputs.profile }}|g' $EXPORT_OPTS_PATH
         sed -i "" -e 's|__APP_URL__|${{ steps.export_options.outputs.app_url }}|g' $EXPORT_OPTS_PATH
         sed -i "" -e 's|__IMAGE_URL__|${{ steps.export_options.outputs.image_url }}|g' $EXPORT_OPTS_PATH
         sed -i "" -e 's|__FULL_IMAGE_URL__|${{ steps.export_options.outputs.full_image_url }}|g' $EXPORT_OPTS_PATH
