@@ -80,14 +80,21 @@ runs:
         include-hidden-files: true
         compression-level: '3' #mid-fast
 
+    - name: Tar Artifacts target to preserve some configurations
+      id: target_artifacts_tar
+      working-directory: ${{ inputs.source_path }}/build
+      shell: bash
+      run: |
+        tar -cf $RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar ./
+        echo "path=$RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar" >> $GITHUB_OUTPUT
+
     # Perform of upload of all target artfiacts for Xcode
     - name: Upload Target Artifacts to workflow
       uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.sources_artifacts_name }}_target
-        path: |
-          ${{ inputs.source_path }}/build/**/*
+        path: ${{ steps.target_artifacts_tar.outputs.path }}
         retention-days: 1
         include-hidden-files: true
-        compression-level: '1' #fast
+        compression-level: '5' #good
         overwrite: 'true'

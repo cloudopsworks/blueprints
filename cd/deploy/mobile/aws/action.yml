@@ -250,6 +250,13 @@ runs:
         name: source_artifacts_target
         path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
 
+    - name: Untar extracted source_artifacts_target
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      shell: bash
+      run: |
+        tar -xvf source_artifacts_target.tar
+        rm -f source_artifacts_target.tar
+
     - name: Zip test contents - IOS
       if: ${{ steps.test_script_available.outputs.result == 'true' && contains(fromJSON('["ios"]'), inputs.platform_type) }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/derived-data/Build/Products
