@@ -220,7 +220,7 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
       shell: bash
       run: |
-        tar -xvf source_artifacts_target.tar
+        tar -xf source_artifacts_target.tar
         rm -f source_artifacts_target.tar
 
     - name: Zip test contents - IOS
