@@ -26,10 +26,26 @@ inputs:
     description: 'The name of the sources to save'
     required: false
     default: 'source_artifacts'
+  xcode_scheme:
+    description: 'Xcode Scheme to build and test'
+    required: true
+  xcode_sdk:
+    description: 'Xcode SDK to build and test'
+    required: true
+  xcode_destination:
+    description: 'Xcode Destination to build and test'
+    required: true
 
 runs:
   using: 'composite'
   steps:
+    - name: Normalize xcode inputs
+      id: xcode_normalized
+      shell: bash
+      run: |
+        ret=$(echo "${{ inputs.xcode_scheme }}_${{ inputs.xcode_sdk }}_${{ inputs.xcode_destination }}" | tr ' ,:=/' '-')
+        echo "result=$ret" >> $GITHUB_OUTPUT
+
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs
@@ -57,7 +73,7 @@ runs:
     - name: Upload Artifacts to workflow
       uses: actions/upload-artifact@v6
       with:
-        name: ${{ inputs.artifacts_name }}
+        name: ${{ inputs.artifacts_name }}_${{ steps.xcode_normalized.outputs.result }}
         path: |
           ${{ steps.zip_globs.outputs.result }}
           ${{ steps.exclude_globs.outputs.result }}
@@ -92,7 +108,7 @@ runs:
     - name: Upload Target Artifacts to workflow
       uses: actions/upload-artifact@v6
       with:
-        name: ${{ inputs.sources_artifacts_name }}_target
+        name: ${{ inputs.sources_artifacts_name }}_target_${{ steps.xcode_normalized.outputs.result }}
         path: ${{ steps.target_artifacts_tar.outputs.path }}
         retention-days: 1
         include-hidden-files: true

@@ -74,14 +74,26 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
-  front_end:
-    description: 'The front end flag, used mainly for NodeJS targets'
-    required: false
-    default: ''
+  xcode_scheme:
+    description: 'Xcode Scheme to build and test'
+    required: true
+  xcode_sdk:
+    description: 'Xcode SDK to build and test'
+    required: true
+  xcode_destination:
+    description: 'Xcode Destination to build and test'
+    required: true
 
 runs:
   using: 'composite'
   steps:
+    - name: Normalize xcode inputs
+      id: xcode_normalized
+      shell: bash
+      run: |
+        ret=$(echo "${{ inputs.xcode_scheme }}_${{ inputs.xcode_sdk }}_${{ inputs.xcode_destination }}" | tr ' ,:=/' '-')
+        echo "result=$ret" >> $GITHUB_OUTPUT
+
     - name: XCode Version
       id: xcode_version
       working-directory: ${{ inputs.source_path }}

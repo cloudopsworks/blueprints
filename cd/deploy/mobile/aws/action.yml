@@ -74,14 +74,26 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
-  front_end:
-    description: 'The front end flag, used mainly for NodeJS targets'
-    required: false
-    default: ''
+  xcode_scheme:
+    description: 'Xcode Scheme to build and test'
+    required: true
+  xcode_sdk:
+    description: 'Xcode SDK to build and test'
+    required: true
+  xcode_destination:
+    description: 'Xcode Destination to build and test'
+    required: true
 
 runs:
   using: 'composite'
   steps:
+    - name: Normalize xcode inputs
+      id: xcode_normalized
+      shell: bash
+      run: |
+        ret=$(echo "${{ inputs.xcode_scheme }}_${{ inputs.xcode_sdk }}_${{ inputs.xcode_destination }}" | tr ' ,:=/' '-')
+        echo "result=$ret" >> $GITHUB_OUTPUT
+
     - name: Device Farm Name
       id: device_farm
       working-directory: ${{ inputs.source_path }}
@@ -240,14 +252,14 @@ runs:
       uses: actions/download-artifact@v7
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
-        name: ${{ inputs.artifacts_name }}
+        name: ${{ inputs.artifacts_name }}_${{ steps.xcode_normalized.outputs.result }}
         path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
 
     - name: Restore Target BuildPipeline Artifacts
       uses: actions/download-artifact@v7
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
-        name: source_artifacts_target
+        name: source_artifacts_target_${{ steps.xcode_normalized.outputs.result }}
         path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
 
     - name: Untar extracted source_artifacts_target
