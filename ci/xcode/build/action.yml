@@ -64,6 +64,10 @@ inputs:
     description: 'The XCode extra target arguments to use for the build'
     required: false
     default: ''
+  xcode_unsigned:
+    description: 'The XCode unsigned flag to use for the build'
+    required: false
+    default: 'false'
   build_certificate_b64:
     description: 'The base64 encoded certificate to use for the build'
     required: true
@@ -266,17 +270,33 @@ runs:
         cat $EXPORT_OPTS_PATH
         echo "::endgroup::"
 
-    - name: Export IPA
+    - name: Export IPA - XCode Signed
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      if: ${{ inputs.xcode_unsigned != 'true' }}
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
-        echo "::group::XCode Export IPA"
+        echo "::group::XCode Export IPA - Signed"
         EXPORT_OPTS_PATH=$RUNNER_TEMP/ExportOptions.plist
         xcodebuild -exportArchive \
           -archivePath build/${{ inputs.project_key }}.xcarchive \
           -exportPath build/${{ inputs.artifacts_name }} \
           -exportOptionsPlist $EXPORT_OPTS_PATH
+        echo "::endgroup::"
+
+    - name: Generate IPA - Unsigned
+      shell: bash
+      if: ${{ inputs.xcode_unsigned == 'true' }}
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        echo "::group::XCode Export IPA - Unsigned"
+        tmp_dir=$(mktemp -d)
+        cp -R "${{ inputs.source_path }}/build/derived-data/Build/Products/${{ inputs.xcode_configuration }}-iphoneos/${{ inputs.xcode_scheme }}.app" $tmp_dir
+        cd $tmp_dir
+        mkdir -p $GITHUB_WORKSPACE/build/${{ inputs.artifacts_name }}
+        zip -r $GITHUB_WORKSPACE/build/${{ inputs.artifacts_name }}/${{ inputs.artifacts_name }}.ipa .
         echo "::endgroup::"

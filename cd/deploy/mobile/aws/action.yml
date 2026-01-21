@@ -110,6 +110,14 @@ runs:
         res=$(yq e '.aws.device_farm_pool // ""' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
 
+    - name: Xcode Configuration for the build
+      id: xcode_configuration
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
     - name: Test Script Path
       id: test_script_path
       working-directory: ${{ inputs.source_path }}
@@ -281,12 +289,12 @@ runs:
         tmpdir=$(mktemp -d)
         mkdir -p $tmpdir/.xctest
         if [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST_UI" ]]; then
-          mv Debug-*/*Tests-Runner.app $tmpdir/ 
+          mv ${{ steps.xcode_configuration.outputs.result }}-*/*Tests-Runner.app $tmpdir/ 
           mv *.xctestrun $tmpdir/
           cd $tmpdir/
           zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
         elif [[ "${{ steps.run_test_type.outputs.result }}" == "XCTEST" ]] ; then
-          mv Debug-*/*.app/Plugins/*.xctest $tmpdir/
+          mv ${{ steps.xcode_configuration.outputs.result }}-*/*.app/Plugins/*.xctest $tmpdir/
           cd $tmpdir/
           zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
         else

@@ -102,6 +102,14 @@ runs:
         res=$(yq e '.xcode.version // "16.4"' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
 
+    - name: Xcode Configuration for the build
+      id: xcode_configuration
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
     - name: Test Script Path
       id: test_script_path
       working-directory: ${{ inputs.source_path }}
@@ -245,7 +253,7 @@ runs:
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
         tmpdir=$(mktemp -d)
-        mv Debug-* $tmpdir/ 
+        mv ${{ steps.xcode_configuration.outputs.result }}-* $tmpdir/ 
         mv *.xctestrun $tmpdir/
         cd $tmpdir/
         zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .
