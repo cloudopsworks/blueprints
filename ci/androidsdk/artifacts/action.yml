@@ -1,0 +1,113 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Save Xcode Artifacts
+author: cloudopsworks
+description: Save Xcode artifacts to the artifacts store
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  sources_artifacts_name:
+    description: 'The name of the sources to save'
+    required: false
+    default: 'source_artifacts'
+  andoid_sdk:
+    description: 'Xcode SDK to build and test'
+    required: true
+  andoid_destination:
+    description: 'Xcode Destination to build and test'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Normalize xcode inputs
+      id: andoid_normalized
+      shell: bash
+      run: |
+        ret=$(echo "${{ inputs.andoid_sdk }}_${{ inputs.andoid_destination }}" | tr ' ,:=/' '-')
+        echo "result=$ret" >> $GITHUB_OUTPUT
+
+    # Get pipeline conf
+    - name: Get pipeline zip packaging globs
+      id: zip_globs
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        GLOBS=$(yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        echo "$GLOBS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    # Get pipeline conf exclude globs
+    - name: Get pipeline zip packaging exclude globs
+      id: exclude_globs
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        GLOBS=$(yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        echo "$GLOBS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+
+    # Perform of upload of artfiacts for xcode
+    - name: Upload Artifacts to workflow
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ inputs.artifacts_name }}_${{ steps.andoid_normalized.outputs.result }}
+        path: |
+          ${{ steps.zip_globs.outputs.result }}
+          ${{ steps.exclude_globs.outputs.result }}
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '1' #fast
+        overwrite: 'true'
+
+    # Perform of upload of sources
+    - name: Upload Sources to workflow
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ inputs.sources_artifacts_name }}
+        path: |
+          ${{ inputs.source_path }}/**
+          !${{ inputs.source_path }}/target/**
+          !${{ inputs.source_path }}/build/**
+          ${{ steps.exclude_globs.outputs.result }}
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '3' #mid-fast
+
+    - name: Tar Artifacts target to preserve some configurations
+      id: target_artifacts_tar
+      working-directory: ${{ inputs.source_path }}/build
+      shell: bash
+      run: |
+        tar -cf $RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar ./
+        echo "path=$RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar" >> $GITHUB_OUTPUT
+
+    # Perform of upload of all target artfiacts for Xcode
+    - name: Upload Target Artifacts to workflow
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ inputs.sources_artifacts_name }}_target_${{ steps.andoid_normalized.outputs.result }}
+        path: ${{ steps.target_artifacts_tar.outputs.path }}
+        retention-days: 1
+        include-hidden-files: true
+        compression-level: '5' #good
+        overwrite: 'true'

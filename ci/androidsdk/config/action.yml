@@ -1,0 +1,89 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Get Configuration Values for Xcode Build
+author: cloudopsworks
+description: Get Configuration Values for Xcode Build
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+outputs:
+  andoid_version:
+    description: 'The XCode version to use for the build'
+    value: ${{ steps.andoid_version.outputs.result }}
+  andoid_sdks:
+    description: 'The XCode SDKs to use for the build'
+    value: ${{ steps.andoid_sdks.outputs.result }}
+  andoid_configuration:
+    description: 'The XCode configuration to use for the build'
+    value: ${{ steps.andoid_configuration.outputs.result }}
+  andoid_destinations:
+    description: 'The XCode destinations to use for the build'
+    value: ${{ steps.andoid_destinations.outputs.result }}
+  andoid_extra_args:
+    description: 'The XCode extra arguments to use for the build'
+    value: ${{ steps.andoid_extra_args.outputs.result }}
+  andoid_extra_targets:
+    description: 'The XCode extra target arguments to use for the build'
+    value: ${{ steps.andoid_extra_targets.outputs.result }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Xcode SDK list with yq
+      id: andoid_sdks
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e -I=0 -o=j '.android.sdks // ["iphoneos"]' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Xcode Configuration for the build
+      id: andoid_configuration
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.android.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Get andoid_destinations from inputs-global.yaml with yq
+      id: andoid_destinations
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e -I=0 -o=j '.android.destinations // ["generic/platform=iOS"]' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+
+    - name: get and extra args from inputs-global.yaml with yq
+      id: andoid_extra_args
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.android.extra_args // ""' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: get android sdk extra target args from inputs-global.yaml with yq
+      id: andoid_extra_targets
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.android.extra_targets // ""' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Get Specified Android Version
+      id: andoid_version
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+          OUT=$(yq e '.android.version // "33.0.0"' .cloudopsworks/vars/inputs-global.yaml)
+          echo "result=$OUT" >> $GITHUB_OUTPUT
