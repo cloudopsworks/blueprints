@@ -48,7 +48,9 @@ outputs:
   xcode_unsigned:
     description: 'The XCode unsigned flag to use for the build'
     value: ${{ steps.xcode_unsigned.outputs.result }}
-
+  xcode_build_for_testing:
+    description: 'The XCode build for testing flag to use for the build'
+    value: ${{ steps.xcode_testing.outputs.result }}
 runs:
   using: 'composite'
   steps:
@@ -130,4 +132,12 @@ runs:
       shell: bash
       run: |
         OUT=$(yq e '.xcode.unsigned // "false"' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Get if Building for Testing
+      id: xcode_testing
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.build_for_testing // "false"' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT

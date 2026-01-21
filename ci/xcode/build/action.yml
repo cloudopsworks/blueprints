@@ -68,6 +68,10 @@ inputs:
     description: 'The XCode unsigned flag to use for the build'
     required: false
     default: 'false'
+  xcode_build_for_testing:
+    description: 'The XCode build for testing flag to use for the build'
+    required: false
+    default: 'false'
   build_certificate_b64:
     description: 'The base64 encoded certificate to use for the build'
     required: true
@@ -223,14 +227,12 @@ runs:
           -configuration ${{ inputs.xcode_configuration }} \
           -destination '${{ inputs.xcode_destination }}' ${{ inputs.xcode_extra_args }} \
           -derivedDataPath build/derived-data \
-          clean ${{ inputs.xcode_extra_targets }} archive
+          clean ${{ inputs.xcode_extra_targets != '' && format('{0} ', inputs.xcode_extra_targets) || '' }}${{ inputs.xcode_build_for_testing == 'true' && 'build-for-testing ' || '' }} ${{ inputs.xcode_unsigned != 'true' && 'archive' || '' }}
         echo "::endgroup::"
-#          DEVELOPMENT_TEAM=${{ inputs.xcode_dev_team }} \
-#          PRODUCT_BUNDLE_IDENTIFIER=${{ inputs.xcode_product_bundle }} \
-#          MARKETING_VERSION=${{ steps.semver.outputs.result }}
 
     - name: Get Export Options
       id: export_options
+      if: ${{ inputs.xcode_unsigned != 'true' }}
       shell: bash
       run: |
         type=$(yq e '.xcode.export_options.type' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
@@ -252,6 +254,7 @@ runs:
     - name: Generate Export Options Plist
       working-directory: ${{ inputs.blueprint_path }}/ci/xcode/bundles
       id: generate_export_options
+      if: ${{ inputs.xcode_unsigned != 'true' }}
       shell: bash
       run: |
         echo "::group::Generate Export Options Plist"
@@ -265,7 +268,6 @@ runs:
         sed -i "" -e 's|__SIGNING_CERT__|${{ steps.export_options.outputs.signing_cert }}|g' $EXPORT_OPTS_PATH
         sed -i "" -e 's|__TEAM_ID__|${{ inputs.xcode_dev_team }}|g' $EXPORT_OPTS_PATH
         sed -i "" -e 's|__PRODUCT_BUNDLE__|${{ inputs.xcode_product_bundle }}|g' $EXPORT_OPTS_PATH
-        
         echo "Output: $EXPORT_OPTS_PATH"
         cat $EXPORT_OPTS_PATH
         echo "::endgroup::"
