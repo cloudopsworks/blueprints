@@ -45,7 +45,12 @@ outputs:
   xcode_extra_targets:
     description: 'The XCode extra target arguments to use for the build'
     value: ${{ steps.xcode_extra_targets.outputs.result }}
-
+  xcode_unsigned:
+    description: 'The XCode unsigned flag to use for the build'
+    value: ${{ steps.xcode_unsigned.outputs.result }}
+  xcode_build_for_testing:
+    description: 'The XCode build for testing flag to use for the build'
+    value: ${{ steps.xcode_testing.outputs.result }}
 runs:
   using: 'composite'
   steps:
@@ -120,3 +125,19 @@ runs:
       run: |
           OUT=$(yq e '.xcode.version // "16.4"' .cloudopsworks/vars/inputs-global.yaml)
           echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Get Specified XCode Version
+      id: xcode_unsigned
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.unsigned // "false"' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Get if Building for Testing
+      id: xcode_testing
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.build_for_testing // "false"' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT

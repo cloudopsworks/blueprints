@@ -74,14 +74,26 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
-  front_end:
-    description: 'The front end flag, used mainly for NodeJS targets'
-    required: false
-    default: ''
+  xcode_scheme:
+    description: 'Xcode Scheme to build and test'
+    required: true
+  xcode_sdk:
+    description: 'Xcode SDK to build and test'
+    required: true
+  xcode_destination:
+    description: 'Xcode Destination to build and test'
+    required: true
 
 runs:
   using: 'composite'
   steps:
+    - name: Normalize xcode inputs
+      id: xcode_normalized
+      shell: bash
+      run: |
+        ret=$(echo "${{ inputs.xcode_scheme }}_${{ inputs.xcode_sdk }}_${{ inputs.xcode_destination }}" | tr ' ,:=/' '-')
+        echo "result=$ret" >> $GITHUB_OUTPUT
+
     - name: XCode Version
       id: xcode_version
       working-directory: ${{ inputs.source_path }}
@@ -89,6 +101,14 @@ runs:
       run: |
         res=$(yq e '.xcode.version // "16.4"' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
+
+    - name: Xcode Configuration for the build
+      id: xcode_configuration
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Test Script Path
       id: test_script_path
@@ -158,8 +178,9 @@ runs:
         environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
         release_name: ${{ inputs.release_name }}
         default:
-          region: ${{ inputs.aws_region }}
-          sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+          region: ${{ inputs.gcp_region }}
+          project: ${{ inputs.gcp_project }}
+          impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
         EOF
 
     - name: Determine Plan Action
@@ -215,6 +236,13 @@ runs:
         name: source_artifacts_target
         path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
 
+    - name: Untar extracted source_artifacts_target
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      shell: bash
+      run: |
+        tar -xf source_artifacts_target.tar
+        rm -f source_artifacts_target.tar
+
     - name: Zip test contents - IOS
       if: ${{ steps.test_script_available.outputs.result == 'true' && contains(fromJSON('["ios"]'), inputs.platform_type) }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release/derived-data/Build/Products
@@ -225,7 +253,7 @@ runs:
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
         tmpdir=$(mktemp -d)
-        mv Debug-* $tmpdir/ 
+        mv ${{ steps.xcode_configuration.outputs.result }}-* $tmpdir/ 
         mv *.xctestrun $tmpdir/
         cd $tmpdir/
         zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .
