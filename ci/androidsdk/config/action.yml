@@ -18,29 +18,29 @@ inputs:
     description: 'The environment to use for the build'
     required: true
 outputs:
-  andoid_version:
+  android_version:
     description: 'The XCode version to use for the build'
-    value: ${{ steps.andoid_version.outputs.result }}
-  andoid_sdks:
+    value: ${{ steps.android_version.outputs.result }}
+  android_sdks:
     description: 'The XCode SDKs to use for the build'
-    value: ${{ steps.andoid_sdks.outputs.result }}
-  andoid_configuration:
+    value: ${{ steps.android_sdks.outputs.result }}
+  android_configuration:
     description: 'The XCode configuration to use for the build'
-    value: ${{ steps.andoid_configuration.outputs.result }}
-  andoid_destinations:
+    value: ${{ steps.android_configuration.outputs.result }}
+  android_destinations:
     description: 'The XCode destinations to use for the build'
-    value: ${{ steps.andoid_destinations.outputs.result }}
-  andoid_extra_args:
+    value: ${{ steps.android_destinations.outputs.result }}
+  android_extra_args:
     description: 'The XCode extra arguments to use for the build'
-    value: ${{ steps.andoid_extra_args.outputs.result }}
-  andoid_extra_targets:
+    value: ${{ steps.android_extra_args.outputs.result }}
+  android_extra_targets:
     description: 'The XCode extra target arguments to use for the build'
-    value: ${{ steps.andoid_extra_targets.outputs.result }}
+    value: ${{ steps.android_extra_targets.outputs.result }}
 runs:
   using: 'composite'
   steps:
     - name: Xcode SDK list with yq
-      id: andoid_sdks
+      id: android_sdks
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -48,15 +48,15 @@ runs:
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Xcode Configuration for the build
-      id: andoid_configuration
+      id: android_configuration
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         OUT=$(yq e '.android.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
-    - name: Get andoid_destinations from inputs-global.yaml with yq
-      id: andoid_destinations
+    - name: Get android_destinations from inputs-global.yaml with yq
+      id: android_destinations
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -65,7 +65,7 @@ runs:
 
 
     - name: get and extra args from inputs-global.yaml with yq
-      id: andoid_extra_args
+      id: android_extra_args
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -73,7 +73,7 @@ runs:
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: get android sdk extra target args from inputs-global.yaml with yq
-      id: andoid_extra_targets
+      id: android_extra_targets
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -81,7 +81,7 @@ runs:
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get Specified Android Version
-      id: andoid_version
+      id: android_version
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |

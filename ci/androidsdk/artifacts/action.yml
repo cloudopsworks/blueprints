@@ -26,10 +26,10 @@ inputs:
     description: 'The name of the sources to save'
     required: false
     default: 'source_artifacts'
-  andoid_sdk:
+  android_sdk:
     description: 'Xcode SDK to build and test'
     required: true
-  andoid_destination:
+  android_destination:
     description: 'Xcode Destination to build and test'
     required: true
 
@@ -37,10 +37,10 @@ runs:
   using: 'composite'
   steps:
     - name: Normalize xcode inputs
-      id: andoid_normalized
+      id: android_normalized
       shell: bash
       run: |
-        ret=$(echo "${{ inputs.andoid_sdk }}_${{ inputs.andoid_destination }}" | tr ' ,:=/' '-')
+        ret=$(echo "${{ inputs.android_sdk }}_${{ inputs.android_destination }}" | tr ' ,:=/' '-')
         echo "result=$ret" >> $GITHUB_OUTPUT
 
     # Get pipeline conf
@@ -70,7 +70,7 @@ runs:
     - name: Upload Artifacts to workflow
       uses: actions/upload-artifact@v6
       with:
-        name: ${{ inputs.artifacts_name }}_${{ steps.andoid_normalized.outputs.result }}
+        name: ${{ inputs.artifacts_name }}_${{ steps.android_normalized.outputs.result }}
         path: |
           ${{ steps.zip_globs.outputs.result }}
           ${{ steps.exclude_globs.outputs.result }}
@@ -105,7 +105,7 @@ runs:
     - name: Upload Target Artifacts to workflow
       uses: actions/upload-artifact@v6
       with:
-        name: ${{ inputs.sources_artifacts_name }}_target_${{ steps.andoid_normalized.outputs.result }}
+        name: ${{ inputs.sources_artifacts_name }}_target_${{ steps.android_normalized.outputs.result }}
         path: ${{ steps.target_artifacts_tar.outputs.path }}
         retention-days: 1
         include-hidden-files: true
