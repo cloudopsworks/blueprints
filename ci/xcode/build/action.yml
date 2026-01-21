@@ -299,6 +299,6 @@ runs:
         tmp_dir=$(mktemp -d)
         cp -R "${{ inputs.source_path }}/build/derived-data/Build/Products/${{ inputs.xcode_configuration }}-iphoneos/${{ inputs.xcode_scheme }}.app" $tmp_dir
         cd $tmp_dir
-        mkdir -p $GITHUB_WORKSPACE/build/${{ inputs.artifacts_name }}
-        zip -r $GITHUB_WORKSPACE/build/${{ inputs.artifacts_name }}/${{ inputs.artifacts_name }}.ipa .
+        mkdir -p $GITHUB_WORKSPACE/${{ inputs.source_path }}/build/${{ inputs.artifacts_name }}
+        zip -r $GITHUB_WORKSPACE/${{ inputs.source_path }}/build/${{ inputs.artifacts_name }}/${{ inputs.artifacts_name }}.ipa .
         echo "::endgroup::"
