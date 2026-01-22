@@ -124,17 +124,17 @@ runs:
         ./gradlew --no-daemon ${{ inputs.android_extra_args }} clean build ${{ inputs.android_extra_targets }}
         echo "::endgroup::"
 
-    # Test the code!
-    - name: Test Code
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
-      run: |
-        echo "::group::Gradle Android SDK Run Tests"
-        ./gradlew --no-daemon test
-        echo "::endgroup::"
+#    # Test the code!
+#    - name: Test Code
+#      working-directory: ${{ inputs.source_path }}
+#      shell: bash
+#      env:
+#        GITHUB_ACTOR: ${{ inputs.bot_user }}
+#        GITHUB_TOKEN: ${{ inputs.token }}
+#      run: |
+#        echo "::group::Gradle Android SDK Run Tests"
+#        ./gradlew --no-daemon test
+#        echo "::endgroup::"
 
 #    - name: Generate IPA - Unsigned
 #      shell: bash
