@@ -86,8 +86,8 @@ runs:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
           ${{ inputs.source_path }}/**
-          !${{ inputs.source_path }}/target/**
           !${{ inputs.source_path }}/build/**
+          !${{ inputs.source_path }}/app/build/**
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
         include-hidden-files: true
@@ -95,7 +95,7 @@ runs:
 
     - name: Tar Artifacts target to preserve some configurations
       id: target_artifacts_tar
-      working-directory: ${{ inputs.source_path }}/build
+      working-directory: ${{ inputs.source_path }}/app/build
       shell: bash
       run: |
         tar -cf $RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar ./
