@@ -418,8 +418,8 @@ runs:
       if: ${{ contains(fromJSON('["BUILTIN_FUZZ"]'), steps.run_test_type.outputs.result) }}
       shell: bash
       run: |
-        test_type"type=${{ steps.run_test_type.outputs.result }},parameters={event_count=6000,seed=200${{ contains(fromJSON('["ios"]'), inputs.platform_type) && '' || ',throttle=50' }}}"
-        echo "result=test_type" >> $GITHUB_OUTPUT
+        test_type="type=${{ steps.run_test_type.outputs.result }},parameters={event_count=6000,seed=200${{ contains(fromJSON('["ios"]'), inputs.platform_type) && '' || ',throttle=50' }}}"
+        echo "result=$test_type" >> $GITHUB_OUTPUT
 
     - name: Schedule Run - Device Pool
       id: run_pool
