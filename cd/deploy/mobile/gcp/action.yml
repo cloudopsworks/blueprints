@@ -293,7 +293,7 @@ runs:
         target="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
         gcloud firebase test $target run \
           --impersonate-service-account=${{ inputs.gcp_impersonate_sa }} \
-          --test=${REL}-${RELVER}${QUALI}-tests.zip \
+          --app ${REL}-${RELVER}${QUALI}.${{ steps.ipa_apk.outputs.ext }}${{ steps.test_script_available.outputs.result == 'true' && ' --test=${REL}-${RELVER}${QUALI}-tests.zip' || '' }} \
           ${{ steps.device_config.outputs.result  }} \
           --xcode-version=${{ steps.xcode_version.outputs.result }} \
           --type=${{ steps.run_test_type.outputs.result }} \
