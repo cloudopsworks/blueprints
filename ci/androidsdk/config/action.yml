@@ -92,7 +92,7 @@ runs:
           echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get Specified Android Packages
-      id: android_version
+      id: android_packages
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
