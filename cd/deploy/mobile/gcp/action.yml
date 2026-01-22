@@ -273,7 +273,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        devices=$(yq e '.gcp.devices[] | . as $item | "--device model=" + $item.model_id + ($item.version_id // "" | select(length > 0) | ",version=" + .) + ($item.locale_id // "" | select(length > 0) | ",locale=" + .) + ($item.orientation // "" | select(length > 0) | ",orientation=" + .)' .cloudopsworks/vars/inputs-dev.yaml | tr '\n' ' ')
+        devices=$(yq e '.gcp.devices[] | . as $item | "--device \"model=" + $item.model_id + ($item.version_id // "" | select(length > 0) | ",version=" + .) + ($item.locale_id // "" | select(length > 0) | ",locale=" + .) + ($item.orientation // "" | select(length > 0) | ",orientation=" + .) + "\" "' .cloudopsworks/vars/inputs-dev.yaml | tr '\n' ' ')
         echo "result=$devices" >> $GITHUB_OUTPUT
 
     - name: Schedule Run - Firebase Test Lab
