@@ -115,26 +115,27 @@ runs:
     # Build the code!
     - name: Build Code
       working-directory: ${{ inputs.source_path }}
+      if: ${{ contains(fromJSON('["debug","Debug","DEBUG"]'), inputs.android_configuration) }}
       shell: bash
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Gradle Android SDK Build"
-        ./gradlew --no-daemon ${{ inputs.android_extra_args }} clean build ${{ inputs.android_extra_targets }}
+        ./gradlew --no-daemon ${{ inputs.android_extra_args }} clean assemble${{ inputs.android_configuration }} ${{ inputs.android_extra_targets }}
         echo "::endgroup::"
 
-#    # Test the code!
-#    - name: Test Code
-#      working-directory: ${{ inputs.source_path }}
-#      shell: bash
-#      env:
-#        GITHUB_ACTOR: ${{ inputs.bot_user }}
-#        GITHUB_TOKEN: ${{ inputs.token }}
-#      run: |
-#        echo "::group::Gradle Android SDK Run Tests"
-#        ./gradlew --no-daemon test
-#        echo "::endgroup::"
+    # Test the code!
+    - name: Test Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        echo "::group::Gradle Android SDK Run Tests"
+        ./gradlew --no-daemon test${{ inputs.android_configuration }}
+        echo "::endgroup::"
 
 #    - name: Generate IPA - Unsigned
 #      shell: bash
