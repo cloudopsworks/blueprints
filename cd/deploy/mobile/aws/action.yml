@@ -352,7 +352,10 @@ runs:
 
     - name: Deploy Test Package
       id: deploy_test_pkg
-      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() }}
+      if: |
+        ! cancelled() &&
+        ! contains(fromJSON('["BUILTIN_FUZZ"]'), steps.run_test_type.outputs.result) &&
+        steps.test_script_available.outputs.result == 'true'
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
       shell: bash
       env:
