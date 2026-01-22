@@ -109,6 +109,8 @@ runs:
       with:
         cmdline-tools-version: ${{ inputs.android_version }}
         packages: ${{ inputs.android_packages }}
+        accept-android-sdk-licenses: true
+        log-accepted-android-sdk-licenses: false
 
     # Build the code!
     - name: Build Code
