@@ -94,6 +94,10 @@ inputs:
     description: 'The Android SDK destination to use for the build'
     required: false
     default: ''
+  android_configuration:
+    description: 'The Android SDK configuration to use for the build'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -284,6 +288,7 @@ runs:
         artifacts_name: ${{ inputs.artifacts_name }}
         android_sdk: ${{ inputs.android_sdk }}
         android_destination: ${{ inputs.android_destination }}
+        android_configuration: ${{ inputs.android_configuration }}
         test_script_available: ${{ inputs.test_script_available }}
         run_test_type: ${{ inputs.run_test_type }}
 

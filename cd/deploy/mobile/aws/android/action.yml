@@ -45,6 +45,9 @@ inputs:
   android_destination:
     description: 'Xcode Destination to build and test'
     required: true
+  android_configuration:
+    description: 'The Android SDK configuration to use for the build'
+    required: true
   test_script_available:
     description: 'The test script availability'
     required: true
@@ -61,14 +64,6 @@ runs:
       run: |
         ret=$(echo "${{ inputs.android_sdk }}_${{ inputs.android_destination }}" | tr ' ,:=/' '-')
         echo "result=$ret" >> $GITHUB_OUTPUT
-
-    - name: Android SDK Configuration for the build
-      id: android_configuration
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        OUT=$(yq e '.xcode.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
-        echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Restore Pipeline Artifacts
       uses: actions/download-artifact@v7

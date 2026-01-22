@@ -84,7 +84,7 @@ runs:
       with:
         name: ${{ inputs.artifacts_name }}_${{ steps.android_normalized.outputs.result }}
         path: |
-          ${{ steps.normalized_configuration.outputs.result }}
+          ${{ steps.normalized_configuration.outputs.result
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
         include-hidden-files: true
