@@ -271,8 +271,8 @@ runs:
         xcode_scheme: ${{ inputs.xcode_scheme }}
         xcode_sdk: ${{ inputs.xcode_sdk }}
         xcode_destination: ${{ inputs.xcode_destination }}
-        test_script_available: ${{ inputs.test_script_available }}
-        run_test_type: ${{ inputs.run_test_type }}
+        test_script_available: ${{ steps.test_script_available.outputs.result }}
+        run_test_type: ${{ steps.run_test_type.outputs.result }}
 
     - name: Android Steps
       uses: cloudopsworks/blueprints/cd/deploy/mobile/aws/android@v5.10
@@ -289,8 +289,8 @@ runs:
         android_sdk: ${{ inputs.android_sdk }}
         android_destination: ${{ inputs.android_destination }}
         android_configuration: ${{ inputs.android_configuration }}
-        test_script_available: ${{ inputs.test_script_available }}
-        run_test_type: ${{ inputs.run_test_type }}
+        test_script_available: ${{ steps.test_script_available.outputs.result }}
+        run_test_type: ${{ steps.run_test_type.outputs.result }}
 
     - name: Rename IPA/APK
       id: ipa_apk
