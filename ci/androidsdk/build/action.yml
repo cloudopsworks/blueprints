@@ -55,6 +55,10 @@ inputs:
     description: 'The Android SDK extra target arguments to use for the build'
     required: false
     default: ''
+  android_packages:
+    description: 'The Android SDK packages to use for the build'
+    required: false
+    default: 'tools platform-tools'
 outputs:
   semver:
     description: 'The semver version'
@@ -103,8 +107,8 @@ runs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
-        api-level: ${{ inputs.android_sdk }}
-        build-tools: ${{ inputs.android_version }}
+        cmdline-tools-version: ${{ inputs.android_version }}
+        packages: ${{ inputs.android_packages }}
 
     # Build the code!
     - name: Build Code
@@ -115,7 +119,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         echo "::group::Gradle Android SDK Build"
-        ./gradlew ${{ inputs.android_extra_args }} clean build ${{ inputs.android_extra_targets }}
+        ./gradlew --no-daemon ${{ inputs.android_extra_args }} clean build ${{ inputs.android_extra_targets }}
         echo "::endgroup::"
 
 #    - name: Generate IPA - Unsigned
