@@ -6,9 +6,9 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Deploy Mobile Application AWS Device Farm
+name: Deploy Mobile Application GCP Firebase test lab
 author: cloudopsworks
-description: Deploy Mobile Application to AWS Device Farm
+description: Deploy Mobile Application to GCP Firebase test lab
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -73,17 +73,17 @@ runs:
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}_${{ steps.android_normalized.outputs.result }}
-        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+        path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
 
     - name: Restore Target BuildPipeline Artifacts
       uses: actions/download-artifact@v7
       if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
       with:
         name: source_artifacts_target_${{ steps.android_normalized.outputs.result }}
-        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+        path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
 
     - name: Untar extracted source_artifacts_target
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
       shell: bash
       run: |
         tar -xf source_artifacts_target.tar
