@@ -278,7 +278,10 @@ runs:
 
     - name: Schedule Run - Firebase Test Lab
       id: run_pool
-      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() }}
+      if: |
+        ! cancelled() && 
+        ( contains(fromJSON('["robo"]'), steps.run_test_type.outputs.result) ||
+            steps.test_script_available.outputs.result == 'true' )
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
       shell: bash
       env:
