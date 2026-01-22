@@ -353,8 +353,8 @@ runs:
     - name: Deploy Test Package
       id: deploy_test_pkg
       if: |
-        ! cancelled() &&
-        ! contains(fromJSON('["BUILTIN_FUZZ"]'), steps.run_test_type.outputs.result) &&
+        (! cancelled()) &&
+        (! contains(fromJSON('["BUILTIN_FUZZ"]'), steps.run_test_type.outputs.result)) &&
         steps.test_script_available.outputs.result == 'true'
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
       shell: bash
@@ -424,7 +424,7 @@ runs:
     - name: Schedule Run - Device Pool
       id: run_pool
       if: |
-        ! cancelled() && 
+        (! cancelled()) && 
         steps.upload_pkg.outcome == 'success' && 
         steps.device_pool_arn.outputs.result != '' &&
         ( contains(fromJSON('["BUILTIN_FUZZ"]'), steps.run_test_type.outputs.result) ||
@@ -450,7 +450,7 @@ runs:
     - name: Schedule Run - Specific Devices
       id: run_device
       if: |
-        ! cancelled() && 
+        (! cancelled()) && 
         steps.upload_pkg.outcome == 'success' && 
         steps.device_pool_arn.outputs.result == '' &&
         ( contains(fromJSON('["BUILTIN_FUZZ"]'), steps.run_test_type.outputs.result) ||
