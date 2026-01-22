@@ -6,9 +6,9 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Save Xcode Artifacts
+name: Save Android SDK Artifacts
 author: cloudopsworks
-description: Save Xcode artifacts to the artifacts store
+description: Save Android SDK artifacts to the artifacts store
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -27,16 +27,16 @@ inputs:
     required: false
     default: 'source_artifacts'
   android_sdk:
-    description: 'Xcode SDK to build and test'
+    description: 'Android SDK SDK to build and test'
     required: true
   android_destination:
-    description: 'Xcode Destination to build and test'
+    description: 'Android SDK Destination to build and test'
     required: true
 
 runs:
   using: 'composite'
   steps:
-    - name: Normalize xcode inputs
+    - name: Normalize Android SDK inputs
       id: android_normalized
       shell: bash
       run: |
@@ -66,7 +66,7 @@ runs:
         echo "EOF" >> $GITHUB_OUTPUT
         
 
-    # Perform of upload of artfiacts for xcode
+    # Perform of upload of artfiacts for Android SDK
     - name: Upload Artifacts to workflow
       uses: actions/upload-artifact@v6
       with:
@@ -101,7 +101,7 @@ runs:
         tar -cf $RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar ./
         echo "path=$RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar" >> $GITHUB_OUTPUT
 
-    # Perform of upload of all target artfiacts for Xcode
+    # Perform of upload of all target artfiacts for Android SDK
     - name: Upload Target Artifacts to workflow
       uses: actions/upload-artifact@v6
       with:
