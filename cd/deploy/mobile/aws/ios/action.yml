@@ -105,12 +105,12 @@ runs:
       run: |
         tmpdir=$(mktemp -d)
         mkdir -p $tmpdir/.xctest
-        if [[ "${{ inputs.run_test_type.* }}" == "XCTEST_UI" ]]; then
+        if [[ "${{ inputs.run_test_type }}" == "XCTEST_UI" ]]; then
           mv ${{ steps.xcode_configuration.outputs.result }}-*/*Tests-Runner.app $tmpdir/ 
           mv *.xctestrun $tmpdir/
           cd $tmpdir/
           zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
-        elif [[ "${{ inputs.run_test_type.* }}" == "XCTEST" ]] ; then
+        elif [[ "${{ inputs.run_test_type }}" == "XCTEST" ]] ; then
           mv ${{ steps.xcode_configuration.outputs.result }}-*/*.app/Plugins/*.xctest $tmpdir/
           cd $tmpdir/
           zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
