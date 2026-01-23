@@ -1,0 +1,97 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Deploy Mobile Application GCP Firebase test lab
+author: cloudopsworks
+description: Deploy Mobile Application to GCP Firebase test lab
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The GitHub token'
+    required: true
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  qualifier:
+    description: 'The release qualifier'
+    required: false
+    default: ''
+  environment:
+    description: 'The environment'
+    required: true
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  android_sdk:
+    description: 'Xcode SDK to build and test'
+    required: false
+    default: ''
+  android_destination:
+    description: 'Xcode Destination to build and test'
+    required: true
+  android_configuration:
+    description: 'The Android SDK configuration to use for the build'
+    required: true
+  test_script_available:
+    description: 'The test script availability'
+    required: true
+  test_script_path:
+    description: 'The test script path'
+    required: true
+  run_test_type:
+    description: 'The test script type for the run'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Normalize Android inputs
+      id: android_normalized
+      shell: bash
+      run: |
+        ret=$(echo "${{ inputs.android_sdk }}_${{ inputs.android_destination }}" | tr ' ,:=/' '-')
+        echo "result=$ret" >> $GITHUB_OUTPUT
+
+    - name: Restore Pipeline Artifacts
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      with:
+        name: ${{ inputs.artifacts_name }}_${{ steps.android_normalized.outputs.result }}
+        path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
+
+    - name: Restore Target BuildPipeline Artifacts
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      with:
+        name: source_artifacts_target_${{ steps.android_normalized.outputs.result }}
+        path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
+
+    - name: Untar extracted source_artifacts_target
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
+      shell: bash
+      run: |
+        tar -xf source_artifacts_target.tar
+        rm -f source_artifacts_target.tar
+
+    - name: Zip test contents - Android
+      if: ${{ steps.test_script_available.outputs.result == 'true' && ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
+      working-directory: ${{ inputs.source_path }}/${{ inputs.test_script_path }}
+      shell: bash
+      run: |
+        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .

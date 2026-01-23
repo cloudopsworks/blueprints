@@ -74,42 +74,38 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
+  xcode_version:
+    description: 'The Xcode version to use for the build'
+    required: false
+    default: ''
   xcode_scheme:
     description: 'Xcode Scheme to build and test'
-    required: true
+    required: false
+    default: ''
   xcode_sdk:
     description: 'Xcode SDK to build and test'
-    required: true
+    required: false
+    default: ''
   xcode_destination:
     description: 'Xcode Destination to build and test'
-    required: true
+    required: false
+    default: ''
+  android_sdk:
+    description: 'The Android SDK SDK to use for the build'
+    required: false
+    default: ''
+  android_destination:
+    description: 'The Android SDK destination to use for the build'
+    required: false
+    default: ''
+  android_configuration:
+    description: 'The Android SDK configuration to use for the build'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
   steps:
-    - name: Normalize xcode inputs
-      id: xcode_normalized
-      shell: bash
-      run: |
-        ret=$(echo "${{ inputs.xcode_scheme }}_${{ inputs.xcode_sdk }}_${{ inputs.xcode_destination }}" | tr ' ,:=/' '-')
-        echo "result=$ret" >> $GITHUB_OUTPUT
-
-    - name: XCode Version
-      id: xcode_version
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        res=$(yq e '.xcode.version // "16.4"' .cloudopsworks/vars/inputs-global.yaml)
-        echo "result=$res" >> $GITHUB_OUTPUT
-
-    - name: Xcode Configuration for the build
-      id: xcode_configuration
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        OUT=$(yq e '.xcode.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
-        echo "result=$OUT" >> $GITHUB_OUTPUT
-
     - name: Test Script Path
       id: test_script_path
       working-directory: ${{ inputs.source_path }}
@@ -205,65 +201,48 @@ runs:
 
     - name: GCloud Session
       id: session
-      if: ${{ inputs.gcp_impersonate_sa == '' }}
       uses: google-github-actions/auth@v3
       with:
         credentials_json: ${{ inputs.gcp_credentials }}
         project_id: ${{ inputs.gcp_project }}
         export_environment_variables: true
 
-    - name: GCloud Impersonate Session
-      id: impersonate
-      if: ${{ inputs.gcp_impersonate_sa != '' }}
-      uses: google-github-actions/auth@v3
+    - name: IOS Steps
+      uses: cloudopsworks/blueprints/cd/deploy/mobile/gcp/ios@v5.10
+      if: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) }}
       with:
-        credentials_json: ${{ inputs.gcp_credentials }}
-#        service_account: ${{ inputs.gcp_impersonate_sa }}
-        project_id: ${{ inputs.gcp_project }}
-        export_environment_variables: true
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        token: ${{ inputs.token }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        qualifier: ${{ inputs.qualifier }}
+        environment: ${{ inputs.environment }}
+        artifacts_name: ${{ inputs.artifacts_name }}
+        xcode_scheme: ${{ inputs.xcode_scheme }}
+        xcode_sdk: ${{ inputs.xcode_sdk }}
+        xcode_destination: ${{ inputs.xcode_destination }}
+        test_script_available: ${{ steps.test_script_available.outputs.result }}
+        run_test_type: ${{ steps.run_test_type.outputs.result }}
 
-    - name: Restore Pipeline Artifacts
-      uses: actions/download-artifact@v7
-      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+    - name: Android Steps
+      uses: cloudopsworks/blueprints/cd/deploy/mobile/gcp/android@v5.10
+      if: ${{ ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
       with:
-        name: ${{ inputs.artifacts_name }}
-        path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
-
-    - name: Restore Target BuildPipeline Artifacts
-      uses: actions/download-artifact@v7
-      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
-      with:
-        name: source_artifacts_target
-        path: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
-
-    - name: Untar extracted source_artifacts_target
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
-      shell: bash
-      run: |
-        tar -xf source_artifacts_target.tar
-        rm -f source_artifacts_target.tar
-
-    - name: Zip test contents - IOS
-      if: ${{ steps.test_script_available.outputs.result == 'true' && contains(fromJSON('["ios"]'), inputs.platform_type) }}
-      working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release/derived-data/Build/Products
-      shell: bash
-      env:
-        REL: ${{ inputs.release_name }}
-        RELVER: ${{ inputs.release_version }}
-        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
-      run: |
-        tmpdir=$(mktemp -d)
-        mv ${{ steps.xcode_configuration.outputs.result }}-* $tmpdir/ 
-        mv *.xctestrun $tmpdir/
-        cd $tmpdir/
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .
-
-    - name: Zip test contents - Android
-      if: ${{ steps.test_script_available.outputs.result == 'true' && ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
-      working-directory: ${{ inputs.source_path }}/${{ steps.test_script_path.outputs.result }}
-      shell: bash
-      run: |
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        token: ${{ inputs.token }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        qualifier: ${{ inputs.qualifier }}
+        environment: ${{ inputs.environment }}
+        artifacts_name: ${{ inputs.artifacts_name }}
+        android_sdk: ${{ inputs.android_sdk }}
+        android_destination: ${{ inputs.android_destination }}
+        android_configuration: ${{ inputs.android_configuration }}
+        test_script_available: ${{ steps.test_script_available.outputs.result }}
+        test_script_path: ${{ steps.test_script_path.outputs.result }}
+        run_test_type: ${{ steps.run_test_type.outputs.result }}
 
     - name: Rename IPA/APK
       id: ipa_apk
@@ -287,12 +266,15 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        devices=$(yq e '.gcp.devices[] | . as $item | "--device model=" + $item.model_id + ($item.version_id // "" | select(length > 0) | ",version=" + .) + ($item.locale_id // "" | select(length > 0) | ",locale=" + .) + ($item.orientation // "" | select(length > 0) | ",orientation=" + .)' .cloudopsworks/vars/inputs-dev.yaml | tr '\n' ' ')
+        devices=$(yq e '.gcp.devices[] | . as $item | "--device \"model=" + $item.model_id + ($item.version_id // "" | select(length > 0) | ",version=" + .) + ($item.locale_id // "" | select(length > 0) | ",locale=" + .) + ($item.orientation // "" | select(length > 0) | ",orientation=" + .) + "\" "' .cloudopsworks/vars/inputs-dev.yaml | tr '\n' ' ')
         echo "result=$devices" >> $GITHUB_OUTPUT
 
     - name: Schedule Run - Firebase Test Lab
       id: run_pool
-      if: ${{ steps.test_script_available.outputs.result == 'true' && ! cancelled() }}
+      if: |
+        ! cancelled() && 
+        ( contains(fromJSON('["robo"]'), steps.run_test_type.outputs.result) ||
+            steps.test_script_available.outputs.result == 'true' )
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp/release
       shell: bash
       env:
@@ -302,12 +284,12 @@ runs:
       run: |
         echo "::group::Schedule Run - Firebase Test Lab"
         target="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
+        ext=${{ steps.ipa_apk.outputs.ext }}
         gcloud firebase test $target run \
           --impersonate-service-account=${{ inputs.gcp_impersonate_sa }} \
-          --test=${REL}-${RELVER}${QUALI}-tests.zip \
+          ${{ steps.test_script_available.outputs.result == 'true' && '--test=${REL}-${RELVER}${QUALI}-tests.zip' || '--app ${REL}-${RELVER}${QUALI}.$ext' }} \
           ${{ steps.device_config.outputs.result  }} \
-          --xcode-version=${{ steps.xcode_version.outputs.result }} \
-          --type=${{ steps.run_test_type.outputs.result }} \
+          --type=${{ steps.run_test_type.outputs.result }} ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && format('--xcode-version={0}', inputs.xcode_version) || '' }} \
           --client-details=matrixLabel="${REL}-${RELVER}${QUALI}" ${{ steps.results_bucket_option.outputs.result }} \
           --async
         echo "::endgroup::"

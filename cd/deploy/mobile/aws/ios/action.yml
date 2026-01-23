@@ -1,0 +1,119 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: iOS Configuration Mobile Application AWS Device Farm
+author: cloudopsworks
+description: 'Action to configure iOS Mobile Application AWS Device Farm release'
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The GitHub token'
+    required: true
+  release_name:
+    description: 'The release name'
+    required: true
+  release_version:
+    description: 'The release version'
+    required: true
+  qualifier:
+    description: 'The release qualifier'
+    required: false
+    default: ''
+  environment:
+    description: 'The environment'
+    required: true
+  artifacts_name:
+    description: 'The name of the artifacts to save'
+    required: false
+    default: 'build_artifacts'
+  xcode_scheme:
+    description: 'Xcode Scheme to build and test'
+    required: false
+    default: ''
+  xcode_sdk:
+    description: 'Xcode SDK to build and test'
+    required: true
+  xcode_destination:
+    description: 'Xcode Destination to build and test'
+    required: true
+  test_script_available:
+    description: 'The test script availability'
+    required: true
+  run_test_type:
+    description: 'The test script type for the run'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Normalize XCode inputs
+      id: xcode_normalized
+      shell: bash
+      run: |
+        ret=$(echo "${{ inputs.xcode_scheme }}_${{ inputs.xcode_sdk }}_${{ inputs.xcode_destination }}" | tr ' ,:=/' '-')
+        echo "result=$ret" >> $GITHUB_OUTPUT
+
+    - name: Xcode Configuration for the build
+      id: xcode_configuration
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.xcode.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Restore Pipeline Artifacts
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      with:
+        name: ${{ inputs.artifacts_name }}_${{ steps.xcode_normalized.outputs.result }}
+        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+
+    - name: Restore Target BuildPipeline Artifacts
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      with:
+        name: source_artifacts_target_${{ steps.xcode_normalized.outputs.result }}
+        path: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+
+    - name: Untar extracted source_artifacts_target
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release
+      shell: bash
+      run: |
+        tar -xf source_artifacts_target.tar
+        rm -f source_artifacts_target.tar
+
+    - name: Zip test contents - IOS
+      if: ${{ inputs.test_script_available == 'true' }}
+      working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws/release/derived-data/Build/Products
+      shell: bash
+      env:
+        REL: ${{ inputs.release_name }}
+        RELVER: ${{ inputs.release_version }}
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+      run: |
+        tmpdir=$(mktemp -d)
+        mkdir -p $tmpdir/.xctest
+        if [[ "${{ inputs.run_test_type }}" == "XCTEST_UI" ]]; then
+          mv ${{ steps.xcode_configuration.outputs.result }}-*/*Tests-Runner.app $tmpdir/ 
+          mv *.xctestrun $tmpdir/
+          cd $tmpdir/
+          zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        elif [[ "${{ inputs.run_test_type }}" == "XCTEST" ]] ; then
+          mv ${{ steps.xcode_configuration.outputs.result }}-*/*.app/Plugins/*.xctest $tmpdir/
+          cd $tmpdir/
+          zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        else
+          echo "::warning::Unsupported test script type for iOS Device Farm XCTEST upload: ${{ inputs.run_test_type }}"
+        fi

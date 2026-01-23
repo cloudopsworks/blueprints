@@ -1,0 +1,44 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+# TODO: complete this module
+name: Snyk code Scanning Java
+author: cloudopsworks
+description: This action scans the Java code using Snyk
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  snyk_token:
+    description: 'The Snyk token'
+    required: true
+  bot_user:
+    description: 'The bot user'
+    required: true
+  token:
+    description: 'The Github token'
+    required: true
+  semver:
+    description: 'SemVer Version from build'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Snyk Code Scanning
+      id: snyk
+      env:
+        SNYK_TOKEN: ${{ inputs.snyk_token }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "TBD"

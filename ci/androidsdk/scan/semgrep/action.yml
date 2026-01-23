@@ -1,0 +1,59 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Semgrep code Scanning Xcode
+author: cloudopsworks
+description: This action scans the iOS/MacOS code using Semgrep
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  semgrep_token:
+    description: 'The Semgrep token'
+    required: true
+  bot_user:
+    description: 'The bot user'
+    required: true
+  token:
+    description: 'The Github token'
+    required: true
+  semgrep_excludes:
+    description: 'The Semgrep excludes'
+    required: false
+    default: '.github/workflows/*,src/test/*'
+
+runs:
+  using: 'composite'
+  steps:
+    # Split the semgrep_excludes into tokens and return as the result for each token prepended with --exclude xxx
+    # eg: --exclude aaa --exclude bbb options
+    - name: Split semgrep_excludes
+      id: split_excludes
+      shell: bash
+      run: |
+        if [[ -n "${{ inputs.semgrep_excludes }}" ]]; then
+          result="--exclude '$(echo "${{ inputs.semgrep_excludes }}" | sed "s/,/' --exclude '/g")'"
+        else
+          result=""
+        fi
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: Semgrep Code Scanning
+      id: semgrep
+      env:
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        semgrep --config=p/default . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
+        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.split_excludes.outputs.result }}

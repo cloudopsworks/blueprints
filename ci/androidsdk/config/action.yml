@@ -1,0 +1,100 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Get Configuration Values for Android Build
+author: cloudopsworks
+description: Get Configuration Values for Android Build
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+outputs:
+  android_version:
+    description: 'The Android version to use for the build'
+    value: ${{ steps.android_version.outputs.result }}
+  android_sdks:
+    description: 'The Android SDKs to use for the build'
+    value: ${{ steps.android_sdks.outputs.result }}
+  android_configuration:
+    description: 'The Android configuration to use for the build'
+    value: ${{ steps.android_configuration.outputs.result }}
+  android_destinations:
+    description: 'The Android destinations to use for the build'
+    value: ${{ steps.android_destinations.outputs.result }}
+  android_extra_args:
+    description: 'The Android extra arguments to use for the build'
+    value: ${{ steps.android_extra_args.outputs.result }}
+  android_extra_targets:
+    description: 'The Android extra target arguments to use for the build'
+    value: ${{ steps.android_extra_targets.outputs.result }}
+  android_packages:
+    description: 'The Android packages to use for the build'
+    value: ${{ steps.android_packages.outputs.result }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Android SDK list with yq
+      id: android_sdks
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e -I=0 -o=j '.android.sdks // ["iphoneos"]' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Android Configuration for the build
+      id: android_configuration
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.android.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Get android_destinations from inputs-global.yaml with yq
+      id: android_destinations
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e -I=0 -o=j '.android.destinations // ["generic/platform=iOS"]' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+
+    - name: get and extra args from inputs-global.yaml with yq
+      id: android_extra_args
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.android.extra_args // ""' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: get android sdk extra target args from inputs-global.yaml with yq
+      id: android_extra_targets
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.android.extra_targets // ""' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Get Specified Android Version
+      id: android_version
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+          OUT=$(yq e '.android.version // "12266719"' .cloudopsworks/vars/inputs-global.yaml)
+          echo "result=$OUT" >> $GITHUB_OUTPUT
+
+    - name: Get Specified Android Packages
+      id: android_packages
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        OUT=$(yq e '.android.packages // "tools platform-tools"' .cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$OUT" >> $GITHUB_OUTPUT

@@ -52,6 +52,7 @@ runs:
         #   - .docker
         #   - .iac
         #   - .xcode
+        #   - .android
         # ouptuts are:
         #   - repo = cloudopsworks/<moduletype>-app-template
         #   - current_version = contenfrom .cloudopsworks/_VERSION file
@@ -85,6 +86,9 @@ runs:
         elif [ -f ".cloudopsworks/.xcode" ]; then
           echo "Module type is Xcode"
           echo "repo=cloudopsworks/xcode-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".cloudopsworks/.android" ]; then
+          echo "Module type is Android SDK"
+          echo "repo=cloudopsworks/androidsdk-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".cloudopsworks/.iac" ]; then
           echo "Module type is iac"
           echo "repo=cloudopsworks/terragrunt-project-template" >> $GITHUB_OUTPUT
