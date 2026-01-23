@@ -503,6 +503,7 @@ runs:
       if: ${{ steps.schedule_run.outputs.run_arn != '' || steps.run_device.outputs.run_arn != '' }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/aws
       run: |
+        echo "::group::Run Resource Tagging"
         org=$(yq e '.organization_name' inputs-global.yaml)
         ou=$(yq e '.organization_unit' inputs-global.yaml)
         app=$(yq e '.environment_name' inputs-global.yaml)
@@ -515,3 +516,4 @@ runs:
           Key=application-name,Value="${app}" \
           Key=application-type,Value="${envname}" \
           Key=organization-full-name=,Value="${org} ${ou} ${app} ${envname}"
+        echo "::endgroup::"
