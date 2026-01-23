@@ -292,7 +292,8 @@ runs:
         echo "::group::Schedule Run - Firebase Test Lab"
         target="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
         ext=${{ steps.ipa_apk.outputs.ext }}
-        gcloud firebase test $target run \
+        test_script_available=${{ steps.test_script_available.outputs.result }}
+        gcloud firebase test $target run \ 
           --impersonate-service-account=${{ inputs.gcp_impersonate_sa }} \
           ${{ steps.test_script_available.outputs.result == 'true' && '' || '--app ${REL}-${RELVER}${QUALI}.$ext' }}${{ steps.test_script_available.outputs.result == 'true' && '--test=${REL}-${RELVER}${QUALI}-tests.zip' || '' }} \
           ${{ steps.device_config.outputs.result  }} \
