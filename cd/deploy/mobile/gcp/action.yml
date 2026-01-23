@@ -201,22 +201,11 @@ runs:
 
     - name: GCloud Session
       id: session
-      #if: ${{ inputs.gcp_impersonate_sa == '' }}
       uses: google-github-actions/auth@v3
       with:
         credentials_json: ${{ inputs.gcp_credentials }}
         project_id: ${{ inputs.gcp_project }}
         export_environment_variables: true
-
-#    - name: GCloud Impersonate Session
-#      id: impersonate
-#      if: ${{ inputs.gcp_impersonate_sa != '' }}
-#      uses: google-github-actions/auth@v3
-#      with:
-#        credentials_json: ${{ inputs.gcp_credentials }}
-##        service_account: ${{ inputs.gcp_impersonate_sa }}
-#        project_id: ${{ inputs.gcp_project }}
-#        export_environment_variables: true
 
     - name: IOS Steps
       uses: cloudopsworks/blueprints/cd/deploy/mobile/gcp/ios@v5.10
