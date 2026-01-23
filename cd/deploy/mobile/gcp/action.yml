@@ -74,6 +74,10 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
+  xcode_version:
+    description: 'The Xcode version to use for the build'
+    required: false
+    default: ''
   xcode_scheme:
     description: 'Xcode Scheme to build and test'
     required: false
@@ -296,7 +300,7 @@ runs:
           --impersonate-service-account=${{ inputs.gcp_impersonate_sa }} \
           ${{ steps.test_script_available.outputs.result == 'true' && '--test=${REL}-${RELVER}${QUALI}-tests.zip' || '--app ${REL}-${RELVER}${QUALI}.$ext' }} \
           ${{ steps.device_config.outputs.result  }} \
-          --type=${{ steps.run_test_type.outputs.result }} ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && format('--xcode-version={0}', inputs.xcode_sdk) }} \
+          --type=${{ steps.run_test_type.outputs.result }} ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && format('--xcode-version={0}', inputs.xcode_version) }} \
           --client-details=matrixLabel="${REL}-${RELVER}${QUALI}" ${{ steps.results_bucket_option.outputs.result }} \
           --async
         echo "::endgroup::"

@@ -74,6 +74,10 @@ inputs:
     description: 'The name of the artifacts to save'
     required: false
     default: 'build_artifacts'
+  xcode_version:
+    description: 'The Xcode version to use for the build'
+    required: false
+    default: ''
   xcode_scheme:
     description: 'Xcode Scheme to build and test'
     required: false
