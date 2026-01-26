@@ -71,7 +71,7 @@ runs:
         branch: ${{ steps.upgrade.outputs.branch }}
         directory: ${{ inputs.source_path }}
 
-    - name: Checkout develop
+    - name: PR Creation
       shell: bash
       working-directory: ${{ inputs.source_path }}
       env:
