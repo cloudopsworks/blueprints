@@ -55,10 +55,3 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.jira.project_id // ""' ./${{ inputs.source_path }}/.cloudopsworks/inputs-jira.yaml
-
-    # Get Checkov Enablement defaults to true
-    - name: Get Checkov Config
-      id: checkov
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.checkov.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs-jira.yaml
