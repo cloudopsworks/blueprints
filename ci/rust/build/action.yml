@@ -134,7 +134,7 @@ runs:
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
         toolchain: ${{ steps.rust_version.outputs.result }}
-        components: ${{ steps.rust_componentes.outputs.result }}
+        components: ${{ steps.rust_components.outputs.result }}
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
