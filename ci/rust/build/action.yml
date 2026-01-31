@@ -130,11 +130,22 @@ runs:
         cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Rust comes in GitHub Actions, so we can use the latest version
-    - name: Set Rust SDK
+    - name: Setup Rust SDK
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
         toolchain: ${{ steps.rust_version.outputs.result }}
         components: ${{ steps.rust_components.outputs.result }}
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    # Rust comes in GitHub Actions, so we can use the latest version
+    - name: Install required Pipeline Cargo Components
+      shell: bash
+      run: |
+        echo "::group::Install required Pipeline Cargo Components"
+        cargo install cargo-tarpaulin cargo-cyclonedx
+        echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
