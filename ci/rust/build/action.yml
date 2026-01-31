@@ -144,7 +144,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Install required Pipeline Cargo Components"
-        cargo install cargo-tarpaulin cargo-cyclonedx
+        cargo install cargo-tarpaulin cargo-cyclonedx toml-cli2 --force
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
