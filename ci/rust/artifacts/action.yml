@@ -48,7 +48,7 @@ runs:
       shell: bash
       run: |
         mkdir -p ${{ inputs.source_path }}/bin/
-        cp -pv ${{ steps.zip_globs.outputs.result }} bin/
+        cp -pv ${{ steps.zip_globs.outputs.result }} ${{ inputs.source_path }}/bin/
 
     # Perform of upload of artfiacts for Rust
     - name: Upload Artifacts to workflow
