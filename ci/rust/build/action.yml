@@ -135,6 +135,7 @@ runs:
       with:
         toolchain: ${{ steps.rust_version.outputs.result }}
         components: ${{ steps.rust_components.outputs.result }}
+        rust-src-dir: ${{ inputs.source_path }}
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
