@@ -208,7 +208,7 @@ runs:
       run: |
         echo "::group::Rust Test"
         mkdir -p test-results
-        cargo test --no-fail-fast ${{ steps.build_opts.outputs.result }} -- --test-threads=2  ${{ steps.test_opts.outputs.result }} > test-results/test.log
+        cargo test --no-fail-fast ${{ steps.build_opts.outputs.result }} -- --test-threads=2  ${{ steps.test_opts.outputs.result }} | tee test-results/test.log
         cargo tarpaulin --skip-clean --profile=test --out Html --out Xml --out Lcov --output-dir test-results/
         echo "::endgroup::"
       env:
