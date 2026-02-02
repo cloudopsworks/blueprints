@@ -220,7 +220,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::SBOM Generation"
-        cargo cyclonedx --profile=test --format xml --all-features --override-filename bom ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
+        cargo cyclonedx --format xml --all-features --override-filename bom ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
         echo "::endgroup::"
 
     # Build the code!
