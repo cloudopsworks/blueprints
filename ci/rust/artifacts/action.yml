@@ -44,12 +44,20 @@ runs:
       with:
         cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
 
+    - name: Copy Release to bin
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        mkdir -p bin/
+        cp -pv ${{ steps.zip_globs.outputs.result }} bin/
+
     # Perform of upload of artfiacts for Rust
     - name: Upload Artifacts to workflow
       uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.artifacts_name }}
         path: |
+          ${{ inputs.source_path }}/bin/**
           ${{ steps.zip_globs.outputs.result }}
           ${{ steps.exclude_globs.outputs.result }}
         retention-days: 1
