@@ -151,13 +151,17 @@ runs:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
 
-#    - name: Install gcc toolchain
-#      shell: bash
-#      run: |
-#        echo "::group::Install GCC Toolchain"
-#        sudo apt-get install -y cmake g++ pkg-config jq
-#        sudo apt-get install -y libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
-#        echo "::endgroup::"
+    - name: Install gcc toolchain
+      shell: bash
+      run: |
+        echo "::group::Install GCC Toolchain"
+        which cmake || sudo apt-get install -y cmake
+        which g++ || sudo apt-get install -y g++
+        which pkg-config || sudo apt-get install -y pkg-config
+        which jq || sudo apt-get install -y jq
+        sudo apt-get install -y libcurl4-openssl-dev libelf-dev libdw-dev binutils-dev libiberty-dev
+        echo "::endgroup::"
+
     - name: Add Rust Target - Cross Compile
       if: ${{ steps.rust_dist.outputs.result != '' && steps.rust_arch.outputs.result != '' }}
       working-directory: ${{ inputs.source_path }}
@@ -167,14 +171,15 @@ runs:
         rustup target add ${{ steps.rust_arch.outputs.result }}-${{ steps.rust_dist.outputs.result }}
         echo "::endgroup::"
 
-    - name: Cache
-      uses: actions/cache@v5
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          ${{ inputs.source_path }}/target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+# Cache provided by setup-rust
+#    - name: Cache
+#      uses: actions/cache@v5
+#      with:
+#        path: |
+#          ~/.cargo/registry
+#          ~/.cargo/git
+#          ${{ inputs.source_path }}/target
+#        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     # Versioning SET
     - name: Version SET
@@ -194,6 +199,29 @@ runs:
       shell: bash
       run: |
         echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+
+    # Test the code!
+    - name: Test Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Rust Test"
+        mkdir -p test-results
+        cargo test --no-fail-fast ${{ steps.build_opts.outputs.result }} -- --test-threads=2  ${{ steps.test_opts.outputs.result }} > test-results/test.log
+        cargo tarpaulin --out Html --out Xml --out Lcov --output-dir test-results/
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: SBOM Generation for Dtrack
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "::group::SBOM Generation"
+        cargo cyclonedx --format xml ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
+        echo "::endgroup::"
 
     # Build the code!
     - name: Build Default Target Code
@@ -220,25 +248,3 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
-
-    # Test the code!
-    - name: Test Code
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        echo "::group::Rust Test"
-        mkdir -p test-results
-        cargo test --release --no-fail-fast ${{ steps.build_opts.outputs.result }} -- --test-threads=1 ${{ steps.test_opts.outputs.result }} > test-results/test.log
-        cargo tarpaulin --out Html --out Xml --out Lcov --output-dir test-results/
-        echo "::endgroup::"
-      env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
-
-    - name: SBOM Generation for Dtrack
-      shell: bash
-      working-directory: ${{ inputs.source_path }}
-      run: |
-        echo "::group::SBOM Generation"
-        cargo cyclonedx --format xml ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
-        echo "::endgroup::"
