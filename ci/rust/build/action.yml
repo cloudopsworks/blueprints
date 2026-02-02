@@ -209,7 +209,7 @@ runs:
         echo "::group::Rust Test"
         mkdir -p test-results
         cargo test --no-fail-fast ${{ steps.build_opts.outputs.result }} -- --test-threads=2  ${{ steps.test_opts.outputs.result }} > test-results/test.log
-        cargo tarpaulin --out Html --out Xml --out Lcov --output-dir test-results/
+        cargo tarpaulin --skip-clean --profile=test --out Html --out Xml --out Lcov --output-dir test-results/
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -220,7 +220,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::SBOM Generation"
-        cargo cyclonedx --format xml ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
+        cargo cyclonedx --profile=test --format xml --all-features --override-filename bom ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
         echo "::endgroup::"
 
     # Build the code!
