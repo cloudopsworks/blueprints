@@ -43,6 +43,12 @@ runs:
       with:
         cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
+    - name: Get Sonnar Scanner version, if needed to be adjusted, allways defaults to latest
+      id: sonar_scanner_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.scanner_version // "latest"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+
     - name: Get Sonar sources form inputs-global.yaml
       id: source_path
       uses: mikefarah/yq@master
@@ -103,10 +109,9 @@ runs:
       with:
         cmd: yq e -I=0 '.sonarqube.branch_disabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
-    # TODO: enable branch.name must buy Developer/Pro plan
     # Scan the code
     - name: Sonar Scan
-      uses: sonarsource/sonarqube-scan-action@v2
+      uses: sonarsource/sonarqube-scan-action@v7
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
@@ -116,12 +121,9 @@ runs:
           -Dsonar.projectKey=${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('{0}_{1}',steps.repo_owner.outputs.result,inputs.sonarqube_project_key) || inputs.sonarqube_project_key }}
           -Dsonar.projectVersion=${{ inputs.semver }}
           -Dsonar.sources=${{ steps.source_path.outputs.result }}
-          -Dsonar.java.binaries=${{ steps.binaries_path.outputs.result }}
-          -Dsonar.java.libraries=${{ steps.libraries_path.outputs.result }}
           -Dsonar.tests=${{ steps.tests_path.outputs.result }}
           -Dsonar.test.binaries=${{ steps.test_binaries_path.outputs.result }}
           -Dsonar.test.inclusions=${{ steps.test_inclusions_path.outputs.result }}
-          -Dsonar.java.test.libraries=${{ steps.test_libraries_path.outputs.result }}
           -Dsonar.exclusions=${{ steps.extra_exclusions_paths.outputs.result == '' && steps.exclusions_paths.outputs.result || format('{0},{1}',steps.exclusions_paths.outputs.result,steps.extra_exclusions_paths.outputs.result) }}
           -Dsonar.language=swift
           -Dsonar.lang.patterns.openapi=openapi

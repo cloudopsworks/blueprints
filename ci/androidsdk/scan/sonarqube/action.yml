@@ -6,9 +6,9 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Sonarqube Scan Xcode
+name: Sonarqube Scan Android SDK
 author: cloudopsworks
-description: This action scans the Xcode/Swift code using Sonarqube
+description: This action scans the Android/Kotlin code using Sonarqube
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -42,6 +42,12 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+
+    - name: Get Sonnar Scanner version, if needed to be adjusted, allways defaults to latest
+      id: sonar_scanner_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.scanner_version // "latest"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     - name: Get Sonar sources form inputs-global.yaml
       id: source_path
@@ -103,10 +109,9 @@ runs:
       with:
         cmd: yq e -I=0 '.sonarqube.branch_disabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
-    # TODO: enable branch.name must buy Developer/Pro plan
     # Scan the code
     - name: Sonar Scan
-      uses: sonarsource/sonarqube-scan-action@v2
+      uses: sonarsource/sonarqube-scan-action@v7
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
