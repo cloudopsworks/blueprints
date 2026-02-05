@@ -43,6 +43,12 @@ runs:
       with:
         cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
+    - name: Get Sonnar Scanner version, if needed to be adjusted, allways defaults to latest
+      id: sonar_scanner_version
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -I=0 '.sonarqube.scanner_version // "latest"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+
     - name: Get Sonar sources form inputs-global.yaml
       id: source_path
       uses: mikefarah/yq@master
