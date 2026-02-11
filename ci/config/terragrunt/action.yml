@@ -55,10 +55,3 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.jira.project_id // ""' ./${{ inputs.source_path }}/.cloudopsworks/inputs-jira.yaml
-
-    - name: test
-      shell: bash
-      run: |
-        echo "Testing step"
-        echo "jira_project_id=${{ steps.jira_project_id.outputs.result }}"
-        echo "jira_project_key=${{ steps.jira_project_key.outputs.result }}"
