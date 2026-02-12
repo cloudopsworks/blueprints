@@ -45,7 +45,7 @@ runs:
   using: 'composite'
   steps:
     - name: Jira Release
-      uses: cloudopsworks/github-action-jira-release@v3.1
+      uses: cloudopsworks/github-action-jira-release@v3
       id: jira-rel
       with:
         project_id: ${{ inputs.project_id }}
