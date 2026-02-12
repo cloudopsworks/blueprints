@@ -296,11 +296,17 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
 
     # SBOM generation
+    - name: Install CycloneDX
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        pipx install cyclonedx-bom
+
     - name: SBOM Generation for Dtrack
-      uses: CycloneDX/gh-python-generate-sbom@v2
-      with:
-        input: ${{ inputs.source_path }}/${{ inputs.python_requirements_file }}
-        output: "${{ inputs.source_path }}/bom.xml"
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        cyclonedx-py -r -i ${{ inputs.python_requirements_file }} --format xml -o bom.xml
 
     - name: Build Dependency files if they are required
       working-directory: ${{ inputs.source_path }}
