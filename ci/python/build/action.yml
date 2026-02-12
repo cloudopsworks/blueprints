@@ -300,12 +300,15 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
+        echo "::group::Install CycloneDX"
         pipx install cyclonedx-bom
+        echo "::endgroup::"
 
     - name: SBOM Generation for Dtrack
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
+        echo "::group::SBOM Generation for Dtrack"
         dist=${{ steps.python_dist.outputs.result}}
         case $dist in
           pip)
@@ -319,6 +322,7 @@ runs:
             exit 1
             ;;
         esac
+        echo "::endgroup::"
 
     - name: Build Dependency files if they are required
       working-directory: ${{ inputs.source_path }}
