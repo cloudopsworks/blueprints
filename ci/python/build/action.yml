@@ -296,11 +296,33 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
 
     # SBOM generation
+    - name: Install CycloneDX
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Install CycloneDX"
+        pipx install cyclonedx-bom
+        echo "::endgroup::"
+
     - name: SBOM Generation for Dtrack
-      uses: CycloneDX/gh-python-generate-sbom@v2
-      with:
-        input: ${{ inputs.source_path }}/${{ inputs.python_requirements_file }}
-        output: "${{ inputs.source_path }}/bom.xml"
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::SBOM Generation for Dtrack"
+        dist=${{ steps.python_dist.outputs.result}}
+        case $dist in
+          pip)
+            cyclonedx-py requirements --of xml -o bom.xml ${{ inputs.python_requirements_file }}
+            ;;
+          pipenv|poetry)
+            cyclonedx-py pipenv --of xml -o bom.xml 
+            ;;
+          *)
+            echo "Unsupported distribution format: $dist"
+            exit 1
+            ;;
+        esac
+        echo "::endgroup::"
 
     - name: Build Dependency files if they are required
       working-directory: ${{ inputs.source_path }}
