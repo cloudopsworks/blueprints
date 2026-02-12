@@ -24,10 +24,10 @@ outputs:
     value: ${{ steps.jira_integration.outputs.result }}
   jira_project_key:
     description: 'The Jira project key value'
-    value: ${{ steps.jira_project_key.ouputs.result }}
+    value: ${{ steps.jira_project_key.outputs.result }}
   jira_project_id:
     description: 'The Jira project ID value'
-    value: ${{ steps.jira_project_id.ouputs.result }}
+    value: ${{ steps.jira_project_id.outputs.result }}
 
 runs:
   using: 'composite'
