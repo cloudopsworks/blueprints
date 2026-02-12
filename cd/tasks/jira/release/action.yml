@@ -27,6 +27,10 @@ inputs:
   atlassian_cloud_domain:
     description: 'The Atlassian Cloud domain (e.g., your-domain.atlassian.net)'
     required: true
+  atlassian_cloud_id:
+    description: 'The Atlassian Cloud ID (e.g., your-domain.atlassian.net)'
+    required: false
+    default: ''
   project_key:
     description: 'The JIRA project key'
     required: true
@@ -41,11 +45,12 @@ runs:
   using: 'composite'
   steps:
     - name: Jira Release
-      uses: rodush/github-action-jira-release@v2
+      uses: cloudopsworks/github-action-jira-release@v3
       id: jira-rel
       with:
         project_id: ${{ inputs.project_id }}
         project_key: ${{ inputs.project_key }}
+        cloud_id: ${{ inputs.atlassian_cloud_id }}
       env:
         JIRA_API_USER: ${{ inputs.jira_api_user }}
         JIRA_API_TOKEN: ${{ inputs.jira_api_token }}
