@@ -306,7 +306,19 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        cyclonedx-py -r -i ${{ inputs.python_requirements_file }} --format xml -o bom.xml
+        dist=${{ steps.python_dist.outputs.result}}
+        case $dist in
+          pip)
+            cyclonedx-py requirements --of xml -o bom.xml ${{ inputs.python_requirements_file }}
+            ;;
+          pipenv|poetry)
+            cyclonedx-py pipenv --of xml -o bom.xml 
+            ;;
+          *)
+            echo "Unsupported distribution format: $dist"
+            exit 1
+            ;;
+        esac
 
     - name: Build Dependency files if they are required
       working-directory: ${{ inputs.source_path }}
