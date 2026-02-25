@@ -256,7 +256,7 @@ runs:
         echo "::group::Terragrunt Plan to JSON"
         list=$(find ${{ github.workspace }}/.tfplan -name "*.tfplan")
         for item in $list ; do 
-          terragrunt --non-interactive run -- show -json $item > ${item}.json
+          tofu show -json -plan=$item > ${item}.json
         done
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$list" >> $GITHUB_OUTPUT
