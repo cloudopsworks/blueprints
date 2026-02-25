@@ -240,9 +240,17 @@ runs:
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
+    - name: Hard fail on plan error
+      shell: bash
+      if: ${{ steps.plan.outcome != 'sucess' }}
+      continue-on-error: false
+      run: |
+        echo "::error::Terragrunt plan failed, exiting!!!"
+        exit 1
+
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-      if: ${{ ! inputs.unlock && steps.plan.outcome == 'success' }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       run: |
         echo "::group::Terragrunt Plan to JSON"
         terragrunt --non-interactive run -- show -json plan.tfplan > tfplan.json
@@ -256,7 +264,7 @@ runs:
 
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-      if: ${{ ! inputs.unlock && steps.plan.outcome == 'success' }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       shell: bash
       run: |
         echo "::group::TF Summarize of JSON file"
@@ -290,3 +298,11 @@ runs:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
+
+    - name: Hard fail on apply error
+      shell: bash
+      if: ${{ steps.apply.outcome != 'sucess' }}
+      continue-on-error: false
+      run: |
+        echo "::error::Terragrunt apply failed, exiting!!!"
+        exit 1
