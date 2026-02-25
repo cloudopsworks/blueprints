@@ -242,7 +242,7 @@ runs:
 
     - name: Hard fail on plan error
       shell: bash
-      if: ${{ steps.plan.outcome != 'sucess' }}
+      if: ${{ steps.plan.outcome != 'success' }}
       continue-on-error: false
       run: |
         echo "::error::Terragrunt plan failed, exiting!!!"
@@ -301,7 +301,7 @@ runs:
 
     - name: Hard fail on apply error
       shell: bash
-      if: ${{ steps.apply.outcome != 'sucess' }}
+      if: ${{ steps.apply.outcome != 'success' }}
       continue-on-error: false
       run: |
         echo "::error::Terragrunt apply failed, exiting!!!"
