@@ -248,7 +248,7 @@ runs:
         echo "::error::Terragrunt plan failed, exiting!!!"
         exit 1
 
-     - name: Terragrunt Plan to JSON
+    - name: Terragrunt Plan to JSON
       id: plan_json
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
@@ -257,7 +257,8 @@ runs:
         list=$(find ${{ github.workspace }}/.tfplan/ -type f -name "*.tfplan")
         echo "$list"
         for item in $list ; do
-          terragrunt --non-interactive show -json -plan=$item > ${item}.json
+          workdir=$(echo "$item" | tr '${{ github.workspace }}/.tfplan/' '' | tr '/tfplan.tfplan' '')
+          terragrunt --non-interactive --working-dir $workdir run -- show -json -plan=$item > ${item}.json
         done
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$list" >> $GITHUB_OUTPUT
