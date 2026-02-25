@@ -248,41 +248,41 @@ runs:
         echo "::error::Terragrunt plan failed, exiting!!!"
         exit 1
 
-#    - name: Terragrunt Plan to JSON
-#      id: plan_json
-#      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-#      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
-#      run: |
-#        echo "::group::Terragrunt Plan to JSON"
-#        list=$(find ${{ github.workspace }}/.tfplan/ -type f -name "*.tfplan")
-#        echo "$list"
-#        for item in $list ; do
-#          tofu show -json -plan=$item > ${item}.json
-#        done
-#        echo "result<<EOF" >> $GITHUB_OUTPUT
-#        echo "$list" >> $GITHUB_OUTPUT
-#        echo "EOF" >> $GITHUB_OUTPUT
-#        echo "::endgroup::"
-#      shell: bash
-#      env:
-#        TG_TF_PATH: tofu
-#        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-#        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
-#        GITHUB_API_TOKEN: ${{ inputs.token }}
-#
-#    - name: TF Summarize of JSON file
-#      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-#      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
-#      shell: bash
-#      env:
-#        LIST_PLAN: ${{ steps.plan_json.outputs.result }}
-#      run: |
-#        echo "::group::TF Summarize of JSON file"
-#        for item in ${LIST_PLAN} ; do
-#          echo "Summarizing plan file: ${item}.json"
-#          tf-summarize ${item}.json
-#        done
-#        echo "::endgroup::"
+     - name: Terragrunt Plan to JSON
+      id: plan_json
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
+      run: |
+        echo "::group::Terragrunt Plan to JSON"
+        list=$(find ${{ github.workspace }}/.tfplan/ -type f -name "*.tfplan")
+        echo "$list"
+        for item in $list ; do
+          terragrunt --non-interactive show -json -plan=$item > ${item}.json
+        done
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        echo "$list" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+      shell: bash
+      env:
+        TG_TF_PATH: tofu
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        GITHUB_API_TOKEN: ${{ inputs.token }}
+
+    - name: TF Summarize of JSON file
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
+      shell: bash
+      env:
+        LIST_PLAN: ${{ steps.plan_json.outputs.result }}
+      run: |
+        echo "::group::TF Summarize of JSON file"
+        for item in ${LIST_PLAN} ; do
+          echo "Summarizing plan file: ${item}.json"
+          tf-summarize ${item}.json
+        done
+        echo "::endgroup::"
 
     - name: Save Plan Artifacts
       if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
