@@ -257,7 +257,7 @@ runs:
         list=$(find ${{ github.workspace }}/.tfplan/ -type f -name "*.tfplan")
         echo "$list"
         for item in $list ; do
-          workdir=$(echo "$item" | tr '${{ github.workspace }}/.tfplan/' '' | tr '/tfplan.tfplan' '')
+          workdir=$(echo "$item" | sed -E 's#.*/\.tfplan/##; s#/tfplan\.tfplan$##')
           terragrunt --non-interactive --working-dir $workdir run -- show -json -plan=$item > ${item}.json
         done
         echo "result<<EOF" >> $GITHUB_OUTPUT
