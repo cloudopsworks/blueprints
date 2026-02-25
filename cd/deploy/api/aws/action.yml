@@ -240,12 +240,29 @@ runs:
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
+    - name: Hard fail on plan error
+      shell: bash
+      if: ${{ steps.plan.outcome != 'success' }}
+      continue-on-error: false
+      run: |
+        echo "::error::Terragrunt plan failed, exiting!!!"
+        exit 1
+
     - name: Terragrunt Plan to JSON
+      id: plan_json
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-      if: ${{ ! inputs.unlock && steps.plan.outcome == 'success' }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       run: |
         echo "::group::Terragrunt Plan to JSON"
-        terragrunt --non-interactive run -- show -json plan.tfplan > tfplan.json
+        list=$(find ${{ github.workspace }}/.tfplan/ -type f -name "*.tfplan")
+        echo "$list"
+        for item in $list ; do
+          workdir=$(echo "$item" | sed -E 's#.*/\.tfplan/##; s#/tfplan\.tfplan$##')
+          terragrunt --non-interactive --working-dir $workdir run -- show -json -plan=$item > ${item}.json
+        done
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        echo "$list" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
         echo "::endgroup::"
       shell: bash
       env:
@@ -256,11 +273,16 @@ runs:
 
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/apigw
-      if: ${{ ! inputs.unlock && steps.plan.outcome == 'success' }}
+      if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       shell: bash
+      env:
+        LIST_PLAN: ${{ steps.plan_json.outputs.result }}
       run: |
         echo "::group::TF Summarize of JSON file"
-        tf-summarize tfplan.json
+        for item in ${LIST_PLAN} ; do
+          echo "Summarizing plan file: ${item}.json"
+          tf-summarize ${item}.json
+        done
         echo "::endgroup::"
 
     - name: Save Plan Artifacts
@@ -290,3 +312,11 @@ runs:
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
         GITHUB_API_TOKEN: ${{ inputs.token }}
+
+    - name: Hard fail on apply error
+      shell: bash
+      if: ${{ steps.apply.outcome != 'success' }}
+      continue-on-error: false
+      run: |
+        echo "::error::Terragrunt apply failed, exiting!!!"
+        exit 1

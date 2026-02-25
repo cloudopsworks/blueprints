@@ -13,6 +13,11 @@ locals {
   base_vars    = yamldecode(file("./inputs-base.yaml"))
   release_vars = yamldecode(file(find_in_parent_folders("./release.yaml")))
   global_vars  = yamldecode(file(find_in_parent_folders("global-inputs.yaml")))
+  extra_tags = merge({
+    "managed-by" = "iac"
+    },
+    try(local.cloud_vars.tags, {})
+  )
 }
 
 include "root" {
@@ -20,7 +25,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-api-gateway-apis-deploy.git//?ref=v6.0.22"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-api-gateway-apis-deploy.git//?ref=v6.0.23-beta.3"
 }
 
 inputs = {
@@ -37,5 +42,5 @@ inputs = {
   apigw_definition  = local.local_vars
   absolute_path     = get_terragrunt_dir()
   cloud_type        = local.global_vars.cloud_type
-  extra_tags        = try(local.cloud_vars.tags, {})
+  extra_tags        = local.extra_tags
 }

@@ -339,3 +339,18 @@ runs:
         HELM_EXPERIMENTAL_OCI: "1"
         GITHUB_API_TOKEN: ${{ inputs.token }}
 
+    - name: Hard fail on plan error
+      shell: bash
+      if: ${{ steps.plan.outcome != 'success' }}
+      continue-on-error: false
+      run: |
+        echo "::error::Terragrunt plan failed, exiting!!!"
+        exit 1
+
+    - name: Hard fail on apply error
+      shell: bash
+      if: ${{ steps.apply.outcome != 'success' }}
+      continue-on-error: false
+      run: |
+        echo "::error::Terragrunt apply failed, exiting!!!"
+        exit 1

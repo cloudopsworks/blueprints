@@ -12,6 +12,11 @@ locals {
   base_vars    = yamldecode(file("./inputs-global.yaml"))
   release_vars = yamldecode(file("./release.yaml"))
   global_vars  = yamldecode(file(find_in_parent_folders("global-inputs.yaml")))
+  extra_tags = merge({
+    "managed-by" = "iac"
+    },
+    try(local.local_vars.tags, {})
+  )
 }
 
 include "root" {
@@ -44,5 +49,5 @@ inputs = {
   version_label    = local.release_vars.version_label
   absolute_path    = get_terragrunt_dir()
   observability    = try(local.base_vars.observability, {})
-  extra_tags       = try(local.local_vars.tags, {})
+  extra_tags       = local.extra_tags
 }
