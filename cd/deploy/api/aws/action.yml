@@ -254,7 +254,8 @@ runs:
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
       run: |
         echo "::group::Terragrunt Plan to JSON"
-        list=$(find ${{ github.workspace }}/.tfplan -name "*.tfplan")
+        list=$(find ${{ github.workspace }}/.tfplan/ -name "*.tfplan")
+        echo "$list"
         for item in $list ; do 
           tofu show -json -plan=$item > ${item}.json
         done
