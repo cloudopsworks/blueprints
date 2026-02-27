@@ -93,6 +93,9 @@ runs:
       run: |
         RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
+        echo "result=$RET"
+        echo "inputs.cloud=${{ inputs.cloud }}"
+        echo "if = ${{ ! contains(steps.docker_registry.outputs.result, 'ghcr.io') || inputs.cloud == 'GITHUB' }}"
 
     # Docker Login GitHub Container Registry
     - name: Docker Login GitHub
