@@ -107,6 +107,9 @@ usage: |-
   | JIRA_INTEGRATION_CLOUD_DOMAIN        | Variable | Atlassian Custom Cloud Domain for the project                                                                                                |    No    |
   | JIRA_INTEGRATION_DEFAULT_PROJECT_ID  | Variable | JIRA Project ID (numbers) to set as default Project ID                                                                                       |    No    |
   | JIRA_INTEGRATION_DEFAULT_PROJECT_KEY | Variable | JIRA Project Key (string) to set as default Project Key on commit filtering                                                                  |    No    |
+  | __HOOP Integration__                 |          |                                                                                                                                              |          |
+  | HOOP_INTEGRATION_API_KEY             |  Secret  | HOOP.dev API Key for integration of HOOP enabled workflows
+  | HOOP_INTEGRATION_API_URL             | Variable | HOOP.dev API URL for integration of HOOP enabled workflows, defaults to https://api.hoop.dev
 
 
 

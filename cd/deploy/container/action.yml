@@ -61,6 +61,10 @@ inputs:
   project_owner:
     description: 'The project owner'
     required: true
+  token:
+    description: 'The GitHub token'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -90,11 +94,22 @@ runs:
         RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
 
+    # Docker Login GitHub Container Registry
+    - name: Docker Login GitHub
+      if: ${{ ! contains(steps.docker_registry.outputs.result, 'ghcr.io') || inputs.cloud == 'GITHUB' }}
+      env:
+        TARGET: github
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ steps.docker_registry.outputs.result }}
+        username: ${{ inputs.project_owner}}
+        password: ${{ inputs.token }}
+
     # Docker Build Login GCP
     - name: Docker Login GCP
       env:
         TARGET: ${{ inputs.cloud }}
-      if: ${{ inputs.cloud == 'GCP' }}
+      if: ${{ inputs.cloud == 'GCP' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
       uses: docker/login-action@v3
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
@@ -105,7 +120,7 @@ runs:
     - name: Docker Login Azure
       env:
         TARGET: ${{ inputs.cloud }}
-      if: ${{ inputs.cloud == 'AZURE' }}
+      if: ${{ inputs.cloud == 'AZURE' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
       uses: docker/login-action@v3
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
@@ -114,7 +129,7 @@ runs:
     #
     # Docker Build login AWS
     - name: Configure AWS Credentials
-      if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn == '' }}
+      if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn == '' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
@@ -124,7 +139,7 @@ runs:
     #
     # Docker Build login AWS - w/Assume Role
     - name: Configure AWS Credentials with Assume Role
-      if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn != '' }}
+      if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn != '' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
