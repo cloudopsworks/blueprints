@@ -69,11 +69,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Download Docker Image
-      uses: actions/download-artifact@v7
-      with:
-        name: docker-image
-
     - name: Set Crane Binary
       shell: bash
       working-directory: /tmp
@@ -178,6 +173,11 @@ runs:
 #        LIST=$(skopeo list-tags docker-archive:docker-image.tar | jq -r '.Tags[] | "docker:" + .' | tr '\n' ' ')
 #        echo "Skopeo List: \"$LIST\""
 #        echo "result=$LIST" >> $GITHUB_OUTPUT
+
+    - name: Download Docker Image
+      uses: actions/download-artifact@v7
+      with:
+        name: docker-image
 
     - name: Push Docker image from tar using Skopeo
       shell: bash
