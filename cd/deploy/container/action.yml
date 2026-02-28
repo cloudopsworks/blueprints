@@ -94,7 +94,7 @@ runs:
 
     # Docker Login GitHub Container Registry
     - name: Docker Login GitHub
-      if: ${{ ! contains(steps.docker_registry.outputs.result, 'ghcr.io') || inputs.cloud == 'GITHUB' }}
+      if: ${{ contains(steps.docker_registry.outputs.result, 'ghcr.io') || inputs.cloud == 'GITHUB' }}
       uses: docker/login-action@v3
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
