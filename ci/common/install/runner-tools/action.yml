@@ -24,6 +24,9 @@ runs:
       run: |
         plat=$(echo $RUNNER_OS | tr '[:upper:]' '[:lower:]')
         echo "Detected platform: $plat"
+        echo "Run User: $(id)"
+        echo "Sudoers: "
+        cat /etc/sudoers
         echo "result=$plat" >> $GITHUB_OUTPUT
 
     - name: Install runner-tools - Linux
