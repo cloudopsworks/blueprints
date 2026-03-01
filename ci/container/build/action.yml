@@ -92,7 +92,7 @@ runs:
         while IFS= read -r line; do
         if [[ "$line" =~ $INJECTION_POINT ]]; then
           # Insert the content of input at the injection point
-          if [[ "${{ inputs.custom_usergroup }}" != "" ]]; then
+          if [[ '${{ inputs.custom_usergroup }}' != '' ]]; then
             echo 'RUN ${{ inputs.custom_usergroup }}'
           else
             echo 'RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \'
