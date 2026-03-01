@@ -27,6 +27,8 @@ runs:
         echo "Run User: $(id)"
         echo "Sudoers: "
         cat /etc/sudoers
+        echo "Version: "
+        cat /app/webapp/VERSION
         echo "result=$plat" >> $GITHUB_OUTPUT
 
     - name: Install runner-tools - Linux
