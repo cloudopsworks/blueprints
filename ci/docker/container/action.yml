@@ -41,6 +41,17 @@ inputs:
   image_variant:
     description: 'The image variant to use for the build'
     required: true
+  package_name:
+    description: 'The package name to use for the build'
+    required: true
+  observability_enabled:
+    description: 'The observability flag'
+    required: false
+    default: 'false'
+  observability_agent:
+    description: 'The observability agent'
+    required: false
+    default: 'xray'
 
 runs:
   using: 'composite'
@@ -142,3 +153,4 @@ runs:
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}
         custom_usergroup: ${{ steps.custom_usergroup.outputs.result }}
+        is_release: ${{ inputs.is_release }}

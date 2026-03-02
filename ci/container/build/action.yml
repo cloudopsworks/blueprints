@@ -56,7 +56,7 @@ inputs:
     required: false
     default: ''
   is_release:
-    description: 'The release flag, used mainly for NodeJS targets'
+    description: 'The release flag'
     required: true
 
 runs:
