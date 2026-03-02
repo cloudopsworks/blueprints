@@ -202,3 +202,4 @@ runs:
         project_owner: ${{ inputs.project_owner }}
         custom_usergroup: ${{ steps.custom_usergroup.outputs.result }}
         front_end: ${{ inputs.front_end }}
+        is_release: ${{ inputs.is_release }}
