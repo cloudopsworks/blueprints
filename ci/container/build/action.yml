@@ -55,6 +55,10 @@ inputs:
     description: 'The front end flag, used mainly for NodeJS targets'
     required: false
     default: ''
+  is_release:
+    description: 'The release flag, used mainly for NodeJS targets'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -71,6 +75,10 @@ runs:
         while IFS= read -r line; do
           if [[ "$line" =~ $INJECTION_POINT ]]; then
             # Insert the content of input at the injection point
+            # if docker registry contains ghcr.io then include this label : LABEL org.opencontainers.image.source https://github.com/OWNER/REPO
+            if [[ "$line" =~ ghcr.io ]]; then
+              echo "LABEL org.opencontainers.image.source https://github.com/${{ inputs.project_owner }}/${{ inputs.project_key }}"
+            fi
             echo "${{ inputs.docker_inline }}"
           else
             # Print the current line
@@ -136,7 +144,8 @@ runs:
         ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}"
            echo "${{ inputs.semver }}
         ${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}
-        ${{ steps.semvers.outputs.major }}" > docker-tags.list
+        ${{ steps.semvers.outputs.major }}
+        latest" > docker-tags.list
         elif [[ "${{ inputs.front_end }}" == "true" ]]; then
           TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest-${{ inputs.environment }}
         ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}-${{ inputs.environment }}"
