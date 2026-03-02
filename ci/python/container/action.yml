@@ -164,3 +164,4 @@ runs:
         project_key: ${{ inputs.project_key }}
         project_owner: ${{ inputs.project_owner }}
         custom_usergroup: ${{ steps.custom_usergroup.outputs.result }}
+        is_release: ${{ inputs.is_release }}
