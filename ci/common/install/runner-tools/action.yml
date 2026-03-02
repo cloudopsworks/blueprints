@@ -24,9 +24,6 @@ runs:
       run: |
         plat=$(echo $RUNNER_OS | tr '[:upper:]' '[:lower:]')
         echo "Detected platform: $plat"
-        echo "Run User: $(id)"
-        echo "Version: "
-        cat /app/webapp/VERSION
         echo "result=$plat" >> $GITHUB_OUTPUT
 
     - name: Install runner-tools - Linux
