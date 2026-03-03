@@ -113,6 +113,12 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq eval '.python.tests // "pytest"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+    # Get pipeline conf install dependency extra_args
+    - name: Get pipeline Python install dependency extra_args
+      id: python_dep_extra_args
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.python.install_extra_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
@@ -333,7 +339,7 @@ runs:
         source .venv/bin/activate
         if [ -f requirements.txt ]; then
           echo "Building requirements.txt"
-          pip install --target ./target/ -r ${{ inputs.python_requirements_file }}
+          pip install ${{ steps.python_dep_extra_args.outputs.result }} --target ./target/ -r ${{ inputs.python_requirements_file }}
         else
           echo "No requirements.txt found"
         fi
