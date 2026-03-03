@@ -204,7 +204,6 @@ runs:
         blueprint_path: ${{ inputs.blueprint_path }}
         python_requirements_file: ${{ inputs.python_requirements_file }}
         python_extra_env: ${{ inputs.python_extra_env }}
-        python_dep_extra_args: ${{ steps.python_dep_extra_args.outputs.result }}
 
 
     - name: Build PYPENV
@@ -224,7 +223,6 @@ runs:
         blueprint_path: ${{ inputs.blueprint_path }}
         python_requirements_file: ${{ inputs.python_requirements_file }}
         python_extra_env: ${{ inputs.python_extra_env }}
-        python_dep_extra_args: ${{ steps.python_dep_extra_args.outputs.result }}
 
     - name: Python Tests - Pytest
       if: steps.python_tests.outputs.result == 'pytest'
