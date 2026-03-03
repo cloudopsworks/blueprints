@@ -113,6 +113,12 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq eval '.python.tests // "pytest"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+    # Get pipeline conf install dependency extra_args
+    - name: Get pipeline Python install dependency extra_args
+      id: python_dep_extra_args
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.python.install_extra_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
@@ -198,6 +204,7 @@ runs:
         blueprint_path: ${{ inputs.blueprint_path }}
         python_requirements_file: ${{ inputs.python_requirements_file }}
         python_extra_env: ${{ inputs.python_extra_env }}
+        python_dep_extra_args: ${{ steps.python_dep_extra_args.outputs.result }}
 
 
     - name: Build PYPENV
@@ -217,6 +224,7 @@ runs:
         blueprint_path: ${{ inputs.blueprint_path }}
         python_requirements_file: ${{ inputs.python_requirements_file }}
         python_extra_env: ${{ inputs.python_extra_env }}
+        python_dep_extra_args: ${{ steps.python_dep_extra_args.outputs.result }}
 
     - name: Python Tests - Pytest
       if: steps.python_tests.outputs.result == 'pytest'
