@@ -21,10 +21,6 @@ inputs:
   python_extra_env:
     description: 'The extra environment variables'
     required: true
-  python_dep_extra_args:
-    description: 'The extra arguments to pass to pip install'
-    required: false
-    default: ''
   python_requirements_file:
     description: 'The requirements file'
     required: false
@@ -40,7 +36,7 @@ runs:
         echo "::group::PIP Install"
         source .venv/bin/activate
         echo "Installing dependencies"
-        ${{ inputs.python_extra_env }} pip install ${{ inputs.python_dep_extra_args }} -r ${{ inputs.python_requirements_file }}
+        ${{ inputs.python_extra_env }} pip install -r ${{ inputs.python_requirements_file }}
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}

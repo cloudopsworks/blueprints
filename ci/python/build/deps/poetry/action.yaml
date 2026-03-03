@@ -21,10 +21,6 @@ inputs:
   python_extra_env:
     description: 'The extra environment variables'
     required: true
-  python_dep_extra_args:
-    description: 'The extra arguments to pass to pip install'
-    required: false
-    default: ''
   python_requirements_file:
     description: 'The requirements file'
     required: false
@@ -47,7 +43,7 @@ runs:
         echo "Installing dependencies"
         ${{ inputs.python_extra_env }} poetry install
         echo "Exporting requirements"
-        poetry export --with dev --without-hashes --format=requirements.txt ${{ inputs.python_dep_extra_args }} > ${{ inputs.source_path }}/${{ inputs.python_requirements_file }}
+        poetry export --with dev --without-hashes --format=requirements.txt > ${{ inputs.source_path }}/${{ inputs.python_requirements_file }}
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}

@@ -341,7 +341,7 @@ runs:
         source .venv/bin/activate
         if [ -f requirements.txt ]; then
           echo "Building requirements.txt"
-          pip install --target ./target/ -r ${{ inputs.python_requirements_file }}
+          pip install ${{ steps.python_dep_extra_args.outputs.result }} --target ./target/ -r ${{ inputs.python_requirements_file }}
         else
           echo "No requirements.txt found"
         fi
