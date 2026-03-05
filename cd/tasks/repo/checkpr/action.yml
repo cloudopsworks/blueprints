@@ -76,9 +76,10 @@ runs:
           });
           var mil_number = 0;
           for ( const mil of mil_list ) {
-            core.info(`Checking milestone: ${mil.title}`);
             if ( mil.title === rel_version ) {
               mil_number = mil.number;
+              core.info(`Found matching milestone: ${mil.title}`);
+              break;
             }
           }
           if ( mil_number == 0 ) {
