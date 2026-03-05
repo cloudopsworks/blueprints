@@ -70,7 +70,9 @@ runs:
           const { data: mil_list } = await github.rest.issues.listMilestones({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            state: 'all'
+            state: 'all',
+            direction: 'desc',
+            per_page: 100
           });
           var mil_number = 0;
           for ( const mil of mil_list ) {
