@@ -104,7 +104,7 @@ runs:
         cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/
 
     - name: Copy Values Bundle
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["beanstalk","lambda","s3","storage"]'), inputs.cloud_type) }}
       shell: bash
       run: |
         mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
@@ -117,7 +117,7 @@ runs:
 
     - name: Create Hash value for values bundle
       id: hash_value
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["beanstalk","lambda","s3","storage"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
       run: |
