@@ -253,6 +253,13 @@ runs:
         observability_enabled: ${{ inputs.observability_enabled }}
         observability_agent: ${{ inputs.observability_agent }}
 
+    - name: Restore Pipeline Artifacts - Only FrontEnd
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' && inputs.front_end == 'true' }}
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
+
     - name: Terragrunt Plan
       id: plan
       if: ${{ ! cancelled() }}
@@ -308,7 +315,7 @@ runs:
 
     - name: Restore Pipeline Artifacts
       uses: actions/download-artifact@v7
-      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' && inputs.front_end != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}
         path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
