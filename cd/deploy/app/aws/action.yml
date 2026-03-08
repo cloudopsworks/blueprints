@@ -165,6 +165,13 @@ runs:
         yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
         yq e -i '.version_label = "${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
 
+    - name: Insert release path directly into release.yaml - S3/Storage
+      if: ${{ contains(fromJSON('["s3","storage"]'), inputs.cloud_type) }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        yq e -i '.release_path = "${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release"' release.yaml
+
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
       shell: bash

@@ -37,6 +37,6 @@ inputs = {
   s3               = local.local_vars.s3
   repository_owner = local.base_vars.repository_owner
   release          = local.release_vars.release
-  absolute_path    = "${get_parent_terragrunt_dir()}/release/"
+  absolute_path    = local.release_vars.release_path
   extra_tags       = local.extra_tags
 }
