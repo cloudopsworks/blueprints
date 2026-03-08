@@ -233,6 +233,26 @@ runs:
             }
           }
 
+    - name: Generate Bundle - Only Frontend on Storage/Bucket
+      if: ${{ contains(fromJSON('["s3","storage"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' && inputs.front_end == 'true' }}
+      id: bundle_storage
+      uses: ./bp/cd/deploy/app/pack
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: 'aws'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        aws_access_key_id: ${{ inputs.aws_access_key_id }}
+        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
+        aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+        environment: ${{ inputs.environment }}
+        aws_region: ${{ inputs.aws_region }}
+        observability_enabled: ${{ inputs.observability_enabled }}
+        observability_agent: ${{ inputs.observability_agent }}
+
     - name: Terragrunt Plan
       id: plan
       if: ${{ ! cancelled() }}

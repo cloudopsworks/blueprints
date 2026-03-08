@@ -212,7 +212,7 @@ runs:
         echo "result=$tmp_dir/app.zip" >> $GITHUB_OUTPUT
 
     - name: Upload to AWS S3
-      if: ${{ inputs.cloud == 'aws' }}
+      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type != 's3' }}
       uses: ./bp/cd/deploy/app/pack/aws/upload
       with:
         aws_access_key_id: ${{ inputs.aws_access_key_id }}
