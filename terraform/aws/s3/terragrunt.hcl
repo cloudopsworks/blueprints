@@ -24,7 +24,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-s3-static-content-deploy.git//?ref=v0.1.0-alpha.3"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-s3-static-content-deploy.git//?ref=v0.1.0-alpha.4"
 }
 
 inputs = {
@@ -37,7 +37,6 @@ inputs = {
   s3               = local.local_vars.s3
   repository_owner = local.base_vars.repository_owner
   release          = local.release_vars.release
-  version_label    = local.release_vars.version_label
   absolute_path    = get_terragrunt_dir()
   extra_tags       = local.extra_tags
 }
