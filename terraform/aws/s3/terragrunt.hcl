@@ -24,7 +24,7 @@ include "root" {
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-aws-s3-static-content-deploy.git//?ref=v0.1.0-alpha.3"
+  source = "git::https://github.com/cloudopsworks/terraform-module-aws-s3-static-content-deploy.git//?ref=v0.1.0-alpha.4"
 }
 
 inputs = {
