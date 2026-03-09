@@ -1,0 +1,47 @@
+{{- range $name, $route := .Values.gateway.grpcRoutes }}
+{{- if $route.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: {{ printf "%s-%s-grpc" (include "fullname" $) $name | trunc 63 | trimSuffix "-" }}
+  labels:
+    draft: {{ default "draft-app" $.Values.draft }}
+    chart: "{{ $.Chart.Name }}-{{ $.Chart.Version | replace "+" "_" }}"
+    {{- with $route.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  {{- if $route.parentRefs }}
+  parentRefs:
+    {{- toYaml $route.parentRefs | nindent 4 }}
+  {{- else if $.Values.gateway.enabled }}
+  parentRefs:
+    - name: {{ if $.Values.gateway.name }}{{ $.Values.gateway.name }}{{ else }}{{ template "fullname" $ }}{{ end }}
+      namespace: {{ $.Release.Namespace }}
+      {{- if $route.parentListener }}
+      sectionName: {{ $route.parentListener }}
+      {{- end }}
+  {{- end }}
+  {{- if $route.hostnames }}
+  hostnames:
+    {{- toYaml $route.hostnames | nindent 4 }}
+  {{- else if $.Values.gateway.host }}
+  hostnames:
+    - {{ $.Values.gateway.host }}
+  {{- end }}
+  rules:
+    {{- if $route.rules }}
+    {{- toYaml $route.rules | nindent 4 }}
+    {{- else }}
+    - backendRefs:
+        - name: {{ if $.Values.service.name }}{{ $.Values.service.name }}{{ else }}{{ template "fullname" $ }}{{ end }}
+          port: {{ $.Values.service.externalPort }}
+    {{- end }}
+{{- end }}
+{{- end }}

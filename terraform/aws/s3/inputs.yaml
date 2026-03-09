@@ -1,0 +1,10 @@
+environment: "dev|uat|prod|demo"
+s3:
+  bucket_name: "BUCKET_NAME"
+  prefix: "PREFIX_PATH"
+
+##
+# Optional variable for adding extra tags to the environment
+tags: {}
+#  key: value
+#  key2: value2

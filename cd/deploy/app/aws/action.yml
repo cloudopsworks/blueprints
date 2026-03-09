@@ -104,7 +104,7 @@ runs:
         cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/
 
     - name: Copy Values Bundle
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["beanstalk","lambda","s3","storage"]'), inputs.cloud_type) }}
       shell: bash
       run: |
         mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
@@ -117,7 +117,7 @@ runs:
 
     - name: Create Hash value for values bundle
       id: hash_value
-      if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
+      if: ${{ contains(fromJSON('["beanstalk","lambda","s3","storage"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
       run: |
@@ -164,6 +164,13 @@ runs:
       run: |
         yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
         yq e -i '.version_label = "${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
+
+    - name: Insert release path directly into release.yaml - S3/Storage
+      if: ${{ contains(fromJSON('["s3","storage"]'), inputs.cloud_type) }}
+      working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
+      shell: bash
+      run: |
+        yq e -i '.release_path = "${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release/"' release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
@@ -233,6 +240,33 @@ runs:
             }
           }
 
+    - name: Generate Bundle - Only Frontend on Storage/Bucket
+      if: ${{ contains(fromJSON('["s3","storage"]'), inputs.cloud_type) && inputs.unlock != 'true' && inputs.destroy != 'true' && inputs.front_end == 'true' }}
+      id: bundle_storage
+      uses: ./bp/cd/deploy/app/pack
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        cloud: 'aws'
+        cloud_type: ${{ inputs.cloud_type }}
+        release_name: ${{ inputs.release_name }}
+        release_version: ${{ inputs.release_version }}
+        project_key: ${{ inputs.project_key }}
+        aws_access_key_id: ${{ inputs.aws_access_key_id }}
+        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
+        aws_sts_role_arn: ${{ inputs.aws_sts_role_arn }}
+        environment: ${{ inputs.environment }}
+        aws_region: ${{ inputs.aws_region }}
+        observability_enabled: ${{ inputs.observability_enabled }}
+        observability_agent: ${{ inputs.observability_agent }}
+
+    - name: Restore Pipeline Artifacts - Only FrontEnd
+      uses: actions/download-artifact@v7
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' && inputs.front_end == 'true' }}
+      with:
+        name: ${{ inputs.artifacts_name }}
+        path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
+
     - name: Terragrunt Plan
       id: plan
       if: ${{ ! cancelled() }}
@@ -288,7 +322,7 @@ runs:
 
     - name: Restore Pipeline Artifacts
       uses: actions/download-artifact@v7
-      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' }}
+      if: ${{ inputs.artifacts_name != '' && inputs.unlock != 'true' && inputs.destroy != 'true' && inputs.front_end != 'true' }}
       with:
         name: ${{ inputs.artifacts_name }}
         path: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release
