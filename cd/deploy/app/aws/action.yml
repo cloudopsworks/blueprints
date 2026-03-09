@@ -170,7 +170,7 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
       run: |
-        yq e -i '.release_path = "${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release"' release.yaml
+        yq e -i '.release_path = "${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release/"' release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
