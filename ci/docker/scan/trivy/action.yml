@@ -32,7 +32,7 @@ runs:
       uses: actions/download-artifact@v7
       with:
         name: docker-image
-        path: imagescan/
+        path: ${{ inputs.source_path }}
 
     - name: Manual Trivy Setup
       uses: aquasecurity/setup-trivy@v0.2.0
@@ -43,9 +43,9 @@ runs:
     - name: Run Trivy vulnerability scanner - sarif output
       uses: aquasecurity/trivy-action@0.35.0
       with:
-        input: 'imagescan/docker-image.tar'
+        input: '${{ inputs.source_path }}/docker-image.tar'
         format: 'json'
-        output: 'trivy-results.json'
+        output: '${{ inputs.source_path }}/trivy-results.json'
         skip-setup-trivy: true
         ignore-unfixed: true
         severity: 'CRITICAL,HIGH,MEDIUM'
@@ -54,9 +54,9 @@ runs:
     - name: Run Trivy vulnerability scanner - sarif output
       uses: aquasecurity/trivy-action@0.35.0
       with:
-        input: 'imagescan/docker-image.tar'
+        input: '${{ inputs.source_path }}/docker-image.tar'
         format: 'sarif'
-        output: 'trivi-results.sarif'
+        output: '${{ inputs.source_path }}/trivi-results.sarif'
         skip-setup-trivy: true
         ignore-unfixed: true
         severity: 'CRITICAL,HIGH'
@@ -66,5 +66,6 @@ runs:
       if: success() || failure()
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: trivi-results.sarif
+        checkout_path: ${{ inputs.source_path }}
+        sarif_file: ${{ inputs.source_path }}/trivi-results.sarif
         wait-for-processing: false
