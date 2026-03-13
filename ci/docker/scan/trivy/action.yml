@@ -44,6 +44,7 @@ runs:
       uses: aquasecurity/trivy-action@0.35.0
       with:
         input: '${{ inputs.source_path }}/docker-image.tar'
+        scan-type: 'image'
         format: 'json'
         output: '${{ inputs.source_path }}/trivy-results.json'
         skip-setup-trivy: true
@@ -55,12 +56,15 @@ runs:
       uses: aquasecurity/trivy-action@0.35.0
       with:
         input: '${{ inputs.source_path }}/docker-image.tar'
+        scan-type: 'image'
         format: 'sarif'
         output: '${{ inputs.source_path }}/trivi-results.sarif'
         skip-setup-trivy: true
         ignore-unfixed: true
         severity: 'CRITICAL,HIGH'
         github-pat: ${{ inputs.token }}
+        scanners: 'vuln'
+        limit-severities-for-sarif: true
 
     - name: Upload SARIF file
       if: success() || failure()
