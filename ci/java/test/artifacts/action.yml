@@ -48,6 +48,6 @@ runs:
           ${{ inputs.source_path }}/**/*cyclonedx.xml
           ${{ inputs.source_path }}/**/bom.json
           ${{ inputs.source_path }}/**/*cyclonedx.json
-          ${{ inputs.source_path }}/**/trivy-report.json
           ${{ inputs.source_path }}/sonar/**/*
-
+          ${{ inputs.source_path }}/trivy-results.json
+          ${{ inputs.source_path }}/trivi-results.txt

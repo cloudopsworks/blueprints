@@ -65,3 +65,4 @@ runs:
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: trivi-results.sarif
+
