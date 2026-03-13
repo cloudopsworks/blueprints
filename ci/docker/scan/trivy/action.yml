@@ -45,7 +45,7 @@ runs:
       with:
         input: 'imagescan/docker-image.tar'
         format: 'json'
-        output: 'trivy-report.json'
+        output: 'trivy-results.json'
         skip-setup-trivy: true
         severity: 'CRITICAL,HIGH'
         github-pat: ${{ inputs.token }}
