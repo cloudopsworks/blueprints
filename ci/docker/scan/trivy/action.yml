@@ -44,7 +44,8 @@ runs:
       uses: aquasecurity/trivy-action@0.35.0
       with:
         input: 'imagescan/docker-image.tar'
-        format: 'table'
+        format: 'json'
+        output: 'trivy-report.json'
         skip-setup-trivy: true
         severity: 'CRITICAL,HIGH'
         github-pat: ${{ inputs.token }}
