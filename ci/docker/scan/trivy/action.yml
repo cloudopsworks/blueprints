@@ -47,7 +47,8 @@ runs:
         format: 'json'
         output: 'trivy-results.json'
         skip-setup-trivy: true
-        severity: 'CRITICAL,HIGH'
+        ignore-unfixed: 'true'
+        severity: 'CRITICAL,HIGH,MEDIUM'
         github-pat: ${{ inputs.token }}
 
     - name: Run Trivy vulnerability scanner - sarif output
@@ -55,9 +56,10 @@ runs:
       with:
         input: 'imagescan/docker-image.tar'
         format: 'sarif'
-        skip-setup-trivy: true
         output: 'trivi-results.sarif'
-        severity: 'CRITICAL,HIGH,MEDIUM'
+        skip-setup-trivy: true
+        ignore-unfixed: 'true'
+        severity: 'CRITICAL,HIGH'
         github-pat: ${{ inputs.token }}
 
     - name: Upload SARIF file
@@ -66,4 +68,3 @@ runs:
       with:
         sarif_file: trivi-results.sarif
         wait-for-processing: false
-

@@ -184,6 +184,7 @@ runs:
           docker-image.tar
           docker-repository-tags.list
           docker-tags.list
+          Dockerfile
         retention-days: 1
         compression-level: '1'
         overwrite: true
