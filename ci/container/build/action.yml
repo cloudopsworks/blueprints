@@ -163,7 +163,7 @@ runs:
 
     # Build docker version latest release
     - name: Docker Build Release
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v7
       with:
         build-args: |
           ${{ inputs.docker_image_name }}
