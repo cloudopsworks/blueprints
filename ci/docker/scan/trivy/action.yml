@@ -51,6 +51,7 @@ runs:
         ignore-unfixed: true
         severity: 'CRITICAL,HIGH,MEDIUM'
         github-pat: ${{ inputs.token }}
+        scanners: 'vuln'
 
     - name: Run Trivy vulnerability scanner - sarif output
       uses: aquasecurity/trivy-action@0.35.0
