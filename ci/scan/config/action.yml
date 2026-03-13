@@ -52,6 +52,9 @@ outputs:
   quality_gate_enabled:
     description: 'The quality gate enabled flag'
     value: ${{ steps.quality_gate_enabled.outputs.result }}
+  trivy_enabled:
+    description: 'The trivy enabled flag'
+    value: ${{ steps.trivy_enabled.outputs.result }}
 
 runs:
   using: 'composite'
@@ -136,3 +139,9 @@ runs:
       run: |
         RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT
+
+    - name: Get Trivy Configuration is enabled
+      id: trivy_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.trivy.enabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
