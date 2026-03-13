@@ -28,6 +28,39 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Trivy Scan
-      shell: bash
-      run: echo "::notice::Trivy scan is not implemented yet. Will be released Soon!."
+    - name: Download tarball image
+      uses: actions/download-artifact@v7
+      with:
+        name: docker-image
+        path: imagescan/
+
+    - name: Manual Trivy Setup
+      uses: aquasecurity/setup-trivy@v0.2.0
+      with:
+        cache: true
+        version: v0.69.3
+
+    - name: Run Trivy vulnerability scanner - sarif output
+      uses: aquasecurity/trivy-action@0.35.0
+      with:
+        input: 'imagescan/docker-image.tar'
+        format: 'table'
+        skip-setup-trivy: true
+        severity: 'CRITICAL,HIGH'
+        github-pat: ${{ inputs.token }}
+
+    - name: Run Trivy vulnerability scanner - sarif output
+      uses: aquasecurity/trivy-action@0.35.0
+      with:
+        input: 'imagescan/docker-image.tar'
+        format: 'sarif'
+        skip-setup-trivy: true
+        output: 'trivi-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        github-pat: ${{ inputs.token }}
+
+    - name: Upload SARIF file
+      if: success() || failure()
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: trivi-results.sarif

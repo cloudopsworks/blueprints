@@ -57,3 +57,9 @@ runs:
       run: |
         semgrep --config=p/nodejs . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
         semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.split_excludes.outputs.result }}
+
+    - name: Upload SARIF file
+      if: success() || failure()
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: semgrep.sarif

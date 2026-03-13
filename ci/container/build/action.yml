@@ -177,7 +177,7 @@ runs:
 
     # Upload the docker image to the artifact store
     - name: Upload Docker Image
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: docker-image
         path: |

@@ -75,7 +75,7 @@ runs:
         excludeTypes: 'build,docs,style'
 
     - name: Upload artifact to workflow run
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: changelog
         retention-days: 1
