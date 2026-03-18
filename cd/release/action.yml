@@ -64,15 +64,16 @@ runs:
         echo "tag=$name" >> $GITHUB_OUTPUT
 
     - name: Changelog Generation
-      uses: requarks/changelog-action@v1
+      uses: TriPSs/conventional-changelog-action@v6
       id: changelog
       with:
-        token: ${{ inputs.token }}
-        fromTag: ${{ steps.normalize.outputs.result }}
-        toTag: ${{ steps.previous_tag.outputs.tag }}
-        writeToFile: true
-        includeInvalidCommits: true
-        excludeTypes: 'build,docs,style'
+        github-token: ${{ inputs.token }}
+        skip-commit: true
+        skip-tag: true
+        skip-bump: true
+        git-push: false
+        pre-release: ${{ inputs.is_pre_release }}
+        git-path: ${{ inputs.source_path }}
 
     - name: Upload artifact to workflow run
       uses: actions/upload-artifact@v7
