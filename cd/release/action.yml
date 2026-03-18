@@ -64,7 +64,7 @@ runs:
         echo "tag=$name" >> $GITHUB_OUTPUT
 
     - name: Changelog Generation
-      uses: TriPSs/conventional-changelog-action@v6
+      uses: cloudopsworks/conventional-changelog-action@v6
       id: changelog
       with:
         github-token: ${{ inputs.token }}
