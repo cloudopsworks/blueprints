@@ -88,7 +88,7 @@ runs:
       uses: softprops/action-gh-release@v2
       with:
         token: ${{ inputs.token }}
-        body_path: CHANGELOG.md
+        body: ${{ steps.changelog.outputs.changelog }}
         name: "Release ${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
         prerelease: ${{ inputs.is_pre_release }}
