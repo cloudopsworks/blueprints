@@ -82,7 +82,7 @@ runs:
         name: changelog
         retention-days: 1
         overwrite: true
-        path: **/CHANGELOG.md
+        path: ${{ inputs.source_path }}/CHANGELOG.md
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
