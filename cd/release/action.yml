@@ -68,12 +68,12 @@ runs:
       id: changelog
       with:
         github-token: ${{ inputs.token }}
+        working-dir: ./${{ inputs.source_path }}/
         skip-commit: true
         skip-tag: true
         skip-bump: true
         git-push: false
         pre-release: ${{ inputs.is_pre_release }}
-        git-path: ./${{ inputs.source_path }}/
 
     - name: Upload artifact to workflow run
       uses: actions/upload-artifact@v7
