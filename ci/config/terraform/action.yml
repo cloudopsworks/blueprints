@@ -22,6 +22,9 @@ outputs:
   secret_scan_enabled:
     description: 'The Secret Scan enabled flag, true or false'
     value: ${{ steps.secret_scan.outputs.result }}
+  semgrep_enabled:
+    description: 'The Semgrep enabled flag, true or false'
+    value: ${{ steps.semgrep.outputs.result }}
   jira_integration:
     description: 'The Jira integration flag, true or false'
     value: ${{ steps.jira_integration.outputs.result }}
@@ -75,3 +78,10 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.secret_scan.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+
+    # Get Semgrep Scan Enablement, defaults to true
+    - name: Get Semgrep Scan Config
+      id: semgrep
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.semgrep.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
