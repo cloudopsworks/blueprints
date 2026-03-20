@@ -58,10 +58,12 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         name: checkov-results
-        path: checkov_results.txt
+        path: ${{ inputs.source_path }}/checkov_results.txt
 
     - name: Upload SARIF file
       if: success() || failure()
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file: checkov_results.sarif
+        checkout_path: ${{ github.workspace }}
+        wait-for-processing: false
+        sarif_file: ${{ inputs.source_path }}/checkov_results.sarif
