@@ -26,8 +26,9 @@ runs:
     - name: Check Advanced Security Status
       id: check_ghas
       uses: actions/github-script@v8
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
       with:
-        github-token: '${{ inputs.token }}'
         script: |
           const response = await github.rest.repos.get({
             owner: context.repo.owner,
