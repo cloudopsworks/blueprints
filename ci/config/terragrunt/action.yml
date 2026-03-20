@@ -14,6 +14,10 @@ inputs:
     description: 'The path to the source code'
     required: false
     default: 'source'
+  execution_path:
+    description: 'The path to the execution directory, defaults to source_path if not provided'
+    required: false
+    default: ''
 
 outputs:
   jira_integration:
@@ -25,6 +29,9 @@ outputs:
   jira_project_id:
     description: 'The Jira project ID value'
     value: ${{ steps.jira_project_id.outputs.result }}
+  runner_set:
+    description: 'The runner set to use for the workflow'
+    value: ${{ steps.runner_set.outputs.result }}
 
 runs:
   using: 'composite'
@@ -55,3 +62,9 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.jira.project_id // ""' ./${{ inputs.source_path }}/.cloudopsworks/inputs-jira.yaml
+
+    - name: Get runnerset with yq from global-inputs.yaml
+      id: runner_set
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq '.runner_set // "ubuntu-latest"' ./${{ inputs.source_path }}/global-inputs.yaml
