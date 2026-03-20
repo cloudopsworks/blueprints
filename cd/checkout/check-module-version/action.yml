@@ -55,7 +55,7 @@ runs:
         #   - .android
         # ouptuts are:
         #   - repo = cloudopsworks/<moduletype>-app-template
-        #   - current_version = contenfrom .cloudopsworks/_VERSION file
+        #   - current_version = content from .cloudopsworks/_VERSION file
         if [ -f ".cloudopsworks/.golang" ]; then
           echo "Module type is golang"
           echo "repo=cloudopsworks/go-app-template" >> $GITHUB_OUTPUT
@@ -70,7 +70,7 @@ runs:
           echo "repo=cloudopsworks/terraform-project-template" >> $GITHUB_OUTPUT
         elif [ -f ".cloudopsworks/.terraform-module" ]; then
           echo "Module type is terraform"
-          echo "repo=cloudopsworks/terraform-project-template" >> $GITHUB_OUTPUT
+          echo "repo=cloudopsworks/terraform-module-template" >> $GITHUB_OUTPUT
         elif [ -f ".cloudopsworks/.java" ]; then
           echo "Module type is java"
           echo "repo=cloudopsworks/java-app-template" >> $GITHUB_OUTPUT
@@ -92,6 +92,9 @@ runs:
         elif [ -f ".cloudopsworks/.iac" ]; then
           echo "Module type is iac"
           echo "repo=cloudopsworks/terragrunt-project-template" >> $GITHUB_OUTPUT
+        elif [ -f ".cloudopsworks/.fluttermobile" ]; then
+          echo "Module type is flutter mobile"
+          echo "repo=cloudopsworks/fluttermobile-app-template" >> $GITHUB_OUTPUT
         else
           echo "::warning::🚨 No module marker file found in .cloudopsworks directory"
         fi
