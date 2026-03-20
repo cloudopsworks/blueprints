@@ -68,7 +68,7 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         name: checkov-results
-        path: ${{ inputs.source_path }}/checkov_results.txt
+        path: checkov_results.txt
 
     - name: Upload SARIF file
       if: |
@@ -78,4 +78,4 @@ runs:
       with:
         checkout_path: ./${{ inputs.source_path }}/
         wait-for-processing: false
-        sarif_file: ${{ inputs.source_path }}/checkov_results.sarif
+        sarif_file: checkov_results.sarif
