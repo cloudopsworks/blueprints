@@ -35,6 +35,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Check GHAS Enabled
+      id: check_ghas
+      uses: ./ci/common/advancedsecurity/check
+      with:
+        token: ${{ inputs.token }}
+
     # Split the semgrep_excludes into tokens and return as the result for each token prepended with --exclude xxx
     # eg: --exclude aaa --exclude bbb options
     - name: Download tarball image
@@ -65,7 +71,9 @@ runs:
 #        semgrep --config=p/java . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
 
     - name: Upload SARIF file
-      if: success() || failure()
+      if: |
+        (success() || failure()) &&
+        (steps.check_ghas.outputs.ghas_enabled == 'true')
       uses: github/codeql-action/upload-sarif@v4
       with:
         checkout_path: ${{ inputs.source_path }}

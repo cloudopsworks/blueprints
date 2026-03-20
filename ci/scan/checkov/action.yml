@@ -14,10 +14,20 @@ inputs:
     description: 'The path to the source code'
     required: false
     default: 'source'
+  token:
+    description: 'The GitHub token to use for authentication'
+    required: false
+    default: ${{ github.token }}
 
 runs: 
   using: 'composite'
   steps:
+    - name: Check GHAS Enabled
+      id: check_ghas
+      uses: ./ci/common/advancedsecurity/check
+      with:
+        token: ${{ inputs.token }}
+
     - name: Determine Checkov checks
       id: checkov-checks
       shell: bash
@@ -61,7 +71,9 @@ runs:
         path: ${{ inputs.source_path }}/checkov_results.txt
 
     - name: Upload SARIF file
-      if: success() || failure()
+      if: |
+        (success() || failure()) &&
+        (steps.check_ghas.outputs.ghas_enabled == 'true')
       uses: github/codeql-action/upload-sarif@v4
       with:
         checkout_path: ./${{ inputs.source_path }}/
