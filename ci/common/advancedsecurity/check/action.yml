@@ -42,6 +42,6 @@ runs:
           if ( visibility === 'public' )
             ghas_status = 'enabled';
           else
-            response.data.security_and_analysis.code_security.status;
+            ghas_status = response.data.security_and_analysis.code_security.status;
           console.log(`Advanced Security status: ${ghas_status}`);
           core.setOutput('ghas_enabled', ghas_status === 'enabled');
