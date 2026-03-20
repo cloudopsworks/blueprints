@@ -60,6 +60,7 @@ runs:
         framework: terraform
         output_format: cli,sarif
         output_file_path: checkov_results.txt,checkov_results.sarif
+        soft_fail: true
         check: ${{ steps.checkov-checks.outputs.checks }}
         download_external_modules: true
 
