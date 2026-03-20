@@ -64,6 +64,6 @@ runs:
       if: success() || failure()
       uses: github/codeql-action/upload-sarif@v4
       with:
-        checkout_path: ${{ github.workspace }}
+        checkout_path: ./${{ inputs.source_path }}/
         wait-for-processing: false
         sarif_file: ${{ inputs.source_path }}/checkov_results.sarif
