@@ -35,9 +35,13 @@ runs:
             repo: context.repo.repo,
           });
           
-          # Public repositories usually not returning code_security.status, so first check if visibility = public, 
-          # in case it is public then defaults to true
+          // Public repositories usually not returning code_security.status, so first check if visibility = public, 
+          // in case it is public then defaults to true
           const visibility = response.data.visibility;
-          const ghas_status = visibility === 'public' ? 'enabled' : response.data.security_and_analysis.code_security.status;
+          var ghas_status = 'disabled';
+          if ( visibility === 'public' )
+            ghas_status = 'enabled';
+          else
+            response.data.security_and_analysis.code_security.status;
           console.log(`Advanced Security status: ${ghas_status}`);
           core.setOutput('ghas_enabled', ghas_status === 'enabled');
