@@ -46,6 +46,7 @@ runs:
         #   - .python
         #   - .node
         #   - .terraform
+        #   - .terraform-module
         #   - .java
         #   - .dotnet
         #   - .rust
@@ -53,6 +54,7 @@ runs:
         #   - .iac
         #   - .xcode
         #   - .android
+        #   - .fluttermobile
         # ouptuts are:
         #   - repo = cloudopsworks/<moduletype>-app-template
         #   - current_version = content from .cloudopsworks/_VERSION file
