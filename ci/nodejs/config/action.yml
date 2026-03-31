@@ -82,7 +82,7 @@ runs:
         id: install_command
         shell: bash
         run: |
-          RET=$(yq e -I=0 '.custom_install_command // "npm install --omit=dev"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
+          RET=$(yq e -I=0 '.custom_install_command // "npm install --omit=dev --ignore-scripts"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
           echo "result=$RET" >> $GITHUB_OUTPUT
 
 
