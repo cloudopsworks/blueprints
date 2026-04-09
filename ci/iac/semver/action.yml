@@ -1,0 +1,46 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Get semver metadata and if the version is a pre-release or not
+author: cloudopsworks
+description: Get semver metadata and if the version is a pre-release or not
+inputs: {}
+outputs:
+  version:
+    description: The version of the release
+    value: ${{ steps.workspace.outputs.version }}
+  is_pre_release:
+    description: Whether the version is a pre-release or not
+    value: ${{ steps.workspace.outputs.isPreRelease }}
+  build_metadata:
+    description: The build metadata of the version
+    value: ${{ steps.workspace.outputs.buildMetadata }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set the appropriate workspace
+      id: workspace
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const head = '${{ github.head_ref }}';
+          const base = '${{ github.base_ref }}';
+          const ref = '${{ github.ref_name }}';
+          var branch = base !== '' ? base : ref;
+          // This semver structure is obtained as per specification https://semver.org/ & https://regex101.com/r/vkijKf/1/
+          semver = branch.match(/^v(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?/);
+          if ( semver != null ) {
+            const pre = semver['groups']['prerelease'];
+            const buildmeta = semver['groups']['buildmetadata'];
+            core.setOutput('version', semver['groups']['major'] + '.' + semver['groups']['minor'] + '.' + semver['groups']['patch']);
+            core.setOutput('isPreRelease', pre != null);
+            core.setOutput('buildMetadata', buildmeta);
+          } else {
+            core.setFailed('The branch name is not a valid semver version');
+          }
