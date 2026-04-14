@@ -36,26 +36,23 @@ tag_local_all: get_version
 ## Tag the current version only upto minor
 tag:: co_master tag_local
 	git push origin -f $(VER_MAJOR).$(VER_MINOR)
-	git checkout develop
 
 ## Tag the current version upto major and minor
 tagall:: co_master tag_local_all
 	git push origin -f $(VER_MAJOR).$(VER_MINOR)
 	git push origin -f $(VER_MAJOR)
-	git checkout develop
 
 ## Tag the current support branch (no master checkout
 tagbranch:: tag_local
 	git push origin -f $(VER_MAJOR).$(VER_MINOR)
 
-# Build the current branch as hotfix and merge it into develop and master
-build-hotfix:
+## Build the current branch as hotfix and merge it into develop and master
+start-hotfix:
 	@$(MAKE) gitflow/hotfix/start
 	@$(MAKE) gitflow/hotfix/publish
-	@git merge develop
+
+## Finish the hotfix and merge it into develop and master, then tag the release
+end-hotfix:
 	@$(MAKE) gitflow/version/file
 	@$(MAKE) gitflow/hotfix/finish/local
-	@git checkout develop
-	@git merge master --no-ff
-	@git push
 	@$(MAKE) tag
