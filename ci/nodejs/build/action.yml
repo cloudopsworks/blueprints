@@ -132,7 +132,7 @@ runs:
 
     # Setup Node JS for builds with version provided
     - name: Set Node Version
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: "${{ steps.node_version.outputs.result }}"
         check-latest: true
@@ -177,7 +177,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Install Global Dependencies"
-        npm install -g nyc jest mocha
+        npm install -g nyc@18.0.0 jest@30.2.0 mocha@11.7.5
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -214,7 +214,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Install AWS Open Telemetry"
-        npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation
+        npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.9.0
         echo "::endgroup::"
 
     # Build the code! build target MUST be defined in package.json

@@ -52,6 +52,12 @@ outputs:
   quality_gate_enabled:
     description: 'The quality gate enabled flag'
     value: ${{ steps.quality_gate_enabled.outputs.result }}
+  trivy_enabled:
+    description: 'The trivy enabled flag'
+    value: ${{ steps.trivy_enabled.outputs.result }}
+  container_enabled:
+    description: 'The container enabled flag'
+    value: ${{ (steps.cloud.outputs.result == 'gcp' && steps.cloud_type.outputs.result == 'cloudrun') || steps.cloud_type.outputs.result == 'kubernetes' || steps.has_preview.outputs.result == 'true' }}
 
 runs:
   using: 'composite'
@@ -59,12 +65,7 @@ runs:
     # Get the owner repo
     - name: Get owner
       id: getowner
-      shell: bash
-      run: |
-        repo_owner=`echo "$GITHUB_REPOSITORY" | cut -f 1 -d "/"`
-        repo_name=`echo "$GITHUB_REPOSITORY" | cut -f 2 -d "/"`
-        echo "owner=$repo_owner" >> $GITHUB_OUTPUT
-        echo "repo_name=$repo_name" >> $GITHUB_OUTPUT        
+      uses: cloudopsworks/blueprints/ci/common/getowner@v5.10
 
     # Get repository_owner from inputs-global.yaml as project_owner id
     - name: Get Project Owner
@@ -135,4 +136,38 @@ runs:
       shell: bash
       run: |
         RET=$(yq -I=0 '.runner_set // ""' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    - name: Get Trivy Configuration is enabled
+      id: trivy_enabled
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.trivy.enabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+
+    # Get the cloud entry from .cloudopsworks/vars/inputs-global.yaml as plain text
+    - name: Get Cloud Entry
+      id: cloud
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e '.cloud' .cloudopsworks/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get the cloud type from .cloudopsworks/vars/inputs-global.yaml as plain text
+    - name: Get Cloud Type
+      id: cloud_type
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e '.cloud_type' .cloudopsworks/vars/inputs-global.yaml)
+        [[ "$RET" =~ "gke|kubernetes|k8s|eks|aks" ]] && RET=kubernetes
+        echo "result=$RET" >> $GITHUB_OUTPUT
+
+    # Get preview enabled
+    - name: Get pipeline preview enabled
+      id: has_preview
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e '.preview.enabled and true' .cloudopsworks/vars/inputs-global.yaml)
         echo "result=$RET" >> $GITHUB_OUTPUT

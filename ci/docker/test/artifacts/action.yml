@@ -30,7 +30,7 @@ runs:
   steps:
     # Upload test artifacts:
     - name: Upload Test Artifacts
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: test_artifacts
         if-no-files-found: 'warn'
@@ -45,4 +45,5 @@ runs:
           ${{ inputs.source_path }}/**/site/jacoco/**
           ${{ inputs.source_path }}/*.sarif
           ${{ inputs.source_path }}/bom.xml
-          ${{ inputs.source_path }}/trivy-report.json
+          ${{ inputs.source_path }}/trivy-results.json
+          ${{ inputs.source_path }}/trivi-results.txt

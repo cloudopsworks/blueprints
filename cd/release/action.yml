@@ -64,29 +64,31 @@ runs:
         echo "tag=$name" >> $GITHUB_OUTPUT
 
     - name: Changelog Generation
-      uses: requarks/changelog-action@v1
+      uses: cloudopsworks/conventional-changelog-action@v6
       id: changelog
       with:
-        token: ${{ inputs.token }}
-        fromTag: ${{ steps.normalize.outputs.result }}
-        toTag: ${{ steps.previous_tag.outputs.tag }}
-        writeToFile: true
-        includeInvalidCommits: true
-        excludeTypes: 'build,docs,style'
+        github-token: ${{ inputs.token }}
+        working-dir: ./${{ inputs.source_path }}/
+        skip-commit: true
+        skip-tag: true
+        skip-bump: true
+        skip-git-pull: true
+        git-push: false
+        pre-release: ${{ inputs.is_pre_release }}
 
     - name: Upload artifact to workflow run
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: changelog
         retention-days: 1
         overwrite: true
-        path: CHANGELOG.md
+        path: ${{ inputs.source_path }}/CHANGELOG.md
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         token: ${{ inputs.token }}
-        body_path: CHANGELOG.md
+        body: ${{ steps.changelog.outputs.changelog }}
         name: "Release ${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
         prerelease: ${{ inputs.is_pre_release }}

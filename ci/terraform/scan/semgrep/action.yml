@@ -6,9 +6,9 @@
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
 #
-name: Semgrep code Scanning Xcode
+name: Semgrep code Scanning Dockerfile
 author: cloudopsworks
-description: This action scans the iOS/MacOS code using Semgrep
+description: This action scans the Dockerfile using Semgrep and outputs the results in various formats.
 inputs:
   source_path:
     description: 'The path to the source code'
@@ -30,7 +30,7 @@ inputs:
   semgrep_excludes:
     description: 'The Semgrep excludes'
     required: false
-    default: '.github/workflows/*,src/test/*'
+    default: '.github/workflows/*,docs/*,.terraform/*,.cloudopsworks/*'
 
 runs:
   using: 'composite'
@@ -41,8 +41,7 @@ runs:
       with:
         token: ${{ inputs.token }}
 
-    # Split the semgrep_excludes into tokens and return as the result for each token prepended with --exclude xxx
-    # eg: --exclude aaa --exclude bbb options
+
     - name: Split semgrep_excludes
       id: split_excludes
       shell: bash
@@ -62,7 +61,6 @@ runs:
       shell: bash
       run: |
         semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.split_excludes.outputs.result }}
-#        semgrep --config=p/default . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
 
     - name: Upload SARIF file
       if: |
