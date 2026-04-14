@@ -28,6 +28,57 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Trivy Scan
-      shell: bash
-      run: echo "::notice::Trivy scan is not implemented yet. Will be released Soon!."
+    - name: Check GHAS Enabled
+      id: check_ghas
+      uses: cloudopsworks/blueprints/ci/common/advancedsecurity/check@v5.10
+      with:
+        token: ${{ inputs.token }}
+
+    - name: Download tarball image
+      uses: actions/download-artifact@v7
+      with:
+        name: docker-image
+        path: ${{ inputs.source_path }}
+
+    - name: Manual Trivy Setup
+      uses: aquasecurity/setup-trivy@v0.2.0
+      with:
+        cache: true
+        version: v0.69.3
+
+    - name: Run Trivy vulnerability scanner - sarif output
+      uses: aquasecurity/trivy-action@0.35.0
+      with:
+        input: '${{ inputs.source_path }}/docker-image.tar'
+        scan-type: 'image'
+        format: 'json'
+        output: '${{ inputs.source_path }}/trivy-results.json'
+        skip-setup-trivy: true
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        github-pat: ${{ inputs.token }}
+        scanners: 'vuln'
+
+    - name: Run Trivy vulnerability scanner - sarif output
+      uses: aquasecurity/trivy-action@0.35.0
+      with:
+        input: '${{ inputs.source_path }}/docker-image.tar'
+        scan-type: 'image'
+        format: 'sarif'
+        output: '${{ inputs.source_path }}/trivi-results.sarif'
+        skip-setup-trivy: true
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH'
+        github-pat: ${{ inputs.token }}
+        scanners: 'vuln'
+        limit-severities-for-sarif: true
+
+    - name: Upload SARIF file
+      if: |
+        (success() || failure()) &&
+        (steps.check_ghas.outputs.ghas_enabled == 'true')
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        checkout_path: ${{ inputs.source_path }}
+        sarif_file: ${{ inputs.source_path }}/trivi-results.sarif
+        wait-for-processing: false

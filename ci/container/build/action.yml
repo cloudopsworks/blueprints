@@ -163,7 +163,7 @@ runs:
 
     # Build docker version latest release
     - name: Docker Build Release
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v7
       with:
         build-args: |
           ${{ inputs.docker_image_name }}
@@ -177,13 +177,14 @@ runs:
 
     # Upload the docker image to the artifact store
     - name: Upload Docker Image
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: docker-image
         path: |
           docker-image.tar
           docker-repository-tags.list
           docker-tags.list
+          Dockerfile
         retention-days: 1
         compression-level: '1'
         overwrite: true

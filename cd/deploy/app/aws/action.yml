@@ -310,7 +310,7 @@ runs:
 
     - name: Save Plan Artifacts
       if: ${{ inputs.unlock != 'true' && inputs.destroy != 'true' }}
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifacts_name }}_iac
         retention-days: 1
@@ -375,7 +375,7 @@ runs:
 
     - name: Hard fail on plan error
       shell: bash
-      if: ${{ steps.plan.outcome != 'success' }}
+      if: ${{ steps.plan.outcome != 'success' && ! cancelled() }}
       continue-on-error: false
       run: |
         echo "::error::Terragrunt plan failed, exiting!!!"
@@ -383,7 +383,7 @@ runs:
 
     - name: Hard fail on apply error
       shell: bash
-      if: ${{ steps.apply.outcome != 'success' }}
+      if: ${{ steps.apply.outcome != 'success' && inputs.unlock != 'true' && ! cancelled() }}
       continue-on-error: false
       run: |
         echo "::error::Terragrunt apply failed, exiting!!!"

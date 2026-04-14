@@ -1,0 +1,29 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Get Repository Owner and Name
+author: cloudopsworks
+description: Get the repository owner and name from the GitHub context, to be used as part of the workflow configuration values
+outputs:
+  owner:
+    description: 'The owner of the repository'
+    value: ${{ steps.get_owner.outputs.owner }}
+  repo_name:
+    description: 'The name of the repository'
+    value: ${{ steps.get_owner.outputs.repo_name }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get Repository Owner and Name
+      id: get_owner
+      shell: bash
+      run: |
+        REPO=${{ github.repository }}
+        echo "owner=$(echo $REPO | cut -d'/' -f1)" >> $GITHUB_OUTPUT
+        echo "repo_name=$(echo $REPO | cut -d'/' -f2)" >> $GITHUB_OUTPUT

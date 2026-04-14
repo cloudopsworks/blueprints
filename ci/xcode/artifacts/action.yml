@@ -71,7 +71,7 @@ runs:
 
     # Perform of upload of artfiacts for xcode
     - name: Upload Artifacts to workflow
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifacts_name }}_${{ steps.xcode_normalized.outputs.result }}
         path: |
@@ -84,7 +84,7 @@ runs:
 
     # Perform of upload of sources
     - name: Upload Sources to workflow
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.sources_artifacts_name }}
         path: |
@@ -106,7 +106,7 @@ runs:
 
     # Perform of upload of all target artfiacts for Xcode
     - name: Upload Target Artifacts to workflow
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.sources_artifacts_name }}_target_${{ steps.xcode_normalized.outputs.result }}
         path: ${{ steps.target_artifacts_tar.outputs.path }}

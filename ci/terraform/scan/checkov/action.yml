@@ -14,10 +14,20 @@ inputs:
     description: 'The path to the source code'
     required: false
     default: 'source'
+  token:
+    description: 'The GitHub token to use for authentication'
+    required: false
+    default: ${{ github.token }}
 
 runs: 
   using: 'composite'
   steps:
+    - name: Check GHAS Enabled
+      id: check_ghas
+      uses: cloudopsworks/blueprints/ci/common/advancedsecurity/check@v5.10
+      with:
+        token: ${{ inputs.token }}
+
     - name: Determine Checkov checks
       id: checkov-checks
       shell: bash
@@ -46,22 +56,27 @@ runs:
     - name: Run Checkov
       uses: bridgecrewio/checkov-action@v12
       with:
-        directory: ${{ inputs.source_path }}
+        directory: ./${{ inputs.source_path }}/
         framework: terraform
         output_format: cli,sarif
         output_file_path: checkov_results.txt,checkov_results.sarif
+        soft_fail: true
         check: ${{ steps.checkov-checks.outputs.checks }}
         download_external_modules: true
 
     - name: Upload Checkov results
       if: success() || failure()
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: checkov-results
         path: checkov_results.txt
 
     - name: Upload SARIF file
-      if: success() || failure()
+      if: |
+        (success() || failure()) &&
+        (steps.check_ghas.outputs.ghas_enabled == 'true')
       uses: github/codeql-action/upload-sarif@v4
       with:
-        sarif_file:  checkov_results.sarif
+        checkout_path: ./${{ inputs.source_path }}/
+        wait-for-processing: false
+        sarif_file: checkov_results.sarif

@@ -60,7 +60,7 @@ runs:
 
     # Setup Node JS for builds with version provided
     - name: Set Node Version
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: "${{ steps.node_version.outputs.result }}"
         check-latest: true

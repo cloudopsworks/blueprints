@@ -1,0 +1,47 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Get Github Advanced Security is enabled
+author: cloudopsworks
+description: Get if Github Advanced Security is enabled for the repository, to be used as part of the workflow configuration values
+inputs:
+  token:
+    description: 'The GitHub token'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  ghas_enabled:
+    description: 'Whether Github Advanced Security is enabled for the repository'
+    value: ${{ steps.check_ghas.outputs.ghas_enabled }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check Advanced Security Status
+      id: check_ghas
+      uses: actions/github-script@v8
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      with:
+        script: |
+          const response = await github.rest.repos.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+          
+          // Public repositories usually not returning code_security.status, so first check if visibility = public,
+          // in case it is public then defaults to true
+          const visibility = response.data.visibility;
+          var ghas_status = 'disabled';
+          if ( visibility === 'public' )
+            ghas_status = 'enabled';
+          else
+            ghas_status = response.data.security_and_analysis?.code_security?.status ?? 'disabled';
+          console.log(`Advanced Security status: ${ghas_status}`);
+          core.setOutput('ghas_enabled', ghas_status === 'enabled');

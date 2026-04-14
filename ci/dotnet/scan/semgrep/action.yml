@@ -35,8 +35,20 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Check GHAS Enabled
+      id: check_ghas
+      uses: cloudopsworks/blueprints/ci/common/advancedsecurity/check@v5.10
+      with:
+        token: ${{ inputs.token }}
+
     # Split the semgrep_excludes into tokens and return as the result for each token prepended with --exclude xxx
     # eg: --exclude aaa --exclude bbb options
+    - name: Download tarball image
+      uses: actions/download-artifact@v7
+      with:
+        pattern: docker-image*
+        path: ${{ inputs.source_path }}
+
     - name: Split semgrep_excludes
       id: split_excludes
       shell: bash
@@ -55,5 +67,15 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        semgrep --config=p/csharp . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
         semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.split_excludes.outputs.result }}
+#        semgrep --config=p/csharp . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
+
+    - name: Upload SARIF file
+      if: |
+        (success() || failure()) &&
+        (steps.check_ghas.outputs.ghas_enabled == 'true')
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        checkout_path: ${{ inputs.source_path }}
+        sarif_file: ${{ inputs.source_path }}/semgrep.sarif
+        wait-for-processing: false
