@@ -75,6 +75,7 @@ runs:
         skip-git-pull: true
         git-push: false
         pre-release: ${{ inputs.is_pre_release }}
+        preset: 'conventionalcommits'
 
     - name: Upload artifact to workflow run
       uses: actions/upload-artifact@v7
