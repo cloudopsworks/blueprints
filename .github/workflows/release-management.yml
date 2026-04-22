@@ -1,0 +1,53 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Release Management Workflow
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+**'
+
+concurrency: rel-mgmt-${{ github.repository }}-${{ github.ref }}
+
+# Permission Settings for the entire RUN
+permissions:
+  actions: write
+  contents: write
+  packages: write
+  statuses: write
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  release:
+    name: "Generate Release"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout w/Blueprint
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        id: co
+        with:
+          blueprint_ref: 'v5.10'
+
+      - name: Get Semver Info
+        id: semver
+        uses: ./bp/cd/semver
+
+
+      - name: Perform Release
+        uses: ./bp/cd/release
+        with:
+          source_path: ${{ steps.co.outputs.source_path }}
+          ref_name: ${{ github.ref_name }}
+          release_tag: ${{ github.ref_name }}
+          is_pre_release: ${{ steps.semver.outputs.is_pre_release }}
+          files_globs: |
+            *.zip
+          token: ${{ secrets.BOT_TOKEN }}

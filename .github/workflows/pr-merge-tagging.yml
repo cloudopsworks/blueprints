@@ -1,0 +1,76 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Pull Request Merge Tagging
+on:
+  pull_request:
+    types:
+      - closed
+
+concurrency: merge-pr-${{ github.repository }}-${{ github.ref }}
+
+permissions:
+  contents: read
+  packages: write
+  statuses: write
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  push_tag:
+    if: ${{ github.event.pull_request.merged == true && ( github.base_ref == 'master' || github.base_ref == 'main' || startsWith(github.base_ref,'support/') ) }}
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the code
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.base_ref }}
+
+      # Push the changes to Git TAG before deploying anything
+      - name: Push TAG
+        id: tagged
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: |
+          git config --global user.name "${{ vars.BOT_USER }}"
+          git config --global user.email "${{ vars.BOT_EMAIL }}"
+          make gitflow/version/tag
+          make gitflow/version/publish
+
+  branch_deletion:
+    if: (! failure())
+    needs:
+      - push_tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.head_ref }}
+
+      - name: Delete local & remote Release
+        if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/') && ( github.base_ref == 'master' || github.base_ref == 'main' || startsWith(github.base_ref,'support/') ) }}
+        run: make gitflow/release/purge
+
+      - name: Delete local & remote Hotfix
+        if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'hotfix/') }}
+        run: make gitflow/hotfix/purge
+
+      - name: Delete local & remote Feature
+        if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'feature/') }}
+        run: |
+          FEATURE=$(echo "${{ github.head_ref }}" | sed -e 's/feature\///g')
+          make gitflow/feature/purge-no-develop:$FEATURE
