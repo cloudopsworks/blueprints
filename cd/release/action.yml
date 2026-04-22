@@ -64,18 +64,13 @@ runs:
         echo "tag=$name" >> $GITHUB_OUTPUT
 
     - name: Changelog Generation
-      uses: TriPSs/conventional-changelog-action@v6
+      uses: cloudopsworks/changelog-action@v1
       id: changelog
       with:
-        github-token: ${{ inputs.token }}
-        working-dir: ./${{ inputs.source_path }}/
-        skip-commit: true
-        skip-tag: true
-        skip-bump: true
-        skip-git-pull: true
-        git-push: false
-        pre-release: ${{ inputs.is_pre_release }}
-        preset: 'conventionalcommits'
+        token: ${{ inputs.token }}
+        working_dir: ./${{ inputs.source_path }}/
+        tag: ${{ steps.normalize.outputs.result }}
+        writeToFile: true
 
     - name: Upload artifact to workflow run
       uses: actions/upload-artifact@v7
@@ -89,7 +84,7 @@ runs:
       uses: softprops/action-gh-release@v2
       with:
         token: ${{ inputs.token }}
-        body: ${{ steps.changelog.outputs.changelog }}
+        body: ${{ steps.changelog.outputs.changes }}
         name: "Release ${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
         prerelease: ${{ inputs.is_pre_release }}
