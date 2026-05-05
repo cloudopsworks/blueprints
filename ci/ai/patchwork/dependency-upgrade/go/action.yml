@@ -115,7 +115,7 @@ runs:
 
     # Setup GoLang GoLang SDK for builds
     - name: Set GoLang SDK
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         token: ${{ inputs.token }}
         go-version: "${{ steps.golang_version.outputs.result }}"
