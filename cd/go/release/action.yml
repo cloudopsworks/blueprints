@@ -53,6 +53,12 @@ runs:
         gpg_private_key: ${{ inputs.gpg_private_key }}
         passphrase: ${{ inputs.gpg_passphrase }}
 
+    - name: Cleanup for goreleaser
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        git clean -df
+
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v7
       with:
