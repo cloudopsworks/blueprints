@@ -41,7 +41,7 @@ runs:
       uses: actions/setup-go@v6
       with:
         token: ${{ inputs.token }}
-        go-version-file: ${{ inputs.source_path }}/.go.mod
+        go-version-file: ${{ inputs.source_path }}/go.mod
         cache: true
 
     - name: Import GPG key
