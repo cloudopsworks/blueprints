@@ -57,7 +57,7 @@ runs:
       uses: goreleaser/goreleaser-action@v7
       with:
         workdir: ${{ inputs.source_path }}
-        version: '~> ${{ inputs.golang_version }}'
+        version: '~> v2'
         args: release --clean
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
