@@ -58,6 +58,6 @@ runs:
         version: '~> ${{ inputs.golang_version }}'
         args: release --clean
       env:
-        GITHUB_TOKEN: ${{ token }}
+        GITHUB_TOKEN: ${{ inputs.token }}
         GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
         PASSPHRASE: ${{ inputs.gpg_passphrase }}
