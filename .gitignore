@@ -43,3 +43,11 @@ terraform.rc
 .tronador
 .tronador*.mk
 tronador/
+
+# AI excludes
+.claude/
+.ai/
+.omc/
+.omx/
+.gstack/
+.opencode/
