@@ -1,0 +1,69 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Release Workflow for GoReleaser pipeline
+author: cloudopsworks
+description: Release Workflow for GoReleaser pipeline
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The github token to use for the release'
+    required: true
+  gpg_private_key:
+    description: 'The GPG private key to use for signing the release'
+    required: true
+  gpg_passphrase:
+    description: 'The GPG passphrase to use for signing the release'
+    required: true
+  semver:
+    description: 'The semver version to use for the release'
+    required: true
+  golang_version:
+    description: 'The GoLang version to use for the release'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v6
+      with:
+        token: ${{ inputs.token }}
+        check-latest: true
+        cache: true
+
+    - name: Import GPG key
+      id: import_gpg
+      uses: crazy-max/ghaction-import-gpg@v7
+      with:
+        gpg_private_key: ${{ inputs.gpg_private_key }}
+        passphrase: ${{ inputs.gpg_passphrase }}
+
+    - name: Cleanup for goreleaser
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        git clean -df
+
+    - name: Run GoReleaser
+      uses: goreleaser/goreleaser-action@v7
+      with:
+        workdir: ${{ inputs.source_path }}
+        version: '~> v2'
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+        PASSPHRASE: ${{ inputs.gpg_passphrase }}

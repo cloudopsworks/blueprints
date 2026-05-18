@@ -48,6 +48,9 @@ outputs:
   rust_components:
     description: 'The Rust Component list as comma separated'
     value: ${{ steps.rust_components.outputs.result }}
+  rust_goreleaser:
+    description: 'The GoReleaser configuration to use for the build'
+    value: ${{ steps.rust_goreleaser.outputs.result }}
   semver:
     description: 'The semver version'
     value: ${{ steps.semver.outputs.result }}
@@ -100,6 +103,13 @@ runs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e '.rust.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+
+    # GoReleaser configuration, default is false, if set to true, .goreleaser.yaml should be present in the source code root
+    - name: Get pipeline GoReleaser configuration
+      id: rust_goreleaser
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.rust.goreleaser // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
     # Get package name from the Cargo.toml file
     - name: Get package name
