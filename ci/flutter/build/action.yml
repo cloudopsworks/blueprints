@@ -229,6 +229,9 @@ runs:
         fi
         flutter pub get
 
+        profile_uuid=""
+        profile_name=""
+        profile_team_id=""
         if [[ "$IOS_CODESIGN" == "true" && "$PLATFORM_TYPE" == "ios" && -n "$BUILD_CERTIFICATE_B64" ]]; then
           security create-keychain -p "${KEYCHAIN_PASSWORD:-temporary-password}" build.keychain
           security default-keychain -s build.keychain
@@ -239,7 +242,16 @@ runs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD:-temporary-password}" build.keychain
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           if [[ -n "$BUILD_PROVISION_PROFILE_B64" ]]; then
-            echo "$BUILD_PROVISION_PROFILE_B64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
+            profile_tmp="$RUNNER_TEMP/profile.mobileprovision"
+            echo "$BUILD_PROVISION_PROFILE_B64" | base64 --decode > "$profile_tmp"
+            if security cms -D -i "$profile_tmp" > "$RUNNER_TEMP/profile.plist" 2>/dev/null; then
+              profile_uuid=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/profile.plist" 2>/dev/null || true)
+              profile_name=$(/usr/libexec/PlistBuddy -c 'Print Name' "$RUNNER_TEMP/profile.plist" 2>/dev/null || true)
+              profile_team_id=$(/usr/libexec/PlistBuddy -c 'Print TeamIdentifier:0' "$RUNNER_TEMP/profile.plist" 2>/dev/null || true)
+            fi
+            profile_file="$HOME/Library/MobileDevice/Provisioning Profiles/${profile_uuid:-profile}.mobileprovision"
+            cp "$profile_tmp" "$profile_file"
+            echo "Installed provisioning profile ${profile_name:-unknown} (${profile_uuid:-unknown})"
           fi
           if [[ -n "$BUILD_EXPORT_OPTIONS_PLIST" ]]; then
             echo "$BUILD_EXPORT_OPTIONS_PLIST" | base64 --decode > exportOptions.plist
@@ -293,27 +305,51 @@ runs:
                 else
                   xcode_container_args=(-project ios/Runner.xcodeproj)
                 fi
-                xcodebuild "${xcode_container_args[@]}" \
-                  -scheme "$IOS_SCHEME" \
-                  -archivePath "$archive_path" \
-                  -sdk "$IOS_SDK" \
-                  -configuration "$IOS_CONFIGURATION" \
-                  -destination "$IOS_DESTINATION" \
-                  archive
+                archive_args=(
+                  "${xcode_container_args[@]}"
+                  -scheme "$IOS_SCHEME"
+                  -archivePath "$archive_path"
+                  -sdk "$IOS_SDK"
+                  -configuration "$IOS_CONFIGURATION"
+                  -destination "$IOS_DESTINATION"
+                )
+                archive_team_id="${profile_team_id:-}"
+                if [[ -z "$archive_team_id" ]]; then
+                  archive_team_id=$(grep -m 1 'DEVELOPMENT_TEAM = ' ios/Runner.xcodeproj/project.pbxproj | sed -E 's/.*DEVELOPMENT_TEAM = ([^;]+);.*/\1/' | tr -d '"' || true)
+                fi
+                if [[ -n "${profile_name:-}" || -n "${profile_uuid:-}" ]]; then
+                  archive_args+=(CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Distribution")
+                  [[ -n "$archive_team_id" ]] && archive_args+=(DEVELOPMENT_TEAM="$archive_team_id")
+                  [[ -n "${profile_name:-}" ]] && archive_args+=(PROVISIONING_PROFILE_SPECIFIER="$profile_name")
+                  [[ -n "${profile_uuid:-}" ]] && archive_args+=(PROVISIONING_PROFILE="$profile_uuid")
+                fi
+                xcodebuild "${archive_args[@]}" archive
               fi
               ipa_dir="build/ios/ipa"
               mkdir -p "$ipa_dir"
               export_plist="$IOS_EXPORT_OPTIONS_PLIST"
               if [[ -z "$export_plist" ]]; then
                 export_plist="build/ios/ExportOptions.plist"
-                team_id=$(grep -m 1 'DEVELOPMENT_TEAM = ' ios/Runner.xcodeproj/project.pbxproj | sed -E 's/.*DEVELOPMENT_TEAM = ([^;]+);.*/\1/' | tr -d '"' || true)
+                team_id="${profile_team_id:-}"
+                if [[ -z "$team_id" ]]; then
+                  team_id=$(grep -m 1 'DEVELOPMENT_TEAM = ' ios/Runner.xcodeproj/project.pbxproj | sed -E 's/.*DEVELOPMENT_TEAM = ([^;]+);.*/\1/' | tr -d '"' || true)
+                fi
+                bundle_id=$(grep -m 1 'PRODUCT_BUNDLE_IDENTIFIER = ' ios/Runner.xcodeproj/project.pbxproj | sed -E 's/.*PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);.*/\1/' | tr -d '"' || true)
                 {
                   echo '<?xml version="1.0" encoding="UTF-8"?>'
                   echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
                   echo '<plist version="1.0"><dict>'
                   echo '<key>method</key>'
                   echo "<string>${IOS_EXPORT_METHOD:-ad-hoc}</string>"
-                  echo '<key>signingStyle</key><string>automatic</string>'
+                  if [[ -n "${profile_name:-}" && -n "$bundle_id" ]]; then
+                    echo '<key>signingStyle</key><string>manual</string>'
+                    echo '<key>provisioningProfiles</key><dict>'
+                    echo "<key>$bundle_id</key>"
+                    echo "<string>$profile_name</string>"
+                    echo '</dict>'
+                  else
+                    echo '<key>signingStyle</key><string>automatic</string>'
+                  fi
                   if [[ -n "$team_id" ]]; then
                     echo '<key>teamID</key>'
                     echo "<string>$team_id</string>"
