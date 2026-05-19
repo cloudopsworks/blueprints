@@ -1,0 +1,38 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: Snyk Scan Flutter
+author: cloudopsworks
+description: Scan Flutter pub dependencies with Snyk when the CLI is available
+inputs:
+  source_path:
+    required: false
+    default: 'source'
+    description: 'The path to the source code'
+  snyk_token:
+    required: true
+    description: 'Snyk token'
+  bot_user:
+    required: true
+    description: 'Bot user'
+  token:
+    required: true
+    description: 'GitHub token'
+  semver:
+    required: false
+    default: ''
+    description: 'Semantic version'
+runs:
+  using: 'composite'
+  steps:
+    - name: Snyk Flutter Scan
+      env:
+        SNYK_TOKEN: ${{ inputs.snyk_token }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v snyk >/dev/null 2>&1; then
+          echo "::warning::snyk CLI is not installed; skipping Flutter Snyk scan."
+          exit 0
+        fi
+        snyk test --file=pubspec.yaml || snyk test

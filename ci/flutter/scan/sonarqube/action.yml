@@ -1,0 +1,65 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: SonarQube Scan Flutter
+author: cloudopsworks
+description: Scan Flutter/Dart projects with SonarQube
+inputs:
+  source_path:
+    required: false
+    default: 'source'
+    description: 'The path to the source code'
+  sonarqube_url:
+    required: true
+    description: 'SonarQube URL'
+  sonarqube_token:
+    required: true
+    description: 'SonarQube token'
+  sonarqube_project_key:
+    required: true
+    description: 'SonarQube project key'
+  semver:
+    required: true
+    description: 'Semantic version'
+  token:
+    required: false
+    default: ${{ github.token }}
+    description: 'GitHub token'
+runs:
+  using: 'composite'
+  steps:
+    - name: Get Repository Owner
+      id: repo_owner
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "result=$(yq e '.repository_owner // "${{ github.repository_owner }}"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
+
+    - name: Resolve SonarQube Flutter settings
+      id: settings
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "sources=$(yq e '.sonarqube.sources_path // "lib"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
+        echo "tests=$(yq e '.sonarqube.tests_path // "test"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
+        echo "test_inclusions=$(yq e '.sonarqube.tests_inclusions // "test/**/*"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
+        echo "exclusions=$(yq e '.sonarqube.exclusions // "build/**,.dart_tool/**,ios/Pods/**,android/.gradle/**"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
+        echo "branch_disabled=$(yq e '.sonarqube.branch_disabled and true' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
+        if [[ -f coverage/lcov.info ]]; then echo "lcov=coverage/lcov.info" >> "$GITHUB_OUTPUT"; else echo "lcov=" >> "$GITHUB_OUTPUT"; fi
+
+    - name: SonarQube Scan
+      uses: sonarsource/sonarqube-scan-action@v7
+      env:
+        SONAR_TOKEN: ${{ inputs.sonarqube_token }}
+        SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
+      with:
+        projectBaseDir: ${{ inputs.source_path }}
+        args: >
+          -Dsonar.projectKey=${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('{0}_{1}',steps.repo_owner.outputs.result,inputs.sonarqube_project_key) || inputs.sonarqube_project_key }}
+          -Dsonar.projectVersion=${{ inputs.semver }}
+          -Dsonar.sources=${{ steps.settings.outputs.sources }}
+          -Dsonar.tests=${{ steps.settings.outputs.tests }}
+          -Dsonar.test.inclusions=${{ steps.settings.outputs.test_inclusions }}
+          -Dsonar.exclusions=${{ steps.settings.outputs.exclusions }}
+          -Dsonar.dart.lcov.reportPaths=${{ steps.settings.outputs.lcov }}
+          ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('-Dsonar.organization={0}',steps.repo_owner.outputs.result) || ' ' }}
+          ${{ steps.settings.outputs.branch_disabled != 'true' && format('-Dsonar.branch.name={0}',github.ref_name) || ' ' }}

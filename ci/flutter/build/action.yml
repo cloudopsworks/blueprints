@@ -1,0 +1,322 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: Build Flutter Project
+author: cloudopsworks
+description: Build one Flutter platform target and emit artifact metadata
+inputs:
+  source_path:
+    required: false
+    default: 'source'
+    description: 'The path to the source code'
+  project_path:
+    required: false
+    default: '.'
+    description: 'Flutter project path relative to source_path'
+  platform_type:
+    required: true
+    description: 'android or ios'
+  bot_user:
+    required: false
+    default: ''
+    description: 'Bot user'
+  token:
+    required: false
+    default: ${{ github.token }}
+    description: 'GitHub token'
+  project_key:
+    required: true
+    description: 'Project key'
+  semver_override:
+    required: false
+    default: ''
+    description: 'Override semantic version'
+  build_number:
+    required: false
+    default: ${{ github.run_number }}
+    description: 'Monotonic build number'
+  flutter_target:
+    required: false
+    default: 'lib/main.dart'
+    description: 'Flutter target'
+  flutter_build_mode:
+    required: false
+    default: 'release'
+    description: 'debug, profile, or release'
+  dart_defines_json:
+    required: false
+    default: '[]'
+    description: 'JSON array of KEY=VALUE dart defines'
+  flutter_extra_args:
+    required: false
+    default: ''
+    description: 'Extra Flutter arguments'
+  android_artifact_types:
+    required: false
+    default: '["apk"]'
+    description: 'JSON array: apk, appbundle'
+  android_split_per_abi:
+    required: false
+    default: 'false'
+    description: 'Whether to split APKs per ABI'
+  android_build_args:
+    required: false
+    default: ''
+    description: 'Extra Android build args'
+  android_sdk:
+    required: false
+    default: 'android'
+    description: 'Android artifact/deploy dimension'
+  android_destination:
+    required: false
+    default: 'universal'
+    description: 'Android artifact/deploy destination'
+  ios_codesign:
+    required: false
+    default: 'false'
+    description: 'Whether to build a signed IPA'
+  ios_export_method:
+    required: false
+    default: 'ad-hoc'
+    description: 'iOS export method'
+  ios_export_options_plist:
+    required: false
+    default: ''
+    description: 'iOS export options plist path'
+  ios_scheme:
+    required: false
+    default: 'Runner'
+    description: 'Xcode scheme for artifact/deploy naming'
+  ios_sdk:
+    required: false
+    default: 'iphoneos'
+    description: 'iOS SDK for artifact/deploy naming'
+  ios_destination:
+    required: false
+    default: 'generic/platform=iOS'
+    description: 'iOS destination for artifact/deploy naming'
+  ios_configuration:
+    required: false
+    default: 'Release'
+    description: 'iOS configuration'
+  build_certificate_b64:
+    required: false
+    default: ''
+    description: 'Base64 encoded signing certificate'
+  build_certificate_pass:
+    required: false
+    default: ''
+    description: 'Signing certificate password'
+  build_provision_profile_b64:
+    required: false
+    default: ''
+    description: 'Base64 encoded provisioning profile'
+  keychain_password:
+    required: false
+    default: ''
+    description: 'Temporary keychain password'
+  build_export_options_plist:
+    required: false
+    default: ''
+    description: 'Base64 encoded export options plist'
+outputs:
+  semver:
+    description: 'Resolved semantic version'
+    value: ${{ steps.build.outputs.semver }}
+  package_name:
+    description: 'Project/package name'
+    value: ${{ steps.build.outputs.package_name }}
+  platform_type:
+    description: 'Built platform'
+    value: ${{ inputs.platform_type }}
+  artifact_paths_json:
+    description: 'JSON array of artifact paths'
+    value: ${{ steps.build.outputs.artifact_paths_json }}
+  artifact_manifest_json:
+    description: 'JSON artifact manifest'
+    value: ${{ steps.build.outputs.artifact_manifest_json }}
+  deployable_artifact_type:
+    description: 'apk, ipa, or none'
+    value: ${{ steps.build.outputs.deployable_artifact_type }}
+  workflow_artifact_name:
+    description: 'Deploy-compatible workflow artifact name'
+    value: ${{ steps.build.outputs.workflow_artifact_name }}
+  target_artifact_name:
+    description: 'Deploy-compatible target artifact name'
+    value: ${{ steps.build.outputs.target_artifact_name }}
+  artifact_manifest_path:
+    description: 'Path to manifest file'
+    value: ${{ steps.build.outputs.artifact_manifest_path }}
+  ios_ipa_available:
+    description: 'Whether IPA exists'
+    value: ${{ steps.build.outputs.ios_ipa_available }}
+  android_apk_available:
+    description: 'Whether APK exists'
+    value: ${{ steps.build.outputs.android_apk_available }}
+  android_aab_available:
+    description: 'Whether AAB exists'
+    value: ${{ steps.build.outputs.android_aab_available }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Build Flutter platform
+      id: build
+      shell: bash
+      working-directory: ${{ inputs.source_path }}/${{ inputs.project_path }}
+      env:
+        PLATFORM_TYPE: ${{ inputs.platform_type }}
+        SEMVER_OVERRIDE: ${{ inputs.semver_override }}
+        BUILD_NUMBER: ${{ inputs.build_number }}
+        BUILD_MODE: ${{ inputs.flutter_build_mode }}
+        FLUTTER_TARGET: ${{ inputs.flutter_target }}
+        DART_DEFINES_JSON: ${{ inputs.dart_defines_json }}
+        FLUTTER_EXTRA_ARGS: ${{ inputs.flutter_extra_args }}
+        ANDROID_ARTIFACT_TYPES: ${{ inputs.android_artifact_types }}
+        ANDROID_SPLIT_PER_ABI: ${{ inputs.android_split_per_abi }}
+        ANDROID_BUILD_ARGS: ${{ inputs.android_build_args }}
+        ANDROID_SDK: ${{ inputs.android_sdk }}
+        ANDROID_DESTINATION: ${{ inputs.android_destination }}
+        IOS_CODESIGN: ${{ inputs.ios_codesign }}
+        IOS_EXPORT_METHOD: ${{ inputs.ios_export_method }}
+        IOS_EXPORT_OPTIONS_PLIST: ${{ inputs.ios_export_options_plist }}
+        IOS_SCHEME: ${{ inputs.ios_scheme }}
+        IOS_SDK: ${{ inputs.ios_sdk }}
+        IOS_DESTINATION: ${{ inputs.ios_destination }}
+        BUILD_CERTIFICATE_B64: ${{ inputs.build_certificate_b64 }}
+        BUILD_CERTIFICATE_PASS: ${{ inputs.build_certificate_pass }}
+        BUILD_PROVISION_PROFILE_B64: ${{ inputs.build_provision_profile_b64 }}
+        KEYCHAIN_PASSWORD: ${{ inputs.keychain_password }}
+        BUILD_EXPORT_OPTIONS_PLIST: ${{ inputs.build_export_options_plist }}
+      run: |
+        set -euo pipefail
+        mode_flag="--release"
+        case "$BUILD_MODE" in
+          debug) mode_flag="--debug" ;;
+          profile) mode_flag="--profile" ;;
+          release|Release|"") mode_flag="--release" ;;
+          *) echo "::error::Unsupported flutter_build_mode: $BUILD_MODE"; exit 1 ;;
+        esac
+        semver="$SEMVER_OVERRIDE"
+        if [[ -z "$semver" ]]; then
+          if [[ -f Makefile ]]; then
+            make version >/tmp/flutter-version.log 2>&1 || cat /tmp/flutter-version.log
+          fi
+          if [[ -f VERSION ]]; then
+            semver=$(tr -d '[:space:]' < VERSION)
+          elif [[ -f pubspec.yaml ]]; then
+            semver=$(yq e '.version // "0.0.0+0"' pubspec.yaml | cut -d+ -f1)
+          else
+            semver="0.0.0"
+          fi
+        fi
+        build_name="${semver#v}"
+        package_name="${{ inputs.project_key }}"
+        if [[ -f pubspec.yaml ]]; then
+          package_name=$(yq e '.name // "${{ inputs.project_key }}"' pubspec.yaml)
+        fi
+        dart_args=()
+        while IFS= read -r define; do
+          [[ -n "$define" && "$define" != "null" ]] && dart_args+=("--dart-define=$define")
+        done < <(jq -r '.[]?' <<<"$DART_DEFINES_JSON")
+        common_args=("$mode_flag" "--target" "$FLUTTER_TARGET" "--build-name" "$build_name" "--build-number" "$BUILD_NUMBER")
+        common_args+=("${dart_args[@]}")
+        if [[ -n "$FLUTTER_EXTRA_ARGS" ]]; then
+          # shellcheck disable=SC2206
+          extra=( $FLUTTER_EXTRA_ARGS )
+          common_args+=("${extra[@]}")
+        fi
+        flutter pub get
+
+        if [[ "$IOS_CODESIGN" == "true" && "$PLATFORM_TYPE" == "ios" && -n "$BUILD_CERTIFICATE_B64" ]]; then
+          security create-keychain -p "${KEYCHAIN_PASSWORD:-temporary-password}" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD:-temporary-password}" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          echo "$BUILD_CERTIFICATE_B64" | base64 --decode > certificate.p12
+          security import certificate.p12 -k build.keychain -P "$BUILD_CERTIFICATE_PASS" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD:-temporary-password}" build.keychain
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          if [[ -n "$BUILD_PROVISION_PROFILE_B64" ]]; then
+            echo "$BUILD_PROVISION_PROFILE_B64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
+          fi
+          if [[ -n "$BUILD_EXPORT_OPTIONS_PLIST" ]]; then
+            echo "$BUILD_EXPORT_OPTIONS_PLIST" | base64 --decode > exportOptions.plist
+            IOS_EXPORT_OPTIONS_PLIST="exportOptions.plist"
+          fi
+        fi
+
+        artifacts=()
+        deployable="none"
+        if [[ "$PLATFORM_TYPE" == "android" ]]; then
+          if jq -e 'index("apk")' <<<"$ANDROID_ARTIFACT_TYPES" >/dev/null; then
+            args=("${common_args[@]}")
+            [[ "$ANDROID_SPLIT_PER_ABI" == "true" ]] && args+=("--split-per-abi")
+            if [[ -n "$ANDROID_BUILD_ARGS" ]]; then
+              # shellcheck disable=SC2206
+              extra_android=( $ANDROID_BUILD_ARGS )
+              args+=("${extra_android[@]}")
+            fi
+            flutter build apk "${args[@]}"
+          fi
+          if jq -e 'index("appbundle")' <<<"$ANDROID_ARTIFACT_TYPES" >/dev/null; then
+            args=("${common_args[@]}")
+            if [[ -n "$ANDROID_BUILD_ARGS" ]]; then
+              # shellcheck disable=SC2206
+              extra_android=( $ANDROID_BUILD_ARGS )
+              args+=("${extra_android[@]}")
+            fi
+            flutter build appbundle "${args[@]}"
+          fi
+          while IFS= read -r f; do artifacts+=("$f"); done < <(find build/app/outputs -type f \( -name '*.apk' -o -name '*.aab' \) 2>/dev/null | sort)
+          apk_count=$(printf '%s\n' "${artifacts[@]:-}" | grep -c '\.apk$' || true)
+          aab_count=$(printf '%s\n' "${artifacts[@]:-}" | grep -c '\.aab$' || true)
+          if [[ "$apk_count" -eq 1 && "$ANDROID_SPLIT_PER_ABI" != "true" ]]; then deployable="apk"; fi
+          normalized=$(echo "${ANDROID_SDK}_${ANDROID_DESTINATION}" | tr ' ,:=/' '-')
+        elif [[ "$PLATFORM_TYPE" == "ios" ]]; then
+          if [[ "$IOS_CODESIGN" == "true" ]]; then
+            args=("${common_args[@]}")
+            if [[ -n "$IOS_EXPORT_OPTIONS_PLIST" ]]; then
+              args+=("--export-options-plist" "$IOS_EXPORT_OPTIONS_PLIST")
+            elif [[ -n "$IOS_EXPORT_METHOD" ]]; then
+              args+=("--export-method" "$IOS_EXPORT_METHOD")
+            fi
+            flutter build ipa "${args[@]}"
+            deployable="ipa"
+          else
+            flutter build ios "${common_args[@]}" --no-codesign
+            mkdir -p build/ios/smoke
+            if [[ -d build/ios/iphoneos ]]; then
+              (cd build/ios/iphoneos && zip -qry ../smoke/unsigned-ios-app.zip .)
+            fi
+          fi
+          while IFS= read -r f; do artifacts+=("$f"); done < <(find build/ios -type f \( -name '*.ipa' -o -name '*.xcarchive.zip' -o -name 'unsigned-ios-app.zip' \) 2>/dev/null | sort)
+          apk_count=0
+          aab_count=0
+          normalized=$(echo "${IOS_SCHEME}_${IOS_SDK}_${IOS_DESTINATION}" | tr ' ,:=/' '-')
+          if ! printf '%s\n' "${artifacts[@]:-}" | grep -q '\.ipa$'; then deployable="none"; fi
+        else
+          echo "::error::Unsupported platform_type: $PLATFORM_TYPE"
+          exit 1
+        fi
+        if [[ "${#artifacts[@]}" -eq 0 ]]; then
+          echo "::error::No Flutter build artifacts were produced for $PLATFORM_TYPE"
+          exit 1
+        fi
+        mkdir -p build/flutter-metadata
+        manifest_path="build/flutter-metadata/${PLATFORM_TYPE}-artifact-manifest.json"
+        artifact_paths_json=$(printf '%s\n' "${artifacts[@]}" | jq -R . | jq -cs .)
+        sha_json=$(for f in "${artifacts[@]}"; do shasum -a 256 "$f" | awk -v file="$f" '{printf "{\"path\":\"%s\",\"sha256\":\"%s\"}\n", file, $1}'; done | jq -cs .)
+        jq -cn --arg platform "$PLATFORM_TYPE" --arg semver "$semver" --arg package "$package_name" --arg deployable "$deployable" --arg run_id "${GITHUB_RUN_ID:-}" --arg sha "${GITHUB_SHA:-}" --argjson artifacts "$artifact_paths_json" --argjson checksums "$sha_json" \
+          '{platform:$platform, semver:$semver, package_name:$package, deployable_artifact_type:$deployable, workflow_run_id:$run_id, git_sha:$sha, artifacts:$artifacts, checksums:$checksums}' > "$manifest_path"
+        workflow_artifact_name="build_artifacts_${normalized}"
+        target_artifact_name="source_artifacts_target_${normalized}"
+        echo "semver=$semver" >> "$GITHUB_OUTPUT"
+        echo "package_name=$package_name" >> "$GITHUB_OUTPUT"
+        echo "artifact_paths_json=$artifact_paths_json" >> "$GITHUB_OUTPUT"
+        echo "artifact_manifest_json=$(jq -c . "$manifest_path")" >> "$GITHUB_OUTPUT"
+        echo "deployable_artifact_type=$deployable" >> "$GITHUB_OUTPUT"
+        echo "workflow_artifact_name=$workflow_artifact_name" >> "$GITHUB_OUTPUT"
+        echo "target_artifact_name=$target_artifact_name" >> "$GITHUB_OUTPUT"
+        echo "artifact_manifest_path=${{ inputs.source_path }}/${{ inputs.project_path }}/$manifest_path" >> "$GITHUB_OUTPUT"
+        echo "ios_ipa_available=$(printf '%s\n' "${artifacts[@]}" | grep -q '\.ipa$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        echo "android_apk_available=$(printf '%s\n' "${artifacts[@]}" | grep -q '\.apk$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        echo "android_aab_available=$(printf '%s\n' "${artifacts[@]}" | grep -q '\.aab$' && echo true || echo false)" >> "$GITHUB_OUTPUT"

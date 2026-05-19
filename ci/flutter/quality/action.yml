@@ -1,0 +1,76 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: Flutter Quality Checks
+author: cloudopsworks
+description: Run Flutter dependency, format, analyzer, and test checks
+inputs:
+  source_path:
+    required: false
+    default: 'source'
+    description: 'The path to the source code'
+  project_path:
+    required: false
+    default: '.'
+    description: 'Flutter project path relative to source_path'
+  target:
+    required: false
+    default: 'lib/main.dart'
+    description: 'Flutter target'
+  pub_get_enabled:
+    required: false
+    default: 'true'
+    description: 'Run flutter pub get'
+  analyze_enabled:
+    required: false
+    default: 'true'
+    description: 'Run flutter analyze'
+  test_enabled:
+    required: false
+    default: 'true'
+    description: 'Run flutter test'
+  coverage_enabled:
+    required: false
+    default: 'false'
+    description: 'Run tests with coverage'
+  formatter_check_enabled:
+    required: false
+    default: 'false'
+    description: 'Run dart format check'
+outputs:
+  coverage_path:
+    description: 'Coverage file path if produced'
+    value: ${{ steps.quality.outputs.coverage_path }}
+  quality_ran:
+    description: 'Whether quality action ran'
+    value: ${{ steps.quality.outputs.quality_ran }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Flutter quality checks
+      id: quality
+      shell: bash
+      working-directory: ${{ inputs.source_path }}/${{ inputs.project_path }}
+      run: |
+        set -euo pipefail
+        if [[ "${{ inputs.pub_get_enabled }}" == "true" ]]; then
+          flutter pub get
+        fi
+        if [[ "${{ inputs.formatter_check_enabled }}" == "true" ]]; then
+          dart format --set-exit-if-changed .
+        fi
+        if [[ "${{ inputs.analyze_enabled }}" == "true" ]]; then
+          flutter analyze
+        fi
+        if [[ "${{ inputs.test_enabled }}" == "true" ]]; then
+          if [[ "${{ inputs.coverage_enabled }}" == "true" ]]; then
+            flutter test --coverage
+          else
+            flutter test
+          fi
+        fi
+        coverage=""
+        if [[ -f coverage/lcov.info ]]; then
+          coverage="${{ inputs.source_path }}/${{ inputs.project_path }}/coverage/lcov.info"
+        fi
+        echo "coverage_path=$coverage" >> "$GITHUB_OUTPUT"
+        echo "quality_ran=true" >> "$GITHUB_OUTPUT"

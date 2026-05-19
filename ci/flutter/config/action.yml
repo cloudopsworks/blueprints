@@ -1,0 +1,272 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Distributed Under Apache v2.0 License
+#
+name: Get Configuration Values for Flutter Build
+author: cloudopsworks
+description: Get Flutter build configuration and emit platform matrix values
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+  is_pull_request:
+    description: 'Whether this configuration is for a pull request build'
+    required: false
+    default: 'false'
+  platform_override:
+    description: 'Optional comma-separated platform override: android,ios'
+    required: false
+    default: ''
+outputs:
+  flutter_channel:
+    description: 'Flutter channel'
+    value: ${{ steps.config.outputs.flutter_channel }}
+  flutter_version:
+    description: 'Flutter version'
+    value: ${{ steps.config.outputs.flutter_version }}
+  flutter_project_path:
+    description: 'Flutter project path'
+    value: ${{ steps.config.outputs.flutter_project_path }}
+  flutter_target:
+    description: 'Flutter target'
+    value: ${{ steps.config.outputs.flutter_target }}
+  flutter_build_mode:
+    description: 'Flutter build mode'
+    value: ${{ steps.config.outputs.flutter_build_mode }}
+  flutter_platforms:
+    description: 'Configured Flutter platforms JSON array'
+    value: ${{ steps.config.outputs.flutter_platforms }}
+  build_matrix:
+    description: 'GitHub Actions matrix JSON object with include rows'
+    value: ${{ steps.config.outputs.build_matrix }}
+  deploy_matrix:
+    description: 'Deployable platform matrix JSON object with include rows'
+    value: ${{ steps.config.outputs.deploy_matrix }}
+  matrix_fail_fast:
+    description: 'Matrix fail-fast flag'
+    value: ${{ steps.config.outputs.matrix_fail_fast }}
+  android_enabled:
+    description: 'Whether Android builds are enabled'
+    value: ${{ steps.config.outputs.android_enabled }}
+  ios_enabled:
+    description: 'Whether iOS builds are enabled'
+    value: ${{ steps.config.outputs.ios_enabled }}
+  quality_enabled:
+    description: 'Whether quality checks are enabled'
+    value: ${{ steps.config.outputs.quality_enabled }}
+  analyze_enabled:
+    description: 'Whether flutter analyze is enabled'
+    value: ${{ steps.config.outputs.analyze_enabled }}
+  test_enabled:
+    description: 'Whether flutter test is enabled'
+    value: ${{ steps.config.outputs.test_enabled }}
+  coverage_enabled:
+    description: 'Whether coverage is enabled'
+    value: ${{ steps.config.outputs.coverage_enabled }}
+  formatter_check_enabled:
+    description: 'Whether dart format check is enabled'
+    value: ${{ steps.config.outputs.formatter_check_enabled }}
+  dart_defines_json:
+    description: 'Dart defines JSON array'
+    value: ${{ steps.config.outputs.dart_defines_json }}
+  flutter_extra_args:
+    description: 'Extra Flutter arguments'
+    value: ${{ steps.config.outputs.flutter_extra_args }}
+  linux_runner_set:
+    description: 'Runner for Linux/common jobs'
+    value: ${{ steps.config.outputs.linux_runner_set }}
+  macos_runner_set:
+    description: 'Runner for macOS/iOS jobs'
+    value: ${{ steps.config.outputs.macos_runner_set }}
+  android_artifact_types:
+    description: 'Android artifact types JSON array'
+    value: ${{ steps.config.outputs.android_artifact_types }}
+  android_split_per_abi:
+    description: 'Whether Android split-per-ABI is enabled'
+    value: ${{ steps.config.outputs.android_split_per_abi }}
+  android_sdk:
+    description: 'Android deploy SDK/dimension value'
+    value: ${{ steps.config.outputs.android_sdk }}
+  android_destination:
+    description: 'Android deploy destination/dimension value'
+    value: ${{ steps.config.outputs.android_destination }}
+  android_configuration:
+    description: 'Android configuration'
+    value: ${{ steps.config.outputs.android_configuration }}
+  ios_codesign:
+    description: 'Whether iOS signing is enabled'
+    value: ${{ steps.config.outputs.ios_codesign }}
+  ios_unsigned:
+    description: 'Whether iOS unsigned build is enabled'
+    value: ${{ steps.config.outputs.ios_unsigned }}
+  ios_scheme:
+    description: 'iOS/Xcode scheme'
+    value: ${{ steps.config.outputs.ios_scheme }}
+  ios_sdk:
+    description: 'iOS SDK'
+    value: ${{ steps.config.outputs.ios_sdk }}
+  ios_destination:
+    description: 'iOS destination'
+    value: ${{ steps.config.outputs.ios_destination }}
+  ios_configuration:
+    description: 'iOS configuration'
+    value: ${{ steps.config.outputs.ios_configuration }}
+  ios_export_method:
+    description: 'iOS export method'
+    value: ${{ steps.config.outputs.ios_export_method }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve Flutter configuration
+      id: config
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        IS_PULL_REQUEST: ${{ inputs.is_pull_request }}
+        PLATFORM_OVERRIDE: ${{ inputs.platform_override }}
+      run: |
+        set -euo pipefail
+        global='.cloudopsworks/vars/inputs-global.yaml'
+        envfile=".cloudopsworks/vars/inputs-${ENVIRONMENT}.yaml"
+        if [[ ! -f "$global" ]]; then
+          echo "::error::Missing $global"
+          exit 1
+        fi
+        yqv() {
+          local expr="$1" def="$2"
+          local val=""
+          if [[ -f "$envfile" ]]; then
+            val=$(yq e "$expr // \"__NULL__\"" "$envfile")
+          fi
+          if [[ -z "$val" || "$val" == "null" || "$val" == "__NULL__" ]]; then
+            val=$(yq e "$expr // $def" "$global")
+          fi
+          [[ "$val" == "null" ]] && val=""
+          printf '%s' "$val"
+        }
+        yqj() {
+          local expr="$1" def="$2"
+          local val=""
+          if [[ -f "$envfile" ]]; then
+            val=$(yq e -o=json -I=0 "$expr // null" "$envfile")
+          fi
+          if [[ -z "$val" || "$val" == "null" ]]; then
+            val=$(yq e -o=json -I=0 "$expr // $def" "$global")
+          fi
+          [[ -z "$val" || "$val" == "null" ]] && val="$def"
+          printf '%s' "$val"
+        }
+        bool() {
+          case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+            true|yes|y|1|on) printf 'true' ;;
+            *) printf 'false' ;;
+          esac
+        }
+        csv_to_json() {
+          jq -cn --arg csv "$1" '$csv | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))'
+        }
+
+        flutter_channel=$(yqv '.flutter.channel' '"stable"')
+        flutter_version=$(yqv '.flutter.version' '""')
+        project_path=$(yqv '.flutter.project_path' '"."')
+        target=$(yqv '.flutter.target' '"lib/main.dart"')
+        build_mode=$(yqv '.flutter.build_mode' '"release"')
+        extra_args=$(yqv '.flutter.extra_args' '""')
+        dart_defines=$(yqj '.flutter.dart_defines' '[]')
+        platforms=$(yqj '.flutter.platforms' '["android"]')
+        if [[ -n "$PLATFORM_OVERRIDE" ]]; then
+          platforms=$(csv_to_json "$PLATFORM_OVERRIDE")
+        fi
+
+        quality_enabled=$(bool "$(yqv '.flutter.quality.enabled' '"true"')")
+        analyze_enabled=$(bool "$(yqv '.flutter.quality.analyze' '"true"')")
+        test_enabled=$(bool "$(yqv '.flutter.quality.test' '"true"')")
+        coverage_enabled=$(bool "$(yqv '.flutter.quality.coverage' '"false"')")
+        formatter_check_enabled=$(bool "$(yqv '.flutter.quality.formatter_check' '"false"')")
+        fail_fast=$(bool "$(yqv '.flutter.matrix.fail_fast' '"false"')")
+
+        pr_android=$(bool "$(yqv '.flutter.matrix.pr.include_android' '"true"')")
+        pr_ios=$(bool "$(yqv '.flutter.matrix.pr.include_ios' '"false"')")
+
+        android_enabled=$(bool "$(yqv '.flutter.matrix.android.enabled' '"true"')")
+        android_runner=$(yqv '.flutter.matrix.android.runner_set' '"ubuntu-latest"')
+        android_sdk=$(yqv '.flutter.matrix.android.sdk // .android.sdks[0]' '"android"')
+        android_destination=$(yqv '.flutter.matrix.android.destination // .android.destinations[0]' '"universal"')
+        android_configuration=$(yqv '.flutter.matrix.android.configuration // .android.configuration' '"Release"')
+        android_artifact_types=$(yqj '.flutter.matrix.android.artifact_types' '["apk"]')
+        android_split_per_abi=$(bool "$(yqv '.flutter.matrix.android.split_per_abi' '"false"')")
+        android_build_args=$(yqv '.flutter.matrix.android.build_args' '""')
+        android_deployable=$(yqv '.flutter.matrix.android.deployable_artifact_type' '"apk"')
+
+        ios_enabled=$(bool "$(yqv '.flutter.matrix.ios.enabled' '"false"')")
+        ios_runner=$(yqv '.flutter.matrix.ios.runner_set' '"macos-latest"')
+        ios_xcode_version=$(yqv '.flutter.matrix.ios.xcode_version // .xcode.version' '""')
+        ios_scheme=$(yqv '.flutter.matrix.ios.scheme // .xcode.schemes[0]' '"Runner"')
+        ios_sdk=$(yqv '.flutter.matrix.ios.sdk // .xcode.sdks[0]' '"iphoneos"')
+        ios_destination=$(yqv '.flutter.matrix.ios.destination // .xcode.destinations[0]' '"generic/platform=iOS"')
+        ios_configuration=$(yqv '.flutter.matrix.ios.configuration // .xcode.configuration' '"Release"')
+        ios_codesign=$(bool "$(yqv '.flutter.matrix.ios.codesign // (.xcode.unsigned == false)' '"false"')")
+        ios_unsigned=$(bool "$(yqv '.flutter.matrix.ios.unsigned // .xcode.unsigned' '"true"')")
+        ios_export_method=$(yqv '.flutter.matrix.ios.export_method // .xcode.export_options.method' '"ad-hoc"')
+        ios_export_options_plist=$(yqv '.flutter.matrix.ios.export_options_plist' '""')
+        ios_build_for_testing=$(bool "$(yqv '.flutter.matrix.ios.build_for_testing' '"false"')")
+        ios_build_args=$(yqv '.flutter.matrix.ios.build_args' '""')
+        ios_deployable=$(yqv '.flutter.matrix.ios.deployable_artifact_type' '"ipa"')
+
+        build_matrix=$(jq -cn \
+          --argjson platforms "$platforms" \
+          --arg is_pr "$IS_PULL_REQUEST" \
+          --arg pr_android "$pr_android" --arg pr_ios "$pr_ios" \
+          --arg android_enabled "$android_enabled" --arg android_runner "$android_runner" --arg android_sdk "$android_sdk" --arg android_destination "$android_destination" --arg android_configuration "$android_configuration" --argjson android_artifact_types "$android_artifact_types" --arg android_split_per_abi "$android_split_per_abi" --arg android_build_args "$android_build_args" --arg android_deployable "$android_deployable" \
+          --arg ios_enabled "$ios_enabled" --arg ios_runner "$ios_runner" --arg ios_xcode_version "$ios_xcode_version" --arg ios_scheme "$ios_scheme" --arg ios_sdk "$ios_sdk" --arg ios_destination "$ios_destination" --arg ios_configuration "$ios_configuration" --arg ios_codesign "$ios_codesign" --arg ios_unsigned "$ios_unsigned" --arg ios_export_method "$ios_export_method" --arg ios_export_options_plist "$ios_export_options_plist" --arg ios_build_for_testing "$ios_build_for_testing" --arg ios_build_args "$ios_build_args" --arg ios_deployable "$ios_deployable" '
+          def hasp($p): $platforms | index($p) != null;
+          {include: ([
+            (if hasp("android") and $android_enabled == "true" and ($is_pr != "true" or $pr_android == "true") then {
+              platform_type:"android", runner_set:$android_runner, android_sdk:$android_sdk, android_destination:$android_destination, android_configuration:$android_configuration, artifact_types:$android_artifact_types, android_split_per_abi:$android_split_per_abi, android_build_args:$android_build_args, deployable_artifact_type:$android_deployable
+            } else empty end),
+            (if hasp("ios") and $ios_enabled == "true" and ($is_pr != "true" or $pr_ios == "true") then {
+              platform_type:"ios", runner_set:$ios_runner, xcode_version:$ios_xcode_version, xcode_scheme:$ios_scheme, xcode_sdk:$ios_sdk, xcode_destination:$ios_destination, xcode_configuration:$ios_configuration, ios_codesign:$ios_codesign, ios_unsigned:$ios_unsigned, ios_export_method:$ios_export_method, ios_export_options_plist:$ios_export_options_plist, ios_build_for_testing:$ios_build_for_testing, ios_build_args:$ios_build_args, deployable_artifact_type:(if $ios_codesign == "true" then $ios_deployable else "none" end)
+            } else empty end)
+          ])}' )
+        deploy_matrix=$(jq -cn --argjson rows "$(jq -c '.include' <<<"$build_matrix")" '{include: ($rows | map(select(.deployable_artifact_type == "apk" or .deployable_artifact_type == "ipa")))}')
+
+        {
+          echo "flutter_channel=$flutter_channel"
+          echo "flutter_version=$flutter_version"
+          echo "flutter_project_path=$project_path"
+          echo "flutter_target=$target"
+          echo "flutter_build_mode=$build_mode"
+          echo "flutter_platforms=$platforms"
+          echo "build_matrix=$build_matrix"
+          echo "deploy_matrix=$deploy_matrix"
+          echo "matrix_fail_fast=$fail_fast"
+          echo "android_enabled=$android_enabled"
+          echo "ios_enabled=$ios_enabled"
+          echo "quality_enabled=$quality_enabled"
+          echo "analyze_enabled=$analyze_enabled"
+          echo "test_enabled=$test_enabled"
+          echo "coverage_enabled=$coverage_enabled"
+          echo "formatter_check_enabled=$formatter_check_enabled"
+          echo "dart_defines_json=$dart_defines"
+          echo "flutter_extra_args=$extra_args"
+          echo "linux_runner_set=$android_runner"
+          echo "macos_runner_set=$ios_runner"
+          echo "android_artifact_types=$android_artifact_types"
+          echo "android_split_per_abi=$android_split_per_abi"
+          echo "android_sdk=$android_sdk"
+          echo "android_destination=$android_destination"
+          echo "android_configuration=$android_configuration"
+          echo "ios_codesign=$ios_codesign"
+          echo "ios_unsigned=$ios_unsigned"
+          echo "ios_scheme=$ios_scheme"
+          echo "ios_sdk=$ios_sdk"
+          echo "ios_destination=$ios_destination"
+          echo "ios_configuration=$ios_configuration"
+          echo "ios_export_method=$ios_export_method"
+        } >> "$GITHUB_OUTPUT"

@@ -1,0 +1,75 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: Collect Flutter Release Assets
+author: cloudopsworks
+description: Download Flutter workflow artifacts and prepare release globs/manifest
+inputs:
+  artifacts_pattern:
+    required: false
+    default: 'build_artifacts_*'
+    description: 'Artifact name pattern to download'
+  output_dir:
+    required: false
+    default: 'release-assets'
+    description: 'Output directory for normalized release assets'
+  manifest_name:
+    required: false
+    default: 'manifest.json'
+    description: 'Manifest file name'
+outputs:
+  files_globs:
+    description: 'Newline-delimited release file globs'
+    value: ${{ steps.collect.outputs.files_globs }}
+  manifest_path:
+    description: 'Manifest path'
+    value: ${{ steps.collect.outputs.manifest_path }}
+  artifact_count:
+    description: 'Number of release assets found'
+    value: ${{ steps.collect.outputs.artifact_count }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Download Flutter build artifacts
+      uses: actions/download-artifact@v7
+      with:
+        pattern: ${{ inputs.artifacts_pattern }}
+        path: .flutter-release-downloads
+        merge-multiple: false
+
+    - name: Normalize release assets
+      id: collect
+      shell: bash
+      run: |
+        set -euo pipefail
+        out="${{ inputs.output_dir }}"
+        mkdir -p "$out/android" "$out/ios"
+        count=0
+        while IFS= read -r f; do
+          case "$f" in
+            *.apk) cp "$f" "$out/android/"; count=$((count+1)) ;;
+            *.aab) cp "$f" "$out/android/"; count=$((count+1)) ;;
+            *.ipa) cp "$f" "$out/ios/"; count=$((count+1)) ;;
+          esac
+        done < <(find .flutter-release-downloads -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' \) | sort)
+        manifests=()
+        while IFS= read -r f; do manifests+=("$f"); done < <(find .flutter-release-downloads -type f -name 'artifact-manifest.json' | sort)
+        if [[ "${#manifests[@]}" -gt 0 ]]; then
+          jq -s '{artifacts: .}' "${manifests[@]}" > "$out/${{ inputs.manifest_name }}"
+        else
+          jq -n '{artifacts: []}' > "$out/${{ inputs.manifest_name }}"
+        fi
+        files_globs=$(printf '%s\n%s\n%s\n%s\n' \
+          "$out/**/*.apk" \
+          "$out/**/*.aab" \
+          "$out/**/*.ipa" \
+          "$out/${{ inputs.manifest_name }}")
+        {
+          echo "files_globs<<EOF"
+          echo "$files_globs"
+          echo "EOF"
+          echo "manifest_path=$out/${{ inputs.manifest_name }}"
+          echo "artifact_count=$count"
+        } >> "$GITHUB_OUTPUT"
+        if [[ "$count" -eq 0 ]]; then
+          echo "::warning::No APK/AAB/IPA release assets found"
+        fi
