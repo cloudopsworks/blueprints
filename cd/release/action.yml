@@ -66,10 +66,22 @@ runs:
     - name: Changelog Generation
       uses: cloudopsworks/changelog-action@v1
       id: changelog
+      if: ${{ steps.previous_tag.outputs.tag == '' }}
       with:
         token: ${{ inputs.token }}
         working_dir: ./${{ inputs.source_path }}/
         tag: ${{ steps.normalize.outputs.result }}
+        writeToFile: true
+
+    - name: Changelog Generation
+      uses: cloudopsworks/changelog-action@v1
+      id: changelog-from-to
+      if: ${{ steps.previous_tag.outputs.tag != '' }}
+      with:
+        token: ${{ inputs.token }}
+        working_dir: ./${{ inputs.source_path }}/
+        fromTag: ${{ steps.previous_tag.outputs.tag }}
+        toTag: ${{ steps.normalize.outputs.result }}
         writeToFile: true
 
     - name: Upload artifact to workflow run
@@ -84,7 +96,7 @@ runs:
       uses: softprops/action-gh-release@v3
       with:
         token: ${{ inputs.token }}
-        body: ${{ steps.changelog.outputs.changes }}
+        body: ${{ steps.changelog.outputs.changes != '' && steps.changelog.outputs.changes || steps.changelog-from-to.outputs.changes }}
         name: "Release ${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
         prerelease: ${{ inputs.is_pre_release }}
