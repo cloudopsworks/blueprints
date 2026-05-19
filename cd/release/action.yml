@@ -80,8 +80,8 @@ runs:
       with:
         token: ${{ inputs.token }}
         working_dir: ./${{ inputs.source_path }}/
-        fromTag: ${{ steps.previous_tag.outputs.tag }}
-        toTag: ${{ steps.normalize.outputs.result }}
+        fromTag: ${{ steps.normalize.outputs.result }}
+        toTag: ${{ steps.previous_tag.outputs.tag }}
         writeToFile: true
 
     - name: Upload artifact to workflow run
