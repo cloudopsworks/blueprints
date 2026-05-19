@@ -56,6 +56,7 @@ runs:
         #   - .android
         #   - .fluttermobile
         #   - .blueprint (self reference)
+        #   - .skills (AI skill builder template)
         # ouptuts are:
         #   - repo = cloudopsworks/<moduletype>-app-template
         #   - current_version = content from .cloudopsworks/_VERSION file
@@ -101,6 +102,9 @@ runs:
         elif [ -f ".cloudopsworks/.blueprint" ]; then
           echo "Module type is blueprint (self reference)"
           echo "repo=cloudopsworks/blueprints" >> $GITHUB_OUTPUT
+        elif [ -f ".cloudopsworks/.skills" ]; then
+            echo "Module type is AI skill builder template"
+            echo "repo=cloudopsworks/skill-builder-templates" >> $GITHUB_OUTPUT
         else
           echo "::warning::🚨 No module marker file found in .cloudopsworks directory"
         fi
