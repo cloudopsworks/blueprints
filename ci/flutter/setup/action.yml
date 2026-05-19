@@ -1,0 +1,73 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: Setup Flutter
+author: cloudopsworks
+description: Install Flutter SDK and platform prerequisites
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  flutter_channel:
+    description: 'Flutter channel'
+    required: false
+    default: 'stable'
+  flutter_version:
+    description: 'Flutter version, empty for channel default'
+    required: false
+    default: ''
+  platform_type:
+    description: 'common, android, or ios'
+    required: false
+    default: 'common'
+  cache_enabled:
+    description: 'Enable Flutter/pub cache'
+    required: false
+    default: 'true'
+  precache:
+    description: 'Run flutter precache for the selected platform'
+    required: false
+    default: 'true'
+outputs:
+  flutter_bin:
+    description: 'Flutter binary path'
+    value: ${{ steps.resolve.outputs.flutter_bin }}
+  flutter_version_resolved:
+    description: 'Resolved Flutter version output'
+    value: ${{ steps.resolve.outputs.flutter_version_resolved }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Install runner tools
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5.10
+      with:
+        source_path: ${{ inputs.source_path }}
+
+    - name: Setup Flutter SDK
+      uses: subosito/flutter-action@v2
+      with:
+        channel: ${{ inputs.flutter_channel != '' && inputs.flutter_channel || 'stable' }}
+        flutter-version: ${{ inputs.flutter_version }}
+        cache: ${{ inputs.cache_enabled }}
+
+    - name: Precache Flutter artifacts
+      if: ${{ inputs.precache == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "${{ inputs.platform_type }}" in
+          android) flutter precache --android ;;
+          ios) flutter precache --ios ;;
+          common) flutter precache --android --ios || flutter precache ;;
+          *) flutter precache ;;
+        esac
+
+    - name: Resolve Flutter SDK
+      id: resolve
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "flutter_bin=$(command -v flutter)" >> "$GITHUB_OUTPUT"
+        echo "flutter_version_resolved<<EOF" >> "$GITHUB_OUTPUT"
+        flutter --version >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"

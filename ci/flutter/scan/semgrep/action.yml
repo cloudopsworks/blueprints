@@ -1,0 +1,61 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: Semgrep Scan Flutter
+author: cloudopsworks
+description: Scan Flutter/Dart and native mobile code with Semgrep
+inputs:
+  source_path:
+    required: false
+    default: 'source'
+    description: 'The path to the source code'
+  semgrep_token:
+    required: true
+    description: 'Semgrep token'
+  bot_user:
+    required: true
+    description: 'Bot user'
+  token:
+    required: true
+    description: 'GitHub token'
+  semgrep_excludes:
+    required: false
+    default: '.github/workflows/*,build/*,.dart_tool/*,ios/Pods/*,android/.gradle/*'
+    description: 'Comma-separated semgrep excludes'
+runs:
+  using: 'composite'
+  steps:
+    - name: Check GHAS Enabled
+      id: check_ghas
+      uses: cloudopsworks/blueprints/ci/common/advancedsecurity/check@v5.10
+      with:
+        token: ${{ inputs.token }}
+
+    - name: Build Semgrep excludes
+      id: excludes
+      shell: bash
+      run: |
+        result=""
+        IFS=',' read -ra parts <<< "${{ inputs.semgrep_excludes }}"
+        for part in "${parts[@]}"; do
+          part=$(echo "$part" | xargs)
+          [[ -n "$part" ]] && result="$result --exclude '$part'"
+        done
+        echo "result=$result" >> "$GITHUB_OUTPUT"
+
+    - name: Semgrep Code Scanning
+      env:
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.excludes.outputs.result }}
+
+    - name: Upload SARIF file
+      if: |
+        (success() || failure()) &&
+        (steps.check_ghas.outputs.ghas_enabled == 'true')
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        checkout_path: ${{ inputs.source_path }}
+        sarif_file: ${{ inputs.source_path }}/semgrep.sarif
+        wait-for-processing: false

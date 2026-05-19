@@ -1,0 +1,88 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: Upload Flutter Artifacts
+author: cloudopsworks
+description: Upload Flutter build artifacts and deploy-compatible target bundles
+inputs:
+  source_path:
+    required: false
+    default: 'source'
+    description: 'The path to the source code'
+  project_path:
+    required: false
+    default: '.'
+    description: 'Flutter project path relative to source_path'
+  platform_type:
+    required: true
+    description: 'android or ios'
+  artifact_paths_json:
+    required: true
+    description: 'JSON array of artifact paths relative to project directory'
+  workflow_artifact_name:
+    required: true
+    description: 'Build artifact upload name'
+  target_artifact_name:
+    required: true
+    description: 'Target diagnostics artifact upload name'
+  artifact_manifest_path:
+    required: false
+    default: ''
+    description: 'Path to artifact manifest'
+  if_no_files_found:
+    required: false
+    default: 'error'
+    description: 'upload-artifact if-no-files-found behavior'
+outputs:
+  uploaded_artifact_names_json:
+    description: 'JSON array of uploaded artifact names'
+    value: ${{ steps.prepare.outputs.uploaded_artifact_names_json }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare artifact upload lists
+      id: prepare
+      shell: bash
+      working-directory: ${{ inputs.source_path }}/${{ inputs.project_path }}
+      env:
+        ARTIFACT_PATHS_JSON: ${{ inputs.artifact_paths_json }}
+        MANIFEST_PATH: ${{ inputs.artifact_manifest_path }}
+      run: |
+        set -euo pipefail
+        mkdir -p build/flutter-upload build/flutter-target
+        : > build/flutter-upload/files.txt
+        while IFS= read -r f; do
+          [[ -n "$f" && -f "$f" ]] && echo "$f" >> build/flutter-upload/files.txt
+        done < <(jq -r '.[]?' <<<"$ARTIFACT_PATHS_JSON")
+        if [[ -n "$MANIFEST_PATH" && -f "$GITHUB_WORKSPACE/$MANIFEST_PATH" ]]; then
+          cp "$GITHUB_WORKSPACE/$MANIFEST_PATH" build/flutter-upload/artifact-manifest.json
+        elif [[ -n "$MANIFEST_PATH" && -f "$MANIFEST_PATH" ]]; then
+          cp "$MANIFEST_PATH" build/flutter-upload/artifact-manifest.json
+        fi
+        if [[ ! -s build/flutter-upload/files.txt ]]; then
+          echo "::error::No artifact files found from artifact_paths_json"
+          exit 1
+        fi
+        tar -cf build/flutter-target/source_artifacts_target.tar \
+          --exclude='build' --exclude='.dart_tool' --exclude='android/.gradle' --exclude='ios/Pods' --exclude='ios/Flutter/ephemeral' \
+          . 2>/dev/null || tar -cf build/flutter-target/source_artifacts_target.tar .
+        echo "uploaded_artifact_names_json=[\"${{ inputs.workflow_artifact_name }}\",\"${{ inputs.target_artifact_name }}\"]" >> "$GITHUB_OUTPUT"
+
+    - name: Upload Flutter build artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.workflow_artifact_name }}
+        path: |
+          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/flutter-upload/files.txt
+          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/flutter-upload/artifact-manifest.json
+          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/app/outputs/**/*.apk
+          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/app/outputs/**/*.aab
+          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/ios/**/*.ipa
+          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/ios/smoke/*.zip
+        if-no-files-found: ${{ inputs.if_no_files_found }}
+
+    - name: Upload Flutter target bundle
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.target_artifact_name }}
+        path: ${{ inputs.source_path }}/${{ inputs.project_path }}/build/flutter-target/source_artifacts_target.tar
+        if-no-files-found: error

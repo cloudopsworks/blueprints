@@ -1,0 +1,68 @@
+##
+# (c) 2021-2026 Cloud Ops Works LLC
+name: DependencyTrack Scan Flutter
+author: cloudopsworks
+description: Generate or collect Flutter SBOM and upload to DependencyTrack
+inputs:
+  source_path:
+    required: false
+    default: 'source'
+    description: 'The path to the source code'
+  dtrack_url:
+    required: true
+    description: 'DependencyTrack URL'
+  dtrack_token:
+    required: true
+    description: 'DependencyTrack token'
+  dtrack_project_key:
+    required: true
+    description: 'DependencyTrack project key'
+  project_type:
+    required: false
+    default: 'Application'
+    description: 'DependencyTrack project type'
+  semver:
+    required: true
+    description: 'Semantic version'
+  token:
+    required: false
+    default: ${{ github.token }}
+    description: 'GitHub token'
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare Flutter SBOM
+      id: sbom
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        set -euo pipefail
+        mkdir -p build/sbom
+        bom="build/sbom/bom.json"
+        if [[ -f "$bom" ]]; then
+          :
+        elif command -v cdxgen >/dev/null 2>&1; then
+          cdxgen -t dart -o "$bom" . || cdxgen -o "$bom" .
+        elif command -v cyclonedx-py >/dev/null 2>&1; then
+          cyclonedx-py environment -o "$bom" || true
+        fi
+        if [[ ! -s "$bom" ]]; then
+          deps=$(if [[ -f pubspec.lock ]]; then yq e -o=json '.packages // {}' pubspec.lock 2>/dev/null || echo '{}'; else echo '{}'; fi)
+          jq -n --arg name "${{ inputs.dtrack_project_key }}" --arg version "${{ inputs.semver }}" --argjson deps "$deps" '{bomFormat:"CycloneDX", specVersion:"1.5", version:1, metadata:{component:{type:"application", name:$name, version:$version}}, components: ($deps | to_entries | map({type:"library", name:.key, version:(.value.version // "0.0.0")}))}' > "$bom"
+        fi
+        echo "bom_path=$bom" >> "$GITHUB_OUTPUT"
+
+    - name: SBOM Dtrack Upload
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        set -euo pipefail
+        curl -X POST "https://${{ inputs.dtrack_url }}/api/v1/bom" \
+             -H 'Content-Type: multipart/form-data' \
+             -H 'X-API-Key: ${{ inputs.dtrack_token }}' \
+             -F "autoCreate=true" \
+             -F "projectName=${{ inputs.dtrack_project_key }}" \
+             -F "projectVersion=${{ inputs.semver }}" \
+             -F "parentName=${{ inputs.dtrack_project_key }}" \
+             -F "projectClassifier=${{ inputs.project_type }}" \
+             -F "bom=@${{ steps.sbom.outputs.bom_path }}"
