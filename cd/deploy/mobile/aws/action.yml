@@ -318,9 +318,14 @@ runs:
       run: |
         ext="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ipa' || 'apk' }}"
         app_type="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'IOS_APP' || 'ANDROID_APP' }}"
-        release=$(ls *.$ext 2>/dev/null)
-        echo "Found: $release, moving to: ${REL}-${RELVER}${QUALI}.$ext" 
-        mv "$release" ${REL}-${RELVER}${QUALI}.$ext
+        release=$(find . -type f -name "*.$ext" | head -n 1)
+        if [[ -z "$release" ]]; then
+          echo "::error::No .$ext artifact found under $(pwd)"
+          find . -maxdepth 4 -type f | sort
+          exit 1
+        fi
+        echo "Found: $release, moving to: ${REL}-${RELVER}${QUALI}.$ext"
+        mv "$release" "${REL}-${RELVER}${QUALI}.$ext"
         echo "ext=$ext" >> $GITHUB_OUTPUT
         echo "app_type=$app_type" >> $GITHUB_OUTPUT
 
