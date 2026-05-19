@@ -1,0 +1,123 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Terraform Module Scan
+on:
+  workflow_dispatch: {}
+  pull_request: {}
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - scan.yml
+      - '**/*.tf'
+      - '**/*.tfvars'
+      - '**/terraform.tfvars'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  preload:
+    name: Preload
+    runs-on: ubuntu-latest
+    outputs:
+      checkov_enabled: ${{ steps.config.outputs.checkov_enabled }}
+      secret_scan_enabled: ${{ steps.config.outputs.secret_scan_enabled }}
+      semgrep_enabled: ${{ steps.config.outputs.semgrep_enabled }}
+    steps:
+      - name: Checkout w/Blueprint
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          source_ref: ${{ github.head_ref }}
+          blueprint_ref: 'v5.10'
+
+      - name: Pipeline Configuration
+        id: config
+        uses: ./bp/ci/config/terraform
+
+
+  checkov:
+    name: Checkov Scan
+    runs-on: ubuntu-latest
+    needs:
+      - preload
+    if: |
+      (github.actor != 'dependabot[bot]') &&  
+      (needs.preload.outputs.checkov_enabled == 'true')
+    steps:
+      - name: Checkout w/Blueprint
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          source_ref: ${{ github.base_ref }}
+          blueprint_ref: 'v5.10'
+
+      - name: Run Checkov Checks
+        id: checkov
+        uses: ./bp/ci/terraform/scan/checkov
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+
+
+  secrets-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    needs:
+      - preload
+    if: |
+      (github.actor != 'dependabot[bot]') &&
+      (needs.preload.outputs.secret_scan_enabled == 'true')
+    steps:
+      - name: Checkout w/Blueprint
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          source_ref: ${{ github.base_ref }}
+          blueprint_ref: 'v5.10'
+
+      - name: Run Secret Scanning
+        id: secrets
+        uses: ./bp/ci/scan/secrets
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+
+  semgrep:
+    name: semgrep/ci
+    needs:
+      - preload
+    runs-on: ubuntu-latest
+    env:
+      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}
+    container:
+      image: semgrep/semgrep
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - name: Checkout w/Blueprint
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        id: co
+        with:
+          blueprint_ref: 'v5.10'
+
+      - name: Semgrep Scan
+        if: ${{ needs.preload.outputs.semgrep_enabled == 'true' }}
+        uses: ./bp/ci/terraform/scan/semgrep
+        continue-on-error: true
+        with:
+          source_path: ${{ steps.co.outputs.source_path }}
+          semgrep_token: ${{ secrets.semgrep_token }}
+          bot_user: ${{ inputs.bot_user }}
+          token: ${{ secrets.token }}
