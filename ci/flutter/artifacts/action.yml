@@ -65,6 +65,11 @@ runs:
         tar -cf build/flutter-target/source_artifacts_target.tar \
           --exclude='build' --exclude='.dart_tool' --exclude='android/.gradle' --exclude='ios/Pods' --exclude='ios/Flutter/ephemeral' \
           . 2>/dev/null || tar -cf build/flutter-target/source_artifacts_target.tar .
+        project_root="${{ inputs.source_path }}"
+        if [[ -n "${{ inputs.project_path }}" && "${{ inputs.project_path }}" != "." ]]; then
+          project_root="$project_root/${{ inputs.project_path }}"
+        fi
+        echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
         echo "uploaded_artifact_names_json=[\"${{ inputs.workflow_artifact_name }}\",\"${{ inputs.target_artifact_name }}\"]" >> "$GITHUB_OUTPUT"
 
     - name: Upload Flutter build artifacts
@@ -72,17 +77,17 @@ runs:
       with:
         name: ${{ inputs.workflow_artifact_name }}
         path: |
-          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/flutter-upload/files.txt
-          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/flutter-upload/artifact-manifest.json
-          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/app/outputs/**/*.apk
-          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/app/outputs/**/*.aab
-          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/ios/**/*.ipa
-          ${{ inputs.source_path }}/${{ inputs.project_path }}/build/ios/smoke/*.zip
+          ${{ steps.prepare.outputs.project_root }}/build/flutter-upload/files.txt
+          ${{ steps.prepare.outputs.project_root }}/build/flutter-upload/artifact-manifest.json
+          ${{ steps.prepare.outputs.project_root }}/build/app/outputs/**/*.apk
+          ${{ steps.prepare.outputs.project_root }}/build/app/outputs/**/*.aab
+          ${{ steps.prepare.outputs.project_root }}/build/ios/**/*.ipa
+          ${{ steps.prepare.outputs.project_root }}/build/ios/smoke/*.zip
         if-no-files-found: ${{ inputs.if_no_files_found }}
 
     - name: Upload Flutter target bundle
       uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.target_artifact_name }}
-        path: ${{ inputs.source_path }}/${{ inputs.project_path }}/build/flutter-target/source_artifacts_target.tar
+        path: ${{ steps.prepare.outputs.project_root }}/build/flutter-target/source_artifacts_target.tar
         if-no-files-found: error

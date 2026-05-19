@@ -218,7 +218,9 @@ runs:
           [[ -n "$define" && "$define" != "null" ]] && dart_args+=("--dart-define=$define")
         done < <(jq -r '.[]?' <<<"$DART_DEFINES_JSON")
         common_args=("$mode_flag" "--target" "$FLUTTER_TARGET" "--build-name" "$build_name" "--build-number" "$BUILD_NUMBER")
-        common_args+=("${dart_args[@]}")
+        if [[ "${#dart_args[@]}" -gt 0 ]]; then
+          common_args+=("${dart_args[@]}")
+        fi
         if [[ -n "$FLUTTER_EXTRA_ARGS" ]]; then
           # shellcheck disable=SC2206
           extra=( $FLUTTER_EXTRA_ARGS )
@@ -316,7 +318,11 @@ runs:
         echo "deployable_artifact_type=$deployable" >> "$GITHUB_OUTPUT"
         echo "workflow_artifact_name=$workflow_artifact_name" >> "$GITHUB_OUTPUT"
         echo "target_artifact_name=$target_artifact_name" >> "$GITHUB_OUTPUT"
-        echo "artifact_manifest_path=${{ inputs.source_path }}/${{ inputs.project_path }}/$manifest_path" >> "$GITHUB_OUTPUT"
+        project_root="${{ inputs.source_path }}"
+        if [[ -n "${{ inputs.project_path }}" && "${{ inputs.project_path }}" != "." ]]; then
+          project_root="$project_root/${{ inputs.project_path }}"
+        fi
+        echo "artifact_manifest_path=$project_root/$manifest_path" >> "$GITHUB_OUTPUT"
         echo "ios_ipa_available=$(printf '%s\n' "${artifacts[@]}" | grep -q '\.ipa$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
         echo "android_apk_available=$(printf '%s\n' "${artifacts[@]}" | grep -q '\.apk$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
         echo "android_aab_available=$(printf '%s\n' "${artifacts[@]}" | grep -q '\.aab$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
