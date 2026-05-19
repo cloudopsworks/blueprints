@@ -117,7 +117,8 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        res=$(yq e '.aws.device_farm_name // ""' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
+        res=$(yq e ".aws.platforms.${platform}.device_farm_name // .aws.device_farm_name // \"\"" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Device Farm Pool
@@ -125,7 +126,8 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        res=$(yq e '.aws.device_farm_pool // ""' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
+        res=$(yq e ".aws.platforms.${platform}.device_farm_pool // .aws.device_farm_pool // \"\"" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Test Script Path
@@ -133,7 +135,8 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        res=$(yq e '.aws.test_script_path // "device_tests"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
+        res=$(yq e ".aws.platforms.${platform}.test_script_path // .aws.test_script_path // \"device_tests\"" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Tests Scripts Available
@@ -156,7 +159,8 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        res=$(yq e '.aws.test_script_type // "APPIUM_PYTHON_TEST_PACKAGE"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
+        res=$(yq e ".aws.platforms.${platform}.test_script_type // .aws.test_script_type // \"APPIUM_PYTHON_TEST_PACKAGE\"" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Test Script Type for Schedule Run
@@ -300,6 +304,7 @@ runs:
         android_destination: ${{ inputs.android_destination }}
         android_configuration: ${{ inputs.android_configuration }}
         test_script_available: ${{ steps.test_script_available.outputs.result }}
+        test_script_path: ${{ steps.test_script_path.outputs.result }}
         run_test_type: ${{ steps.run_test_type.outputs.result }}
 
     - name: Rename IPA/APK
@@ -408,10 +413,11 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        ff=$(yq e '.aws.device.form_factor' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
-        model=$(yq e '.aws.device.model' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
-        osver=$(yq e '.aws.device.os_version' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
-        max=$(yq e '.aws.device.max_devices' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
+        ff=$(yq e ".aws.platforms.${platform}.device.form_factor // .aws.device.form_factor" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        model=$(yq e ".aws.platforms.${platform}.device.model // .aws.device.model" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        osver=$(yq e ".aws.platforms.${platform}.device.os_version // .aws.device.os_version" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        max=$(yq e ".aws.platforms.${platform}.device.max_devices // .aws.device.max_devices // 1" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
         plat="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'iOS' || 'Android' }}"
         echo "filter={\"filters\":[{\"attribute\":\"PLATFORM\",\"operator\":\"EQUALS\",\"values\":[\"$plat\"]},{\"attribute\":\"FORM_FACTOR\",\"operator\":\"EQUALS\",\"values\":[\"$ff\"]},{\"attribute\":\"MODEL\",\"operator\":\"EQUALS\",\"values\":[\"$model\"]},{\"attribute\":\"OS_VERSION\",\"operator\":\"EQUALS\",\"values\":[\"$osver\"]}],\"maxDevices\":$max}" >> $GITHUB_OUTPUT
 

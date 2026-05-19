@@ -90,8 +90,12 @@ runs:
         rm -f source_artifacts_target.tar
 
     - name: Zip test contents - Android
-      if: ${{ steps.test_script_available.outputs.result == 'true' && ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
+      if: ${{ inputs.test_script_available == 'true' }}
       working-directory: ${{ inputs.source_path }}/${{ inputs.test_script_path }}
       shell: bash
+      env:
+        REL: ${{ inputs.release_name }}
+        RELVER: ${{ inputs.release_version }}
+        QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
       run: |
         zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .
