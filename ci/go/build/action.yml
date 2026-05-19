@@ -48,6 +48,9 @@ outputs:
   golang_main_file:
     description: 'The GoLang main file to use for the build'
     value: ${{ steps.main_file.outputs.result }}
+  golang_goreleaser:
+    description: 'The GoReleaser configuration to use for the build'
+    value: ${{ steps.golang_goreleaser.outputs.result }}
   semver:
     description: 'The semver version'
     value: ${{ steps.semver.outputs.result }}
@@ -109,6 +112,13 @@ runs:
       with:
         cmd: yq e '.golang.disable_cgo // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
 
+    # GoReleaser configuration, default is false, if set to true, .goreleaser.yaml should be present in the source code root
+    - name: Get pipeline GoReleaser configuration
+      id: golang_goreleaser
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e '.golang.goreleaser // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+
     # Get the Package name from go.mod
     - name: Get Package name
       id: package_name
@@ -150,7 +160,7 @@ runs:
 
     # Setup GoLang GoLang SDK for builds
     - name: Set GoLang SDK
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         token: ${{ inputs.token }}
         go-version: "${{ steps.golang_version.outputs.result }}"

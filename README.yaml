@@ -2,6 +2,14 @@
 name: Cloud Ops Works Pipeline Blueprint
 #logo: logo/logo.jpg
 
+badges:
+  - name: Latest Release
+    image: https://img.shields.io/github/release/cloudopsworks/blueprints.svg?style=for-the-badge
+    url: https://github.com/cloudopsworks/blueprints/releases/latest
+  - name: Last Updated
+    image: https://img.shields.io/github/last-commit/cloudopsworks/blueprints.svg?style=for-the-badge
+    url: https://github.com/cloudopsworks/blueprints/commits
+
 license: "APACHE2"
 
 copyrights:

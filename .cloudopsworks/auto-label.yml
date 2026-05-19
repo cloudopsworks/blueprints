@@ -1,2 +1,26 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+release:
+  - base-branch: [ 'main', 'master' ]
+
+feature:
+  - head-branch: [ '^feature' ]
+
+hotfix:
+  - head-branch: [ '^hotfix', '^fix' ]
+
 README:
-- README.md
+  - any: [ 'README.yaml', 'README.md' ]
+  
+size-S:
+  - any: [ '.cloudopsworks/**/*', '.github/workflows/*' ]
+
+size-M:
+  - any: [ '**/action.yml', '!.cloudopsworks/**/*', '!.github/workflows/*' ]
+
