@@ -281,7 +281,20 @@ runs:
             elif [[ -n "$IOS_EXPORT_METHOD" ]]; then
               args+=("--export-method" "$IOS_EXPORT_METHOD")
             fi
-            flutter build ipa "${args[@]}"
+            if ! flutter build ipa "${args[@]}"; then
+              echo "::warning::flutter build ipa failed; retrying signed iOS app build and packaging the app bundle as an IPA"
+              flutter build ios "${common_args[@]}"
+              app_path=$(find build/ios/iphoneos -maxdepth 1 -type d -name '*.app' | head -n 1)
+              if [[ -z "$app_path" ]]; then
+                echo "::error::Signed iOS fallback did not produce an .app bundle"
+                exit 1
+              fi
+              ipa_dir="build/ios/ipa"
+              tmp_dir=$(mktemp -d)
+              mkdir -p "$tmp_dir/Payload" "$ipa_dir"
+              cp -R "$app_path" "$tmp_dir/Payload/"
+              (cd "$tmp_dir" && zip -qry "$OLDPWD/$ipa_dir/${package_name}.ipa" Payload)
+            fi
             deployable="ipa"
           else
             flutter build ios "${common_args[@]}" --no-codesign
