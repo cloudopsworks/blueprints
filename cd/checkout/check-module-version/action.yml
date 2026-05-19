@@ -54,6 +54,7 @@ runs:
         #   - .iac
         #   - .xcode
         #   - .android
+        #   - .flutter
         #   - .fluttermobile
         #   - .blueprint (self reference)
         #   - .skills (AI skill builder template)
@@ -96,7 +97,7 @@ runs:
         elif [ -f ".cloudopsworks/.iac" ]; then
           echo "Module type is iac"
           echo "repo=cloudopsworks/terragrunt-project-template" >> $GITHUB_OUTPUT
-        elif [ -f ".cloudopsworks/.fluttermobile" ]; then
+        elif [ -f ".cloudopsworks/.flutter" ] || [ -f ".cloudopsworks/.fluttermobile" ]; then
           echo "Module type is flutter mobile"
           echo "repo=cloudopsworks/fluttermobile-app-template" >> $GITHUB_OUTPUT
         elif [ -f ".cloudopsworks/.blueprint" ]; then
@@ -159,7 +160,8 @@ runs:
         # Check module version against the latest tag in the module repo
         # this should be done whith github api but without the 
         if [ "${{ steps.check_module_type.outputs.repo }}" == "" ]; then
-          echo "::error::No module marker file found in .github directory"
+          echo "::error::No module marker file found in .cloudopsworks directory"
+          exit 1
         fi
         repo="${{ steps.check_module_type.outputs.repo }}"
         ref="${{ steps.check_module_type.outputs.current_version }}"
