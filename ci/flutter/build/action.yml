@@ -181,6 +181,7 @@ runs:
         IOS_SCHEME: ${{ inputs.ios_scheme }}
         IOS_SDK: ${{ inputs.ios_sdk }}
         IOS_DESTINATION: ${{ inputs.ios_destination }}
+        IOS_CONFIGURATION: ${{ inputs.ios_configuration }}
         BUILD_CERTIFICATE_B64: ${{ inputs.build_certificate_b64 }}
         BUILD_CERTIFICATE_PASS: ${{ inputs.build_certificate_pass }}
         BUILD_PROVISION_PROFILE_B64: ${{ inputs.build_provision_profile_b64 }}
@@ -282,18 +283,44 @@ runs:
               args+=("--export-method" "$IOS_EXPORT_METHOD")
             fi
             if ! flutter build ipa "${args[@]}"; then
-              echo "::warning::flutter build ipa failed; retrying signed iOS app build and packaging the app bundle as an IPA"
-              flutter build ios "${common_args[@]}"
-              app_path=$(find build/ios/iphoneos -maxdepth 1 -type d -name '*.app' | head -n 1)
-              if [[ -z "$app_path" ]]; then
-                echo "::error::Signed iOS fallback did not produce an .app bundle"
-                exit 1
+              echo "::warning::flutter build ipa failed; exporting the Xcode archive directly with an explicit scheme"
+              archive_path=$(find build/ios -type d -name '*.xcarchive' | head -n 1)
+              if [[ -z "$archive_path" ]]; then
+                archive_path="build/ios/archive/${IOS_SCHEME}.xcarchive"
+                xcodebuild -workspace ios/Runner.xcworkspace \
+                  -scheme "$IOS_SCHEME" \
+                  -archivePath "$archive_path" \
+                  -sdk "$IOS_SDK" \
+                  -configuration "$IOS_CONFIGURATION" \
+                  -destination "$IOS_DESTINATION" \
+                  archive
               fi
               ipa_dir="build/ios/ipa"
-              tmp_dir=$(mktemp -d)
-              mkdir -p "$tmp_dir/Payload" "$ipa_dir"
-              cp -R "$app_path" "$tmp_dir/Payload/"
-              (cd "$tmp_dir" && zip -qry "$OLDPWD/$ipa_dir/${package_name}.ipa" Payload)
+              mkdir -p "$ipa_dir"
+              export_plist="$IOS_EXPORT_OPTIONS_PLIST"
+              if [[ -z "$export_plist" ]]; then
+                export_plist="build/ios/ExportOptions.plist"
+                team_id=$(grep -m 1 'DEVELOPMENT_TEAM = ' ios/Runner.xcodeproj/project.pbxproj | sed -E 's/.*DEVELOPMENT_TEAM = ([^;]+);.*/\1/' | tr -d '"' || true)
+                {
+                  echo '<?xml version="1.0" encoding="UTF-8"?>'
+                  echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+                  echo '<plist version="1.0"><dict>'
+                  echo '<key>method</key>'
+                  echo "<string>${IOS_EXPORT_METHOD:-ad-hoc}</string>"
+                  echo '<key>signingStyle</key><string>automatic</string>'
+                  if [[ -n "$team_id" ]]; then
+                    echo '<key>teamID</key>'
+                    echo "<string>$team_id</string>"
+                  fi
+                  echo '<key>stripSwiftSymbols</key><true/>'
+                  echo '<key>compileBitcode</key><false/>'
+                  echo '</dict></plist>'
+                } > "$export_plist"
+              fi
+              xcodebuild -exportArchive \
+                -archivePath "$archive_path" \
+                -exportPath "$ipa_dir" \
+                -exportOptionsPlist "$export_plist"
             fi
             deployable="ipa"
           else
