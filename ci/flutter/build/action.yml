@@ -287,7 +287,13 @@ runs:
               archive_path=$(find build/ios -type d -name '*.xcarchive' | head -n 1)
               if [[ -z "$archive_path" ]]; then
                 archive_path="build/ios/archive/${IOS_SCHEME}.xcarchive"
-                xcodebuild -workspace ios/Runner.xcworkspace \
+                xcode_container_args=()
+                if [[ -d ios/Runner.xcworkspace ]]; then
+                  xcode_container_args=(-workspace ios/Runner.xcworkspace)
+                else
+                  xcode_container_args=(-project ios/Runner.xcodeproj)
+                fi
+                xcodebuild "${xcode_container_args[@]}" \
                   -scheme "$IOS_SCHEME" \
                   -archivePath "$archive_path" \
                   -sdk "$IOS_SDK" \
