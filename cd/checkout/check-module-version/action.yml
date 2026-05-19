@@ -55,6 +55,7 @@ runs:
         #   - .xcode
         #   - .android
         #   - .fluttermobile
+        #   - .blueprint (self reference)
         # ouptuts are:
         #   - repo = cloudopsworks/<moduletype>-app-template
         #   - current_version = content from .cloudopsworks/_VERSION file
@@ -97,6 +98,9 @@ runs:
         elif [ -f ".cloudopsworks/.fluttermobile" ]; then
           echo "Module type is flutter mobile"
           echo "repo=cloudopsworks/fluttermobile-app-template" >> $GITHUB_OUTPUT
+        elif [ -f ".cloudopsworks/.blueprint" ]; then
+          echo "Module type is blueprint (self reference)"
+          echo "repo=cloudopsworks/blueprints" >> $GITHUB_OUTPUT
         else
           echo "::warning::🚨 No module marker file found in .cloudopsworks directory"
         fi
