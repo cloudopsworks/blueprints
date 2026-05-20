@@ -45,7 +45,7 @@ runs:
 
     - name: Setup OpenTofu
       id: setup_opentofu
-      uses: opentofu/setup-opentofu@v1
+      uses: opentofu/setup-opentofu@v2
       with:
         tofu_version: ${{ inputs.tofu_version }}
         tofu_wrapper: false
