@@ -109,7 +109,7 @@ runs:
             echo "repo=cloudopsworks/skill-builder-templates" >> $GITHUB_OUTPUT
         elif [ -f ".cloudopsworks/.tronador" ]; then
             echo "Module type is Tronador Accelerator Repo"
-            echo "repo=cloudopsworks/tronador" >> $GITHUB
+            echo "repo=cloudopsworks/tronador" >> $GITHUB_OUTPUT
         else
           echo "::warning::🚨 No module marker file found in .cloudopsworks directory"
         fi
