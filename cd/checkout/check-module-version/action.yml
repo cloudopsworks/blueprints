@@ -58,6 +58,7 @@ runs:
         #   - .fluttermobile
         #   - .blueprint (self reference)
         #   - .skills (AI skill builder template)
+        #   - .tronador (Tronador Accelerator Repo)
         # ouptuts are:
         #   - repo = cloudopsworks/<moduletype>-app-template
         #   - current_version = content from .cloudopsworks/_VERSION file
@@ -106,6 +107,9 @@ runs:
         elif [ -f ".cloudopsworks/.skills" ]; then
             echo "Module type is AI skill builder template"
             echo "repo=cloudopsworks/skill-builder-templates" >> $GITHUB_OUTPUT
+        elif [ -f ".cloudopsworks/.tronador" ]; then
+            echo "Module type is Tronador Accelerator Repo"
+            echo "repo=cloudopsworks/tronador" >> $GITHUB
         else
           echo "::warning::🚨 No module marker file found in .cloudopsworks directory"
         fi
