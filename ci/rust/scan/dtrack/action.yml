@@ -42,12 +42,17 @@ runs:
     - name: SBOM Dtrack Upload
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_DTRACK_URL: ${{ inputs.dtrack_url }}
+        INPUTS_DTRACK_TOKEN: ${{ inputs.dtrack_token }}
+        INPUTS_DTRACK_PROJECT_KEY: ${{ inputs.dtrack_project_key }}
+        INPUTS_SEMVER: ${{ inputs.semver }}
       run: |
-        curl -X "POST" "https://${{ inputs.dtrack_url }}/api/v1/bom" \
+        curl -X "POST" "https://${INPUTS_DTRACK_URL}/api/v1/bom" \
              -H 'Content-Type: multipart/form-data' \
-             -H 'X-API-Key: ${{ inputs.dtrack_token }}' \
+             -H 'X-API-Key: '"${INPUTS_DTRACK_TOKEN}" \
              -F "autoCreate=true" \
-             -F "projectName=${{ inputs.dtrack_project_key }}" \
-             -F "projectVersion=${{ inputs.semver }}" \
-             -F "parentName=${{ inputs.dtrack_project_key }}" \
+             -F "projectName=${INPUTS_DTRACK_PROJECT_KEY}" \
+             -F "projectVersion=${INPUTS_SEMVER}" \
+             -F "parentName=${INPUTS_DTRACK_PROJECT_KEY}" \
              -F "bom=@bom.xml"

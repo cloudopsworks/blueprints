@@ -18,12 +18,19 @@ runs:
   using: 'composite'
   steps:
     - uses: actions/github-script@v8
+      env:
+        GITHUB_SLASH_PULL_REQUEST: ${{ github.event.client_payload.slash_command.args.named.pull_request }}
+        GITHUB_SLASH_PULL_REQUEST_NUMBER: ${{ github.event.client_payload.slash_command.args.named.pull_request_number }}
+        GITHUB_SLASH_AUTHOR: ${{ github.event.client_payload.slash_command.args.named.author }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+        ENV_TF_ACTIONS_WORKING_DIR: ${{ env.tf_actions_working_dir }}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
       with:
         github-token: ${{ inputs.token }}
         script: |
-          const pull_request = '${{ github.event.client_payload.slash_command.args.named.pull_request }}'
-          const pull_request_number = '${{ github.event.client_payload.slash_command.args.named.pull_request_number }}'
-          const author = '${{ github.event.client_payload.slash_command.args.named.author }}'
+          const pull_request = '' + (process.env.GITHUB_SLASH_PULL_REQUEST || '') + ''
+          const pull_request_number = '' + (process.env.GITHUB_SLASH_PULL_REQUEST_NUMBER || '') + ''
+          const author = '' + (process.env.GITHUB_SLASH_AUTHOR || '') + ''
           
           const {data: thepull} = await github.rest.pulls.get({
             owner: context.repo.owner,
@@ -40,7 +47,7 @@ runs:
           Pull request mergeable?: \`${thepull.mergeable}\`
           Approved by: \`${author}\`
           
-          *Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.tf_actions_working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
+          *Action: \`(process.env.GITHUB_EVENT_NAME || '')\`, Working Directory: \`(process.env.ENV_TF_ACTIONS_WORKING_DIR || '')\`, Workflow: \`(process.env.GITHUB_WORKFLOW || '')\`*`;
           
           const {data: reviewers} = await github.rest.pulls.listRequestedReviewers({
             owner: context.repo.owner,

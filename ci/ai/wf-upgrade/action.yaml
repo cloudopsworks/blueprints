@@ -40,12 +40,14 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_BOT_USER: ${{ inputs.bot_user }}
+        INPUTS_BOT_EMAIL: ${{ inputs.bot_email }}
       run: |
         GITURL=$(git ls-remote --get-url 2>/dev/null)
         dp=$(date +'%Y%m%d%H%M%S')
         branch=feature/workflow-upgrade-$dp
-        git config --global user.name "${{ inputs.bot_user }}"
-        git config --global user.email "${{ inputs.bot_email }}"
+        git config --global user.name "${INPUTS_BOT_USER}"
+        git config --global user.email "${INPUTS_BOT_EMAIL}"
         git branch $branch develop
         git checkout $branch
         prev_ver=$(cat .cloudopsworks/_VERSION)
@@ -76,11 +78,14 @@ runs:
       working-directory: ${{ inputs.source_path }}
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
+        STEPS_UPGRADE_PREV_VER: ${{ steps.upgrade.outputs.prev_ver }}
+        STEPS_UPGRADE_VER: ${{ steps.upgrade.outputs.ver }}
+        STEPS_UPGRADE_BRANCH: ${{ steps.upgrade.outputs.branch }}
       run: |
         tmp_file=$(mktemp pr-body-XXXXXXXX)
         echo ":rocket:Workflow Upgrade to Latest Patch Version." >> $tmp_file
-        echo "    From: \`${{ steps.upgrade.outputs.prev_ver }}\`" >> $tmp_file
-        echo "    To: \`${{ steps.upgrade.outputs.ver }}\`" >> $tmp_file
-        gh pr create -B develop -H ${{ steps.upgrade.outputs.branch }} \
+        echo "    From: \`${STEPS_UPGRADE_PREV_VER}\`" >> $tmp_file
+        echo "    To: \`${STEPS_UPGRADE_VER}\`" >> $tmp_file
+        gh pr create -B develop -H "${STEPS_UPGRADE_BRANCH}" \
           -F $tmp_file \
-          -t "Workflow Upgrade to ${{ steps.upgrade.outputs.ver }}"
+          -t "Workflow Upgrade to ${STEPS_UPGRADE_VER}"

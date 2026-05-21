@@ -54,8 +54,10 @@ runs:
       id: android_configuration
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        OUT=$(yq e '.android.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        OUT=$(yq e ".android.configuration // \"Release\"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Get android_destinations from inputs-global.yaml with yq

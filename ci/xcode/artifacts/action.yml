@@ -42,8 +42,12 @@ runs:
     - name: Normalize xcode inputs
       id: xcode_normalized
       shell: bash
+      env:
+        INPUTS_XCODE_SCHEME: ${{ inputs.xcode_scheme }}
+        INPUTS_XCODE_SDK: ${{ inputs.xcode_sdk }}
+        INPUTS_XCODE_DESTINATION: ${{ inputs.xcode_destination }}
       run: |
-        ret=$(echo "${{ inputs.xcode_scheme }}_${{ inputs.xcode_sdk }}_${{ inputs.xcode_destination }}" | tr ' ,:=/' '-')
+        ret=$(echo "${INPUTS_XCODE_SCHEME}_${INPUTS_XCODE_SDK}_${INPUTS_XCODE_DESTINATION}" | tr ' ,:=/' '-')
         echo "result=$ret" >> $GITHUB_OUTPUT
 
     # Get pipeline conf
@@ -51,8 +55,10 @@ runs:
       id: zip_globs
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        GLOBS=$(yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
+        GLOBS=$(SOURCE_PATH="${INPUTS_SOURCE_PATH}" yq e ".zipGlobs[] | strenv(SOURCE_PATH) + \"/\" + ." .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$GLOBS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -62,8 +68,10 @@ runs:
       id: exclude_globs
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        GLOBS=$(yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
+        GLOBS=$(SOURCE_PATH="${INPUTS_SOURCE_PATH}" yq e ".excludeGlobs[] | \"!\" + strenv(SOURCE_PATH) + \"/\" + ." .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$GLOBS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -100,9 +108,11 @@ runs:
       id: target_artifacts_tar
       working-directory: ${{ inputs.source_path }}/build
       shell: bash
+      env:
+        INPUTS_SOURCES_ARTIFACTS_NAME: ${{ inputs.sources_artifacts_name }}
       run: |
-        tar -cf $RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar ./
-        echo "path=$RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar" >> $GITHUB_OUTPUT
+        tar -cf "$RUNNER_TEMP/${INPUTS_SOURCES_ARTIFACTS_NAME}_target.tar" ./
+        echo "path=$RUNNER_TEMP/${INPUTS_SOURCES_ARTIFACTS_NAME}_target.tar" >> $GITHUB_OUTPUT
 
     # Perform of upload of all target artfiacts for Xcode
     - name: Upload Target Artifacts to workflow

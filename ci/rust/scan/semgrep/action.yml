@@ -52,9 +52,11 @@ runs:
     - name: Split semgrep_excludes
       id: split_excludes
       shell: bash
+      env:
+        INPUTS_SEMGREP_EXCLUDES: ${{ inputs.semgrep_excludes }}
       run: |
-        if [[ -n "${{ inputs.semgrep_excludes }}" ]]; then
-          result="--exclude '$(echo "${{ inputs.semgrep_excludes }}" | sed "s/,/' --exclude '/g")'"
+        if [[ -n "${INPUTS_SEMGREP_EXCLUDES}" ]]; then
+          result="--exclude '$(echo ${INPUTS_SEMGREP_EXCLUDES} | sed s/,/' --exclude '/g)'"
         else
           result=""
         fi
@@ -64,10 +66,11 @@ runs:
       id: semgrep
       env:
         SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
+        STEPS_SPLIT_EXCLUDES_RESULT: ${{ steps.split_excludes.outputs.result }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.split_excludes.outputs.result }}
+        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif "${STEPS_SPLIT_EXCLUDES_RESULT}"
 #        semgrep --config=p/rust . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
 
     - name: Upload SARIF file

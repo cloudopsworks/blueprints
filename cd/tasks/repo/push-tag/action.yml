@@ -37,9 +37,11 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_BOT_USER: ${{ inputs.bot_user }}
+        INPUTS_BOT_EMAIL: ${{ inputs.bot_email }}
       run: |
-        git config --global user.name "${{ inputs.bot_user }}"
-        git config --global user.email "${{ inputs.bot_email}}"
+        git config --global user.name "${INPUTS_BOT_USER}"
+        git config --global user.email "${INPUTS_BOT_EMAIL}"
         git pull --rebase
         make gitflow/version/tag
         ret=$?

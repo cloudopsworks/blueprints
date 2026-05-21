@@ -32,62 +32,104 @@ runs:
   using: 'composite'
   steps:
     - name: Retrieve branch protection rule
-      uses: mikefarah/yq@master
       id: branch_protection_rules
-      with:
-        cmd: yq e '.config.branchProtection' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml | grep true | wc -l
-    
-    #      - name: Retrieve branch protection rule
-    #        uses: mikefarah/yq@master
-    #        id: gitflow_protection
-    #        with:
-    #          cmd: yq e '.config.gitFlow' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml | grep true | wc -l
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".config.branchProtection" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml" | grep true | wc -l)
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Retrieve protected sources
-      uses: mikefarah/yq@master
       id: protected_sources
-      with:
-        cmd: yq -o=json -I=0 '.config.protectedSources' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 ".config.protectedSources" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Check if automatic
-      uses: mikefarah/yq@master
       id: check_automatic
-      with:
-        cmd: yq e '.cd.automatic and true' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".cd.automatic and true" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Reviewers Count
-      uses: mikefarah/yq@master
       id: reviewers_count
       if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
-      with:
-        cmd: yq e '.config.requiredReviewers' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".config.requiredReviewers" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Reviewers list as JSON
-      uses: mikefarah/yq@master
       id: reviewers_list
       if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
-      with:
-        cmd: yq -o=json -I=0 '.config.reviewers' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 ".config.reviewers" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Owners list as JSON
-      uses: mikefarah/yq@master
       id: owners_list
       if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
-      with:
-        cmd: yq -o=json -I=0 '.config.owners' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 ".config.owners" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Contributors list as JSON
-      uses: mikefarah/yq@master
       id: contrib_list
-      with:
-        cmd: yq -o=json -I=0 '.config.contributors' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 ".config.contributors" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Deployments JSON
-      uses: mikefarah/yq@master
       id: deployments_json
-      with:
-        cmd: yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq -o=json -I=0 ".cd.deployments" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get repository type
       id: repo_type
       working-directory: ${{ inputs.source_path }}
@@ -103,11 +145,13 @@ runs:
 
     - name: Contributor list form JSON
       uses: actions/github-script@v8
+      env:
+        STEPS_CONTRIB_LIST_RESULT: ${{ steps.contrib_list.outputs.result }}
       with:
         github-token: ${{ inputs.token }}
         script: |
-          const contrib_text = ${{ steps.contrib_list.outputs.result }};
-          const contrib_json = contrib_text != null ? JSON.parse('${{ steps.contrib_list.outputs.result }}') : {};
+          const contrib_text = (process.env.STEPS_CONTRIB_LIST_RESULT || '');
+          const contrib_json = contrib_text != null ? JSON.parse('' + (process.env.STEPS_CONTRIB_LIST_RESULT || '') + '') : {};
           
           // Parse the Contributors List and add them to the repository
           // Users are plain names teams are prefixed by the org name
@@ -143,21 +187,28 @@ runs:
     - name: Advanced Protection on GitFlow
       if: ${{ steps.branch_protection_rules.outputs.result == 1 }}
       uses: actions/github-script@v8
+      env:
+        STEPS_PROTECTED_SOURCES_RESULT: ${{ steps.protected_sources.outputs.result }}
+        STEPS_REVIEWERS_LIST_RESULT: ${{ steps.reviewers_list.outputs.result }}
+        STEPS_OWNERS_LIST_RESULT: ${{ steps.owners_list.outputs.result }}
+        STEPS_CONTRIB_LIST_RESULT: ${{ steps.contrib_list.outputs.result }}
+        STEPS_REVIEWERS_COUNT_RESULT: ${{ steps.reviewers_count.outputs.result }}
+        STEPS_REPO_TYPE_RESULT: ${{ steps.repo_type.outputs.result }}
       with:
         github-token: ${{ inputs.token }}
         script: |
           const branchesStrict = ['main', 'master', 'support/*'];
           const branchesRelax = ['release/*', 'hotfix/*', 'feature/*', 'develop', 'generatedocstring-*', 'generateunittests-', 'autofix-', 'sonarfix-'];
           const cannot_delete = ['main', 'master', 'support/*', 'develop'];
-          const protectedSources = JSON.parse('${{ steps.protected_sources.outputs.result }}');
-          const reviewers_json = JSON.parse('${{ steps.reviewers_list.outputs.result }}');
-          const owners_text = ${{ steps.owners_list.outputs.result }};
-          const owners_json = owners_text != null ? JSON.parse('${{ steps.owners_list.outputs.result }}') : [];
-          const contrib_text = ${{ steps.contrib_list.outputs.result }};
-          const contrib_json = contrib_text != null ? JSON.parse('${{ steps.contrib_list.outputs.result }}') : {};
-          const reviewers_count = ${{ steps.reviewers_count.outputs.result }};
+          const protectedSources = JSON.parse('' + (process.env.STEPS_PROTECTED_SOURCES_RESULT || '') + '');
+          const reviewers_json = JSON.parse('' + (process.env.STEPS_REVIEWERS_LIST_RESULT || '') + '');
+          const owners_text = (process.env.STEPS_OWNERS_LIST_RESULT || '');
+          const owners_json = owners_text != null ? JSON.parse('' + (process.env.STEPS_OWNERS_LIST_RESULT || '') + '') : [];
+          const contrib_text = (process.env.STEPS_CONTRIB_LIST_RESULT || '');
+          const contrib_json = contrib_text != null ? JSON.parse('' + (process.env.STEPS_CONTRIB_LIST_RESULT || '') + '') : {};
+          const reviewers_count = (process.env.STEPS_REVIEWERS_COUNT_RESULT || '');
           const actor = context.actor;
-          const is_iac = '${{ steps.repo_type.outputs.result }}' === 'iac';
+          const is_iac = '' + (process.env.STEPS_REPO_TYPE_RESULT || '') + '' === 'iac';
           
           // Get reviewers list
           var reviewers = [];
@@ -468,11 +519,15 @@ runs:
     - name: Advanced Deployment Environments Creation
       id: envs
       uses: actions/github-script@v8
+      env:
+        STEPS_DEPLOYMENTS_JSON_RESULT: ${{ steps.deployments_json.outputs.result }}
+        STEPS_REVIEWERS_LIST_RESULT: ${{ steps.reviewers_list.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       with:
         github-token: ${{ inputs.token }}
         script: |
-          const deployments = JSON.parse('${{ steps.deployments_json.outputs.result }}');
-          const reviewers_json = JSON.parse('${{ steps.reviewers_list.outputs.result }}');
+          const deployments = JSON.parse('' + (process.env.STEPS_DEPLOYMENTS_JSON_RESULT || '') + '');
+          const reviewers_json = JSON.parse('' + (process.env.STEPS_REVIEWERS_LIST_RESULT || '') + '');
           
           // Get reviewers list
           var reviewers = [];
@@ -519,7 +574,7 @@ runs:
             }
           }
           
-          // The following loop will iterate the dict located in the deployments section of the ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml file
+          // The following loop will iterate the dict located in the deployments section of the (process.env.INPUTS_SOURCE_PATH || '')/.cloudopsworks/cloudopsworks-ci.yaml file
           // and will create the environments and the targets for each environment
           // The JSON Format is as follows:
           //   {"develop":{"env":"dev","targetName":"dev-target"},"release":{"env":"production","targets":{"mastercard":{"env":"production","targetName":"sink-demo"}}},"test":{"env":"staging"},"prerelease":{"env":"staging"},"hotfix":{"env":"hotfix"},"pull_request":{"env":"pull_request"},"support":[{"match":"1.5.*","env":"demo","targetName":"demo"},{"match":"1.3.*","env":"demo2","targetName":"demo2"}]}

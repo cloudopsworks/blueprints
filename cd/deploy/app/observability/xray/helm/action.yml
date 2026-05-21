@@ -44,7 +44,13 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
       id: xray_inject
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
       run: |
         echo "::group::Xray variable Injection"
-        yq e -i '.env += [{"name":"OTEL_RESOURCE_ATTRIBUTES","value":"service.name=${{ inputs.release_name }},service.version=${{ inputs.release_version }},service.env=${{ inputs.environment }},service.sourceProject=${{ inputs.project_key }}"}]' helm-values.yaml
+        OTEL_RESOURCE_ATTRIBUTES="service.name=${INPUTS_RELEASE_NAME},service.version=${INPUTS_RELEASE_VERSION},service.env=${INPUTS_ENVIRONMENT},service.sourceProject=${INPUTS_PROJECT_KEY}" \
+          yq e -i ".env += [{\"name\":\"OTEL_RESOURCE_ATTRIBUTES\",\"value\":strenv(OTEL_RESOURCE_ATTRIBUTES)}]" helm-values.yaml
         echo "::endgroup::"

@@ -140,20 +140,35 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/kubernetes
       id: datadog_inject
       shell: bash
+      env:
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        STEPS_DD_LOGS_ENABLED_RESULT: ${{ steps.dd_logs_enabled.outputs.result }}
+        STEPS_DD_APM_ENABLED_RESULT: ${{ steps.dd_apm_enabled.outputs.result }}
+        STEPS_DD_APM_NON_LOCAL_TRAFFIC_RESULT: ${{ steps.dd_apm_non_local_traffic.outputs.result }}
+        STEPS_DD_LOGS_INJECTION_RESULT: ${{ steps.dd_logs_injection.outputs.result }}
+        STEPS_DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL_RESULT: ${{ steps.dd_logs_config_container_collect_all.outputs.result }}
+        STEPS_DD_CONTAINER_EXCLUDE_LOGS_RESULT: ${{ steps.dd_container_exclude_logs.outputs.result }}
+        STEPS_DD_TRACE_DEBUG_RESULT: ${{ steps.dd_trace_debug.outputs.result }}
+        STEPS_DD_DBM_PROPAGATION_MODE_RESULT: ${{ steps.dd_dbm_propagation_mode.outputs.result }}
+        STEPS_DD_DOGSTATSD_NON_LOCAL_TRAFFIC_RESULT: ${{ steps.dd_dogstatsd_non_local_traffic.outputs.result }}
+        STEPS_DD_HTTP_CLIENT_ERROR_STATUSES_RESULT: ${{ steps.dd_http_client_error_statuses.outputs.result }}
+        STEPS_DD_HTTP_SERVER_ERROR_STATUSES_RESULT: ${{ steps.dd_http_server_error_statuses.outputs.result }}
       run: |
         echo "::group::Datadog variable Injection"
-        yq e -i '.env += {"name":"DD_ENV","value":"${{ inputs.environment }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_SERVICE","value":"${{ inputs.release_name }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_VERSION","value":"${{ inputs.release_version }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_LOGS_ENABLED","value":"${{ steps.dd_logs_enabled.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_APM_ENABLED","value":"${{ steps.dd_apm_enabled.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_APM_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_apm_non_local_traffic.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_LOGS_INJECTION","value":"${{ steps.dd_logs_injection.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL","value":"${{ steps.dd_logs_config_container_collect_all.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_CONTAINER_EXCLUDE_LOGS","value":"${{ steps.dd_container_exclude_logs.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_TRACE_DEBUG","value":"${{ steps.dd_trace_debug.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_DBM_PROPAGATION_MODE","value":"${{ steps.dd_dbm_propagation_mode.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_DOGSTATSD_NON_LOCAL_TRAFFIC","value":"${{ steps.dd_dogstatsd_non_local_traffic.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_HTTP_CLIENT_ERROR_STATUSES","value":"${{ steps.dd_http_client_error_statuses.outputs.result }}"}' helm-values.yaml
-        yq e -i '.env += {"name":"DD_HTTP_SERVER_ERROR_STATUSES","value":"${{ steps.dd_http_server_error_statuses.outputs.result }}"}' helm-values.yaml
+        DD_ENV="${INPUTS_ENVIRONMENT}" yq e -i ".env += {\"name\":\"DD_ENV\",\"value\":strenv(DD_ENV)}" helm-values.yaml
+        DD_SERVICE="${INPUTS_RELEASE_NAME}" yq e -i ".env += {\"name\":\"DD_SERVICE\",\"value\":strenv(DD_SERVICE)}" helm-values.yaml
+        DD_VERSION="${INPUTS_RELEASE_VERSION}" yq e -i ".env += {\"name\":\"DD_VERSION\",\"value\":strenv(DD_VERSION)}" helm-values.yaml
+        DD_LOGS_ENABLED="${STEPS_DD_LOGS_ENABLED_RESULT}" yq e -i ".env += {\"name\":\"DD_LOGS_ENABLED\",\"value\":strenv(DD_LOGS_ENABLED)}" helm-values.yaml
+        DD_APM_ENABLED="${STEPS_DD_APM_ENABLED_RESULT}" yq e -i ".env += {\"name\":\"DD_APM_ENABLED\",\"value\":strenv(DD_APM_ENABLED)}" helm-values.yaml
+        DD_APM_NON_LOCAL_TRAFFIC="${STEPS_DD_APM_NON_LOCAL_TRAFFIC_RESULT}" yq e -i ".env += {\"name\":\"DD_APM_NON_LOCAL_TRAFFIC\",\"value\":strenv(DD_APM_NON_LOCAL_TRAFFIC)}" helm-values.yaml
+        DD_LOGS_INJECTION="${STEPS_DD_LOGS_INJECTION_RESULT}" yq e -i ".env += {\"name\":\"DD_LOGS_INJECTION\",\"value\":strenv(DD_LOGS_INJECTION)}" helm-values.yaml
+        DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL="${STEPS_DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL_RESULT}" yq e -i ".env += {\"name\":\"DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL\",\"value\":strenv(DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL)}" helm-values.yaml
+        DD_CONTAINER_EXCLUDE_LOGS="${STEPS_DD_CONTAINER_EXCLUDE_LOGS_RESULT}" yq e -i ".env += {\"name\":\"DD_CONTAINER_EXCLUDE_LOGS\",\"value\":strenv(DD_CONTAINER_EXCLUDE_LOGS)}" helm-values.yaml
+        DD_TRACE_DEBUG="${STEPS_DD_TRACE_DEBUG_RESULT}" yq e -i ".env += {\"name\":\"DD_TRACE_DEBUG\",\"value\":strenv(DD_TRACE_DEBUG)}" helm-values.yaml
+        DD_DBM_PROPAGATION_MODE="${STEPS_DD_DBM_PROPAGATION_MODE_RESULT}" yq e -i ".env += {\"name\":\"DD_DBM_PROPAGATION_MODE\",\"value\":strenv(DD_DBM_PROPAGATION_MODE)}" helm-values.yaml
+        DD_DOGSTATSD_NON_LOCAL_TRAFFIC="${STEPS_DD_DOGSTATSD_NON_LOCAL_TRAFFIC_RESULT}" yq e -i ".env += {\"name\":\"DD_DOGSTATSD_NON_LOCAL_TRAFFIC\",\"value\":strenv(DD_DOGSTATSD_NON_LOCAL_TRAFFIC)}" helm-values.yaml
+        DD_HTTP_CLIENT_ERROR_STATUSES="${STEPS_DD_HTTP_CLIENT_ERROR_STATUSES_RESULT}" yq e -i ".env += {\"name\":\"DD_HTTP_CLIENT_ERROR_STATUSES\",\"value\":strenv(DD_HTTP_CLIENT_ERROR_STATUSES)}" helm-values.yaml
+        DD_HTTP_SERVER_ERROR_STATUSES="${STEPS_DD_HTTP_SERVER_ERROR_STATUSES_RESULT}" yq e -i ".env += {\"name\":\"DD_HTTP_SERVER_ERROR_STATUSES\",\"value\":strenv(DD_HTTP_SERVER_ERROR_STATUSES)}" helm-values.yaml
         echo "::endgroup::"

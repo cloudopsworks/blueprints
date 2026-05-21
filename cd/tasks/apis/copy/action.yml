@@ -29,21 +29,30 @@ runs:
     - name: Get api_files_dir
       id: api_files_dir
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.api_files_dir // "apifiles"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
+        RET=$(yq e ".api_files_dir // \"apifiles\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get cloud provider from inputs-global.yaml
     - name: Get Cloud Provider
       id: cloud_provider
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.cloud // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
+        RET=$(yq e ".cloud // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Move Api Files
       shell: bash
+      env:
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        STEPS_CLOUD_PROVIDER_RESULT: ${{ steps.cloud_provider.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        STEPS_API_FILES_DIR_RESULT: ${{ steps.api_files_dir.outputs.result }}
       run: |
         echo "Copying API files from source to blueprint..."
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/${{ steps.cloud_provider.outputs.result }}/apigw/apifiles
-        cp -r ${{ inputs.source_path }}/${{ steps.api_files_dir.outputs.result }}/* ${{ inputs.blueprint_path }}/terraform/${{ steps.cloud_provider.outputs.result }}/apigw/apifiles/
+        mkdir -p "${INPUTS_BLUEPRINT_PATH}/terraform/${STEPS_CLOUD_PROVIDER_RESULT}/apigw/apifiles"
+        cp -r "${INPUTS_SOURCE_PATH}/${STEPS_API_FILES_DIR_RESULT}/"* "${INPUTS_BLUEPRINT_PATH}/terraform/${STEPS_CLOUD_PROVIDER_RESULT}/apigw/apifiles/"

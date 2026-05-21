@@ -106,16 +106,23 @@ runs:
       working-directory: ${{ steps.temp_dir.outputs.result }}
       if: ${{ steps.stack.outputs.node_stack == 'true' }}
       shell: bash
+      env:
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD: ${{ inputs.cloud }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
       run: |
-        tar -xf ${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/*.tar 
+        tar -xf "${GITHUB_WORKSPACE}/${INPUTS_BLUEPRINT_PATH}/terraform/${INPUTS_CLOUD}/${INPUTS_CLOUD_TYPE}/release/"*.tar
 
     - name: Copy .env into for NodeJS
       if: ${{ steps.stack.outputs.node_stack == 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        STEPS_TEMP_DIR_RESULT: ${{ steps.temp_dir.outputs.result }}
       run: |
         if [ -f values/.env ] ; then
-          cp -pf values/.env ${{ steps.temp_dir.outputs.result }}
+          cp -pf values/.env "${STEPS_TEMP_DIR_RESULT}"
         else
           echo "::warning::No .env file found in values/ directory, skipping copy, may lead to deployment problems."
         fi
@@ -124,11 +131,13 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
       if: ${{ steps.stack.outputs.python_stack == 'true' }}
       shell: bash
+      env:
+        STEPS_TEMP_DIR_RESULT: ${{ steps.temp_dir.outputs.result }}
       run: |
-        cp -pfr . ${{ steps.temp_dir.outputs.result }}/
+        cp -pfr . "${STEPS_TEMP_DIR_RESULT}/"
         if [ -f python-dependencies.tar ]; then
           echo "::notice::Extracting Python dependencies as python-dependencies.tar has been found."
-          tar -xf python-dependencies.tar -C ${{ steps.temp_dir.outputs.result }}
+          tar -xf python-dependencies.tar -C "${STEPS_TEMP_DIR_RESULT}"
           rm -f python-dependencies.tar
         fi
 
@@ -136,15 +145,19 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/PublishRelease/
       if: ${{ steps.stack.outputs.dotnet_stack == 'true' }}
       shell: bash
+      env:
+        STEPS_TEMP_DIR_RESULT: ${{ steps.temp_dir.outputs.result }}
       run: |
-        cp -pfr . ${{ steps.temp_dir.outputs.result }}/
+        cp -pfr . "${STEPS_TEMP_DIR_RESULT}/"
 
     - name: Copy Java Application Release
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release/target
       if: ${{ steps.stack.outputs.java_stack == 'true' }}
       shell: bash
+      env:
+        STEPS_TEMP_DIR_RESULT: ${{ steps.temp_dir.outputs.result }}
       run: |
-        cp -p ./*.jar ${{ steps.temp_dir.outputs.result }}/app.jar
+        cp -p ./*.jar "${STEPS_TEMP_DIR_RESULT}/app.jar"
 
     # Observability
     - name: Generate observability artifacts for java
@@ -152,18 +165,24 @@ runs:
       working-directory: ${{ steps.temp_dir.outputs.result }}
       shell: bash
       id: java_apm
+      env:
+        INPUTS_OBSERVABILITY_AGENT: ${{ inputs.observability_agent }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
       run: |
         echo "::group::Generate observability artifacts for java"
-        case "${{ inputs.observability_agent }}" in
+        case "${INPUTS_OBSERVABILITY_AGENT}" in
           xray)
             curl -Lo xray-agent.zip https://github.com/aws/aws-xray-java-agent/releases/latest/download/xray-agent.zip
             unzip xray-agent.zip
             rm xray-agent.zip
-            echo "result=-javaagent:./disco/disco-java-agent.jar=pluginPath=./disco/disco-plugins -Dcom.amazonaws.xray.strategy.tracingName=${{ inputs.project_key }}" >> $GITHUB_OUTPUT
+            echo "result=-javaagent:./disco/disco-java-agent.jar=pluginPath=./disco/disco-plugins -Dcom.amazonaws.xray.strategy.tracingName=${INPUTS_PROJECT_KEY}" >> $GITHUB_OUTPUT
             ;;
           datadog)
             curl -Lo dd-java-agent.jar 'https://dtdg.co/latest-java-tracer'
-            echo "result=-javaagent:./dd-java-agent.jar -Ddd.env=${{ inputs.environment }} -Ddd.service=${{ inputs.release_name }} -Ddd.version=${{ inputs.release_version }}" >> $GITHUB_OUTPUT
+            echo "result=-javaagent:./dd-java-agent.jar -Ddd.env=${INPUTS_ENVIRONMENT} -Ddd.service=${INPUTS_RELEASE_NAME} -Ddd.version=${INPUTS_RELEASE_VERSION}" >> $GITHUB_OUTPUT
             ;;
         esac
         echo "::endgroup::"
@@ -173,16 +192,21 @@ runs:
       if: ${{ steps.stack.outputs.rust_stack == 'true' || steps.stack.outputs.go_stack == 'true' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/release
       shell: bash
+      env:
+        STEPS_TEMP_DIR_RESULT: ${{ steps.temp_dir.outputs.result }}
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
       run: |
         find bin/ -type f -print -exec chmod 755 {} \;
-        cp -vpr bin/* ${{ steps.temp_dir.outputs.result }}
-        mv ${{ steps.temp_dir.outputs.result }}/${{ inputs.release_name }} ${{ steps.temp_dir.outputs.result }}/bootstrap
+        cp -vpr bin/* "${STEPS_TEMP_DIR_RESULT}"
+        mv "${STEPS_TEMP_DIR_RESULT}/${INPUTS_RELEASE_NAME}" "${STEPS_TEMP_DIR_RESULT}/bootstrap"
 
     - name: Copy values/ into temp dir
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}/values
       shell: bash
+      env:
+        STEPS_TEMP_DIR_RESULT: ${{ steps.temp_dir.outputs.result }}
       run: |
-        cp -vpfR . ${{ steps.temp_dir.outputs.result }}
+        cp -vpfR . "${STEPS_TEMP_DIR_RESULT}"
 
     - name: Generate Procfile for ElasticBeanstalk
       if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}

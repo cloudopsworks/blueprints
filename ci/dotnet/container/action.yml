@@ -63,65 +63,115 @@ runs:
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
-
-    # get from global inputs the docker inline specification as text
+      shell: bash
+      env:
+        INPUTS_DEFAULT_REGISTRY_ADDRESS: ${{ inputs.default_registry_address }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq -I=0 ".container_registry // strenv(INPUTS_DEFAULT_REGISTRY_ADDRESS)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Inline Setting
       id: docker_inline
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_inline // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # get from global inputs docker arguments, also as text
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".docker_inline // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Arguments
       id: docker_args_global
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # get from environmental inputs the docker arguments will override the one set on docker_args,also as text
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".docker_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Arguments for ${{ inputs.environment }}
       id: docker_args_env
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
-
-    # get custom_run_command from global inputs
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq e -I=0 ".docker_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Custom Run Command
       id: custom_run_command
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # Get custom_usergroup Line item from configuration
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".custom_run_command // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Custom Usergroup
       id: custom_usergroup
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # Copy Dockerfile from blueprint to current dir
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".custom_usergroup // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Copy Dockerfile .Net App
       shell: bash
+      env:
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/dotnet/* ${{ inputs.source_path }}/
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/dotnet/.dockerignore ${{ inputs.source_path }}/
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/dotnet/"* "${INPUTS_SOURCE_PATH}/"
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/dotnet/.dockerignore" "${INPUTS_SOURCE_PATH}/"
 
     - name: Get default config_map mount point for environment
       id: config_map_mount_point
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.config_map.mount_point // "/app/configmap"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq e -I=0 ".config_map.mount_point // \"/app/configmap\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get xray config file from inputs-global.yaml
       id: xray_config_file
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.observability.config.configFilePath // "${{ steps.config_map_mount_point.outputs.result }}" + "/"  + .observability.config.configFileName // "xray-agent.json"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
+      shell: bash
+      env:
+        STEPS_CONFIG_MAP_MOUNT_POINT_RESULT: ${{ steps.config_map_mount_point.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 "(.observability.config.configFilePath // strenv(STEPS_CONFIG_MAP_MOUNT_POINT_RESULT)) + \"/\" + (.observability.config.configFileName // \"xray-agent.json\")" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Download AWS Xray agent
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       shell: bash
@@ -136,6 +186,10 @@ runs:
     - name: Dockerfile .Net Specific Injection
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_OBSERVABILITY_ENABLED: ${{ inputs.observability_enabled }}
+        INPUTS_OBSERVABILITY_AGENT: ${{ inputs.observability_agent }}
+        INPUTS_DOCKER_INLINE: ${{ inputs.docker_inline }}
       run: |
         echo "::group::Injecting .Net content in Dockerfile..."
         DOCKERFILE=Dockerfile
@@ -144,8 +198,8 @@ runs:
         while IFS= read -r line; do
           if [[ "$line" =~ $INJECTION_POINT ]]; then
             # Insert the content related to observability agent installation
-            if [ "${{ inputs.observability_enabled }}" == "true" ]; then
-              case "${{ inputs.observability_agent }}" in
+            if [ "${INPUTS_OBSERVABILITY_ENABLED}" == "true" ]; then
+              case "${INPUTS_OBSERVABILITY_AGENT}" in
                 xray)
                   echo "RUN curl -sL https://github.com/aws-observability/aws-otel-dotnet-instrumentation/releases/latest/download/aws-otel-dotnet-install.sh | bash"
                   ;;
@@ -158,7 +212,7 @@ runs:
             fi
             # Insert the Application Content at the injection point
             echo "COPY PublishRelease/* /app/webapp/"
-            echo "${{ inputs.docker_inline }}"
+            echo "${INPUTS_DOCKER_INLINE}"
           else
             # Print the current line
             echo "$line"
@@ -172,9 +226,13 @@ runs:
     - name: Set output with .Net Version
       id: docker_image_name
       shell: bash
+      env:
+        INPUTS_DOTNET_VERSION: ${{ inputs.dotnet_version }}
+        INPUTS_DOTNET_DIST: ${{ inputs.dotnet_dist }}
+        INPUTS_DOTNET_IMAGE_VARIANT: ${{ inputs.dotnet_image_variant }}
       run: |
-        if [ "${{ inputs.dotnet_version }}" != "" ] ; then
-          echo "result=IMAGE_NAME=mcr.microsoft.com/dotnet/${{ inputs.dotnet_dist }}:${{ inputs.dotnet_version }}-${{ inputs.dotnet_image_variant }}" >> $GITHUB_OUTPUT
+        if [ "${INPUTS_DOTNET_VERSION}" != "" ] ; then
+          echo "result=IMAGE_NAME=mcr.microsoft.com/dotnet/${INPUTS_DOTNET_DIST}:${INPUTS_DOTNET_VERSION}-${INPUTS_DOTNET_IMAGE_VARIANT}" >> $GITHUB_OUTPUT
         else
           echo "::error::dotnet_version is blank!"
           exit 1
@@ -202,6 +260,8 @@ runs:
       if: ${{ steps.custom_run_command.outputs.result == '' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_PACKAGE_NAME: ${{ inputs.package_name }}
       run: |
         echo "Creation of startup.sh script..."
         cat > ./startup.sh << EOF
@@ -209,7 +269,7 @@ runs:
         
         # Startup the .Net App
         cd /app/webapp
-        exec dotnet ${{ inputs.package_name }}.dll \${DOTNET_ARGS}
+        exec dotnet ${INPUTS_PACKAGE_NAME}.dll \${DOTNET_ARGS}
         EOF
         cat ./startup.sh
         

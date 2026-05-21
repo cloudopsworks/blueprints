@@ -99,20 +99,30 @@ runs:
 
     - name: Copy configurations
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
       run: |
-        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/inputs.yaml
-        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/
+        cp -pf "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml" "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/inputs.yaml"
+        cp -pf "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml" "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/"
 
     - name: Copy Values Bundle
       if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
       shell: bash
+      env:
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
-        if [ -d ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }} ] ; then
-          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
+        mkdir -p "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/values/"
+        if [ -d "${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}" ] ; then
+          cp -vpfR "${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}/." "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/values/"
         else
-          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/, skipping..."
-          touch ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/.empty
+          echo "No values found for ${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}/, skipping..."
+          touch "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/values/.empty"
         fi
 
     - name: Create Hash value for values bundle
@@ -120,63 +130,91 @@ runs:
       if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
       run: |
         hash=$(find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum)
-        echo "$hash" > .values_hash_${{ inputs.release_name }}
+        echo "$hash" > ".values_hash_${INPUTS_RELEASE_NAME}"
         short_hash=$(echo $hash | cut -c1-10)
         echo "result=$short_hash" >> $GITHUB_OUTPUT
 
     - name: Copy Values Bundle
       if: ${{ contains(fromJSON('["kubernetes","k8s","gke"]'), inputs.cloud_type) }}
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
       run: |
-        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/helm-values.yaml
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
-        if [ -d ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }} ]; then
-          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/
+        cp -pf "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/helm/values-${INPUTS_ENVIRONMENT}.yaml" "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/helm-values.yaml"
+        mkdir -p "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/values/"
+        if [ -d "${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}" ]; then
+          cp -vpfR "${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}/." "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/values/"
         else
-          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/, skipping..."
-          touch ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}/values/.empty
+          echo "No values found for ${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}/, skipping..."
+          touch "${INPUTS_BLUEPRINT_PATH}/terraform/gcp/${INPUTS_CLOUD_TYPE}/values/.empty"
         fi
 
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        INPUTS_FRONTEND_ENV_SUFFIX: ${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
       run: |
-        cat > release.yaml << EOF 
-        release:
-          name: ${{ inputs.release_name }}
-          source:
-            name: ${{ inputs.project_key }}
-            version: ${{ inputs.release_version }}${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
-        EOF
+        printf "%s\n" \
+          "release:" \
+          "  name: ${INPUTS_RELEASE_NAME}" \
+          "  source:" \
+          "    name: ${INPUTS_PROJECT_KEY}" \
+          "    version: ${INPUTS_RELEASE_VERSION}${INPUTS_FRONTEND_ENV_SUFFIX}" \
+          > release.yaml
 
     - name: Insert release.qualifier data into release.yaml
       if: ${{ inputs.qualifier != '' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
-      run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
+      env:
+        INPUTS_QUALIFIER: ${{ inputs.qualifier }}
+      run: yq e -i ".release.qualifier = strenv(INPUTS_QUALIFIER)" release.yaml
 
     - name: Insert bucket name & bucket path for beanstalk & lambda
       if: ${{ contains(fromJSON('["webapp","appengine"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        STEPS_HASH_VALUE_RESULT: ${{ steps.hash_value.outputs.result }}
       run: |
-        yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
-        yq e -i '.version_label = "${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
+        BUCKET_PATH="${INPUTS_RELEASE_NAME}/${INPUTS_RELEASE_VERSION}/${INPUTS_RELEASE_NAME}-${INPUTS_RELEASE_VERSION}-${STEPS_HASH_VALUE_RESULT}.zip"
+        VERSION_LABEL="${INPUTS_RELEASE_VERSION}-${STEPS_HASH_VALUE_RESULT}"
+        BUCKET_PATH="${BUCKET_PATH}" yq e -i ".bucket_path = strenv(BUCKET_PATH)" release.yaml
+        VERSION_LABEL="${VERSION_LABEL}" yq e -i ".version_label = strenv(VERSION_LABEL)" release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp
       shell: bash
+      env:
+        INPUTS_DEPLOYMENT_NAME: ${{ inputs.deployment_name }}
+        INPUTS_QUALIFIER_SEPARATOR: ${{ inputs.qualifier != '' && '/' || '' }}
+        INPUTS_QUALIFIER: ${{ inputs.qualifier }}
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        GCP_REGION: ${{ inputs.gcp_region }}
+        GCP_PROJECT: ${{ inputs.gcp_project }}
+        GCP_IMPERSONATE_SA: ${{ inputs.gcp_impersonate_sa }}
       run: |
-        cat > global-inputs.yaml << EOF
-        environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
-        release_name: ${{ inputs.release_name }}
-        default:
-          region: ${{ inputs.gcp_region }}
-          project: ${{ inputs.gcp_project }}
-          impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
-        EOF
+        printf "%s\n" \
+          "environment: ${INPUTS_DEPLOYMENT_NAME}${INPUTS_QUALIFIER_SEPARATOR}${INPUTS_QUALIFIER}" \
+          "release_name: ${INPUTS_RELEASE_NAME}" \
+          "default:" \
+          "  region: ${GCP_REGION}" \
+          "  project: ${GCP_PROJECT}" \
+          "  impersonate_sa: ${GCP_IMPERSONATE_SA}" \
+          > global-inputs.yaml
 
     - name: Generate Observability configuration for datadog
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'datadog' }}
@@ -195,24 +233,28 @@ runs:
     - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp
       shell: bash
+      env:
+        INPUTS_TERRAFORM_STATE_CONF: ${{ inputs.terraform_state_conf }}
       run: |
-        cat > state_conf.yaml << EOF
-        ${{ inputs.terraform_state_conf }}
-        EOF
+        printf "%s\n" "${INPUTS_TERRAFORM_STATE_CONF}" > state_conf.yaml
 
     - name: Determine Plan Action
       uses: actions/github-script@v8
       id: plan_action
+      env:
+        INPUTS_DESTROY: ${{ inputs.destroy }}
+        INPUTS_UNLOCK: ${{ inputs.unlock }}
+        INPUTS_LOCK_ID: ${{ inputs.lock_id }}
       with:
         script: |
-          const is_destroy = ${{ inputs.destroy }};
-          const is_unlock = ${{ inputs.unlock }};
+          const is_destroy = ((process.env.INPUTS_DESTROY || '').toLowerCase() === 'true');
+          const is_unlock = ((process.env.INPUTS_UNLOCK || '').toLowerCase() === 'true');
           if (is_destroy) {
             core.setOutput('value', 'plan -destroy -no-color -input=false')
             console.log('destroy');
           } else {
             if (is_unlock) {
-              core.setOutput('value', 'force-unlock -force ${{ inputs.lock_id }}')
+              core.setOutput('value', 'force-unlock -force ' + (process.env.INPUTS_LOCK_ID || '') + '')
               console.log('unlock');
             } else {
               core.setOutput('value', 'plan -no-color -input=false')
@@ -225,18 +267,18 @@ runs:
       if: ${{ ! cancelled() }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       shell: bash
-      run: |
-        echo "::group::Terragrunt Plan"
-        terragrunt --non-interactive run -- ${{ steps.plan_action.outputs.value }}
-        echo "::endgroup::"
       env:
+        STEPS_PLAN_ACTION_VALUE: ${{ steps.plan_action.outputs.value }}
         TG_TF_PATH: tofu
         GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
         HELM_CREDS_USER: '_json_key'
         HELM_CREDS_PASSWORD: ${{ inputs.gcp_credentials }}
         HELM_EXPERIMENTAL_OCI: "1"
         GITHUB_API_TOKEN: ${{ inputs.token }}
-
+      run: |
+        echo "::group::Terragrunt Plan"
+        terragrunt --non-interactive run -- ${STEPS_PLAN_ACTION_VALUE}
+        echo "::endgroup::"
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
@@ -322,4 +364,3 @@ runs:
         HELM_CREDS_PASSWORD: ${{ inputs.gcp_credentials }}
         HELM_EXPERIMENTAL_OCI: "1"
         GITHUB_API_TOKEN: ${{ inputs.token }}
-

@@ -65,73 +65,120 @@ runs:
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
-
-    # get from global inputs the docker inline specification as text
+      shell: bash
+      env:
+        INPUTS_DEFAULT_REGISTRY_ADDRESS: ${{ inputs.default_registry_address }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq -I=0 ".container_registry // strenv(INPUTS_DEFAULT_REGISTRY_ADDRESS)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Inline Setting
       id: docker_inline
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_inline // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # get from global inputs docker arguments, also as text
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".docker_inline // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Arguments
       id: docker_args_global
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # get from environmental inputs the docker arguments will override the one set on docker_args,also as text
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".docker_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Arguments for ${{ inputs.environment }}
       id: docker_args_env
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
-
-    # get custom_run_command from global inputs
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq e -I=0 ".docker_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Custom Run Command
       id: custom_run_command
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # Get custom_usergroup Line item from configuration
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".custom_run_command // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Custom Usergroup
       id: custom_usergroup
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # Copy Dockerfile from front-end blueprint to current dir
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".custom_usergroup // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Copy Dockerfile Front-End App
       if: ${{ inputs.front_end == 'true' }}
       shell: bash
+      env:
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/frontend/* ${{ inputs.source_path }}/
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/frontend/.dockerignore ${{ inputs.source_path }}/
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/"* "${INPUTS_SOURCE_PATH}/"
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/.dockerignore" "${INPUTS_SOURCE_PATH}/"
 
     - name: Get default config_map mount point for environment
       id: config_map_mount_point
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.config_map.mount_point // "/app/configmap"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
-
-    # Copy Dockerfile from node.js blueprint to current dir
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq e -I=0 ".config_map.mount_point // \"/app/configmap\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Copy Dockerfile Node.js App
       if: ${{ inputs.front_end != 'true' }}
       shell: bash
+      env:
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/nodejs/* ${{ inputs.source_path }}/
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/nodejs/.dockerignore ${{ inputs.source_path }}/
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/"* "${INPUTS_SOURCE_PATH}/"
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/.dockerignore" "${INPUTS_SOURCE_PATH}/"
 
     - name: APM Arguments setup
       id: apm_args
       shell: bash
       if: ${{ inputs.observability_enabled == 'true' }}
+      env:
+        INPUTS_OBSERVABILITY_AGENT: ${{ inputs.observability_agent }}
       run: |
-        case "${{ inputs.observability_agent }}" in
+        case "${INPUTS_OBSERVABILITY_AGENT}" in
           xray)
             echo "result=APM_OPTS=--require @aws/aws-distro-opentelemetry-node-autoinstrumentation/register" >> $GITHUB_OUTPUT
             ;;
@@ -145,26 +192,29 @@ runs:
       if: ${{ inputs.front_end != 'true' }}
       id: docker_image_name
       shell: bash
+      env:
+        INPUTS_NODE_VERSION: ${{ inputs.node_version }}
+        INPUTS_NODE_IMAGE_VARIANT: ${{ inputs.node_image_variant }}
       run: |
-        if [ "${{ inputs.node_version }}" != "" ] ; then
-          case "${{ inputs.node_image_variant }}" in
+        if [ "${INPUTS_NODE_VERSION}" != "" ] ; then
+          case "${INPUTS_NODE_IMAGE_VARIANT}" in
             alpine*)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
+              echo "result=IMAGE_NAME=node:${INPUTS_NODE_VERSION}-${INPUTS_NODE_IMAGE_VARIANT}" >> $GITHUB_OUTPUT
               ;;
             bookworn*)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
+              echo "result=IMAGE_NAME=node:${INPUTS_NODE_VERSION}-${INPUTS_NODE_IMAGE_VARIANT}" >> $GITHUB_OUTPUT
               ;;
             bullseye*)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
+              echo "result=IMAGE_NAME=node:${INPUTS_NODE_VERSION}-${INPUTS_NODE_IMAGE_VARIANT}" >> $GITHUB_OUTPUT
               ;;
             current*)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
+              echo "result=IMAGE_NAME=node:${INPUTS_NODE_VERSION}-${INPUTS_NODE_IMAGE_VARIANT}" >> $GITHUB_OUTPUT
               ;;
             slim)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}-${{ inputs.node_image_variant }}" >> $GITHUB_OUTPUT
+              echo "result=IMAGE_NAME=node:${INPUTS_NODE_VERSION}-${INPUTS_NODE_IMAGE_VARIANT}" >> $GITHUB_OUTPUT
               ;;
             *)
-              echo "result=IMAGE_NAME=node:${{ inputs.node_version }}" >> $GITHUB_OUTPUT
+              echo "result=IMAGE_NAME=node:${INPUTS_NODE_VERSION}" >> $GITHUB_OUTPUT
               ;;
           esac
         fi

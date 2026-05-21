@@ -59,66 +59,109 @@ runs:
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
-
-    # get from global inputs the docker inline specification as text
+      shell: bash
+      env:
+        INPUTS_DEFAULT_REGISTRY_ADDRESS: ${{ inputs.default_registry_address }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq -I=0 ".container_registry // strenv(INPUTS_DEFAULT_REGISTRY_ADDRESS)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Inline Setting
       id: docker_inline
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_inline // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # get from global inputs docker arguments, also as text
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".docker_inline // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Arguments
       id: docker_args_global
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # get from environmental inputs the docker arguments will override the one set on docker_args,also as text
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".docker_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Docker Arguments for ${{ inputs.environment }}
       id: docker_args_env
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.docker_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
-
-    # get custom_run_command from global inputs
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq e -I=0 ".docker_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Custom Run Command
       id: custom_run_command
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.custom_run_command // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # Get custom_usergroup Line item from configuration
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".custom_run_command // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get Custom Usergroup
       id: custom_usergroup
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.custom_usergroup // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # Get pipeline conf image variant defaults to alpine
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".custom_usergroup // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get pipeline image variant
       id: docker_image_variant
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.docker_image // "node:20-alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
-
-    # Copy Dockerfile from blueprint to current dir
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".docker_image // \"node:20-alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Copy Dockerfile Template Docker
       shell: bash
+      env:
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/docker/* ${{ inputs.source_path }}/
-        cp -pf ${{ inputs.blueprint_path }}/ci/container/blueprints/docker/.dockerignore ${{ inputs.source_path }}/
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/docker/"* "${INPUTS_SOURCE_PATH}/"
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/docker/.dockerignore" "${INPUTS_SOURCE_PATH}/"
 
     # for non front end projects nodejs version is set by parameter, defaults to 20
     - name: Set output with node Version
       id: docker_image_name
       shell: bash
+      env:
+        STEPS_DOCKER_IMAGE_VARIANT_RESULT: ${{ steps.docker_image_variant.outputs.result }}
       run: |
-        if [ "${{ steps.docker_image_variant.outputs.result }}" != "" ] ; then
-          echo "result=IMAGE_NAME=${{ steps.docker_image_variant.outputs.result }}" >> $GITHUB_OUTPUT
+        if [ "${STEPS_DOCKER_IMAGE_VARIANT_RESULT}" != "" ] ; then
+          echo "result=IMAGE_NAME=${STEPS_DOCKER_IMAGE_VARIANT_RESULT}" >> $GITHUB_OUTPUT
         fi
 
     # if custom_run_command is non empty then need to override the startup.sh scripts with new content, write the file in-place

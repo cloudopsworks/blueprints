@@ -110,21 +110,26 @@ runs:
       id: test_script_path
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_MOBILE_PLATFORM: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
-        res=$(yq e ".gcp.platforms.${platform}.test_script_path // .gcp.test_script_path // \"device_tests\"" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        platform="${INPUTS_MOBILE_PLATFORM}"
+        res=$(yq e ".gcp.platforms.${platform}.test_script_path // .gcp.test_script_path // \"device_tests\"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Tests Scripts Available
       id: test_script_available
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        STEPS_TEST_SCRIPT_PATH_RESULT: ${{ steps.test_script_path.outputs.result }}
       run: |
         res=false
         # Check dir exists
-        if [ -d '${{ steps.test_script_path.outputs.result }}' ] ; then
+        if [ -d "${STEPS_TEST_SCRIPT_PATH_RESULT}" ] ; then
           # Check dir has content
-          if [ "$(ls -A '${{ steps.test_script_path.outputs.result }}')" ] ; then
+          if [ "$(ls -A "${STEPS_TEST_SCRIPT_PATH_RESULT}")" ] ; then
             res=true
           fi
         fi
@@ -134,18 +139,24 @@ runs:
       id: run_test_type
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_MOBILE_PLATFORM: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
-        res=$(yq e ".gcp.platforms.${platform}.test_script_type // .gcp.test_script_type // \"robo\"" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        platform="${INPUTS_MOBILE_PLATFORM}"
+        res=$(yq e ".gcp.platforms.${platform}.test_script_type // .gcp.test_script_type // \"robo\"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         echo "result=$res" >> $GITHUB_OUTPUT
 
     - name: Results Bucket Location
       id: results_bucket_option
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_MOBILE_PLATFORM: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
-        res=$(yq e ".gcp.platforms.${platform}.test_lab_bucket // .gcp.test_lab_bucket // \"\"" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        platform="${INPUTS_MOBILE_PLATFORM}"
+        res=$(yq e ".gcp.platforms.${platform}.test_lab_bucket // .gcp.test_lab_bucket // \"\"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         if [[ "$res" != "" ]] ; then
           res="--results-bucket=$res"
         fi
@@ -154,47 +165,66 @@ runs:
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        INPUTS_FRONTEND_ENV_SUFFIX: ${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
       run: |
-        cat > release.yaml << EOF 
-        release:
-          name: ${{ inputs.release_name }}
-          source:
-            name: ${{ inputs.project_key }}
-            version: ${{ inputs.release_version }}${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
-        EOF
+        printf "%s\n" \
+          "release:" \
+          "  name: ${INPUTS_RELEASE_NAME}" \
+          "  source:" \
+          "    name: ${INPUTS_PROJECT_KEY}" \
+          "    version: ${INPUTS_RELEASE_VERSION}${INPUTS_FRONTEND_ENV_SUFFIX}" \
+          > release.yaml
 
     - name: Insert release.qualifier data into release.yaml
       if: ${{ inputs.qualifier != '' }}
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp
       shell: bash
-      run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
+      env:
+        INPUTS_QUALIFIER: ${{ inputs.qualifier }}
+      run: yq e -i ".release.qualifier = strenv(INPUTS_QUALIFIER)" release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/devicefarms/gcp
       shell: bash
+      env:
+        INPUTS_DEPLOYMENT_NAME: ${{ inputs.deployment_name }}
+        INPUTS_QUALIFIER_SEPARATOR: ${{ inputs.qualifier != '' && '/' || '' }}
+        INPUTS_QUALIFIER: ${{ inputs.qualifier }}
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        GCP_REGION: ${{ inputs.gcp_region }}
+        GCP_PROJECT: ${{ inputs.gcp_project }}
+        GCP_IMPERSONATE_SA: ${{ inputs.gcp_impersonate_sa }}
       run: |
-        cat > global-inputs.yaml << EOF
-        environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
-        release_name: ${{ inputs.release_name }}
-        default:
-          region: ${{ inputs.gcp_region }}
-          project: ${{ inputs.gcp_project }}
-          impersonate_sa: ${{ inputs.gcp_impersonate_sa }}
-        EOF
+        printf "%s\n" \
+          "environment: ${INPUTS_DEPLOYMENT_NAME}${INPUTS_QUALIFIER_SEPARATOR}${INPUTS_QUALIFIER}" \
+          "release_name: ${INPUTS_RELEASE_NAME}" \
+          "default:" \
+          "  region: ${GCP_REGION}" \
+          "  project: ${GCP_PROJECT}" \
+          "  impersonate_sa: ${GCP_IMPERSONATE_SA}" \
+          > global-inputs.yaml
 
     - name: Determine Plan Action
       uses: actions/github-script@v8
       id: plan_action
+      env:
+        INPUTS_DESTROY: ${{ inputs.destroy }}
+        INPUTS_UNLOCK: ${{ inputs.unlock }}
+        INPUTS_LOCK_ID: ${{ inputs.lock_id }}
       with:
         script: |
-          const is_destroy = ${{ inputs.destroy }};
-          const is_unlock = ${{ inputs.unlock }};
+          const is_destroy = ((process.env.INPUTS_DESTROY || '').toLowerCase() === 'true');
+          const is_unlock = ((process.env.INPUTS_UNLOCK || '').toLowerCase() === 'true');
           if (is_destroy) {
             core.setOutput('value', 'plan -destroy -no-color -input=false')
             console.log('destroy');
           } else {
             if (is_unlock) {
-              core.setOutput('value', 'force-unlock -force ${{ inputs.lock_id }}')
+              core.setOutput('value', 'force-unlock -force ' + (process.env.INPUTS_LOCK_ID || '') + '')
               console.log('unlock');
             } else {
               core.setOutput('value', 'plan -no-color -input=false')
@@ -255,9 +285,11 @@ runs:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+        INPUTS_MOBILE_ARTIFACT_EXT: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ipa' || 'apk' }}
+        INPUTS_DEVICEFARM_APP_TYPE: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'IOS_APP' || 'ANDROID_APP' }}
       run: |
-        ext="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ipa' || 'apk' }}"
-        app_type="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'IOS_APP' || 'ANDROID_APP' }}"
+        ext="${INPUTS_MOBILE_ARTIFACT_EXT}"
+        app_type="${INPUTS_DEVICEFARM_APP_TYPE}"
         release=$(find . -type f -name "*.$ext" | head -n 1)
         if [[ -z "$release" ]]; then
           echo "::error::No .$ext artifact found under $(pwd)"
@@ -273,9 +305,12 @@ runs:
       id: device_config
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        INPUTS_MOBILE_PLATFORM: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        platform="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
-        devices=$(yq e ".gcp.platforms.${platform}.devices[]? // .gcp.devices[]? | . as \$item | \"--device \\\"model=\" + \$item.model_id + (\$item.version_id // \"\" | select(length > 0) | \",version=\" + .) + (\$item.locale_id // \"\" | select(length > 0) | \",locale=\" + .) + (\$item.orientation // \"\" | select(length > 0) | \",orientation=\" + .) + \"\\\" \"" .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml | tr '\n' ' ')
+        platform="${INPUTS_MOBILE_PLATFORM}"
+        devices=$(yq e ".gcp.platforms.${platform}.devices[]? // .gcp.devices[]? | . as \$item | \"--device \\\"model=\" + \$item.model_id + (\$item.version_id // \"\" | select(length > 0) | \",version=\" + .) + (\$item.locale_id // \"\" | select(length > 0) | \",locale=\" + .) + (\$item.orientation // \"\" | select(length > 0) | \",orientation=\" + .) + \"\\\" \"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml" | tr '\n' ' ')
         echo "result=$devices" >> $GITHUB_OUTPUT
 
     - name: Schedule Run - Firebase Test Lab
@@ -290,15 +325,28 @@ runs:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+        INPUTS_MOBILE_PLATFORM: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}
+        STEPS_IPA_APK_EXT: ${{ steps.ipa_apk.outputs.ext }}
+        GCP_IMPERSONATE_SA: ${{ inputs.gcp_impersonate_sa }}
+        STEPS_TEST_SCRIPT_AVAILABLE_RESULT: ${{ steps.test_script_available.outputs.result }}
+        STEPS_DEVICE_CONFIG_RESULT: ${{ steps.device_config.outputs.result }}
+        STEPS_RUN_TEST_TYPE_RESULT: ${{ steps.run_test_type.outputs.result }}
+        INPUTS_XCODE_VERSION_ARG: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && format('--xcode-version={0}', inputs.xcode_version) || '' }}
+        STEPS_RESULTS_BUCKET_OPTION_RESULT: ${{ steps.results_bucket_option.outputs.result }}
       run: |
         echo "::group::Schedule Run - Firebase Test Lab"
-        target="${{ contains(fromJSON('["ios"]'), inputs.platform_type) && 'ios' || 'android' }}"
-        ext=${{ steps.ipa_apk.outputs.ext }}
+        target="${INPUTS_MOBILE_PLATFORM}"
+        ext="${STEPS_IPA_APK_EXT}"
+        if [[ "${STEPS_TEST_SCRIPT_AVAILABLE_RESULT}" == "true" ]]; then
+          test_asset_arg="--test=${REL}-${RELVER}${QUALI}-tests.zip"
+        else
+          test_asset_arg="--app ${REL}-${RELVER}${QUALI}.${ext}"
+        fi
         gcloud firebase test $target run \
-          --impersonate-service-account=${{ inputs.gcp_impersonate_sa }} \
-          ${{ steps.test_script_available.outputs.result == 'true' && '--test=${REL}-${RELVER}${QUALI}-tests.zip' || '--app ${REL}-${RELVER}${QUALI}.$ext' }} \
-          ${{ steps.device_config.outputs.result  }} \
-          --type=${{ steps.run_test_type.outputs.result }} ${{ contains(fromJSON('["ios"]'), inputs.platform_type) && format('--xcode-version={0}', inputs.xcode_version) || '' }} \
-          --client-details=matrixLabel="${REL}-${RELVER}${QUALI}" ${{ steps.results_bucket_option.outputs.result }} \
+          --impersonate-service-account="${GCP_IMPERSONATE_SA}" \
+          "${test_asset_arg}" \
+          "${STEPS_DEVICE_CONFIG_RESULT}" \
+          --type="${STEPS_RUN_TEST_TYPE_RESULT}" "${INPUTS_XCODE_VERSION_ARG}" \
+          --client-details=matrixLabel="${REL}-${RELVER}${QUALI}" "${STEPS_RESULTS_BUCKET_OPTION_RESULT}" \
           --async
         echo "::endgroup::"

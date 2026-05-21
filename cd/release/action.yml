@@ -42,10 +42,12 @@ runs:
     - name: Normalize version Tag
       id: normalize
       uses: actions/github-script@v8
+      env:
+        INPUTS_RELEASE_TAG: ${{ inputs.release_tag }}
       with:
         result-encoding: string
         script: |
-          const relTag = '${{ inputs.release_tag }}'
+          const relTag = '' + (process.env.INPUTS_RELEASE_TAG || '') + ''
           var release = relTag;
           if ( !relTag.startsWith('v') ) {
             release = 'v' + relTag; 
@@ -57,9 +59,11 @@ runs:
       working-directory: ${{ inputs.source_path }}
       id: previous_tag
       shell: bash
+      env:
+        STEPS_NORMALIZE_RESULT: ${{ steps.normalize.outputs.result }}
       run: |
         pwd
-        name=$(git --no-pager tag --sort=creatordate --merged ${{ steps.normalize.outputs.result }} | egrep "v[0-9]+\.[0-9]+\.[0-9]+$" | tail -2 | head -1)
+        name=$(git --no-pager tag --sort=creatordate --merged "${STEPS_NORMALIZE_RESULT}" | egrep "v[0-9]+\.[0-9]+\.[0-9]+$" | tail -2 | head -1)
         echo "previousTag: $name"
         echo "tag=$name" >> $GITHUB_OUTPUT
 

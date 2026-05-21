@@ -63,12 +63,15 @@ runs:
     - name: Upload to S3
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
-      run: |
-        echo "::group::Uploading to S3"
-        aws s3 cp ${{ inputs.dest_zip }} s3://${{ inputs.versions_bucket }}/${{ inputs.bucket_path }}
-        echo "::endgroup::"
       env:
+        INPUTS_DEST_ZIP: ${{ inputs.dest_zip }}
+        INPUTS_VERSIONS_BUCKET: ${{ inputs.versions_bucket }}
+        INPUTS_BUCKET_PATH: ${{ inputs.bucket_path }}
         AWS_ACCESS_KEY_ID: ${{ steps.sts.outputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ steps.sts.outputs.aws_secret_access_key }}
         AWS_SESSION_TOKEN: ${{ steps.sts.outputs.aws_session_token }}
         AWS_REGION: ${{ inputs.aws_region }}
+      run: |
+        echo "::group::Uploading to S3"
+        aws s3 cp "${INPUTS_DEST_ZIP}" "s3://${INPUTS_VERSIONS_BUCKET}/${INPUTS_BUCKET_PATH}"
+        echo "::endgroup::"
