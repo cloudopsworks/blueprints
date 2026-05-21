@@ -30,6 +30,14 @@ This document provides instructions for AI Agents working with the implementatio
 
 ## Versioning Management
 
+> **GUARDRAIL — Version Bump Policy**
+>
+> **Never** use `+semver: minor`, `+semver: feature`, `+semver: breaking`, or `+semver: major` annotations
+> unless the user has **explicitly** requested a minor or major version bump in the current conversation.
+> When in doubt, default to `+semver: patch` / `+semver: fix`.
+> This applies to commit messages, PR titles, PR bodies, and merge commands.
+> If you believe a change warrants a minor or major bump, **ask the user first** before applying the annotation.
+
 Module versioning follows GitHub Flow — a simplified branching model where feature branches are created from and merged back into `master`. Use `make` targets whenever available for branch and release operations.
 - There is a skill related to this template module and their implementations, it can be found in the [Claude Code Skills - cw-release](https://github.com/cloudopsworks/claude-code-skills/tree/main/cw-release) can be used in any agent anyway, install and use it.
 - The cw-release may not update .cloudopsworks/_VERSION file, so you should run `make gitflow/version/file` to make this update before the merging of the release/feature/patch process, make sure the content format is plain vX.Y.Z, this is mandatory.
