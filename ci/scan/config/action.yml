@@ -65,7 +65,7 @@ runs:
     # Get the owner repo
     - name: Get owner
       id: getowner
-      uses: cloudopsworks/blueprints/ci/common/getowner@v5.10.45-beta.2
+      uses: cloudopsworks/blueprints/ci/common/getowner@v5.10
 
     # Get repository_owner from inputs-global.yaml as project_owner id
     - name: Get Project Owner

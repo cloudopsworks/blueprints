@@ -27,19 +27,19 @@ runs:
         echo "result=$plat" >> $GITHUB_OUTPUT
 
     - name: Install runner-tools - Linux
-      uses: cloudopsworks/blueprints/ci/common/install/runner-tools/linux@v5.10.45-beta.2
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools/linux@v5.10
       if: ${{ steps.platform.outputs.result == 'linux' }}
       with:
         source_path: ${{ inputs.source_path }}
 
     - name: Install runner-tools - MacOS
-      uses: cloudopsworks/blueprints/ci/common/install/runner-tools/macos@v5.10.45-beta.2
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools/macos@v5.10
       if: ${{ steps.platform.outputs.result == 'macos' }}
       with:
         source_path: ${{ inputs.source_path }}
 
     - name: Install runner-tools - Windows
-      uses: cloudopsworks/blueprints/ci/common/install/runner-tools/windows@v5.10.45-beta.2
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools/windows@v5.10
       if: ${{ steps.platform.outputs.result == 'windows' }}
       with:
         source_path: ${{ inputs.source_path }}

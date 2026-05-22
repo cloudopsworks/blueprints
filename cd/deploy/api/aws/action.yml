@@ -76,7 +76,7 @@ runs:
   using: 'composite'
   steps:
     - name: IAC Setup
-      uses: cloudopsworks/blueprints/cd/deploy/common/iac@v5.10.45-beta.2
+      uses: cloudopsworks/blueprints/cd/deploy/common/iac@v5.10
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}

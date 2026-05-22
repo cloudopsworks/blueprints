@@ -316,7 +316,7 @@ runs:
         echo "result=$res" >> $GITHUB_OUTPUT 
 
     - name: IOS Steps
-      uses: cloudopsworks/blueprints/cd/deploy/mobile/aws/ios@v5.10.45-beta.2
+      uses: cloudopsworks/blueprints/cd/deploy/mobile/aws/ios@v5.10
       if: ${{ contains(fromJSON('["ios"]'), inputs.platform_type) }}
       with:
         source_path: ${{ inputs.source_path }}
@@ -334,7 +334,7 @@ runs:
         run_test_type: ${{ steps.run_test_type.outputs.result }}
 
     - name: Android Steps
-      uses: cloudopsworks/blueprints/cd/deploy/mobile/aws/android@v5.10.45-beta.2
+      uses: cloudopsworks/blueprints/cd/deploy/mobile/aws/android@v5.10
       if: ${{ ! contains(fromJSON('["ios"]'), inputs.platform_type) }}
       with:
         source_path: ${{ inputs.source_path }}
