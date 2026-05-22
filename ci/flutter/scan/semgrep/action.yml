@@ -33,9 +33,11 @@ runs:
     - name: Build Semgrep excludes
       id: excludes
       shell: bash
+      env:
+        INPUTS_SEMGREP_EXCLUDES: ${{ inputs.semgrep_excludes }}
       run: |
         result=""
-        IFS=',' read -ra parts <<< "${{ inputs.semgrep_excludes }}"
+        IFS=',' read -ra parts <<< "${INPUTS_SEMGREP_EXCLUDES}"
         for part in "${parts[@]}"; do
           part=$(echo "$part" | xargs)
           [[ -n "$part" ]] && result="$result --exclude '$part'"
@@ -45,10 +47,11 @@ runs:
     - name: Semgrep Code Scanning
       env:
         SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
+        STEPS_EXCLUDES_RESULT: ${{ steps.excludes.outputs.result }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${{ steps.excludes.outputs.result }}
+        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif "${STEPS_EXCLUDES_RESULT}"
 
     - name: Upload SARIF file
       if: |

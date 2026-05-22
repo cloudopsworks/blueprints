@@ -42,8 +42,11 @@ runs:
     - name: Normalize Android SDK inputs
       id: android_normalized
       shell: bash
+      env:
+        INPUTS_ANDROID_SDK: ${{ inputs.android_sdk }}
+        INPUTS_ANDROID_DESTINATION: ${{ inputs.android_destination }}
       run: |
-        ret=$(echo "${{ inputs.android_sdk }}_${{ inputs.android_destination }}" | tr ' ,:=/' '-')
+        ret=$(echo "${INPUTS_ANDROID_SDK}_${INPUTS_ANDROID_DESTINATION}" | tr ' ,:=/' '-')
         echo "result=$ret" >> $GITHUB_OUTPUT
 
     # Get pipeline conf
@@ -51,8 +54,10 @@ runs:
       id: zip_globs
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        GLOBS=$(yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
+        GLOBS=$(SOURCE_PATH="${INPUTS_SOURCE_PATH}" yq e ".zipGlobs[] | strenv(SOURCE_PATH) + \"/\" + ." .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$GLOBS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -62,8 +67,10 @@ runs:
       id: exclude_globs
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        GLOBS=$(yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' .cloudopsworks/cloudopsworks-ci.yaml)
+        GLOBS=$(SOURCE_PATH="${INPUTS_SOURCE_PATH}" yq e ".excludeGlobs[] | \"!\" + strenv(SOURCE_PATH) + \"/\" + ." .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$GLOBS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -71,9 +78,12 @@ runs:
     - name: Normalized Android configuration
       id: normalized_configuration
       shell: bash
+      env:
+        INPUTS_ANDROID_CONFIGURATION: ${{ inputs.android_configuration }}
+        STEPS_ZIP_GLOBS_RESULT: ${{ steps.zip_globs.outputs.result }}
       run: |
-        ret=$(echo "${{ inputs.android_configuration }}" | tr '[:upper:]' '[:lower:]')
-        val=$(echo "${{ steps.zip_globs.outputs.result }}" | sed -e "s|{android_configuration}|$ret|g")
+        ret=$(echo "${INPUTS_ANDROID_CONFIGURATION}" | tr '[:upper:]' '[:lower:]')
+        val=$(echo "${STEPS_ZIP_GLOBS_RESULT}" | sed -e "s|{android_configuration}|$ret|g")
         echo "result<<EOF" >> $GITHUB_OUTPUT
         echo "$val" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -109,9 +119,11 @@ runs:
       id: target_artifacts_tar
       working-directory: ${{ inputs.source_path }}/app/build
       shell: bash
+      env:
+        INPUTS_SOURCES_ARTIFACTS_NAME: ${{ inputs.sources_artifacts_name }}
       run: |
-        tar -cf $RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar ./
-        echo "path=$RUNNER_TEMP/${{ inputs.sources_artifacts_name }}_target.tar" >> $GITHUB_OUTPUT
+        tar -cf "$RUNNER_TEMP/${INPUTS_SOURCES_ARTIFACTS_NAME}_target.tar" ./
+        echo "path=$RUNNER_TEMP/${INPUTS_SOURCES_ARTIFACTS_NAME}_target.tar" >> $GITHUB_OUTPUT
 
     # Perform of upload of all target artfiacts for Android SDK
     - name: Upload Target Artifacts to workflow

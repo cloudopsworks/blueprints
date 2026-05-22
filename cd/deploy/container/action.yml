@@ -85,8 +85,12 @@ runs:
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
       shell: bash
+      env:
+        INPUTS_DEFAULT_REGISTRY_ADDRESS: ${{ inputs.default_registry_address }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        RET=$(yq -I=0 '.container_registry // "${{ inputs.default_registry_address }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        RET=$(DEFAULT_REGISTRY_ADDRESS="${INPUTS_DEFAULT_REGISTRY_ADDRESS}" yq -I=0 ".container_registry // strenv(DEFAULT_REGISTRY_ADDRESS)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Docker Login GitHub Container Registry
@@ -156,9 +160,13 @@ runs:
     - name: Push Docker image from tar
       shell: bash
       if: steps.docker_daemon.outputs.docker_daemon == 'true'
+      env:
+        STEPS_DOCKER_REGISTRY_RESULT: ${{ steps.docker_registry.outputs.result }}
+        INPUTS_PROJECT_OWNER: ${{ inputs.project_owner }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
       run: |
         docker image load --input docker-image.tar
-        docker image push --all-tags ${{ steps.docker_registry.outputs.result }}/${{ inputs.project_owner }}/${{ inputs.project_key }}
+        docker image push --all-tags "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}"
 
 #    - name: Get Image Tags
 #      id: tags
@@ -177,14 +185,19 @@ runs:
     - name: Push Docker image from tar using Skopeo
       shell: bash
       if: steps.docker_daemon.outputs.docker_daemon != 'true'
+      env:
+        STEPS_TAGS_RESULT: ${{ steps.tags.outputs.result }}
+        STEPS_DOCKER_REGISTRY_RESULT: ${{ steps.docker_registry.outputs.result }}
+        INPUTS_PROJECT_OWNER: ${{ inputs.project_owner }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
       run: |
         echo "::group::Push Docker image from tar using Crane"
-        #skopeo copy --all docker-archive:docker-image.tar ${{ steps.tags.outputs.result }}
+        #skopeo copy --all docker-archive:docker-image.tar "${STEPS_TAGS_RESULT}"
         TAG=$(head -1 docker-tags.list)
-        crane push docker-image.tar ${{ steps.docker_registry.outputs.result }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:$TAG
+        crane push docker-image.tar "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG"
         for atag in $(cat docker-tags.list); do
           if [ "$atag" != "$TAG" ]; then
-            crane tag ${{ steps.docker_registry.outputs.result }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:$TAG $atag
+            crane tag "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG" $atag
           fi
         done
         echo "::endgroup::"

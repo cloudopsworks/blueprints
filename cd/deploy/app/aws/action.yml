@@ -99,20 +99,30 @@ runs:
 
     - name: Copy configurations
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
       run: |
-        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/inputs.yaml
-        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/
+        cp -pf "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml" "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/inputs.yaml"
+        cp -pf "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml" "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/"
 
     - name: Copy Values Bundle
       if: ${{ contains(fromJSON('["beanstalk","lambda","s3","storage"]'), inputs.cloud_type) }}
       shell: bash
+      env:
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
-        if [ -d ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }} ] ; then
-          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        mkdir -p "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/values/"
+        if [ -d "${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}" ] ; then
+          cp -vpfR "${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}/." "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/values/"
         else
-          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/, skipping..."
-          touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
+          echo "No values found for ${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}/, skipping..."
+          touch "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/values/.empty"
         fi
 
     - name: Create Hash value for values bundle
@@ -120,69 +130,101 @@ runs:
       if: ${{ contains(fromJSON('["beanstalk","lambda","s3","storage"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
       run: |
         hash=$(find values/ -type f -print0 | sort -z | xargs -0 sha1sum | sha1sum)
-        echo "$hash" > .values_hash_${{ inputs.release_name }}
+        echo "$hash" > .values_hash_"${INPUTS_RELEASE_NAME}"
         short_hash=$(echo $hash | cut -c1-10)
         echo "result=$short_hash" >> $GITHUB_OUTPUT
 
     - name: Copy Values Bundle
       if: ${{ contains(fromJSON('["kubernetes","k8s","eks"]'), inputs.cloud_type) }}
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
       run: |
-        cp -pf ${{ inputs.source_path }}/.cloudopsworks/vars/helm/values-${{ inputs.environment }}.yaml ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/helm-values.yaml
-        mkdir -p ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
-        if [ -d ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }} ]; then
-          cp -vpfR ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/. ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/
+        cp -pf "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/helm/values-${INPUTS_ENVIRONMENT}.yaml" "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/helm-values.yaml"
+        mkdir -p "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/values/"
+        if [ -d "${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}" ]; then
+          cp -vpfR "${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}/." "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/values/"
         else
-          echo "No values found for ${{ inputs.source_path }}/.cloudopsworks/values/${{ inputs.environment }}/, skipping..."
-          touch ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/values/.empty
+          echo "No values found for ${INPUTS_SOURCE_PATH}/.cloudopsworks/values/${INPUTS_ENVIRONMENT}/, skipping..."
+          touch "${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/values/.empty"
         fi
 
     - name: Generate release.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        INPUTS_FRONTEND_ENV_SUFFIX: ${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
       run: |
-        cat > release.yaml << EOF 
-        release:
-          name: ${{ inputs.release_name }}
-          source:
-            name: ${{ inputs.project_key }}
-            version: ${{ inputs.release_version }}${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
-        EOF
+        printf "%s\n" \
+          "release:" \
+          "  name: ${INPUTS_RELEASE_NAME}" \
+          "  source:" \
+          "    name: ${INPUTS_PROJECT_KEY}" \
+          "    version: ${INPUTS_RELEASE_VERSION}${INPUTS_FRONTEND_ENV_SUFFIX}" \
+          > release.yaml
 
     - name: Insert release.qualifier data into release.yaml
       if: ${{ inputs.qualifier != '' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
-      run: yq e -i '.release.qualifier = "${{ inputs.qualifier }}"' release.yaml
+      env:
+        INPUTS_QUALIFIER: ${{ inputs.qualifier }}
+      run: yq e -i ".release.qualifier = strenv(INPUTS_QUALIFIER)" release.yaml
 
     - name: Insert bucket name & bucket path for beanstalk & lambda
       if: ${{ contains(fromJSON('["beanstalk","lambda"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        STEPS_HASH_VALUE_RESULT: ${{ steps.hash_value.outputs.result }}
       run: |
-        yq e -i '.bucket_path = "${{ inputs.release_name }}/${{ inputs.release_version }}/${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}.zip"' release.yaml
-        yq e -i '.version_label = "${{ inputs.release_name }}-${{ inputs.release_version }}-${{ steps.hash_value.outputs.result }}"' release.yaml
+        BUCKET_PATH="${INPUTS_RELEASE_NAME}/${INPUTS_RELEASE_VERSION}/${INPUTS_RELEASE_NAME}-${INPUTS_RELEASE_VERSION}-${STEPS_HASH_VALUE_RESULT}.zip"
+        VERSION_LABEL="${INPUTS_RELEASE_NAME}-${INPUTS_RELEASE_VERSION}-${STEPS_HASH_VALUE_RESULT}"
+        BUCKET_PATH="${BUCKET_PATH}" yq e -i ".bucket_path = strenv(BUCKET_PATH)" release.yaml
+        VERSION_LABEL="${VERSION_LABEL}" yq e -i ".version_label = strenv(VERSION_LABEL)" release.yaml
 
     - name: Insert release path directly into release.yaml - S3/Storage
       if: ${{ contains(fromJSON('["s3","storage"]'), inputs.cloud_type) }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
       run: |
-        yq e -i '.release_path = "${{ github.workspace }}/${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}/release/"' release.yaml
+        RELEASE_PATH="${GITHUB_WORKSPACE}/${INPUTS_BLUEPRINT_PATH}/terraform/aws/${INPUTS_CLOUD_TYPE}/release/"
+        RELEASE_PATH="${RELEASE_PATH}" yq e -i ".release_path = strenv(RELEASE_PATH)" release.yaml
 
     - name: Generate Global Inputs global-inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
       shell: bash
+      env:
+        INPUTS_DEPLOYMENT_NAME: ${{ inputs.deployment_name }}
+        INPUTS_QUALIFIER_SEPARATOR: ${{ inputs.qualifier != '' && '/' || '' }}
+        INPUTS_QUALIFIER: ${{ inputs.qualifier }}
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
+        AWS_REGION: ${{ inputs.aws_region }}
+        AWS_STS_ROLE_ARN: ${{ inputs.aws_sts_role_arn }}
       run: |
-        cat > global-inputs.yaml << EOF
-        environment: ${{ inputs.deployment_name }}${{ inputs.qualifier != '' && '/' || '' }}${{ inputs.qualifier }}
-        release_name: ${{ inputs.release_name }}
-        default:
-          region: ${{ inputs.aws_region }}
-          sts_role_arn: ${{ inputs.aws_sts_role_arn }}
-        EOF
+        printf "%s\n" \
+          "environment: ${INPUTS_DEPLOYMENT_NAME}${INPUTS_QUALIFIER_SEPARATOR}${INPUTS_QUALIFIER}" \
+          "release_name: ${INPUTS_RELEASE_NAME}" \
+          "default:" \
+          "  region: ${AWS_REGION}" \
+          "  sts_role_arn: ${AWS_STS_ROLE_ARN}" \
+          > global-inputs.yaml
 
     - name: Generate Observability configuration for Xray
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
@@ -215,24 +257,28 @@ runs:
     - name: Generate state_conf.yaml from vars.DEPLOYMENT_STATE_CONF
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws
       shell: bash
+      env:
+        INPUTS_TERRAFORM_STATE_CONF: ${{ inputs.terraform_state_conf }}
       run: |
-        cat > state_conf.yaml << EOF
-        ${{ inputs.terraform_state_conf }}
-        EOF
+        printf "%s\n" "${INPUTS_TERRAFORM_STATE_CONF}" > state_conf.yaml
 
     - name: Determine Plan Action
       uses: actions/github-script@v8
       id: plan_action
+      env:
+        INPUTS_DESTROY: ${{ inputs.destroy }}
+        INPUTS_UNLOCK: ${{ inputs.unlock }}
+        INPUTS_LOCK_ID: ${{ inputs.lock_id }}
       with:
         script: |
-          const is_destroy = ${{ inputs.destroy }};
-          const is_unlock = ${{ inputs.unlock }};
+          const is_destroy = ((process.env.INPUTS_DESTROY || '').toLowerCase() === 'true');
+          const is_unlock = ((process.env.INPUTS_UNLOCK || '').toLowerCase() === 'true');
           if (is_destroy) {
             core.setOutput('value', 'plan -destroy -no-color -input=false')
             console.log('destroy');
           } else {
             if (is_unlock) {
-              core.setOutput('value', 'force-unlock -force ${{ inputs.lock_id }}')
+              core.setOutput('value', 'force-unlock -force ' + (process.env.INPUTS_LOCK_ID || '') + '')
               console.log('unlock');
             } else {
               core.setOutput('value', 'plan -no-color -input=false')
@@ -272,11 +318,8 @@ runs:
       if: ${{ ! cancelled() }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       shell: bash
-      run: |
-        echo "::group::Terragrunt Plan"
-        terragrunt --non-interactive run -- ${{ steps.plan_action.outputs.value }}
-        echo "::endgroup::"
       env:
+        STEPS_PLAN_ACTION_VALUE: ${{ steps.plan_action.outputs.value }}
         TG_TF_PATH: tofu
         AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
@@ -284,6 +327,10 @@ runs:
         HELM_CREDS_PASSWORD: ${{ inputs.aws_secret_access_key }}
         HELM_EXPERIMENTAL_OCI: "1"
         GITHUB_API_TOKEN: ${{ inputs.token }}
+      run: |
+        echo "::group::Terragrunt Plan"
+        terragrunt --non-interactive run -- ${STEPS_PLAN_ACTION_VALUE}
+        echo "::endgroup::"
 
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
@@ -295,10 +342,13 @@ runs:
         echo "::endgroup::"
       env:
         TG_TF_PATH: tofu
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
-        GITHUB_API_TOKEN: ${{ inputs.token }}
+        AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
+        AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
+        GITHUB_API_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
+        INPUTS_AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
@@ -366,13 +416,16 @@ runs:
       continue-on-error: false
       env:
         TG_TF_PATH: tofu
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
-        HELM_CREDS_USER: ${{ inputs.aws_access_key_id }}
-        HELM_CREDS_PASSWORD: ${{ inputs.aws_secret_access_key }}
+        AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
+        AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
+        HELM_CREDS_USER: ${INPUTS_AWS_ACCESS_KEY_ID}
+        HELM_CREDS_PASSWORD: ${INPUTS_AWS_SECRET_ACCESS_KEY}
         HELM_EXPERIMENTAL_OCI: "1"
-        GITHUB_API_TOKEN: ${{ inputs.token }}
+        GITHUB_API_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
+        INPUTS_AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Hard fail on plan error
       shell: bash
       if: ${{ steps.plan.outcome != 'success' && ! cancelled() }}

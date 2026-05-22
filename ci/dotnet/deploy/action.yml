@@ -39,9 +39,16 @@ runs:
     # Get if this is a library project
     - name: Get pipeline is_library enabled
       id: is_library
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '(.isLibrary or .is_library) and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e "(.isLibrary or .is_library) and true" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Deploy release to .Net Repository (defaults to Github repo)
     - name: Register to NuGet Repo
@@ -50,8 +57,11 @@ runs:
       shell: bash
       run: |
         echo "::group::.Net Register to NuGet Repo"        
-        dotnet nuget add source --username $GITHUB_ACTOR --password $GITHUB_TOKEN --store-password-in-clear-text --name nuget "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+        dotnet nuget add source --username $GITHUB_ACTOR --password $GITHUB_TOKEN --store-password-in-clear-text --name nuget "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json"
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_REPOSITORY_OWNER: ${GITHUB_REPOSITORY_OWNER}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}

@@ -47,41 +47,83 @@ runs:
     # Get JIRA is enabled or not defaults to true
     - name: Is JIRA Enabled?
       id: jira_integration
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.jira.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".jira.enabled // \"true\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/inputs.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get the JIRA Project KEY
     - name: Get JIRA Project KEY
       id: jira_project_key
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.jira.project_key // ""' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".jira.project_key // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/inputs.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get the JIRA Project ID
     - name: Get JIRA Project ID
       id: jira_project_id
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.jira.project_id // ""' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".jira.project_id // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/inputs.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get Checkov Enablement defaults to true
     - name: Get Checkov Config
       id: checkov
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.checkov.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".checkov.enabled // \"true\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/inputs.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get Secret Scan Enablement defaults to true
     - name: Get Secret Scan Config
       id: secret_scan
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.secret_scan.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".secret_scan.enabled // \"true\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/inputs.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get Semgrep Scan Enablement, defaults to true
     - name: Get Semgrep Scan Config
       id: semgrep
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.semgrep.enabled // "true"' ./${{ inputs.source_path }}/.cloudopsworks/inputs.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".semgrep.enabled // \"true\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/inputs.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"

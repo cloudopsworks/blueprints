@@ -58,7 +58,10 @@ runs:
 
     - name: Extract Tarball
       if: ${{ inputs.is_tar == 'true' }}
+      env:
+        INPUTS_EXCLUDE_OPTS_ARG: ${{ inputs.exclude_opts != '' && format('--exclude="{0}"',inputs.exclude_opts) || '' }}
+        STEPS_DOWNLOAD_DOWNLOAD_PATH: ${{ steps.download.outputs.download-path }}
       run: |
-        tar ${{ inputs.exclude_opts != '' && format('--exclude="{0}"',inputs.exclude_opts) || '' }} -xf ${{ steps.download.outputs.download-path }}/*.tar -C ${{ steps.download.outputs.download-path }}/
-        rm -f ${{ steps.download.outputs.download-path }}/*.tar
+        tar "${INPUTS_EXCLUDE_OPTS_ARG}" -xf "${STEPS_DOWNLOAD_DOWNLOAD_PATH}/"*.tar -C "${STEPS_DOWNLOAD_DOWNLOAD_PATH}/"
+        rm -f "${STEPS_DOWNLOAD_DOWNLOAD_PATH}/"*.tar
       shell: bash

@@ -125,9 +125,11 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -137,9 +139,11 @@ runs:
 
     - name: Select XCODE version from github macos runner
       shell: bash
+      env:
+        INPUTS_XCODE_VERSION: ${{ inputs.xcode_version }}
       run: |
-        echo "::group::Select XCode Version ${{ inputs.xcode_version }} Tooling"
-        sudo xcode-select -s /Applications/Xcode_${{ inputs.xcode_version }}.app
+        echo "::group::Select XCode Version ${INPUTS_XCODE_VERSION} Tooling"
+        sudo xcode-select -s /Applications/Xcode_${INPUTS_XCODE_VERSION}.app
         echo "::endgroup::"
 
     - name: Install the Apple certificate and provisioning profile - Mobile Platforms
@@ -158,10 +162,10 @@ runs:
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-        
+
         DEVPP_PATH=$RUNNER_TEMP/devel_pp.mobileprovision
         DEV_CERTIFICATE_PATH=$RUNNER_TEMP/develop_certificate.p12
-        
+
         # import certificate and provisioning profile from secrets
         echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
         echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
@@ -219,30 +223,41 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_XCODE_SCHEME: ${{ inputs.xcode_scheme }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
+        INPUTS_XCODE_SDK: ${{ inputs.xcode_sdk }}
+        INPUTS_XCODE_CONFIGURATION: ${{ inputs.xcode_configuration }}
+        INPUTS_XCODE_DESTINATION: ${{ inputs.xcode_destination }}
+        INPUTS_XCODE_EXTRA_ARGS: ${{ inputs.xcode_extra_args }}
+        EXPR_INPUTS_XCODE_EXTRA_TARGETS_FORMAT_0_INPUTS_XCODE: ${{ inputs.xcode_extra_targets != '' && format('{0} ', inputs.xcode_extra_targets) || '' }}
+        EXPR_INPUTS_XCODE_BUILD_FOR_TESTING_TRUE_BUILD_FOR_TE: ${{ inputs.xcode_build_for_testing == 'true' && 'build-for-testing ' || '' }}
+        EXPR_INPUTS_XCODE_UNSIGNED_TRUE_ARCHIVE: ${{ inputs.xcode_unsigned != 'true' && 'archive' || '' }}
       run: |
         echo "::group::XCode Build"
-        xcodebuild -scheme "${{ inputs.xcode_scheme }}" \
-          -archivePath build/${{ inputs.project_key }}.xcarchive \
-          -sdk ${{ inputs.xcode_sdk }} \
-          -configuration ${{ inputs.xcode_configuration }} \
-          -destination '${{ inputs.xcode_destination }}' ${{ inputs.xcode_extra_args }} \
+        xcodebuild -scheme "${INPUTS_XCODE_SCHEME}" \
+          -archivePath build/${INPUTS_PROJECT_KEY}.xcarchive \
+          -sdk ${INPUTS_XCODE_SDK} \
+          -configuration ${INPUTS_XCODE_CONFIGURATION} \
+          -destination "${INPUTS_XCODE_DESTINATION}" ${INPUTS_XCODE_EXTRA_ARGS} \
           -derivedDataPath build/derived-data \
-          clean ${{ inputs.xcode_extra_targets != '' && format('{0} ', inputs.xcode_extra_targets) || '' }}${{ inputs.xcode_build_for_testing == 'true' && 'build-for-testing ' || '' }} ${{ inputs.xcode_unsigned != 'true' && 'archive' || '' }}
+          clean ${EXPR_INPUTS_XCODE_EXTRA_TARGETS_FORMAT_0_INPUTS_XCODE}${EXPR_INPUTS_XCODE_BUILD_FOR_TESTING_TRUE_BUILD_FOR_TE} ${EXPR_INPUTS_XCODE_UNSIGNED_TRUE_ARCHIVE}
         echo "::endgroup::"
 
     - name: Get Export Options
       id: export_options
       if: ${{ inputs.xcode_unsigned != 'true' }}
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        type=$(yq e '.xcode.export_options.type' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
-        method=$(yq e '.xcode.export_options.method' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
-        profile=$(yq e '.xcode.export_options.profile' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
-        app_url=$(yq e '.xcode.export_options.app_url' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
-        image_url=$(yq e '.xcode.export_options.image_url' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
-        full_image_url=$(yq e '.xcode.export_options.full_image_url' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
-        signing_cert=$(yq e '.xcode.export_options.signing_certificate // "Apple Distribution"' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml)
-        
+        type=$(yq e '.xcode.export_options.type' "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        method=$(yq e '.xcode.export_options.method' "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        profile=$(yq e '.xcode.export_options.profile' "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        app_url=$(yq e '.xcode.export_options.app_url' "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        image_url=$(yq e '.xcode.export_options.image_url' "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        full_image_url=$(yq e '.xcode.export_options.full_image_url' "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        signing_cert=$(yq e '.xcode.export_options.signing_certificate // "Apple Distribution"' "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+
         echo "type=$type" >> $GITHUB_OUTPUT
         echo "method=$method" >> $GITHUB_OUTPUT
         echo "profile=$profile" >> $GITHUB_OUTPUT
@@ -256,20 +271,29 @@ runs:
       id: generate_export_options
       if: ${{ inputs.xcode_unsigned != 'true' }}
       shell: bash
+      env:
+        STEPS_EXPORT_OPTIONS_METHOD: ${{ steps.export_options.outputs.method }}
+        STEPS_EXPORT_OPTIONS_PROFILE: ${{ steps.export_options.outputs.profile }}
+        STEPS_EXPORT_OPTIONS_APP_URL: ${{ steps.export_options.outputs.app_url }}
+        STEPS_EXPORT_OPTIONS_IMAGE_URL: ${{ steps.export_options.outputs.image_url }}
+        STEPS_EXPORT_OPTIONS_FULL_IMAGE_URL: ${{ steps.export_options.outputs.full_image_url }}
+        STEPS_EXPORT_OPTIONS_SIGNING_CERT: ${{ steps.export_options.outputs.signing_cert }}
+        INPUTS_XCODE_DEV_TEAM: ${{ inputs.xcode_dev_team }}
+        INPUTS_XCODE_PRODUCT_BUNDLE: ${{ inputs.xcode_product_bundle }}
       run: |
         echo "::group::Generate Export Options Plist"
         EXPORT_OPTS_PATH=$RUNNER_TEMP/ExportOptions.plist
-        cp -v ExportOptions.plist.xml $EXPORT_OPTS_PATH 
-        sed -i "" -e 's|__METHOD__|${{ steps.export_options.outputs.method }}|g' $EXPORT_OPTS_PATH
-        sed -i "" -e 's|__PROFILE_NAME__|${{ steps.export_options.outputs.profile }}|g' $EXPORT_OPTS_PATH
-        sed -i "" -e 's|__APP_URL__|${{ steps.export_options.outputs.app_url }}|g' $EXPORT_OPTS_PATH
-        sed -i "" -e 's|__IMAGE_URL__|${{ steps.export_options.outputs.image_url }}|g' $EXPORT_OPTS_PATH
-        sed -i "" -e 's|__FULL_IMAGE_URL__|${{ steps.export_options.outputs.full_image_url }}|g' $EXPORT_OPTS_PATH
-        sed -i "" -e 's|__SIGNING_CERT__|${{ steps.export_options.outputs.signing_cert }}|g' $EXPORT_OPTS_PATH
-        sed -i "" -e 's|__TEAM_ID__|${{ inputs.xcode_dev_team }}|g' $EXPORT_OPTS_PATH
-        sed -i "" -e 's|__PRODUCT_BUNDLE__|${{ inputs.xcode_product_bundle }}|g' $EXPORT_OPTS_PATH
+        cp -v ExportOptions.plist.xml "${EXPORT_OPTS_PATH}"
+        sed -i "" -e "s|__METHOD__|${STEPS_EXPORT_OPTIONS_METHOD}|g" "${EXPORT_OPTS_PATH}"
+        sed -i "" -e "s|__PROFILE_NAME__|${STEPS_EXPORT_OPTIONS_PROFILE}|g" "${EXPORT_OPTS_PATH}"
+        sed -i "" -e "s|__APP_URL__|${STEPS_EXPORT_OPTIONS_APP_URL}|g" "${EXPORT_OPTS_PATH}"
+        sed -i "" -e "s|__IMAGE_URL__|${STEPS_EXPORT_OPTIONS_IMAGE_URL}|g" "${EXPORT_OPTS_PATH}"
+        sed -i "" -e "s|__FULL_IMAGE_URL__|${STEPS_EXPORT_OPTIONS_FULL_IMAGE_URL}|g" "${EXPORT_OPTS_PATH}"
+        sed -i "" -e "s|__SIGNING_CERT__|${STEPS_EXPORT_OPTIONS_SIGNING_CERT}|g" "${EXPORT_OPTS_PATH}"
+        sed -i "" -e "s|__TEAM_ID__|${INPUTS_XCODE_DEV_TEAM}|g" "${EXPORT_OPTS_PATH}"
+        sed -i "" -e "s|__PRODUCT_BUNDLE__|${INPUTS_XCODE_PRODUCT_BUNDLE}|g" "${EXPORT_OPTS_PATH}"
         echo "Output: $EXPORT_OPTS_PATH"
-        cat $EXPORT_OPTS_PATH
+        cat "${EXPORT_OPTS_PATH}"
         echo "::endgroup::"
 
     - name: Export IPA - XCode Signed
@@ -279,12 +303,14 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
+        INPUTS_ARTIFACTS_NAME: ${{ inputs.artifacts_name }}
       run: |
         echo "::group::XCode Export IPA - Signed"
         EXPORT_OPTS_PATH=$RUNNER_TEMP/ExportOptions.plist
         xcodebuild -exportArchive \
-          -archivePath build/${{ inputs.project_key }}.xcarchive \
-          -exportPath build/${{ inputs.artifacts_name }} \
+          -archivePath build/${INPUTS_PROJECT_KEY}.xcarchive \
+          -exportPath build/${INPUTS_ARTIFACTS_NAME} \
           -exportOptionsPlist $EXPORT_OPTS_PATH
         echo "::endgroup::"
 
@@ -294,12 +320,16 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_XCODE_CONFIGURATION: ${{ inputs.xcode_configuration }}
+        INPUTS_XCODE_SCHEME: ${{ inputs.xcode_scheme }}
+        INPUTS_ARTIFACTS_NAME: ${{ inputs.artifacts_name }}
       run: |
         echo "::group::XCode Export IPA - Unsigned"
         tmp_dir=$(mktemp -d)
         mkdir -p $tmp_dir/Payload/
-        cp -R "${{ inputs.source_path }}/build/derived-data/Build/Products/${{ inputs.xcode_configuration }}-iphoneos/${{ inputs.xcode_scheme }}.app" $tmp_dir/Payload/
+        cp -R "${INPUTS_SOURCE_PATH}/build/derived-data/Build/Products/${INPUTS_XCODE_CONFIGURATION}-iphoneos/${INPUTS_XCODE_SCHEME}.app" $tmp_dir/Payload/
         cd $tmp_dir
-        mkdir -p $GITHUB_WORKSPACE/${{ inputs.source_path }}/build/${{ inputs.artifacts_name }}
-        zip -r $GITHUB_WORKSPACE/${{ inputs.source_path }}/build/${{ inputs.artifacts_name }}/${{ inputs.artifacts_name }}.ipa .
+        mkdir -p $GITHUB_WORKSPACE/${INPUTS_SOURCE_PATH}/build/${INPUTS_ARTIFACTS_NAME}
+        zip -r $GITHUB_WORKSPACE/${INPUTS_SOURCE_PATH}/build/${INPUTS_ARTIFACTS_NAME}/${INPUTS_ARTIFACTS_NAME}.ipa .
         echo "::endgroup::"

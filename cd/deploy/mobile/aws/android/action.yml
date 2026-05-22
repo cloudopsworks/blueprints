@@ -64,8 +64,11 @@ runs:
     - name: Normalize Android inputs
       id: android_normalized
       shell: bash
+      env:
+        INPUTS_ANDROID_SDK: ${{ inputs.android_sdk }}
+        INPUTS_ANDROID_DESTINATION: ${{ inputs.android_destination }}
       run: |
-        ret=$(echo "${{ inputs.android_sdk }}_${{ inputs.android_destination }}" | tr ' ,:=/' '-')
+        ret=$(echo "${INPUTS_ANDROID_SDK}_${INPUTS_ANDROID_DESTINATION}" | tr ' ,:=/' '-')
         echo "result=$ret" >> $GITHUB_OUTPUT
 
     - name: Restore Pipeline Artifacts
@@ -97,5 +100,6 @@ runs:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
       run: |
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        zip -r "${GITHUB_WORKSPACE}/${INPUTS_BLUEPRINT_PATH}/devicefarms/aws/release/${REL}-${RELVER}${QUALI}-tests.zip" .

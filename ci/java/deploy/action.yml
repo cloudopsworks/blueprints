@@ -39,16 +39,30 @@ runs:
     # Get if this is a library project
     - name: Get pipeline preview enabled
       id: is_library
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '(.isLibrary or .is_library) and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e "(.isLibrary or .is_library) and true" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the custom Maven Options
     - name: Get Maven options
       id: maven_opts
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".maven_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Deploy release to Maven Repository (defaults to Github repo)
     - name: Deploy to Maven Repo
@@ -57,9 +71,12 @@ runs:
       shell: bash
       run: |
         echo "::group::Maven Deploy to MVN Repo"        
-        MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
+        MAVEN_OPTS="$MAVEN_OPTS ${STEPS_MAVEN_OPTS_RESULT}"
         mvn --batch-mode deploy -DskipTests
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        STEPS_MAVEN_OPTS_RESULT: ${STEPS_MAVEN_OPTS_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}

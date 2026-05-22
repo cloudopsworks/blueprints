@@ -50,19 +50,27 @@ runs:
       id: quality
       shell: bash
       working-directory: ${{ inputs.source_path }}/${{ inputs.project_path }}
+      env:
+        INPUTS_PUB_GET_ENABLED: ${{ inputs.pub_get_enabled }}
+        INPUTS_FORMATTER_CHECK_ENABLED: ${{ inputs.formatter_check_enabled }}
+        INPUTS_ANALYZE_ENABLED: ${{ inputs.analyze_enabled }}
+        INPUTS_TEST_ENABLED: ${{ inputs.test_enabled }}
+        INPUTS_COVERAGE_ENABLED: ${{ inputs.coverage_enabled }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_PROJECT_PATH: ${{ inputs.project_path }}
       run: |
         set -euo pipefail
-        if [[ "${{ inputs.pub_get_enabled }}" == "true" ]]; then
+        if [[ "${INPUTS_PUB_GET_ENABLED}" == "true" ]]; then
           flutter pub get
         fi
-        if [[ "${{ inputs.formatter_check_enabled }}" == "true" ]]; then
+        if [[ "${INPUTS_FORMATTER_CHECK_ENABLED}" == "true" ]]; then
           dart format --set-exit-if-changed .
         fi
-        if [[ "${{ inputs.analyze_enabled }}" == "true" ]]; then
+        if [[ "${INPUTS_ANALYZE_ENABLED}" == "true" ]]; then
           flutter analyze
         fi
-        if [[ "${{ inputs.test_enabled }}" == "true" ]]; then
-          if [[ "${{ inputs.coverage_enabled }}" == "true" ]]; then
+        if [[ "${INPUTS_TEST_ENABLED}" == "true" ]]; then
+          if [[ "${INPUTS_COVERAGE_ENABLED}" == "true" ]]; then
             flutter test --coverage
           else
             flutter test
@@ -70,7 +78,7 @@ runs:
         fi
         coverage=""
         if [[ -f coverage/lcov.info ]]; then
-          coverage="${{ inputs.source_path }}/${{ inputs.project_path }}/coverage/lcov.info"
+          coverage="${INPUTS_SOURCE_PATH}/${INPUTS_PROJECT_PATH}/coverage/lcov.info"
         fi
         echo "coverage_path=$coverage" >> "$GITHUB_OUTPUT"
         echo "quality_ran=true" >> "$GITHUB_OUTPUT"

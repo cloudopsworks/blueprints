@@ -53,9 +53,11 @@ runs:
     - name: Precache Flutter artifacts
       if: ${{ inputs.precache == 'true' }}
       shell: bash
+      env:
+        INPUTS_PLATFORM_TYPE: ${{ inputs.platform_type }}
       run: |
         set -euo pipefail
-        case "${{ inputs.platform_type }}" in
+        case "${INPUTS_PLATFORM_TYPE}" in
           android) flutter precache --android ;;
           ios) flutter precache --ios ;;
           common) flutter precache --android --ios || flutter precache ;;

@@ -54,7 +54,12 @@ runs:
     - name: Upload to Cloud Storage
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
+      env:
+        GCP_IMPERSONATE_SA: ${{ inputs.gcp_impersonate_sa }}
+        INPUTS_DEST_ZIP: ${{ inputs.dest_zip }}
+        INPUTS_VERSIONS_BUCKET: ${{ inputs.versions_bucket }}
+        INPUTS_BUCKET_PATH: ${{ inputs.bucket_path }}
       run: |
         echo "::group::Uploading to GCP Cloud Storage"
-        gcloud storage cp --impersonate-service-account=${{ inputs.gcp_impersonate_sa }} ${{ inputs.dest_zip }} gs://${{ inputs.versions_bucket }}/${{ inputs.bucket_path }}
+        gcloud storage cp --impersonate-service-account="${GCP_IMPERSONATE_SA}" "${INPUTS_DEST_ZIP}" "gs://${INPUTS_VERSIONS_BUCKET}/${INPUTS_BUCKET_PATH}"
         echo "::endgroup::"

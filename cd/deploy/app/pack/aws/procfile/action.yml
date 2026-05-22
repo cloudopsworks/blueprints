@@ -59,36 +59,42 @@ runs:
       if: ${{ inputs.node_stack == 'true' }}
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
+      env:
+        INPUTS_NODE_APM: ${{ inputs.node_apm }}
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: ${{ inputs.node_apm }} npm run start' > Procfile
-          echo '::warning::Procfile created with default content'
+          echo "web: ${INPUTS_NODE_APM} npm run start" > Procfile
+          echo "::warning::Procfile created with default content"
         else
-          echo '::notice::Procfile already exists, will use provided'
+          echo "::notice::Procfile already exists, will use provided"
         fi
 
     - name: Default Procfile for Java
       if: ${{ inputs.java_stack == 'true' }}
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
+      env:
+        INPUTS_JAVA_APM: ${{ inputs.java_apm }}
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: java $JAVA_OPTS ${{ inputs.java_apm }} -jar app.jar' > Procfile
-          echo '::warning::Procfile created with default content'
+          echo "web: java $JAVA_OPTS ${INPUTS_JAVA_APM} -jar app.jar" > Procfile
+          echo "::warning::Procfile created with default content"
         else
-          echo '::notice::Procfile already exists, will use provided.'
+          echo "::notice::Procfile already exists, will use provided."
         fi
 
     - name: Default Procfile for Python
       if: ${{ inputs.python_stack == 'true' }}
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
+      env:
+        INPUTS_PYTHON_APM: ${{ inputs.python_apm }}
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: ${{ inputs.python_apm }} python3 main.py' > Procfile
-          echo '::warning::Procfile created with default content'
+          echo "web: ${INPUTS_PYTHON_APM} python3 main.py" > Procfile
+          echo "::warning::Procfile created with default content"
         else
-          echo '::notice::Procfile already exists, will use provided.'
+          echo "::notice::Procfile already exists, will use provided."
         fi
 
     - name: Default Procfile for .Net
@@ -97,19 +103,21 @@ runs:
       shell: bash
       run: |
         if [ ! -f Procfile ] ; then
-          echo '::warning::Procfile not created environment will generate it.'
+          echo "::warning::Procfile not created environment will generate it."
         else
-          echo '::notice::Procfile already exists, will use provided.'
+          echo "::notice::Procfile already exists, will use provided."
         fi
 
     - name: Default Procfile for Go
       if: ${{ inputs.go_stack == 'true' }}
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
+      env:
+        INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
       run: |
         if [ ! -f Procfile ] ; then
-          echo 'web: exec bin/${{ inputs.release_name }}' > Procfile
-          echo '::warning::Procfile created with default content'
+          echo "web: exec bin/""${INPUTS_RELEASE_NAME}" > Procfile
+          echo "::warning::Procfile created with default content"
         else
-          echo '::notice::Procfile already exists, will use provided.'
+          echo "::notice::Procfile already exists, will use provided."
         fi

@@ -133,19 +133,23 @@ runs:
       id: project_owner
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_GETOWNER_OWNER: ${{ steps.getowner.outputs.owner }}
       run: |
         RET=$(yq e '.repository_owner' .cloudopsworks/vars/inputs-global.yaml)
-        if [[ "${{ steps.getowner.outputs.owner }}" != "$RET" ]] ; then
-          echo "::error::Project owner from inputs-global.yaml does not match the repository owner. Validation Failed. Expected repository_owner: '${{ steps.getowner.outputs.owner }}'... Build may fail."
+        if [[ "${STEPS_GETOWNER_OWNER}" != "$RET" ]] ; then
+          echo "::error::Project owner from inputs-global.yaml does not match the repository owner. Validation Failed. Expected repository_owner: '${STEPS_GETOWNER_OWNER}'... Build may fail."
         fi
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get Environment from inputs-global.yaml for validation
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_GETOWNER_REPO_NAME: ${{ steps.getowner.outputs.repo_name }}
       run: |
         RET=$(yq e '.environment_name' .cloudopsworks/vars/inputs-global.yaml)
-        if [[ "${{ steps.getowner.outputs.repo_name }}" != "$RET" ]] ; then
+        if [[ "${STEPS_GETOWNER_REPO_NAME}" != "$RET" ]] ; then
           echo "::warning::Environment name from inputs-global.yaml does not match the repository name. Pipeline Outcomes are not aligned."
         fi
 
@@ -201,12 +205,17 @@ runs:
     - name: Set the appropriate workspace
       id: workspace
       uses: actions/github-script@v8
+      env:
+        STEPS_DEPLOY_CONF_RESULT: ${{ steps.deploy_conf.outputs.result }}
+        GITHUB_HEAD_REF: ${{ github.head_ref }}
+        GITHUB_BASE_REF: ${{ github.base_ref }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
       with:
         script: |
-          const deployments = JSON.parse('${{ steps.deploy_conf.outputs.result }}');
-          const head = '${{ github.head_ref }}';
-          const base = '${{ github.base_ref }}';
-          const ref = '${{ github.ref_name }}';
+          const deployments = JSON.parse('' + (process.env.STEPS_DEPLOY_CONF_RESULT || '') + '');
+          const head = '' + (process.env.GITHUB_HEAD_REF || '') + '';
+          const base = '' + (process.env.GITHUB_BASE_REF || '') + '';
+          const ref = '' + (process.env.GITHUB_REF_NAME || '') + '';
           var branch = base !== '' ? base : ref;
           
           var environment = '';
@@ -318,10 +327,12 @@ runs:
       id: check_env_file
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
         fexist=false
-        if [ ! -f .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml ]; then
-          echo "::warning::File .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml does not exist. Most configurations will not be available."
+        if [ ! -f ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml" ]; then
+          echo "::warning::File .cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml does not exist. Most configurations will not be available."
         else
           fexist=true
         fi
@@ -333,8 +344,10 @@ runs:
       shell: bash
       if: steps.check_env_file.outputs.result == 'true'
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.blue_green and true' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.blue_green and true' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the AWS Region value from the inputs-<environment>.yaml file
@@ -343,8 +356,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'AWS' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.aws.region // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.aws.region // ""' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the AWS Build STS Role ARN value from the inputs-<environment>.yaml file
@@ -353,8 +368,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'AWS' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.aws.build_sts_role_arn // .aws.sts_role_arn  // ""' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the AWS Deployment STS Role ARN value from the inputs-<environment>.yaml file
@@ -363,8 +380,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'AWS' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.aws.deploy_sts_role_arn // .aws.sts_role_arn  // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.aws.deploy_sts_role_arn // .aws.sts_role_arn  // ""' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Google Cloud Region
@@ -373,8 +392,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.gcp.region // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.gcp.region // ""' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Google Cloud Project
@@ -383,8 +404,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.gcp.project // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.gcp.project // ""' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Google Cloud Impersonate Service Account for the build
@@ -393,8 +416,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.gcp.build_impersonate_sa // .gcp.impersonate_sa // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.gcp.build_impersonate_sa // .gcp.impersonate_sa // ""' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Google Cloud Impersonate Service Account for the build
@@ -403,8 +428,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'GCP' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.gcp.deploy_impersonate_sa // .gcp.impersonate_sa // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.gcp.deploy_impersonate_sa // .gcp.impersonate_sa // ""' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Azure Build RG value from the inputs-<environment>.yaml file
@@ -413,8 +440,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'AZURE' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.azure.build_resource_group // .azure.resource_group // "no-resource-group"' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.azure.build_resource_group // .azure.resource_group // "no-resource-group"' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Azure Deploy RG value from the inputs-<environment>.yaml file
@@ -423,8 +452,10 @@ runs:
       if: ${{ steps.cloud.outputs.result == 'AZURE' && steps.check_env_file.outputs.result == 'true' }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.azure.deploy_resource_group // .azure.resource_group // "no-resource-group"' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.azure.deploy_resource_group // .azure.resource_group // "no-resource-group"' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the Azure Preview RG value from the inputs-global.yaml file
@@ -450,8 +481,10 @@ runs:
       shell: bash
       if: steps.check_env_file.outputs.result == 'true'
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.runner_set // ""' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.runner_set // ""' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Get if the build is for library
@@ -477,8 +510,10 @@ runs:
       shell: bash
       if: steps.check_env_file.outputs.result == 'true'
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_WORKSPACE_WORKSPACE: ${{ steps.workspace.outputs.workspace }}
       run: |
-        RET=$(yq -I=0 '.disable_deploy and true' .cloudopsworks/vars/inputs-${{ steps.workspace.outputs.workspace }}.yaml)
+        RET=$(yq -I=0 '.disable_deploy and true' ".cloudopsworks/vars/inputs-${STEPS_WORKSPACE_WORKSPACE}.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get if is automatic environment:

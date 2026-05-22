@@ -27,11 +27,15 @@ runs:
     - name: Set the appropriate workspace
       id: workspace
       uses: actions/github-script@v8
+      env:
+        GITHUB_HEAD_REF: ${{ github.head_ref }}
+        GITHUB_BASE_REF: ${{ github.base_ref }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
       with:
         script: |
-          const head = '${{ github.head_ref }}';
-          const base = '${{ github.base_ref }}';
-          const ref = '${{ github.ref_name }}';
+          const head = '' + (process.env.GITHUB_HEAD_REF || '') + '';
+          const base = '' + (process.env.GITHUB_BASE_REF || '') + '';
+          const ref = '' + (process.env.GITHUB_REF_NAME || '') + '';
           var branch = base !== '' ? base : ref;
           // This semver structure is obtained as per specification https://semver.org/ & https://regex101.com/r/vkijKf/1/
           semver = branch.match(/^v(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?/);

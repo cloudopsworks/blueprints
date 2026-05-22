@@ -67,37 +67,67 @@ runs:
     # Get pipeline conf .Net version Defaults to 9
     - name: Get pipeline .Net version
       id: dotnet_version
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dotnet.version // "10.0"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".dotnet.version // \"10.0\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf .Net dist defaults to aspnet
     - name: Get pipeline .Net dist
       id: dotnet_dist
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dotnet.dist // "aspnet"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".dotnet.dist // \"aspnet\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf .Net image variant defaults to alpine
     - name: Get pipeline .Net image variant
       id: dotnet_image_variant
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dotnet.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".dotnet.image_variant // \"alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf .Net build project path
     - name: Get pipeline .Net build project path
       id: project_path
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dotnet.project_path // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".dotnet.project_path // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
       # Validate project_path must not be blank, othewise fail the entire workflow
     - name: Validate project_path
       id: validate_project_path
       shell: bash
+      env:
+        STEPS_PROJECT_PATH_RESULT: ${{ steps.project_path.outputs.result }}
       run: |
-        if [ -z "${{ steps.project_path.outputs.result }}" ]; then
+        if [ -z "${STEPS_PROJECT_PATH_RESULT}" ]; then
           echo "Error: project_path is empty"
           exit 1
         fi
@@ -105,65 +135,127 @@ runs:
     # Get the Package name from project's path csproj file
     - name: Get Package name
       id: package_name
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -px -oy '.Project.PropertyGroup.AssemblyName' ${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}/${{ steps.project_path.outputs.result }}.csproj
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        STEPS_PROJECT_PATH_RESULT: ${{ steps.project_path.outputs.result }}
+      run: |
+        RET=$(yq e -px -oy ".Project.PropertyGroup.AssemblyName" "${INPUTS_SOURCE_PATH}/${STEPS_PROJECT_PATH_RESULT}/${STEPS_PROJECT_PATH_RESULT}.csproj")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the custom Build Options
     - name: Get .Net Build options
       id: build_opts
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".build_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the custom Build Options
     - name: Get .Net Build options
       id: run_opts
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.run_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".run_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the custom Build Options
     - name: Get .Net Publish options
       id: publish_opts
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.publish_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".publish_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the custom Test Options
     - name: Get .Net Test options
       id: test_opts
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".test_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the default configuration
     - name: Get .Net default configuration
       id: global_default_configuration
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.dotnet.configuration // "Release"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".dotnet.configuration // \"Release\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the default configuration
     - name: Get .Net default configuration
       id: default_configuration
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.dotnet_configuration // "${{ steps.global_default_configuration.outputs.result }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml
+      shell: bash
+      env:
+        STEPS_GLOBAL_DEFAULT_CONFIGURATION_RESULT: ${{ steps.global_default_configuration.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq e -I=0 ".dotnet_configuration // strenv(STEPS_GLOBAL_DEFAULT_CONFIGURATION_RESULT)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".dependencyTrack.type // \"application\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Check existence of packages.lock.json and set to true
     - name: Check for packages.lock.json
       id: lock_file
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        STEPS_PROJECT_PATH_RESULT: ${{ steps.project_path.outputs.result }}
       run: |
-        if [ -f "${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}/packages.lock.json" ]; then
+        if [ -f "${INPUTS_SOURCE_PATH}/${STEPS_PROJECT_PATH_RESULT}/packages.lock.json" ]; then
           echo "result=true" >> $GITHUB_OUTPUT
         else
           echo "result=false" >> $GITHUB_OUTPUT
@@ -187,9 +279,11 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -203,28 +297,39 @@ runs:
       shell: bash
       run: |
         echo "::group::.Net Build"
-        dotnet restore ${{ steps.lock_file.outputs.result == 'true' && '--locked-mode' || ' ' }}
-        dotnet build --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.build_opts.outputs.result }} --no-restore --verbosity normal
+        dotnet restore ${EXPR_STEPS_LOCK_FILE_OUTPUTS_RESULT_TRUE_LOCKED_MODE}
+        dotnet build --configuration ${STEPS_DEFAULT_CONFIGURATION_RESULT} ${STEPS_BUILD_OPTS_RESULT} --no-restore --verbosity normal
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
-        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        NUGET_PACKAGES: ${GITHUB_WORKSPACE}/.nuget/packages
 
+        EXPR_STEPS_LOCK_FILE_OUTPUTS_RESULT_TRUE_LOCKED_MODE: ${EXPR_STEPS_LOCK_FILE_OUTPUTS_RESULT_TRUE_LOCKED_MODE}
+        STEPS_DEFAULT_CONFIGURATION_RESULT: ${STEPS_DEFAULT_CONFIGURATION_RESULT}
+        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_WORKSPACE: ${GITHUB_WORKSPACE}
     # Test the code!
     - name: Test Code
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         echo "::group::.Net Tests"
-        dotnet test --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.test_opts.outputs.result }} \
+        dotnet test --configuration ${STEPS_DEFAULT_CONFIGURATION_RESULT} ${STEPS_TEST_OPTS_RESULT} \
           --no-build --no-restore --verbosity normal --collect "XPlat Code Coverage" \
-          --results-directory ./TestResults /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura -- ${{ steps.run_opts.outputs.result }}
+          --results-directory ./TestResults /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura -- ${STEPS_RUN_OPTS_RESULT}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        STEPS_DEFAULT_CONFIGURATION_RESULT: ${STEPS_DEFAULT_CONFIGURATION_RESULT}
+        STEPS_TEST_OPTS_RESULT: ${STEPS_TEST_OPTS_RESULT}
+        STEPS_RUN_OPTS_RESULT: ${STEPS_RUN_OPTS_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     # SBOM generation
     - name: SBOM Generation for Dtrack
       uses: CycloneDX/gh-dotnet-generate-sbom@v1
@@ -238,10 +343,16 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::.Net Publishing"
-        dotnet publish --configuration ${{ steps.default_configuration.outputs.result }} ${{ steps.project_path.outputs.result }} \
-          ${{ steps.publish_opts.outputs.result }} --output ./PublishRelease --no-build --no-restore
+        dotnet publish --configuration ${STEPS_DEFAULT_CONFIGURATION_RESULT} ${STEPS_PROJECT_PATH_RESULT} \
+          ${STEPS_PUBLISH_OPTS_RESULT} --output ./PublishRelease --no-build --no-restore
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
-        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        NUGET_PACKAGES: ${GITHUB_WORKSPACE}/.nuget/packages
+        STEPS_DEFAULT_CONFIGURATION_RESULT: ${STEPS_DEFAULT_CONFIGURATION_RESULT}
+        STEPS_PROJECT_PATH_RESULT: ${STEPS_PROJECT_PATH_RESULT}
+        STEPS_PUBLISH_OPTS_RESULT: ${STEPS_PUBLISH_OPTS_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_WORKSPACE: ${GITHUB_WORKSPACE}

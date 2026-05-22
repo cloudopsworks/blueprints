@@ -39,9 +39,12 @@ runs:
     - name: Normalize release assets
       id: collect
       shell: bash
+      env:
+        INPUTS_OUTPUT_DIR: ${{ inputs.output_dir }}
+        INPUTS_MANIFEST_NAME: ${{ inputs.manifest_name }}
       run: |
         set -euo pipefail
-        out="${{ inputs.output_dir }}"
+        out="${INPUTS_OUTPUT_DIR}"
         mkdir -p "$out/android" "$out/ios"
         count=0
         while IFS= read -r f; do
@@ -54,20 +57,20 @@ runs:
         manifests=()
         while IFS= read -r f; do manifests+=("$f"); done < <(find .flutter-release-downloads -type f -name 'artifact-manifest.json' | sort)
         if [[ "${#manifests[@]}" -gt 0 ]]; then
-          jq -s '{artifacts: .}' "${manifests[@]}" > "$out/${{ inputs.manifest_name }}"
+          jq -s '{artifacts: .}' "${manifests[@]}" > "$out/${INPUTS_MANIFEST_NAME}"
         else
-          jq -n '{artifacts: []}' > "$out/${{ inputs.manifest_name }}"
+          jq -n '{artifacts: []}' > "$out/${INPUTS_MANIFEST_NAME}"
         fi
         files_globs=$(printf '%s\n%s\n%s\n%s\n' \
           "$out/**/*.apk" \
           "$out/**/*.aab" \
           "$out/**/*.ipa" \
-          "$out/${{ inputs.manifest_name }}")
+          "$out/${INPUTS_MANIFEST_NAME}")
         {
           echo "files_globs<<EOF"
           echo "$files_globs"
           echo "EOF"
-          echo "manifest_path=$out/${{ inputs.manifest_name }}"
+          echo "manifest_path=$out/${INPUTS_MANIFEST_NAME}"
           echo "artifact_count=$count"
         } >> "$GITHUB_OUTPUT"
         if [[ "$count" -eq 0 ]]; then

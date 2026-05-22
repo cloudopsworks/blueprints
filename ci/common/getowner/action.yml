@@ -23,7 +23,9 @@ runs:
     - name: Get Repository Owner and Name
       id: get_owner
       shell: bash
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}
       run: |
-        REPO=${{ github.repository }}
+        REPO=${GITHUB_REPOSITORY}
         echo "owner=$(echo $REPO | cut -d'/' -f1)" >> $GITHUB_OUTPUT
         echo "repo_name=$(echo $REPO | cut -d'/' -f2)" >> $GITHUB_OUTPUT

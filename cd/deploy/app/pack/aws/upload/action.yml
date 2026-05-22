@@ -54,21 +54,28 @@ runs:
         echo "aws_secret_access_key=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SecretAccessKey')" >> $GITHUB_OUTPUT
         echo "aws_session_token=$(echo "${TEMP_ROLE}" | jq -r '.Credentials.SessionToken')" >> $GITHUB_OUTPUT
       env:
-        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
-        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
-        ASSUME_ROLE_ARN: ${{ inputs.aws_sts_role_arn }}
+        AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
+        AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
+        ASSUME_ROLE_ARN: ${INPUTS_AWS_STS_ROLE_ARN}
         ROLE_SESSION_NAME: s3-upload-pipeline
-        AWS_REGION: ${{ inputs.aws_region }}
+        AWS_REGION: ${INPUTS_AWS_REGION}
 
+        INPUTS_AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
+        INPUTS_AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
+        INPUTS_AWS_STS_ROLE_ARN: ${INPUTS_AWS_STS_ROLE_ARN}
+        INPUTS_AWS_REGION: ${INPUTS_AWS_REGION}
     - name: Upload to S3
       working-directory: ${{ inputs.temp_dir }}
       shell: bash
-      run: |
-        echo "::group::Uploading to S3"
-        aws s3 cp ${{ inputs.dest_zip }} s3://${{ inputs.versions_bucket }}/${{ inputs.bucket_path }}
-        echo "::endgroup::"
       env:
+        INPUTS_DEST_ZIP: ${{ inputs.dest_zip }}
+        INPUTS_VERSIONS_BUCKET: ${{ inputs.versions_bucket }}
+        INPUTS_BUCKET_PATH: ${{ inputs.bucket_path }}
         AWS_ACCESS_KEY_ID: ${{ steps.sts.outputs.aws_access_key_id }}
         AWS_SECRET_ACCESS_KEY: ${{ steps.sts.outputs.aws_secret_access_key }}
         AWS_SESSION_TOKEN: ${{ steps.sts.outputs.aws_session_token }}
         AWS_REGION: ${{ inputs.aws_region }}
+      run: |
+        echo "::group::Uploading to S3"
+        aws s3 cp "${INPUTS_DEST_ZIP}" "s3://${INPUTS_VERSIONS_BUCKET}/${INPUTS_BUCKET_PATH}"
+        echo "::endgroup::"

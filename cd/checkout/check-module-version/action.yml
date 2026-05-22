@@ -159,16 +159,19 @@ runs:
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        STEPS_CHECK_MODULE_TYPE_REPO: ${{ steps.check_module_type.outputs.repo }}
+        STEPS_CHECK_MODULE_TYPE_CURRENT_VERSION: ${{ steps.check_module_type.outputs.current_version }}
       run: |
         # Check the module version in the blueprint
         # Check module version against the latest tag in the module repo
         # this should be done whith github api but without the 
-        if [ "${{ steps.check_module_type.outputs.repo }}" == "" ]; then
+        if [ "${STEPS_CHECK_MODULE_TYPE_REPO}" == "" ]; then
           echo "::error::No module marker file found in .cloudopsworks directory"
           exit 1
         fi
-        repo="${{ steps.check_module_type.outputs.repo }}"
-        ref="${{ steps.check_module_type.outputs.current_version }}"
+        repo="${STEPS_CHECK_MODULE_TYPE_REPO}"
+        ref="${STEPS_CHECK_MODULE_TYPE_CURRENT_VERSION}"
         # Get tags via GitHub CLI (uses GH_TOKEN)
         tags=$(git ls-remote --tags https://github.com/$repo.git | awk '{print $2}' | grep -v '\^{}' | sed 's|refs/tags/||')
         if [[ -z "$tags" ]]; then

@@ -46,6 +46,10 @@ runs:
       env:
         ARTIFACT_PATHS_JSON: ${{ inputs.artifact_paths_json }}
         MANIFEST_PATH: ${{ inputs.artifact_manifest_path }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_PROJECT_PATH: ${{ inputs.project_path }}
+        INPUTS_WORKFLOW_ARTIFACT_NAME: ${{ inputs.workflow_artifact_name }}
+        INPUTS_TARGET_ARTIFACT_NAME: ${{ inputs.target_artifact_name }}
       run: |
         set -euo pipefail
         mkdir -p build/flutter-upload build/flutter-target
@@ -65,12 +69,12 @@ runs:
         tar -cf build/flutter-target/source_artifacts_target.tar \
           --exclude='build' --exclude='.dart_tool' --exclude='android/.gradle' --exclude='ios/Pods' --exclude='ios/Flutter/ephemeral' \
           . 2>/dev/null || tar -cf build/flutter-target/source_artifacts_target.tar .
-        project_root="${{ inputs.source_path }}"
-        if [[ -n "${{ inputs.project_path }}" && "${{ inputs.project_path }}" != "." ]]; then
-          project_root="$project_root/${{ inputs.project_path }}"
+        project_root="${INPUTS_SOURCE_PATH}"
+        if [[ -n "${INPUTS_PROJECT_PATH}" && "${INPUTS_PROJECT_PATH}" != "." ]]; then
+          project_root="$project_root/${INPUTS_PROJECT_PATH}"
         fi
         echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
-        echo "uploaded_artifact_names_json=[\"${{ inputs.workflow_artifact_name }}\",\"${{ inputs.target_artifact_name }}\"]" >> "$GITHUB_OUTPUT"
+        echo "uploaded_artifact_names_json=[\"${INPUTS_WORKFLOW_ARTIFACT_NAME}\",\"${INPUTS_TARGET_ARTIFACT_NAME}\"]" >> "$GITHUB_OUTPUT"
 
     - name: Upload Flutter build artifacts
       uses: actions/upload-artifact@v7

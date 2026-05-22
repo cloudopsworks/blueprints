@@ -32,8 +32,10 @@ runs:
     - name: Check sourcedir existence
       id: sourcedir
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        if [ ! -f ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ]; then
+        if [ ! -f "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml" ]; then
           echo "Source directory does not exist. will omit cloudentry."
           echo "result=false" >> $GITHUB_OUTPUT
         else
@@ -45,16 +47,23 @@ runs:
       id: cloud_src
       shell: bash
       if: ${{ steps.sourcedir.outputs.result == 'true' }}
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.cloud // "all"' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
+        RET=$(yq e '.cloud // "all"' "${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml" | tr '[:lower:]' '[:upper:]')
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     - name: Set Cloud Entry
       id: cloud
       shell: bash
+      env:
+        STEPS_SOURCEDIR_RESULT: ${{ steps.sourcedir.outputs.result }}
+        STEPS_CLOUD_SRC_RESULT: ${{ steps.cloud_src.outputs.result }}
+        EXPR_CONTAINS_FROMJSON_AWS_ALL_STEPS_CLOUD_OUTPUTS_RE: ${{ contains(fromJSON('["AWS","ALL"]'), steps.cloud.outputs.result) }}
+        EXPR_CONTAINS_FROMJSON_AZURE_AZ_ALL_STEPS_CLOUD_OUTPU: ${{ contains(fromJSON('["AZURE","AZ","ALL"]'), steps.cloud.outputs.result) }}
       run: |
-        if [ "${{ steps.sourcedir.outputs.result }}" == "true" ]; then
-          echo "result=${{ steps.cloud_src.outputs.result }}" >> $GITHUB_OUTPUT
+        if [ "${STEPS_SOURCEDIR_RESULT}" == "true" ]; then
+          echo "result=${STEPS_CLOUD_SRC_RESULT}" >> $GITHUB_OUTPUT
         else
           echo "result=ALL" >> $GITHUB_OUTPUT
         fi
@@ -62,7 +71,7 @@ runs:
 #    - name: Download and Install AWS CLI
 #      working-directory: /tmp
 #      shell: bash
-#      if: ${{ contains(fromJSON('["AWS","ALL"]'), steps.cloud.outputs.result) }}
+#      if: ${EXPR_CONTAINS_FROMJSON_AWS_ALL_STEPS_CLOUD_OUTPUTS_RE}
 #      run: |
 #        echo "::group::Download and install AWS CLI"
 #        curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
@@ -73,7 +82,7 @@ runs:
 #    - name: Download and Install Azure CLI
 #      working-directory: /tmp
 #      shell: bash
-#      if: ${{ contains(fromJSON('["AZURE","AZ","ALL"]'), steps.cloud.outputs.result) }}
+#      if: ${EXPR_CONTAINS_FROMJSON_AZURE_AZ_ALL_STEPS_CLOUD_OUTPU}
 #      env:
 #        DEBIAN_FRONTEND: noninteractive
 #      run: |

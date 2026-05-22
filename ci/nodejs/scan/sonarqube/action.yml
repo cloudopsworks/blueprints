@@ -39,67 +39,140 @@ runs:
   steps:
     - name: Get Repository Owner from inputs-global.yaml
       id: repo_owner
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".repository_owner // strenv(GITHUB_REPOSITORY_OWNER)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonnar Scanner version, if needed to be adjusted, allways defaults to latest
       id: sonar_scanner_version
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.sonarqube.scanner_version // "latest"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.scanner_version // \"latest\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar sources form inputs-global.yaml
       id: source_path
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.sonarqube.sources_path // "."' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.sources_path // \".\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar libraries from inputs-global.yaml
       id: libraries_path
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.sonarqube.libraries_path // "**/node_modules/**"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.libraries_path // \"**/node_modules/**\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar tests from inputs-global.yaml (defaults to source_path)
       id: tests_path
-      uses: mikefarah/yq@master
-      with:
-          cmd: yq e -I=0 '.sonarqube.tests_path // "${{ steps.source_path.outputs.result }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        STEPS_SOURCE_PATH_RESULT: ${{ steps.source_path.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.tests_path // strenv(STEPS_SOURCE_PATH_RESULT)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar test inclusions from inputs-global.yaml
       id: test_inclusions_path
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.sonarqube.tests_inclusions // "**/*.test.js,**/*.spec.js"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.tests_inclusions // \"**/*.test.js,**/*.spec.js\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar test libraries from inputs-global.yaml
       id: test_libraries_path
-      uses: mikefarah/yq@master
-      with:
-          cmd: yq e -I=0 '.sonarqube.tests_libraries // "${{ steps.libraries_path.outputs.result }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        STEPS_LIBRARIES_PATH_RESULT: ${{ steps.libraries_path.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.tests_libraries // strenv(STEPS_LIBRARIES_PATH_RESULT)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar extra exclusions from inputs-global.yaml
       id: extra_exclusions_paths
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.sonarqube.extra_exclusions // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.extra_exclusions // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar exclusions from inputs-global.yaml
       id: exclusions_paths
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.sonarqube.exclusions // "node_modules/**,coverage/**,test/**,tests/**,charts/**,tronador/**,dist/**,build/**,apifiles/**/*"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.exclusions // \"node_modules/**,coverage/**,test/**,tests/**,charts/**,tronador/**,dist/**,build/**,apifiles/**/*\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get if sonar branch setting is disabled
       id: branch_disabled
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.sonarqube.branch_disabled and true' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".sonarqube.branch_disabled and true" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Scan the code
     - name: Sonar Scan
-      uses: sonarsource/sonarqube-scan-action@v7
+      uses: sonarsource/sonarqube-scan-action@v8
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}

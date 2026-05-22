@@ -31,23 +31,31 @@ runs:
       id: repo_owner
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
       run: |
-        echo "result=$(yq e '.repository_owner // "${{ github.repository_owner }}"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
+        result=$(yq e ".repository_owner // strenv(GITHUB_REPOSITORY_OWNER)" .cloudopsworks/vars/inputs-global.yaml)
+        printf 'result=%s\n' "${result}" >> "${GITHUB_OUTPUT}"
 
     - name: Resolve SonarQube Flutter settings
       id: settings
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        echo "sources=$(yq e '.sonarqube.sources_path // "lib"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
-        echo "tests=$(yq e '.sonarqube.tests_path // "test"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
-        echo "test_inclusions=$(yq e '.sonarqube.tests_inclusions // "test/**/*"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
-        echo "exclusions=$(yq e '.sonarqube.exclusions // "build/**,.dart_tool/**,ios/Pods/**,android/.gradle/**"' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
-        echo "branch_disabled=$(yq e '.sonarqube.branch_disabled and true' .cloudopsworks/vars/inputs-global.yaml)" >> "$GITHUB_OUTPUT"
+        sources=$(yq e ".sonarqube.sources_path // \"lib\"" .cloudopsworks/vars/inputs-global.yaml)
+        printf 'sources=%s\n' "${sources}" >> "${GITHUB_OUTPUT}"
+        tests=$(yq e ".sonarqube.tests_path // \"test\"" .cloudopsworks/vars/inputs-global.yaml)
+        printf 'tests=%s\n' "${tests}" >> "${GITHUB_OUTPUT}"
+        test_inclusions=$(yq e ".sonarqube.tests_inclusions // \"test/**/*\"" .cloudopsworks/vars/inputs-global.yaml)
+        printf 'test_inclusions=%s\n' "${test_inclusions}" >> "${GITHUB_OUTPUT}"
+        exclusions=$(yq e ".sonarqube.exclusions // \"build/**,.dart_tool/**,ios/Pods/**,android/.gradle/**\"" .cloudopsworks/vars/inputs-global.yaml)
+        printf 'exclusions=%s\n' "${exclusions}" >> "${GITHUB_OUTPUT}"
+        branch_disabled=$(yq e ".sonarqube.branch_disabled and true" .cloudopsworks/vars/inputs-global.yaml)
+        printf 'branch_disabled=%s\n' "${branch_disabled}" >> "${GITHUB_OUTPUT}"
         if [[ -f coverage/lcov.info ]]; then echo "lcov=coverage/lcov.info" >> "$GITHUB_OUTPUT"; else echo "lcov=" >> "$GITHUB_OUTPUT"; fi
 
     - name: SonarQube Scan
-      uses: sonarsource/sonarqube-scan-action@v7
+      uses: sonarsource/sonarqube-scan-action@v8
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}

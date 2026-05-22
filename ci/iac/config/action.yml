@@ -69,16 +69,20 @@ runs:
     - name: Get the deployments configuration
       id: deploy_conf
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 '.cd.deployments' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml)
+        RET=$(yq -o=json -I=0 ".cd.deployments" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # Get the automatic setting from .cloudopsworks/cloudopsworks-ci.yaml as plain text
     - name: Get Automatic Setting
       id: automatic
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e '.cd.automatic and true' ${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml)
+        RET=$(yq e ".cd.automatic and true" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT
 
     # TODO: deprecate isEnabled output and parsing
@@ -87,12 +91,17 @@ runs:
     - name: Set the appropriate workspace
       id: workspace
       uses: actions/github-script@v8
+      env:
+        STEPS_DEPLOY_CONF_RESULT: ${{ steps.deploy_conf.outputs.result }}
+        GITHUB_HEAD_REF: ${{ github.head_ref }}
+        GITHUB_BASE_REF: ${{ github.base_ref }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
       with:
         script: |
-          const deployments = JSON.parse('${{ steps.deploy_conf.outputs.result }}');
-          const head = '${{ github.head_ref }}';
-          const base = '${{ github.base_ref }}';
-          const ref = '${{ github.ref_name }}';
+          const deployments = JSON.parse('' + (process.env.STEPS_DEPLOY_CONF_RESULT || '') + '');
+          const head = '' + (process.env.GITHUB_HEAD_REF || '') + '';
+          const base = '' + (process.env.GITHUB_BASE_REF || '') + '';
+          const ref = '' + (process.env.GITHUB_REF_NAME || '') + '';
           var branch = base !== '' ? base : ref;
           
           var environment = '';
@@ -201,6 +210,8 @@ runs:
     - name: Get the Runner Set for this build
       id: runner_set
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -I=0 '.runner_set // "ubuntu-latest"' ${{ inputs.source_path }}/global-inputs.yaml)
+        RET=$(yq -I=0 ".runner_set // \"ubuntu-latest\"" "${INPUTS_SOURCE_PATH}/global-inputs.yaml")
         echo "result=$RET" >> $GITHUB_OUTPUT

@@ -89,14 +89,20 @@ runs:
       if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
       working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
       shell: bash
+      env:
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        EXPR_INPUTS_CLOUD_AWS_INPUTS_CLOUD_TYPE_BEANSTALK: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_CLOUD: ${{ inputs.cloud }}
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
       run: |
         VAL=$(yq eval '.beanstalk.solution_stack | test("(?i:.*go.*)")' inputs.yaml)
         echo "result=$VAL" >> $GITHUB_OUTPUT
 
-#    - name: Get Elastic Beanstalk Rust Stack from inputs-${{ inputs.environment }}.yaml
+#    - name: Get Elastic Beanstalk Rust Stack from inputs-${INPUTS_ENVIRONMENT}.yaml
 #      id: rust_stack_eb
-#      if: ${{ inputs.cloud == 'aws' && inputs.cloud_type == 'beanstalk' }}
-#      working-directory: ${{ inputs.blueprint_path }}/terraform/${{ inputs.cloud }}/${{ inputs.cloud_type }}
+#      if: ${EXPR_INPUTS_CLOUD_AWS_INPUTS_CLOUD_TYPE_BEANSTALK}
+#      working-directory: ${INPUTS_BLUEPRINT_PATH}/terraform/${INPUTS_CLOUD}/${INPUTS_CLOUD_TYPE}
 #      shell: bash
 #      run: |
 #        echo "::error::This is not supported for beanstalk"

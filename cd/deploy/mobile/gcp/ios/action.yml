@@ -61,16 +61,22 @@ runs:
     - name: Normalize XCode inputs
       id: xcode_normalized
       shell: bash
+      env:
+        INPUTS_XCODE_SCHEME: ${{ inputs.xcode_scheme }}
+        INPUTS_XCODE_SDK: ${{ inputs.xcode_sdk }}
+        INPUTS_XCODE_DESTINATION: ${{ inputs.xcode_destination }}
       run: |
-        ret=$(echo "${{ inputs.xcode_scheme }}_${{ inputs.xcode_sdk }}_${{ inputs.xcode_destination }}" | tr ' ,:=/' '-')
+        ret=$(echo "${INPUTS_XCODE_SCHEME}_${INPUTS_XCODE_SDK}_${INPUTS_XCODE_DESTINATION}" | tr ' ,:=/' '-')
         echo "result=$ret" >> $GITHUB_OUTPUT
 
     - name: Xcode Configuration for the build
       id: xcode_configuration
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        OUT=$(yq e '.xcode.configuration // "Release"' .cloudopsworks/vars/inputs-${{ inputs.environment }}.yaml)
+        OUT=$(yq e ".xcode.configuration // \"Release\"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         echo "result=$OUT" >> $GITHUB_OUTPUT
 
     - name: Restore Pipeline Artifacts
@@ -102,9 +108,11 @@ runs:
         REL: ${{ inputs.release_name }}
         RELVER: ${{ inputs.release_version }}
         QUALI: ${{ inputs.qualifier != '' && '-' || '' }}${{ inputs.qualifier }}
+        STEPS_XCODE_CONFIGURATION_RESULT: ${{ steps.xcode_configuration.outputs.result }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
       run: |
         tmpdir=$(mktemp -d)
-        mv ${{ steps.xcode_configuration.outputs.result }}-* $tmpdir/ 
+        mv "${STEPS_XCODE_CONFIGURATION_RESULT}"-* $tmpdir/
         mv *.xctestrun $tmpdir/
         cd $tmpdir/
-        zip -r ${GITHUB_WORKSPACE}/${{ inputs.blueprint_path }}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip .
+        zip -r "${GITHUB_WORKSPACE}/${INPUTS_BLUEPRINT_PATH}/devicefarms/gcp/release/${REL}-${RELVER}${QUALI}-tests.zip" .

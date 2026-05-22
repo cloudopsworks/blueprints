@@ -35,6 +35,9 @@ runs:
       id: sbom
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        INPUTS_DTRACK_PROJECT_KEY: ${{ inputs.dtrack_project_key }}
+        INPUTS_SEMVER: ${{ inputs.semver }}
       run: |
         set -euo pipefail
         mkdir -p build/sbom
@@ -48,21 +51,28 @@ runs:
         fi
         if [[ ! -s "$bom" ]]; then
           deps=$(if [[ -f pubspec.lock ]]; then yq e -o=json '.packages // {}' pubspec.lock 2>/dev/null || echo '{}'; else echo '{}'; fi)
-          jq -n --arg name "${{ inputs.dtrack_project_key }}" --arg version "${{ inputs.semver }}" --argjson deps "$deps" '{bomFormat:"CycloneDX", specVersion:"1.5", version:1, metadata:{component:{type:"application", name:$name, version:$version}}, components: ($deps | to_entries | map({type:"library", name:.key, version:(.value.version // "0.0.0")}))}' > "$bom"
+          jq -n --arg name "${INPUTS_DTRACK_PROJECT_KEY}" --arg version "${INPUTS_SEMVER}" --argjson deps "$deps" '{bomFormat:"CycloneDX", specVersion:"1.5", version:1, metadata:{component:{type:"application", name:$name, version:$version}}, components: ($deps | to_entries | map({type:"library", name:.key, version:(.value.version // "0.0.0")}))}' > "$bom"
         fi
         echo "bom_path=$bom" >> "$GITHUB_OUTPUT"
 
     - name: SBOM Dtrack Upload
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        INPUTS_DTRACK_URL: ${{ inputs.dtrack_url }}
+        INPUTS_DTRACK_TOKEN: ${{ inputs.dtrack_token }}
+        INPUTS_DTRACK_PROJECT_KEY: ${{ inputs.dtrack_project_key }}
+        INPUTS_SEMVER: ${{ inputs.semver }}
+        INPUTS_PROJECT_TYPE: ${{ inputs.project_type }}
+        STEPS_SBOM_BOM_PATH: ${{ steps.sbom.outputs.bom_path }}
       run: |
         set -euo pipefail
-        curl -X POST "https://${{ inputs.dtrack_url }}/api/v1/bom" \
+        curl -X POST "https://${INPUTS_DTRACK_URL}/api/v1/bom" \
              -H 'Content-Type: multipart/form-data' \
-             -H 'X-API-Key: ${{ inputs.dtrack_token }}' \
+             -H 'X-API-Key: '"${INPUTS_DTRACK_TOKEN}" \
              -F "autoCreate=true" \
-             -F "projectName=${{ inputs.dtrack_project_key }}" \
-             -F "projectVersion=${{ inputs.semver }}" \
-             -F "parentName=${{ inputs.dtrack_project_key }}" \
-             -F "projectClassifier=${{ inputs.project_type }}" \
-             -F "bom=@${{ steps.sbom.outputs.bom_path }}"
+             -F "projectName=${INPUTS_DTRACK_PROJECT_KEY}" \
+             -F "projectVersion=${INPUTS_SEMVER}" \
+             -F "parentName=${INPUTS_DTRACK_PROJECT_KEY}" \
+             -F "projectClassifier=${INPUTS_PROJECT_TYPE}" \
+             -F "bom=@${STEPS_SBOM_BOM_PATH}"

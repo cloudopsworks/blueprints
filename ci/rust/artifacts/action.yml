@@ -33,22 +33,36 @@ runs:
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.zipGlobs[] | "${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
-    # Get pipeline conf exclude globs
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".zipGlobs[] | strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.excludeGlobs[] | "!${{ inputs.source_path }}/" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
-
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".excludeGlobs[] | \"!\" + strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     - name: Copy Release to bin
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        STEPS_ZIP_GLOBS_RESULT: ${{ steps.zip_globs.outputs.result }}
       run: |
-        mkdir -p ${{ inputs.source_path }}/bin/
-        find ${{ steps.zip_globs.outputs.result }} -type f -maxdepth 0 -exec cp -pv {} ${{ inputs.source_path }}/bin/ \;
+        mkdir -p "${INPUTS_SOURCE_PATH}/bin/"
+        find "${STEPS_ZIP_GLOBS_RESULT}" -type f -maxdepth 0 -exec cp -pv {} "${INPUTS_SOURCE_PATH}/bin/" \;
 
     # Perform of upload of artfiacts for Rust
     - name: Upload Artifacts to workflow
