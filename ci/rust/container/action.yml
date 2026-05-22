@@ -226,8 +226,9 @@ runs:
         EOF
         cat ./startup.sh
       env:
-        CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
+        CUSTOM_RUN_COMMAND: ${STEPS_CUSTOM_RUN_COMMAND_RESULT}
 
+        STEPS_CUSTOM_RUN_COMMAND_RESULT: ${STEPS_CUSTOM_RUN_COMMAND_RESULT}
     - name: Build and set startup.sh command
       if: ${{ steps.custom_run_command.outputs.result == '' }}
       working-directory: ${{ inputs.source_path }}

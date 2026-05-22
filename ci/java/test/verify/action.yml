@@ -40,9 +40,16 @@ runs:
       # Get from global inputs the custom Maven Options
       - name: Get Maven options
         id: maven_opts
-        uses: mikefarah/yq@master
-        with:
-          cmd: yq e -I=0 '.maven_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+        shell: bash
+        env:
+          INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        run: |
+          RET=$(yq e -I=0 ".maven_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+          {
+            echo "result<<EOF"
+            echo "${RET}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
 
       # Build the code!
       - name: Build Code
@@ -50,10 +57,14 @@ runs:
         shell: bash
         run: |
           echo "::group::Maven Build"
-          MAVEN_OPTS="$MAVEN_OPTS ${{ steps.maven_opts.outputs.result }}"
-          mvn --batch-mode --update-snapshots install -DprojectType=${{ inputs.dtrack_project_type }}
+          MAVEN_OPTS="$MAVEN_OPTS ${STEPS_MAVEN_OPTS_RESULT}"
+          mvn --batch-mode --update-snapshots install -DprojectType=${INPUTS_DTRACK_PROJECT_TYPE}
           echo "::endgroup::"
         env:
-          GITHUB_ACTOR: ${{ inputs.bot_user }}
-          GITHUB_TOKEN: ${{ inputs.token }}
+          GITHUB_ACTOR: ${INPUTS_BOT_USER}
+          GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+          STEPS_MAVEN_OPTS_RESULT: ${STEPS_MAVEN_OPTS_RESULT}
+          INPUTS_DTRACK_PROJECT_TYPE: ${INPUTS_DTRACK_PROJECT_TYPE}
+          INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+          INPUTS_TOKEN: ${INPUTS_TOKEN}

@@ -73,71 +73,141 @@ runs:
     # Get pipeline conf Rust version Defaults to 1.87
     - name: Get pipeline Rust version
       id: rust_version
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.rust.version // "stable"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".rust.version // \"stable\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Get pipeline Rust components
       id: rust_components
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.rust.components // [] | join(",")' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".rust.components // [] | join(\",\")" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf Rust dist defaults to linux (supported: linux windows darwin)
     - name: Get pipeline Rust dist
       id: rust_dist
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.rust.dist // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".rust.dist // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf Rust arch defaults to x64
     - name: Get pipeline Rust arch
       id: rust_arch
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.rust.arch // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".rust.arch // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf Rust image variant defaults to alpine
     - name: Get pipeline Rust image variant
       id: rust_image_variant
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.rust.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".rust.image_variant // \"alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # GoReleaser configuration, default is false, if set to true, .goreleaser.yaml should be present in the source code root
     - name: Get pipeline GoReleaser configuration
       id: rust_goreleaser
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.rust.goreleaser // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".rust.goreleaser // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get package name from the Cargo.toml file
     - name: Get package name
       id: package_name
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -otoml '.package.name' ./${{ inputs.source_path }}/Cargo.toml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -otoml ".package.name" "./${INPUTS_SOURCE_PATH}/Cargo.toml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the custom Rust Options
     - name: Get Rust Build options
       id: build_opts
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".build_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the custom Rust Test Options
     - name: Get Rust Build options
       id: test_opts
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.test_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".test_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".dependencyTrack.type // \"application\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Rust comes in GitHub Actions, so we can use the latest version
     - name: Setup Rust SDK
@@ -158,9 +228,11 @@ runs:
         cargo install cargo-tarpaulin cargo-cyclonedx toml-cli2 cargo-edit
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Install gcc toolchain
       shell: bash
       run: |
@@ -176,9 +248,15 @@ runs:
       if: ${{ steps.rust_dist.outputs.result != '' && steps.rust_arch.outputs.result != '' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        STEPS_RUST_ARCH_RESULT: ${{ steps.rust_arch.outputs.result }}
+        STEPS_RUST_DIST_RESULT: ${{ steps.rust_dist.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        RUNNER_OS: ${{ runner.os }}
+        EXPR_HASHFILES_CARGO_LOCK: ${{ hashFiles('**/Cargo.lock') }}
       run: |
         echo "::group::Add Rust Target"
-        rustup target add ${{ steps.rust_arch.outputs.result }}-${{ steps.rust_dist.outputs.result }}
+        rustup target add ${STEPS_RUST_ARCH_RESULT}-${STEPS_RUST_DIST_RESULT}
         echo "::endgroup::"
 
 # Cache provided by setup-rust
@@ -188,8 +266,8 @@ runs:
 #        path: |
 #          ~/.cargo/registry
 #          ~/.cargo/git
-#          ${{ inputs.source_path }}/target
-#        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+#          ${INPUTS_SOURCE_PATH}/target
+#        key: ${RUNNER_OS}-cargo-${EXPR_HASHFILES_CARGO_LOCK}
 
     # Versioning SET
     - name: Version SET
@@ -200,9 +278,11 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -218,19 +298,25 @@ runs:
       run: |
         echo "::group::Rust Test"
         mkdir -p test-results
-        cargo test --no-fail-fast ${{ steps.build_opts.outputs.result }} -- --test-threads=2  ${{ steps.test_opts.outputs.result }} | tee test-results/test.log
+        cargo test --no-fail-fast ${STEPS_BUILD_OPTS_RESULT} -- --test-threads=2  ${STEPS_TEST_OPTS_RESULT} | tee test-results/test.log
         cargo tarpaulin --skip-clean --profile=test --out Html --out Xml --out Lcov --output-dir test-results/
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
+        STEPS_TEST_OPTS_RESULT: ${STEPS_TEST_OPTS_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: SBOM Generation for Dtrack
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        EXPR_STEPS_RUST_ARCH_OUTPUTS_RESULT_FORMAT_TARGET_0_1: ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
       run: |
         echo "::group::SBOM Generation"
-        cargo cyclonedx --format xml --all-features --override-filename bom ${{ steps.rust_arch.outputs.result != '' && format('--target {0}-{1}', steps.rust_arch.outputs.result, steps.rust_dist.outputs.result) || '' }}
+        cargo cyclonedx --format xml --all-features --override-filename bom ${EXPR_STEPS_RUST_ARCH_OUTPUTS_RESULT_FORMAT_TARGET_0_1}
         echo "::endgroup::"
 
     # Build the code!
@@ -240,12 +326,15 @@ runs:
       shell: bash
       run: |
         echo "::group::Rust Default Cargo Build"
-        cargo build --release ${{ steps.build_opts.outputs.result }} --target-dir ./target
+        cargo build --release ${STEPS_BUILD_OPTS_RESULT} --target-dir ./target
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     # Build the targetted code!
     - name: Build Targetted Code (Cross Compile)
       if: ${{ steps.rust_dist.outputs.result != '' && steps.rust_arch.outputs.result != '' }}
@@ -253,8 +342,13 @@ runs:
       shell: bash
       run: |
         echo "::group::Rust Cargo Build - Cross Compile"
-        cargo build --release --target ${{ steps.rust_arch.outputs.result }}-${{ steps.rust_dist.outputs.result }} ${{ steps.build_opts.outputs.result }}
+        cargo build --release --target ${STEPS_RUST_ARCH_RESULT}-${STEPS_RUST_DIST_RESULT} ${STEPS_BUILD_OPTS_RESULT}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        STEPS_RUST_ARCH_RESULT: ${STEPS_RUST_ARCH_RESULT}
+        STEPS_RUST_DIST_RESULT: ${STEPS_RUST_DIST_RESULT}
+        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}

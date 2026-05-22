@@ -42,8 +42,11 @@ runs:
         echo "::group::Pipenv Install"
         source .venv/bin/activate
         echo "Installing dependencies"
-        ${{ inputs.python_extra_env }} pipenv install
+        ${INPUTS_PYTHON_EXTRA_ENV} pipenv install
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        INPUTS_PYTHON_EXTRA_ENV: ${INPUTS_PYTHON_EXTRA_ENV}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}

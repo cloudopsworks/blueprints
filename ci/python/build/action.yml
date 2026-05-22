@@ -68,85 +68,169 @@ runs:
     # Get pipeline conf Python version
     - name: Get pipeline Python version
       id: python_version
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq eval '.python.version // "3.14"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq eval ".python.version // \"3.14\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf Python dist
     - name: Get pipeline Python dist
       id: python_dist
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq eval '.python.dist // "pip"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq eval ".python.dist // \"pip\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf Python test ruff linter
     - name: Get pipeline Python test ruff linter
       id: python_test_ruff
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq eval '.python.ruff // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq eval ".python.ruff // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf Python test mypy test
     - name: Get pipeline Python test mypy test
       id: python_test_mypy
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq eval '.python.mypy // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq eval ".python.mypy // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf java image variant defaults to alpine
     - name: Get pipeline Python image variant
       id: python_image_variant
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.python.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".python.image_variant // \"alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf java image variant defaults to alpine
     - name: Get pipeline Python require packing dependencies
       id: python_with_dependencies
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.python.with_dependencies // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".python.with_dependencies // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf Python tests tooling: pytest , unittest (pyunit), nose
     - name: Get pipeline Python tests tooling
       id: python_tests
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq eval '.python.tests // "pytest"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq eval ".python.tests // \"pytest\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
     # Get pipeline conf install dependency extra_args
     - name: Get pipeline Python install dependency extra_args
       id: python_dep_extra_args
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.python.install_extra_args // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".python.install_extra_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf
     - name: Get pipeline zip packaging globs
       id: zip_globs_line
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.zipGlobs[]' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml | tr '\n' ' '
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".zipGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml" | tr '\n' ' ')
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.excludeGlobs[] | "!" + .' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".excludeGlobs[] | \"!\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf
     - name: Get pipeline zip packaging exclude globs
       id: raw_exclude_globs
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.excludeGlobs[]' ./${{ inputs.source_path }}/.cloudopsworks/cloudopsworks-ci.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".excludeGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get Package Name from pyproject.toml
     - name: Get package Name
       id: package_name
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -oj -r '.project.name' ${{ inputs.source_path }}/pyproject.toml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -oj -r ".project.name" "${INPUTS_SOURCE_PATH}/pyproject.toml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Setup Python for builds for the version provided
     - name: Setup Python
@@ -174,9 +258,11 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -281,9 +367,11 @@ runs:
         echo "::debug::End Ruff Report"
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Run MyPy Test
       if: steps.python_test_mypy.outputs.result == 'true'
       working-directory: ${{ inputs.source_path }}
@@ -298,9 +386,11 @@ runs:
         echo "::debug::End MyPy Report"
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     # SBOM generation
     - name: Install CycloneDX
       working-directory: ${{ inputs.source_path }}
@@ -313,12 +403,15 @@ runs:
     - name: SBOM Generation for Dtrack
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        STEPS_PYTHON_DIST_RESULT: ${{ steps.python_dist.outputs.result }}
+        INPUTS_PYTHON_REQUIREMENTS_FILE: ${{ inputs.python_requirements_file }}
       run: |
         echo "::group::SBOM Generation for Dtrack"
-        dist=${{ steps.python_dist.outputs.result}}
+        dist=${STEPS_PYTHON_DIST_RESULT}
         case $dist in
           pip)
-            cyclonedx-py requirements --of xml -o bom.xml ${{ inputs.python_requirements_file }}
+            cyclonedx-py requirements --of xml -o bom.xml ${INPUTS_PYTHON_REQUIREMENTS_FILE}
             ;;
           pipenv|poetry)
             cyclonedx-py pipenv --of xml -o bom.xml 
@@ -334,12 +427,15 @@ runs:
       working-directory: ${{ inputs.source_path }}
       if: steps.python_with_dependencies.outputs.result == 'true'
       shell: bash
+      env:
+        STEPS_PYTHON_DEP_EXTRA_ARGS_RESULT: ${{ steps.python_dep_extra_args.outputs.result }}
+        INPUTS_PYTHON_REQUIREMENTS_FILE: ${{ inputs.python_requirements_file }}
       run: |
         echo "::group::Build Python Dependencies"
         source .venv/bin/activate
         if [ -f requirements.txt ]; then
           echo "Building requirements.txt"
-          pip install ${{ steps.python_dep_extra_args.outputs.result }} --target ./target/ -r ${{ inputs.python_requirements_file }}
+          pip install ${STEPS_PYTHON_DEP_EXTRA_ARGS_RESULT} --target ./target/ -r ${INPUTS_PYTHON_REQUIREMENTS_FILE}
         else
           echo "No requirements.txt found"
         fi

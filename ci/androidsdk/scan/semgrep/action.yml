@@ -65,7 +65,7 @@ runs:
       shell: bash
       run: |
         semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif "${STEPS_SPLIT_EXCLUDES_RESULT}"
-#        semgrep --config=p/default . --json ${{ steps.split_excludes.outputs.result }} > semgrep.json
+#        semgrep --config=p/default . --json ${STEPS_SPLIT_EXCLUDES_RESULT} > semgrep.json
 
     - name: Upload SARIF file
       if: |

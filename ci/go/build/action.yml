@@ -73,51 +73,100 @@ runs:
     # Get pipeline conf GoLang version Defaults to 1.23
     - name: Get pipeline GoLang version
       id: golang_version
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.golang.version // "1.25"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".golang.version // \"1.25\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf GoLang dist defaults to linux (supported: linux windows darwin)
     - name: Get pipeline GoLang dist
       id: golang_dist
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.golang.dist // "linux"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".golang.dist // \"linux\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf GoLang arch defaults to x64
     - name: Get pipeline GoLang arch
       id: golang_arch
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.golang.arch // "amd64"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".golang.arch // \"amd64\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf GoLang image variant defaults to alpine
     - name: Get pipeline GoLang image variant
       id: golang_image_variant
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.golang.image_variant // "alpine"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".golang.image_variant // \"alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf GoLang main file defaults to main.go
     - name: Get pipeline GoLang main file
       id: main_file
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.golang.main_file // "main.go"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".golang.main_file // \"main.go\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf GoLang if CGO is disabled or not
     - name: Get pipeline GoLang main file
       id: disable_cgo
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.golang.disable_cgo // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".golang.disable_cgo // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # GoReleaser configuration, default is false, if set to true, .goreleaser.yaml should be present in the source code root
     - name: Get pipeline GoReleaser configuration
       id: golang_goreleaser
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.golang.goreleaser // "false"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".golang.goreleaser // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get the Package name from go.mod
     - name: Get Package name
@@ -147,16 +196,30 @@ runs:
     # Get from global inputs the custom Go Options
     - name: Get Go options
       id: build_opts
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.build_options // ""' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".build_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get DependencyTrack project type configuration, default is null
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e '.dependencyTrack.type // "application"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".dependencyTrack.type // \"application\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Setup GoLang GoLang SDK for builds
     - name: Set GoLang SDK
@@ -176,9 +239,11 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -192,12 +257,20 @@ runs:
       shell: bash
       run: |
         echo "::group::Go Build"
-        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} ${{ steps.disable_cgo.outputs.result == 'true' && 'CGO_ENABLED=0' || '' }} go build -o bin/${{ steps.package_name.outputs.result }} ${{ steps.main_file.outputs.result }}
+        GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} ${EXPR_STEPS_DISABLE_CGO_OUTPUTS_RESULT_TRUE_CGO_ENABLE} go build -o bin/${STEPS_PACKAGE_NAME_RESULT} ${STEPS_MAIN_FILE_RESULT}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        STEPS_GOLANG_DIST_RESULT: ${STEPS_GOLANG_DIST_RESULT}
+        STEPS_GOLANG_ARCH_RESULT: ${STEPS_GOLANG_ARCH_RESULT}
+        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
+        EXPR_STEPS_DISABLE_CGO_OUTPUTS_RESULT_TRUE_CGO_ENABLE: ${EXPR_STEPS_DISABLE_CGO_OUTPUTS_RESULT_TRUE_CGO_ENABLE}
+        STEPS_PACKAGE_NAME_RESULT: ${STEPS_PACKAGE_NAME_RESULT}
+        STEPS_MAIN_FILE_RESULT: ${STEPS_MAIN_FILE_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     # Test the code!
     - name: Test Code
       working-directory: ${{ inputs.source_path }}
@@ -205,13 +278,18 @@ runs:
       run: |
         echo "::group::Go Test"
         mkdir -p test-results
-        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go test -coverprofile=test-results/coverage.out ./...
-        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} ${{ steps.build_opts.outputs.result }} go tool cover -html=test-results/coverage.out -o test-results/coverage.html
+        GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} go test -coverprofile=test-results/coverage.out ./...
+        GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} go tool cover -html=test-results/coverage.out -o test-results/coverage.html
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        STEPS_GOLANG_DIST_RESULT: ${STEPS_GOLANG_DIST_RESULT}
+        STEPS_GOLANG_ARCH_RESULT: ${STEPS_GOLANG_ARCH_RESULT}
+        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     # SBOM generation
     - name: SBOM Download for Dtrack
       uses: CycloneDX/gh-gomod-generate-sbom@v2
@@ -221,7 +299,11 @@ runs:
     - name: SBOM Generation for Dtrack
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        STEPS_GOLANG_DIST_RESULT: ${{ steps.golang_dist.outputs.result }}
+        STEPS_GOLANG_ARCH_RESULT: ${{ steps.golang_arch.outputs.result }}
+        STEPS_MAIN_FILE_RESULT: ${{ steps.main_file.outputs.result }}
       run: |
         echo "::group::SBOM Generation"
-        GOOS=${{ steps.golang_dist.outputs.result }} GOARCH=${{ steps.golang_arch.outputs.result }} cyclonedx-gomod app -licenses -packages -output bom.xml -main $(dirname ${{ steps.main_file.outputs.result }})
+        GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} cyclonedx-gomod app -licenses -packages -output bom.xml -main $(dirname ${STEPS_MAIN_FILE_RESULT})
         echo "::endgroup::"

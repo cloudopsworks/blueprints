@@ -66,6 +66,10 @@ runs:
     - name: Dockerfile Injection
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_PROJECT_OWNER: ${{ inputs.project_owner }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
+        INPUTS_DOCKER_INLINE: ${{ inputs.docker_inline }}
       run: |
         echo "::group::Injecting Dockerfile content..."
         DOCKERFILE=Dockerfile
@@ -76,9 +80,9 @@ runs:
             # Insert the content of input at the injection point
             # if docker registry contains ghcr.io then include this label : LABEL org.opencontainers.image.source https://github.com/OWNER/REPO
             if [[ "$line" =~ ghcr.io ]]; then
-              echo "LABEL org.opencontainers.image.source https://github.com/${{ inputs.project_owner }}/${{ inputs.project_key }}"
+              echo "LABEL org.opencontainers.image.source https://github.com/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}"
             fi
-            echo "${{ inputs.docker_inline }}"
+            echo "${INPUTS_DOCKER_INLINE}"
           else
             # Print the current line
             echo "$line"
@@ -91,6 +95,8 @@ runs:
     - name: Image Variant user/group injection
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        INPUTS_CUSTOM_USERGROUP: ${{ inputs.custom_usergroup }}
       run: |
         echo "::group::Injecting Image Variant user/group creation..."
         DOCKERFILE=Dockerfile
@@ -99,8 +105,8 @@ runs:
         while IFS= read -r line; do
         if [[ "$line" =~ $INJECTION_POINT ]]; then
           # Insert the content of input at the injection point
-          if [[ '${{ inputs.custom_usergroup }}' != '' ]]; then
-            echo 'RUN ${{ inputs.custom_usergroup }}'
+          if [[ "${INPUTS_CUSTOM_USERGROUP}" != "" ]]; then
+            printf 'RUN %s\n' "${INPUTS_CUSTOM_USERGROUP}"
           else
             echo 'RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \'
             echo '    && adduser --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME'
@@ -122,8 +128,10 @@ runs:
     - name: SemVer split
       id: semvers
       shell: bash
+      env:
+        INPUTS_SEMVER: ${{ inputs.semver }}
       run: |
-        VER_NUM="${{ inputs.semver }}"
+        VER_NUM="${INPUTS_SEMVER}"
         VER_MAJOR=$(echo $VER_NUM | cut -f1 -d.)
         VER_MINOR=$(echo $VER_NUM | cut -f2 -d.)
         VER_PATCH=$(echo $VER_NUM | cut -f3 -d.)
@@ -135,26 +143,36 @@ runs:
     - name: Docker Image names
       id: docker_tags
       shell: bash
+      env:
+        INPUTS_IS_RELEASE: ${{ inputs.is_release }}
+        INPUTS_FRONT_END: ${{ inputs.front_end }}
+        INPUTS_DOCKER_REGISTRY: ${{ inputs.docker_registry }}
+        INPUTS_PROJECT_OWNER: ${{ inputs.project_owner }}
+        INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
+        INPUTS_SEMVER: ${{ inputs.semver }}
+        STEPS_SEMVERS_MAJOR: ${{ steps.semvers.outputs.major }}
+        STEPS_SEMVERS_MINOR: ${{ steps.semvers.outputs.minor }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        if [[ "${{ inputs.is_release }}" == "true" && "${{ inputs.front_end }}" != "true" ]]; then
-          TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest
-        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}
-        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ steps.semvers.outputs.major }}
-        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}"
-           echo "${{ inputs.semver }}
-        ${{ steps.semvers.outputs.major }}.${{ steps.semvers.outputs.minor }}
-        ${{ steps.semvers.outputs.major }}
+        if [[ "${INPUTS_IS_RELEASE}" == "true" && "${INPUTS_FRONT_END}" != "true" ]]; then
+          TAGS="${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:latest
+        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${INPUTS_SEMVER}
+        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${STEPS_SEMVERS_MAJOR}
+        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${STEPS_SEMVERS_MAJOR}.${STEPS_SEMVERS_MINOR}"
+           echo "${INPUTS_SEMVER}
+        ${STEPS_SEMVERS_MAJOR}.${STEPS_SEMVERS_MINOR}
+        ${STEPS_SEMVERS_MAJOR}
         latest" > docker-tags.list
-        elif [[ "${{ inputs.front_end }}" == "true" ]]; then
-          TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest-${{ inputs.environment }}
-        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}-${{ inputs.environment }}"
-          echo "${{ inputs.semver }}-${{ inputs.environment }}
-        latest-${{ inputs.environment }}" > docker-tags.list
+        elif [[ "${INPUTS_FRONT_END}" == "true" ]]; then
+          TAGS="${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:latest-${INPUTS_ENVIRONMENT}
+        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${INPUTS_SEMVER}-${INPUTS_ENVIRONMENT}"
+          echo "${INPUTS_SEMVER}-${INPUTS_ENVIRONMENT}
+        latest-${INPUTS_ENVIRONMENT}" > docker-tags.list
         else
-          TAGS="${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:latest-${{ inputs.environment }}
-        ${{ inputs.docker_registry }}/${{ inputs.project_owner }}/${{ inputs.project_key }}:${{ inputs.semver }}"
-          echo "${{ inputs.semver }}
-        latest-${{ inputs.environment }}" > docker-tags.list
+          TAGS="${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:latest-${INPUTS_ENVIRONMENT}
+        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${INPUTS_SEMVER}"
+          echo "${INPUTS_SEMVER}
+        latest-${INPUTS_ENVIRONMENT}" > docker-tags.list
         fi
         echo "$TAGS" > docker-repository-tags.list
         echo "result<<EOF" >> $GITHUB_OUTPUT

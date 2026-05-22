@@ -44,7 +44,9 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/lambda
       id: aws_region
       shell: bash
-      run: echo "result=$(yq e '.aws.region // "us-east-1"' inputs.yaml)" >> $GITHUB_OUTPUT
+      run: |
+        result=$(yq e ".aws.region // \"us-east-1\"" inputs.yaml)
+        printf 'result=%s\n' "${result}" >> "${GITHUB_OUTPUT}"
 
     - name: extract lambda architecture from inputs.yaml
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/lambda
@@ -65,18 +67,21 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/lambda
       id: runtime
       shell: bash
+      env:
+        STEPS_AWS_REGION_RESULT: ${{ steps.aws_region.outputs.result }}
+        STEPS_ARCH_RESULT: ${{ steps.arch.outputs.result }}
       run: |
         lruntime=$(yq e '.lambda.runtime // ""' inputs.yaml)
         runtime=
         wrapper=
         if [[ "$lruntime" =~ node* ]]; then
-          runtime=$(yq e '.nodejs.${{ steps.aws_region.outputs.result }}' observability.yaml)
+          runtime=$(yq e ".nodejs[strenv(STEPS_AWS_REGION_RESULT)]" observability.yaml)
           wrapper="/opt/otel-instrument"
         elif [[ "$lruntime" =~ python* ]]; then
-          runtime=$(yq e '.python.${{ steps.aws_region.outputs.result }}' observability.yaml)
+          runtime=$(yq e ".python[strenv(STEPS_AWS_REGION_RESULT)]" observability.yaml)
           wrapper="/opt/otel-instrument"
         elif [[ "$lruntime" =~ java* ]]; then
-          runtime="aws-otel-java-agent-${{ steps.arch.outputs.result }}-ver-1-32-0:4"
+          runtime="aws-otel-java-agent-${STEPS_ARCH_RESULT}-ver-1-32-0:4"
           wrapper="/opt/otel-handler"
         fi
         echo "::debug::result=$runtime"
@@ -87,10 +92,13 @@ runs:
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/lambda
       id: xray_inject
       shell: bash
+      env:
+        STEPS_RUNTIME_RESULT: ${{ steps.runtime.outputs.result }}
+        STEPS_RUNTIME_WRAPPER: ${{ steps.runtime.outputs.wrapper }}
       run: |
         echo "::group::Xray/OTEL variable Injection"
-        yq e -i '.lambda.layers += [{"arn":"${{ steps.runtime.outputs.result }}"}]' inputs.yaml
-        yq e -i '.lambda.environment.variables += [{"name":"AWS_LAMBDA_EXEC_WRAPPER","value":"${{ steps.runtime.outputs.wrapper }}"}]' inputs.yaml
+        yq e -i '.lambda.layers += [{"arn": strenv(STEPS_RUNTIME_RESULT)}]' inputs.yaml
+        yq e -i '.lambda.environment.variables += [{"name":"AWS_LAMBDA_EXEC_WRAPPER","value": strenv(STEPS_RUNTIME_WRAPPER)}]' inputs.yaml
         yq e -i '.lambda.iam.enabled = true' inputs.yaml
         yq e -i '.lambda.iam.policy_attachments += [{"arn":"arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"},{"arn":"arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy"}]' inputs.yaml
         yq e -i '.lambda.tracing.enabled = true' inputs.yaml

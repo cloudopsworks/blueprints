@@ -21,6 +21,14 @@ runs:
     - name: Install runner-tools
       working-directory: /tmp
       shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        EXPR_STEPS_SOURCEDIR_OUTPUTS_RESULT_TRUE: ${{ steps.sourcedir.outputs.result == 'true' }}
+        STEPS_SOURCEDIR_RESULT: ${{ steps.sourcedir.outputs.result }}
+        STEPS_CLOUD_SRC_RESULT: ${{ steps.cloud_src.outputs.result }}
+        EXPR_CONTAINS_FROMJSON_AWS_ALL_STEPS_CLOUD_OUTPUTS_RE: ${{ contains(fromJSON('["AWS","ALL"]'), steps.cloud.outputs.result) }}
+        EXPR_CONTAINS_FROMJSON_AZURE_AZ_ALL_STEPS_CLOUD_OUTPU: ${{ contains(fromJSON('["AZURE","AZ","ALL"]'), steps.cloud.outputs.result) }}
+        EXPR_CONTAINS_FROMJSON_GCP_ALL_STEPS_CLOUD_OUTPUTS_RE: ${{ contains(fromJSON('["GCP","ALL"]'), steps.cloud.outputs.result) }}
       run: |
         echo "::warning::NOT IMPLEMENTED"
 
@@ -40,7 +48,7 @@ runs:
 #      id: sourcedir
 #      shell: bash
 #      run: |
-#        if [ ! -f ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml ]; then
+#        if [ ! -f ${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml ]; then
 #          echo "Source directory does not exist. will omit cloudentry."
 #          echo "result=false" >> $GITHUB_OUTPUT
 #        else
@@ -51,17 +59,17 @@ runs:
 #    - name: Get Cloud Entry
 #      id: cloud_src
 #      shell: bash
-#      if: ${{ steps.sourcedir.outputs.result == 'true' }}
+#      if: ${EXPR_STEPS_SOURCEDIR_OUTPUTS_RESULT_TRUE}
 #      run: |
-#        RET=$(yq e '.cloud // "all"' ${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
+#        RET=$(yq e '.cloud // "all"' ${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml | tr '[:lower:]' '[:upper:]')
 #        echo "result=$RET" >> $GITHUB_OUTPUT
 #
 #    - name: Set Cloud Entry
 #      id: cloud
 #      shell: bash
 #      run: |
-#        if [ "${{ steps.sourcedir.outputs.result }}" == "true" ]; then
-#          echo "result=${{ steps.cloud_src.outputs.result }}" >> $GITHUB_OUTPUT
+#        if [ "${STEPS_SOURCEDIR_RESULT}" == "true" ]; then
+#          echo "result=${STEPS_CLOUD_SRC_RESULT}" >> $GITHUB_OUTPUT
 #        else
 #          echo "result=ALL" >> $GITHUB_OUTPUT
 #        fi
@@ -69,7 +77,7 @@ runs:
 #    - name: Download and Install AWS CLI
 #      working-directory: /tmp
 #      shell: bash
-#      if: ${{ contains(fromJSON('["AWS","ALL"]'), steps.cloud.outputs.result) }}
+#      if: ${EXPR_CONTAINS_FROMJSON_AWS_ALL_STEPS_CLOUD_OUTPUTS_RE}
 #      run: |
 #        echo "::group::Download and install AWS CLI"
 #        curl -sL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -82,7 +90,7 @@ runs:
 #    - name: Download and Install Azure CLI
 #      working-directory: /tmp
 #      shell: bash
-#      if: ${{ contains(fromJSON('["AZURE","AZ","ALL"]'), steps.cloud.outputs.result) }}
+#      if: ${EXPR_CONTAINS_FROMJSON_AZURE_AZ_ALL_STEPS_CLOUD_OUTPU}
 #      env:
 #        DEBIAN_FRONTEND: noninteractive
 #      run: |
@@ -95,7 +103,7 @@ runs:
 #    - name: Download and Install GCP CLI
 #      working-directory: /tmp
 #      shell: bash
-#      if: ${{ contains(fromJSON('["GCP","ALL"]'), steps.cloud.outputs.result) }}
+#      if: ${EXPR_CONTAINS_FROMJSON_GCP_ALL_STEPS_CLOUD_OUTPUTS_RE}
 #      env:
 #        DEBIAN_FRONTEND: noninteractive
 #      run: |

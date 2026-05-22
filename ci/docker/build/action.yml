@@ -55,23 +55,44 @@ runs:
     # Get pipeline conf node version
     - name: Get pipeline node version
       id: node_version
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq eval '.node.version // "24"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq eval ".node.version // \"24\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get pipeline conf node dist
     - name: Get pipeline node dist
       id: node_dist
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq eval '.node.dist // "adopt"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq eval ".node.dist // \"adopt\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Get Package Name from package.json
     - name: Get package Name
       id: package_name
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -oj -r '.name' ${{ inputs.source_path }}/package.json
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -oj -r ".name" "${INPUTS_SOURCE_PATH}/package.json")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     # Setup Node JS for builds with version provided
     - name: Set Node Version

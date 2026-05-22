@@ -39,12 +39,20 @@ runs:
   steps:
     - name: Get Repository Owner from inputs-global.yaml
       id: repo_owner
-      uses: mikefarah/yq@master
-      with:
-        cmd: yq e -I=0 '.repository_owner // "${{ github.repository_owner }}"' ./${{ inputs.source_path }}/.cloudopsworks/vars/inputs-global.yaml
+      shell: bash
+      env:
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".repository_owner // strenv(GITHUB_REPOSITORY_OWNER)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
     - name: Apis Sonar Scan
-      uses: sonarsource/sonarqube-scan-action@v7
+      uses: sonarsource/sonarqube-scan-action@v8
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}

@@ -88,9 +88,11 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+        GITHUB_TOKEN: ${INPUTS_TOKEN}
 
+        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
+        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -120,9 +122,12 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_ANDROID_EXTRA_ARGS: ${{ inputs.android_extra_args }}
+        INPUTS_ANDROID_CONFIGURATION: ${{ inputs.android_configuration }}
+        INPUTS_ANDROID_EXTRA_TARGETS: ${{ inputs.android_extra_targets }}
       run: |
         echo "::group::Gradle Android SDK Build"
-        ./gradlew --no-daemon ${{ inputs.android_extra_args }} clean assemble${{ inputs.android_configuration }} ${{ inputs.android_extra_targets }}
+        ./gradlew --no-daemon ${INPUTS_ANDROID_EXTRA_ARGS} clean assemble${INPUTS_ANDROID_CONFIGURATION} ${INPUTS_ANDROID_EXTRA_TARGETS}
         echo "::endgroup::"
 
     # Test the code!
@@ -132,22 +137,28 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_ANDROID_CONFIGURATION: ${{ inputs.android_configuration }}
+        INPUTS_BOT_USER: ${{ inputs.bot_user }}
+        INPUTS_TOKEN: ${{ inputs.token }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ANDROID_SCHEME: ${{ inputs.android_scheme }}
+        INPUTS_ARTIFACTS_NAME: ${{ inputs.artifacts_name }}
       run: |
         echo "::group::Gradle Android SDK Run Tests"
-        ./gradlew --no-daemon test${{ inputs.android_configuration }}
+        ./gradlew --no-daemon test${INPUTS_ANDROID_CONFIGURATION}
         echo "::endgroup::"
 
 #    - name: Generate IPA - Unsigned
 #      shell: bash
 #      env:
-#        GITHUB_ACTOR: ${{ inputs.bot_user }}
-#        GITHUB_TOKEN: ${{ inputs.token }}
+#        GITHUB_ACTOR: ${INPUTS_BOT_USER}
+#        GITHUB_TOKEN: ${INPUTS_TOKEN}
 #      run: |
 #        echo "::group::XCode Export IPA - Unsigned"
 #        tmp_dir=$(mktemp -d)
 #        mkdir -p $tmp_dir/Payload/
-#        cp -R "${{ inputs.source_path }}/build/derived-data/Build/Products/${{ inputs.android_configuration }}-iphoneos/${{ inputs.android_scheme }}.app" $tmp_dir/Payload/
+#        cp -R "${INPUTS_SOURCE_PATH}/build/derived-data/Build/Products/${INPUTS_ANDROID_CONFIGURATION}-iphoneos/${INPUTS_ANDROID_SCHEME}.app" $tmp_dir/Payload/
 #        cd $tmp_dir
-#        mkdir -p $GITHUB_WORKSPACE/${{ inputs.source_path }}/build/${{ inputs.artifacts_name }}
-#        zip -r $GITHUB_WORKSPACE/${{ inputs.source_path }}/build/${{ inputs.artifacts_name }}/${{ inputs.artifacts_name }}.ipa .
+#        mkdir -p $GITHUB_WORKSPACE/${INPUTS_SOURCE_PATH}/build/${INPUTS_ARTIFACTS_NAME}
+#        zip -r $GITHUB_WORKSPACE/${INPUTS_SOURCE_PATH}/build/${INPUTS_ARTIFACTS_NAME}/${INPUTS_ARTIFACTS_NAME}.ipa .
 #        echo "::endgroup::"

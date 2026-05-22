@@ -191,8 +191,9 @@ runs:
         EOF
         cat ./startup.sh
       env:
-        CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
+        CUSTOM_RUN_COMMAND: ${STEPS_CUSTOM_RUN_COMMAND_RESULT}
 
+        STEPS_CUSTOM_RUN_COMMAND_RESULT: ${STEPS_CUSTOM_RUN_COMMAND_RESULT}
     # Run Generalized Docker Build & Upload Artifact
     - name: Generalized Docker Build
       uses: ./bp/ci/container/build
