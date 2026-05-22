@@ -119,14 +119,14 @@ runs:
   using: 'composite'
   steps:
     - name: Install runner-tools
-      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5.10
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5.10.45-beta.2
       with:
         source_path: ${{ inputs.source_path }}
 
     # Get the owner repo
     - name: Get owner
       id: getowner
-      uses: cloudopsworks/blueprints/ci/common/getowner@v5.10
+      uses: cloudopsworks/blueprints/ci/common/getowner@v5.10.45-beta.2
 
     # Get repository_owner from inputs-global.yaml as project_owner id
     - name: Get Project Owner

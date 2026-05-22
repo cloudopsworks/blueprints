@@ -39,11 +39,11 @@ jobs:
       semgrep_enabled: ${{ steps.config.outputs.semgrep_enabled }}
     steps:
       - name: Checkout w/Blueprint
-        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10.45-beta.2
         with:
           token: ${{ secrets.BOT_TOKEN }}
           source_ref: ${{ github.head_ref }}
-          blueprint_ref: 'v5.10'
+          blueprint_ref: 'v5.10.45-beta.2'
 
       - name: Pipeline Configuration
         id: config
@@ -60,11 +60,11 @@ jobs:
       (needs.preload.outputs.checkov_enabled == 'true')
     steps:
       - name: Checkout w/Blueprint
-        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10.45-beta.2
         with:
           token: ${{ secrets.BOT_TOKEN }}
           source_ref: ${{ github.base_ref }}
-          blueprint_ref: 'v5.10'
+          blueprint_ref: 'v5.10.45-beta.2'
 
       - name: Run Checkov Checks
         id: checkov
@@ -83,11 +83,11 @@ jobs:
       (needs.preload.outputs.secret_scan_enabled == 'true')
     steps:
       - name: Checkout w/Blueprint
-        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10.45-beta.2
         with:
           token: ${{ secrets.BOT_TOKEN }}
           source_ref: ${{ github.base_ref }}
-          blueprint_ref: 'v5.10'
+          blueprint_ref: 'v5.10.45-beta.2'
 
       - name: Run Secret Scanning
         id: secrets
@@ -107,10 +107,10 @@ jobs:
     if: (github.actor != 'dependabot[bot]')
     steps:
       - name: Checkout w/Blueprint
-        uses: cloudopsworks/blueprints/cd/checkout@v5.10
+        uses: cloudopsworks/blueprints/cd/checkout@v5.10.45-beta.2
         id: co
         with:
-          blueprint_ref: 'v5.10'
+          blueprint_ref: 'v5.10.45-beta.2'
 
       - name: Semgrep Scan
         if: ${{ needs.preload.outputs.semgrep_enabled == 'true' }}

@@ -24,7 +24,7 @@ runs:
   steps:
     - name: Check GHAS Enabled
       id: check_ghas
-      uses: cloudopsworks/blueprints/ci/common/advancedsecurity/check@v5.10
+      uses: cloudopsworks/blueprints/ci/common/advancedsecurity/check@v5.10.45-beta.2
       with:
         token: ${{ inputs.token }}
 

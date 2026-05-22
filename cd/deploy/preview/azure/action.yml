@@ -102,7 +102,7 @@ runs:
         echo "result=$VAL" >> $GITHUB_OUTPUT
 
     - name: IAC Setup
-      uses: cloudopsworks/blueprints/cd/deploy/common/iac@v5.10
+      uses: cloudopsworks/blueprints/cd/deploy/common/iac@v5.10.45-beta.2
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
