@@ -202,7 +202,7 @@ runs:
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json','**/npm-shrinkwrap.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
-    
+
     # Versioning SET
     - name: Version SET
       working-directory: ${{ inputs.source_path }}
@@ -212,18 +212,16 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
       shell: bash
       run: |
         echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
-    
+
     # Edit package.json in order to include repository for automatic linking
     - name: Package.JSON - REPO auto link
       shell: bash
@@ -246,11 +244,9 @@ runs:
         npm install -g nyc@18.0.0 jest@30.2.0 mocha@11.7.5
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     # NPM config registry setup
     - name: NPM Config Registry Setup
       working-directory: ${{ inputs.source_path }}
@@ -261,12 +257,11 @@ runs:
         npm config --location=project set "@${STEPS_REPO_OWNER_RESULT}:registry=https://npm.pkg.github.com/"
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        STEPS_REPO_OWNER_RESULT: ${STEPS_REPO_OWNER_RESULT}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        STEPS_REPO_OWNER_RESULT: ${{ steps.repo_owner.outputs.result }}
+
     # Build the code!
     - name: Install Dependencies
       working-directory: ${{ inputs.source_path }}
@@ -276,13 +271,11 @@ runs:
         ${INPUTS_NODE_EXTRA_ENV} ${INPUTS_INSTALL_COMMAND}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
+        INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
 
-        INPUTS_NODE_EXTRA_ENV: ${INPUTS_NODE_EXTRA_ENV}
-        INPUTS_INSTALL_COMMAND: ${INPUTS_INSTALL_COMMAND}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Install AWS open telemetry
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       working-directory: ${{ inputs.source_path }}
@@ -301,13 +294,12 @@ runs:
         ${INPUTS_NODE_EXTRA_ENV} ${INPUTS_BUILD_COMMAND}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_NODE_EXTRA_ENV: ${INPUTS_NODE_EXTRA_ENV}
-        INPUTS_BUILD_COMMAND: ${INPUTS_BUILD_COMMAND}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
+        INPUTS_BUILD_COMMAND: ${{ inputs.build_command }}
+
     # Test the code
     - name: Test Code
       working-directory: ${{ inputs.source_path }}
@@ -317,12 +309,11 @@ runs:
         CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_NODE_EXTRA_ENV: ${INPUTS_NODE_EXTRA_ENV}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
+
     # SBOM generation
     - name: SBOM Generation for Dtrack
       uses: CycloneDX/gh-node-module-generatebom@v1

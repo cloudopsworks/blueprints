@@ -228,11 +228,9 @@ runs:
         cargo install cargo-tarpaulin cargo-cyclonedx toml-cli2 cargo-edit
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Install gcc toolchain
       shell: bash
       run: |
@@ -278,18 +276,15 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
       shell: bash
       run: |
         echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT
-
 
     # Test the code!
     - name: Test Code
@@ -302,13 +297,12 @@ runs:
         cargo tarpaulin --skip-clean --profile=test --out Html --out Xml --out Lcov --output-dir test-results/
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
-        STEPS_TEST_OPTS_RESULT: ${STEPS_TEST_OPTS_RESULT}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        STEPS_BUILD_OPTS_RESULT: ${{ steps.build_opts.outputs.result }}
+        STEPS_TEST_OPTS_RESULT: ${{ steps.test_opts.outputs.result }}
+
     - name: SBOM Generation for Dtrack
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -329,12 +323,11 @@ runs:
         cargo build --release ${STEPS_BUILD_OPTS_RESULT} --target-dir ./target
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        STEPS_BUILD_OPTS_RESULT: ${{ steps.build_opts.outputs.result }}
+
     # Build the targetted code!
     - name: Build Targetted Code (Cross Compile)
       if: ${{ steps.rust_dist.outputs.result != '' && steps.rust_arch.outputs.result != '' }}
@@ -345,10 +338,8 @@ runs:
         cargo build --release --target ${STEPS_RUST_ARCH_RESULT}-${STEPS_RUST_DIST_RESULT} ${STEPS_BUILD_OPTS_RESULT}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
-        STEPS_RUST_ARCH_RESULT: ${STEPS_RUST_ARCH_RESULT}
-        STEPS_RUST_DIST_RESULT: ${STEPS_RUST_DIST_RESULT}
-        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        STEPS_RUST_ARCH_RESULT: ${{ steps.rust_arch.outputs.result }}
+        STEPS_RUST_DIST_RESULT: ${{ steps.rust_dist.outputs.result }}
+        STEPS_BUILD_OPTS_RESULT: ${{ steps.build_opts.outputs.result }}

@@ -279,6 +279,7 @@ runs:
         echo "::group::Terragrunt Plan"
         terragrunt --non-interactive run -- ${STEPS_PLAN_ACTION_VALUE}
         echo "::endgroup::"
+
     - name: Terragrunt Plan to JSON
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
@@ -289,11 +290,9 @@ runs:
         echo "::endgroup::"
       env:
         TG_TF_PATH: tofu
-        GOOGLE_CREDENTIALS: ${INPUTS_GCP_CREDENTIALS}
-        GITHUB_API_TOKEN: ${INPUTS_TOKEN}
+        GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
+        GITHUB_API_TOKEN: ${{ inputs.token }}
 
-        INPUTS_GCP_CREDENTIALS: ${INPUTS_GCP_CREDENTIALS}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/gcp/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
@@ -361,10 +360,8 @@ runs:
       continue-on-error: false
       env:
         TG_TF_PATH: tofu
-        GOOGLE_CREDENTIALS: ${INPUTS_GCP_CREDENTIALS}
+        GOOGLE_CREDENTIALS: ${{ inputs.gcp_credentials }}
         HELM_CREDS_USER: '_json_key'
-        HELM_CREDS_PASSWORD: ${INPUTS_GCP_CREDENTIALS}
+        HELM_CREDS_PASSWORD: ${{ inputs.gcp_credentials }}
         HELM_EXPERIMENTAL_OCI: "1"
-        GITHUB_API_TOKEN: ${INPUTS_TOKEN}
-        INPUTS_GCP_CREDENTIALS: ${INPUTS_GCP_CREDENTIALS}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_API_TOKEN: ${{ inputs.token }}

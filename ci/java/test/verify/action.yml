@@ -61,10 +61,8 @@ runs:
           mvn --batch-mode --update-snapshots install -DprojectType=${INPUTS_DTRACK_PROJECT_TYPE}
           echo "::endgroup::"
         env:
-          GITHUB_ACTOR: ${INPUTS_BOT_USER}
-          GITHUB_TOKEN: ${INPUTS_TOKEN}
+          GITHUB_ACTOR: ${{ inputs.bot_user }}
+          GITHUB_TOKEN: ${{ inputs.token }}
 
-          STEPS_MAVEN_OPTS_RESULT: ${STEPS_MAVEN_OPTS_RESULT}
-          INPUTS_DTRACK_PROJECT_TYPE: ${INPUTS_DTRACK_PROJECT_TYPE}
-          INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-          INPUTS_TOKEN: ${INPUTS_TOKEN}
+          STEPS_MAVEN_OPTS_RESULT: ${{ steps.maven_opts.outputs.result }}
+          INPUTS_DTRACK_PROJECT_TYPE: ${{ inputs.dtrack_project_type }}

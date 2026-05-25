@@ -88,11 +88,9 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -138,8 +136,6 @@ runs:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
         INPUTS_ANDROID_CONFIGURATION: ${{ inputs.android_configuration }}
-        INPUTS_BOT_USER: ${{ inputs.bot_user }}
-        INPUTS_TOKEN: ${{ inputs.token }}
         INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
         INPUTS_ANDROID_SCHEME: ${{ inputs.android_scheme }}
         INPUTS_ARTIFACTS_NAME: ${{ inputs.artifacts_name }}

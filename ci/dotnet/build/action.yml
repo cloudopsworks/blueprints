@@ -121,6 +121,7 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
       # Validate project_path must not be blank, othewise fail the entire workflow
+
     - name: Validate project_path
       id: validate_project_path
       shell: bash
@@ -279,11 +280,9 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -301,16 +300,15 @@ runs:
         dotnet build --configuration ${STEPS_DEFAULT_CONFIGURATION_RESULT} ${STEPS_BUILD_OPTS_RESULT} --no-restore --verbosity normal
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
-        NUGET_PACKAGES: ${GITHUB_WORKSPACE}/.nuget/packages
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
 
-        EXPR_STEPS_LOCK_FILE_OUTPUTS_RESULT_TRUE_LOCKED_MODE: ${EXPR_STEPS_LOCK_FILE_OUTPUTS_RESULT_TRUE_LOCKED_MODE}
-        STEPS_DEFAULT_CONFIGURATION_RESULT: ${STEPS_DEFAULT_CONFIGURATION_RESULT}
-        STEPS_BUILD_OPTS_RESULT: ${STEPS_BUILD_OPTS_RESULT}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
-        GITHUB_WORKSPACE: ${GITHUB_WORKSPACE}
+        EXPR_STEPS_LOCK_FILE_OUTPUTS_RESULT_TRUE_LOCKED_MODE: ${{ steps.lock_file.outputs.result == 'true' && '--locked-mode' || ' ' }}
+        STEPS_DEFAULT_CONFIGURATION_RESULT: ${{ steps.default_configuration.outputs.result }}
+        STEPS_BUILD_OPTS_RESULT: ${{ steps.build_opts.outputs.result }}
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+
     # Test the code!
     - name: Test Code
       working-directory: ${{ inputs.source_path }}
@@ -322,14 +320,13 @@ runs:
           --results-directory ./TestResults /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura -- ${STEPS_RUN_OPTS_RESULT}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        STEPS_DEFAULT_CONFIGURATION_RESULT: ${STEPS_DEFAULT_CONFIGURATION_RESULT}
-        STEPS_TEST_OPTS_RESULT: ${STEPS_TEST_OPTS_RESULT}
-        STEPS_RUN_OPTS_RESULT: ${STEPS_RUN_OPTS_RESULT}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        STEPS_DEFAULT_CONFIGURATION_RESULT: ${{ steps.default_configuration.outputs.result }}
+        STEPS_TEST_OPTS_RESULT: ${{ steps.test_opts.outputs.result }}
+        STEPS_RUN_OPTS_RESULT: ${{ steps.run_opts.outputs.result }}
+
     # SBOM generation
     - name: SBOM Generation for Dtrack
       uses: CycloneDX/gh-dotnet-generate-sbom@v1
@@ -347,12 +344,10 @@ runs:
           ${STEPS_PUBLISH_OPTS_RESULT} --output ./PublishRelease --no-build --no-restore
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
-        NUGET_PACKAGES: ${GITHUB_WORKSPACE}/.nuget/packages
-        STEPS_DEFAULT_CONFIGURATION_RESULT: ${STEPS_DEFAULT_CONFIGURATION_RESULT}
-        STEPS_PROJECT_PATH_RESULT: ${STEPS_PROJECT_PATH_RESULT}
-        STEPS_PUBLISH_OPTS_RESULT: ${STEPS_PUBLISH_OPTS_RESULT}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
-        GITHUB_WORKSPACE: ${GITHUB_WORKSPACE}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+        STEPS_DEFAULT_CONFIGURATION_RESULT: ${{ steps.default_configuration.outputs.result }}
+        STEPS_PROJECT_PATH_RESULT: ${{ steps.project_path.outputs.result }}
+        STEPS_PUBLISH_OPTS_RESULT: ${{ steps.publish_opts.outputs.result }}
+        GITHUB_WORKSPACE: ${{ github.workspace }}
