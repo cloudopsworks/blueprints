@@ -64,6 +64,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Docker Inline Setting
       id: docker_inline
       shell: bash
@@ -76,6 +77,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Docker Arguments
       id: docker_args_global
       shell: bash
@@ -88,6 +90,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Docker Arguments for ${{ inputs.environment }}
       id: docker_args_env
       shell: bash
@@ -101,6 +104,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Custom Run Command
       id: custom_run_command
       shell: bash
@@ -113,6 +117,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Custom Usergroup
       id: custom_usergroup
       shell: bash
@@ -125,6 +130,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Copy Dockerfile Python App
       shell: bash
       env:
@@ -191,9 +197,8 @@ runs:
         EOF
         cat ./startup.sh
       env:
-        CUSTOM_RUN_COMMAND: ${STEPS_CUSTOM_RUN_COMMAND_RESULT}
+        CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
 
-        STEPS_CUSTOM_RUN_COMMAND_RESULT: ${STEPS_CUSTOM_RUN_COMMAND_RESULT}
     # Run Generalized Docker Build & Upload Artifact
     - name: Generalized Docker Build
       uses: ./bp/ci/container/build

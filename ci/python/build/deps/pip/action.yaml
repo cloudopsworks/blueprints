@@ -39,9 +39,7 @@ runs:
         ${INPUTS_PYTHON_EXTRA_ENV} pip install -r ${INPUTS_PYTHON_REQUIREMENTS_FILE}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
-        INPUTS_PYTHON_EXTRA_ENV: ${INPUTS_PYTHON_EXTRA_ENV}
-        INPUTS_PYTHON_REQUIREMENTS_FILE: ${INPUTS_PYTHON_REQUIREMENTS_FILE}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_PYTHON_EXTRA_ENV: ${{ inputs.python_extra_env }}
+        INPUTS_PYTHON_REQUIREMENTS_FILE: ${{ inputs.python_requirements_file }}

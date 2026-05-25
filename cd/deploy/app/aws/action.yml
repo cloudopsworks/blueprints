@@ -342,13 +342,10 @@ runs:
         echo "::endgroup::"
       env:
         TG_TF_PATH: tofu
-        AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
-        AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
-        GITHUB_API_TOKEN: ${INPUTS_TOKEN}
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        GITHUB_API_TOKEN: ${{ inputs.token }}
 
-        INPUTS_AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
-        INPUTS_AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: TF Summarize of JSON file
       working-directory: ${{ inputs.blueprint_path }}/terraform/aws/${{ inputs.cloud_type }}
       if: ${{ inputs.unlock != 'true' && steps.plan.outcome == 'success' }}
@@ -416,16 +413,13 @@ runs:
       continue-on-error: false
       env:
         TG_TF_PATH: tofu
-        AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
-        AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
-        HELM_CREDS_USER: ${INPUTS_AWS_ACCESS_KEY_ID}
-        HELM_CREDS_PASSWORD: ${INPUTS_AWS_SECRET_ACCESS_KEY}
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws_access_key_id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws_secret_access_key }}
+        HELM_CREDS_USER: ${{ inputs.aws_access_key_id }}
+        HELM_CREDS_PASSWORD: ${{ inputs.aws_secret_access_key }}
         HELM_EXPERIMENTAL_OCI: "1"
-        GITHUB_API_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_API_TOKEN: ${{ inputs.token }}
 
-        INPUTS_AWS_ACCESS_KEY_ID: ${INPUTS_AWS_ACCESS_KEY_ID}
-        INPUTS_AWS_SECRET_ACCESS_KEY: ${INPUTS_AWS_SECRET_ACCESS_KEY}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Hard fail on plan error
       shell: bash
       if: ${{ steps.plan.outcome != 'success' && ! cancelled() }}

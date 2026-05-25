@@ -60,8 +60,6 @@ runs:
         dotnet nuget add source --username $GITHUB_ACTOR --password $GITHUB_TOKEN --store-password-in-clear-text --name nuget "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json"
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
-        GITHUB_REPOSITORY_OWNER: ${GITHUB_REPOSITORY_OWNER}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}

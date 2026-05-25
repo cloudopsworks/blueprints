@@ -75,6 +75,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Docker Inline Setting
       id: docker_inline
       shell: bash
@@ -87,6 +88,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Docker Arguments
       id: docker_args_global
       shell: bash
@@ -99,6 +101,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Docker Arguments for ${{ inputs.environment }}
       id: docker_args_env
       shell: bash
@@ -112,6 +115,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Custom Run Command
       id: custom_run_command
       shell: bash
@@ -124,6 +128,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get Custom Usergroup
       id: custom_usergroup
       shell: bash
@@ -136,6 +141,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Copy Dockerfile .Net App
       shell: bash
       env:
@@ -158,6 +164,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get xray config file from inputs-global.yaml
       id: xray_config_file
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
@@ -172,6 +179,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Download AWS Xray agent
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       shell: bash
@@ -181,7 +189,6 @@ runs:
         mkdir -p observability/
         #curl -Lo $tmpdir/aws-opentelemetry-agent.zip https://github.com/aws-observability/aws-otel-dotnet-instrumentation/releases/latest/download/aws-distro-opentelemetry-dotnet-instrumentation-linux-glibc-x64.zip
         #unzip $tmpdir/aws-opentelemetry-agent.zip -d observability/
-        
 
     - name: Dockerfile .Net Specific Injection
       working-directory: ${{ inputs.source_path }}
@@ -254,9 +261,8 @@ runs:
         EOF
         cat ./startup.sh
       env:
-        CUSTOM_RUN_COMMAND: ${STEPS_CUSTOM_RUN_COMMAND_RESULT}
+        CUSTOM_RUN_COMMAND: ${{ steps.custom_run_command.outputs.result }}
 
-        STEPS_CUSTOM_RUN_COMMAND_RESULT: ${STEPS_CUSTOM_RUN_COMMAND_RESULT}
     - name: Build and set startup.sh command
       if: ${{ steps.custom_run_command.outputs.result == '' }}
       working-directory: ${{ inputs.source_path }}
@@ -273,7 +279,6 @@ runs:
         exec dotnet ${INPUTS_PACKAGE_NAME}.dll \${DOTNET_ARGS}
         EOF
         cat ./startup.sh
-        
 
     # Run Generalized Docker Build & Upload Artifact
     - name: Generalized Docker Build

@@ -176,11 +176,9 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -198,10 +196,8 @@ runs:
         mvn --batch-mode --update-snapshots clean install -DprojectType=${STEPS_DTRACK_PROJECT_TYPE_RESULT}
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        STEPS_MAVEN_OPTS_RESULT: ${STEPS_MAVEN_OPTS_RESULT}
-        STEPS_DTRACK_PROJECT_TYPE_RESULT: ${STEPS_DTRACK_PROJECT_TYPE_RESULT}
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
+        STEPS_MAVEN_OPTS_RESULT: ${{ steps.maven_opts.outputs.result }}
+        STEPS_DTRACK_PROJECT_TYPE_RESULT: ${{ steps.dtrack_project_type.outputs.result }}

@@ -162,6 +162,7 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     # Get pipeline conf install dependency extra_args
     - name: Get pipeline Python install dependency extra_args
       id: python_dep_extra_args
@@ -258,11 +259,9 @@ runs:
         make version
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
       id: semver
@@ -290,7 +289,6 @@ runs:
         blueprint_path: ${{ inputs.blueprint_path }}
         python_requirements_file: ${{ inputs.python_requirements_file }}
         python_extra_env: ${{ inputs.python_extra_env }}
-
 
     - name: Build PYPENV
       if: steps.python_dist.outputs.result == 'pipenv'
@@ -367,11 +365,9 @@ runs:
         echo "::debug::End Ruff Report"
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     - name: Run MyPy Test
       if: steps.python_test_mypy.outputs.result == 'true'
       working-directory: ${{ inputs.source_path }}
@@ -386,11 +382,9 @@ runs:
         echo "::debug::End MyPy Report"
         echo "::endgroup::"
       env:
-        GITHUB_ACTOR: ${INPUTS_BOT_USER}
-        GITHUB_TOKEN: ${INPUTS_TOKEN}
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
 
-        INPUTS_BOT_USER: ${INPUTS_BOT_USER}
-        INPUTS_TOKEN: ${INPUTS_TOKEN}
     # SBOM generation
     - name: Install CycloneDX
       working-directory: ${{ inputs.source_path }}
