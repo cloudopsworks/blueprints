@@ -70,7 +70,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif "${STEPS_SPLIT_EXCLUDES_RESULT}"
+        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${STEPS_SPLIT_EXCLUDES_RESULT}
 #        semgrep --config=p/nodejs . --json ${STEPS_SPLIT_EXCLUDES_RESULT} > semgrep.json
 
     - name: Upload SARIF file
