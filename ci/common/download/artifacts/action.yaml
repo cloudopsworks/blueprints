@@ -62,6 +62,6 @@ runs:
         INPUTS_EXCLUDE_OPTS_ARG: ${{ inputs.exclude_opts != '' && format('--exclude="{0}"',inputs.exclude_opts) || '' }}
         STEPS_DOWNLOAD_DOWNLOAD_PATH: ${{ steps.download.outputs.download-path }}
       run: |
-        tar "${INPUTS_EXCLUDE_OPTS_ARG}" -xf "${STEPS_DOWNLOAD_DOWNLOAD_PATH}/"*.tar -C "${STEPS_DOWNLOAD_DOWNLOAD_PATH}/"
+        tar ${INPUTS_EXCLUDE_OPTS_ARG} -xf "${STEPS_DOWNLOAD_DOWNLOAD_PATH}/"*.tar -C "${STEPS_DOWNLOAD_DOWNLOAD_PATH}/"
         rm -f "${STEPS_DOWNLOAD_DOWNLOAD_PATH}/"*.tar
       shell: bash

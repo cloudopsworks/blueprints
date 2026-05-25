@@ -206,6 +206,6 @@ runs:
         STEPS_SONAR_BRANCH_ARG: ${{ steps.branch_disabled.outputs.result != 'true' && format('/d:sonar.branch.name="{0}"',github.ref_name) || ' ' }}
         INPUTS_SONAR_ORGANIZATION_ARG: ${{ contains(inputs.sonarqube_url, 'sonarcloud.io') && format('/d:sonar.organization="{0}"',steps.repo_owner.outputs.result) || ' ' }}
       run: |
-        dotnet-sonarscanner begin "/k:${INPUTS_SONARQUBE_PROJECT_KEY}" "/v:${INPUTS_SEMVER}" "/d:sonar.token=${INPUTS_SONARQUBE_TOKEN}" /d:sonar.lang.patterns.openapi=openapi "/d:sonar.host.url=${INPUTS_SONARQUBE_URL}" "${STEPS_SONAR_BRANCH_ARG}" "${INPUTS_SONAR_ORGANIZATION_ARG}"
+        dotnet-sonarscanner begin "/k:${INPUTS_SONARQUBE_PROJECT_KEY}" "/v:${INPUTS_SEMVER}" "/d:sonar.token=${INPUTS_SONARQUBE_TOKEN}" /d:sonar.lang.patterns.openapi=openapi "/d:sonar.host.url=${INPUTS_SONARQUBE_URL}" ${STEPS_SONAR_BRANCH_ARG} ${INPUTS_SONAR_ORGANIZATION_ARG}
         dotnet build <path to project file or .sln file> --no-incremental
         dotnet-sonarscanner end "/d:sonar.token=${INPUTS_SONARQUBE_TOKEN}"
