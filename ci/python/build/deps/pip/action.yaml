@@ -36,7 +36,7 @@ runs:
         echo "::group::PIP Install"
         source .venv/bin/activate
         echo "Installing dependencies"
-        ${INPUTS_PYTHON_EXTRA_ENV} pip install -r ${INPUTS_PYTHON_REQUIREMENTS_FILE}
+        bash -c "${INPUTS_PYTHON_EXTRA_ENV} pip install -r ${INPUTS_PYTHON_REQUIREMENTS_FILE}"
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}

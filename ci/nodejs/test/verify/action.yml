@@ -50,7 +50,6 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
-
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
 
     # SBOM generation
