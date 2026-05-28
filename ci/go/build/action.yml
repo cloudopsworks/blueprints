@@ -56,7 +56,7 @@ outputs:
     value: ${{ steps.semver.outputs.result }}
   package_name:
     description: 'The package name'
-    value: ${{ steps.package_name.outputs.result }}
+    value: ${{ steps.package_name_config.outputs.result != '' && steps.package_name_config.outputs.result || steps.package_name.outputs.result }}
 
 runs:
   using: 'composite'
@@ -168,6 +168,15 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
+    - name: Get Package Name from configuration
+      id: package_name_config
+      shell: bash
+      env:
+          INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+          RET=$(yq e ".golang.package_name // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+          echo "result=${RET}" >> $GITHUB_OUTPUT
+
     # Get the Package name from go.mod
     - name: Get Package name
       id: package_name
@@ -265,7 +274,7 @@ runs:
         STEPS_GOLANG_ARCH_RESULT: ${{ steps.golang_arch.outputs.result }}
         STEPS_BUILD_OPTS_RESULT: ${{ steps.build_opts.outputs.result }}
         EXPR_STEPS_DISABLE_CGO_OUTPUTS_RESULT_TRUE_CGO_ENABLE: ${{ steps.disable_cgo.outputs.result == 'true' && 'CGO_ENABLED=0' || '' }}
-        STEPS_PACKAGE_NAME_RESULT: ${{ steps.package_name.outputs.result }}
+        STEPS_PACKAGE_NAME_RESULT: ${{ steps.package_name_config.outputs.result != '' && steps.package_name_config.outputs.result || steps.package_name.outputs.result }}
         STEPS_MAIN_FILE_RESULT: ${{ steps.main_file.outputs.result }}
 
     # Test the code!
