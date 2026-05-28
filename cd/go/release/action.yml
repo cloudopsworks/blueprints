@@ -33,6 +33,14 @@ inputs:
   golang_version:
     description: 'The GoLang version to use for the release'
     required: true
+  homebrew_tap_token:
+    description: 'The github token to use for the homebrew tap release, comes from secret: HOMEBREW_TAP_TOKEN'
+    required: false
+    default: ''
+  chocolatey_api_key:
+    description: 'The chocolatey api key to use for the chocolatey release, comes from secret: CHOCOLATEY_API_KEY'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -69,3 +77,5 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
         GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
         PASSPHRASE: ${{ inputs.gpg_passphrase }}
+        HOMEBREW_TAP_TOKEN: ${{ inputs.homebrew_tap_token }}
+        CHOCOLATEY_API_KEY: ${{ inputs.chocolatey_api_key }}
