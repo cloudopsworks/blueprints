@@ -62,7 +62,7 @@ runs:
         STEPS_ZIP_GLOBS_RESULT: ${{ steps.zip_globs.outputs.result }}
       run: |
         mkdir -p "${INPUTS_SOURCE_PATH}/bin/"
-        find "${STEPS_ZIP_GLOBS_RESULT}" -type f -maxdepth 0 -exec cp -pv {} "${INPUTS_SOURCE_PATH}/bin/" \;
+        find . -path "./${STEPS_ZIP_GLOBS_RESULT}" -type f -maxdepth 4 -exec cp -pv {} "${INPUTS_SOURCE_PATH}/bin/" \;
 
     # Perform of upload of artfiacts for Rust
     - name: Upload Artifacts to workflow
