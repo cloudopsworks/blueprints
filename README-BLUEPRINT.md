@@ -1086,6 +1086,62 @@ Release Workflow for Github
 
 ---
 
+### Release Workflow for GoReleaser pipeline - GoLang
+
+**Path**: `./cd/go/release/action.yml`
+
+Release Workflow for GoReleaser pipeline for GoLang projects
+
+#### Inputs
+
+| Name | Description | Required | Default |
+|------|-------------|----------|---------|
+| `source_path` | The path to the source code | false | `source` |
+| `blueprint_path` | The path to the blueprint | false | `bp` |
+| `token` | The github token to use for the release | true | `` |
+| `gpg_private_key` | The GPG private key to use for signing the release | true | `` |
+| `gpg_passphrase` | The GPG passphrase to use for signing the release | true | `` |
+| `semver` | The semver version to use for the release | true | `` |
+| `golang_version` | The GoLang version to use for the release | true | `` |
+| `homebrew_tap_token` | The github token to use for the homebrew tap release, comes from secret: HOMEBREW_TAP_TOKEN | false | `` |
+| `chocolatey_api_key` | The chocolatey api key to use for the chocolatey release, comes from secret: CHOCOLATEY_API_KEY | false | `` |
+
+#### What it performs
+- Setup Go
+- Import GPG key
+- Cleanup for goreleaser
+- Run GoReleaser
+
+---
+
+### Release Workflow for GoReleaser pipeline - Rust
+
+**Path**: `./cd/rust/release/action.yml`
+
+Release Workflow for GoReleaser pipeline for Rust projects
+
+#### Inputs
+
+| Name | Description | Required | Default |
+|------|-------------|----------|---------|
+| `source_path` | The path to the source code | false | `source` |
+| `blueprint_path` | The path to the blueprint | false | `bp` |
+| `token` | The github token to use for the release | true | `` |
+| `gpg_private_key` | The GPG private key to use for signing the release | true | `` |
+| `gpg_passphrase` | The GPG passphrase to use for signing the release | true | `` |
+| `semver` | The semver version to use for the release | true | `` |
+| `golang_version` | The GoLang version to use for the release | true | `` |
+| `homebrew_tap_token` | The github token to use for the homebrew tap release, comes from secret: HOMEBREW_TAP_TOKEN | false | `` |
+| `chocolatey_api_key` | The chocolatey api key to use for the chocolatey release, comes from secret: CHOCOLATEY_API_KEY | false | `` |
+
+#### What it performs
+- Setup Go
+- Import GPG key
+- Cleanup for goreleaser
+- Run GoReleaser
+
+---
+
 ### Copy APIs to blueprint
 
 **Path**: `./cd/tasks/apis/copy/action.yml`
