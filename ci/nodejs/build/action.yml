@@ -259,7 +259,6 @@ runs:
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
-
         STEPS_REPO_OWNER_RESULT: ${{ steps.repo_owner.outputs.result }}
 
     # Build the code!
@@ -268,7 +267,7 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Install"
-        ${INPUTS_NODE_EXTRA_ENV} ${INPUTS_INSTALL_COMMAND}
+        bash -c "${INPUTS_NODE_EXTRA_ENV} ${INPUTS_INSTALL_COMMAND}"
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -291,12 +290,11 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Build"
-        ${INPUTS_NODE_EXTRA_ENV} ${INPUTS_BUILD_COMMAND}
+        bash -c "${INPUTS_NODE_EXTRA_ENV} ${INPUTS_BUILD_COMMAND}"
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
-
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         INPUTS_BUILD_COMMAND: ${{ inputs.build_command }}
 
@@ -306,12 +304,11 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Test"
-        CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless
+        bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless"
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
-
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
 
     # SBOM generation
