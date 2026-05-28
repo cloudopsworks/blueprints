@@ -316,10 +316,12 @@ runs:
 
     # SBOM generation
     - name: SBOM Generation for Dtrack
-      uses: CycloneDX/gh-node-module-generatebom@v1
-      with:
-        path: ${{ inputs.source_path }}
-        output: "${{ inputs.source_path }}/bom.xml"
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "::group::SBOM Generation for Dtrack"
+        npx @cyclonedx/cyclonedx-npm --output-format XML -o bom.xml
+        echo "::endgroup::"
 
     # Removal of .npmrc file for security reasons
     - name: Remove .npmrc file
