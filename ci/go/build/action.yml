@@ -264,12 +264,11 @@ runs:
       shell: bash
       run: |
         echo "::group::Go Build"
-        GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} ${EXPR_STEPS_DISABLE_CGO_OUTPUTS_RESULT_TRUE_CGO_ENABLE} go build -o bin/${STEPS_PACKAGE_NAME_RESULT} ${STEPS_MAIN_FILE_RESULT}
+        bash -c "GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} ${EXPR_STEPS_DISABLE_CGO_OUTPUTS_RESULT_TRUE_CGO_ENABLE} go build -o bin/${STEPS_PACKAGE_NAME_RESULT} ${STEPS_MAIN_FILE_RESULT}"
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
-
         STEPS_GOLANG_DIST_RESULT: ${{ steps.golang_dist.outputs.result }}
         STEPS_GOLANG_ARCH_RESULT: ${{ steps.golang_arch.outputs.result }}
         STEPS_BUILD_OPTS_RESULT: ${{ steps.build_opts.outputs.result }}
@@ -284,13 +283,12 @@ runs:
       run: |
         echo "::group::Go Test"
         mkdir -p test-results
-        GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} go test -coverprofile=test-results/coverage.out ./...
-        GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} go tool cover -html=test-results/coverage.out -o test-results/coverage.html
+        bash -c "GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} go test -coverprofile=test-results/coverage.out ./..."
+        bash -c "GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} ${STEPS_BUILD_OPTS_RESULT} go tool cover -html=test-results/coverage.out -o test-results/coverage.html"
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
-
         STEPS_GOLANG_DIST_RESULT: ${{ steps.golang_dist.outputs.result }}
         STEPS_GOLANG_ARCH_RESULT: ${{ steps.golang_arch.outputs.result }}
         STEPS_BUILD_OPTS_RESULT: ${{ steps.build_opts.outputs.result }}
@@ -310,5 +308,5 @@ runs:
         STEPS_MAIN_FILE_RESULT: ${{ steps.main_file.outputs.result }}
       run: |
         echo "::group::SBOM Generation"
-        GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} cyclonedx-gomod app -licenses -packages -output bom.xml -main $(dirname ${STEPS_MAIN_FILE_RESULT})
+        bash -c "GOOS=${STEPS_GOLANG_DIST_RESULT} GOARCH=${STEPS_GOLANG_ARCH_RESULT} cyclonedx-gomod app -licenses -packages -output bom.xml -main $(dirname ${STEPS_MAIN_FILE_RESULT})"
         echo "::endgroup::"
