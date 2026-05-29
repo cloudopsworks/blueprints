@@ -101,6 +101,6 @@ runs:
         CHOCOLATEY_API_KEY: ${{ inputs.chocolatey_api_key }}
         MACOS_SIGN_P12: ${{ inputs.apple_certificate_b64 }}
         MACOS_SIGN_PASSWORD: ${{ inputs.apple_certificate_pass }}
-        MACOS_NOTARY_ISSUER_ID: ${{ inputs.apple_store_connect_issuer_id }}E
+        MACOS_NOTARY_ISSUER_ID: ${{ inputs.apple_store_connect_issuer_id }}
         MACOS_NOTARY_KEY_ID: ${{ inputs.apple_store_connect_key_id }}
         MACOS_NOTARY_KEY: ${{ inputs.apple_store_connect_key_b64 }}
