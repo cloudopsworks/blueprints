@@ -41,6 +41,26 @@ inputs:
     description: 'The chocolatey api key to use for the chocolatey release, comes from secret: CHOCOLATEY_API_KEY'
     required: false
     default: ''
+  apple_certificate_b64:
+    description: 'The Apple certificate in base64 format to use for signing the release, comes from secret: XCODE_BUILD_CERTIFICATE_BASE64'
+    required: false
+    default: ''
+  apple_certificate_pass:
+    description: 'The Apple certificate passphrase to use for signing the release, comes from secret: XCODE_BUILD_CERTIFICATE_PASS'
+    required: false
+    default: ''
+  apple_store_connect_key_b64:
+    description: 'The Apple Store Connect key in base64 format to use for signing the release, comes from secret: APPLE_STORE_CONNECT_KEY_BASE64'
+    required: false
+    default: ''
+  apple_store_connect_key_id:
+    description: 'The Apple Store Connect key id to use for signing the release, comes from secret: APPLE_STORE_CONNECT_KEY_ID'
+    required: false
+    default: ''
+  apple_store_connect_issuer_id:
+    description: 'The Apple Store Connect issuer id to use for signing the release, comes from secret: APPLE_STORE_CONNECT_ISSUER_ID'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -77,3 +97,8 @@ runs:
         PASSPHRASE: ${{ inputs.gpg_passphrase }}
         HOMEBREW_TAP_TOKEN: ${{ inputs.homebrew_tap_token }}
         CHOCOLATEY_API_KEY: ${{ inputs.chocolatey_api_key }}
+        MACOS_SIGN_P12: ${{ inputs.apple_certificate_b64 }}
+        MACOS_SIGN_PASSWORD: ${{ inputs.apple_certificate_pass }}
+        MACOS_NOTARY_ISSUER_ID: ${{ inputs.apple_store_connect_issuer_id }}
+        MACOS_NOTARY_KEY_ID: ${{ inputs.apple_store_connect_key_id }}
+        MACOS_NOTARY_KEY: ${{ inputs.apple_store_connect_key_b64 }}
