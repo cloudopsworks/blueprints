@@ -118,6 +118,12 @@ usage: |-
   | __HOOP Integration__                 |          |                                                                                                                                              |          |
   | HOOP_INTEGRATION_API_KEY             |  Secret  | HOOP.dev API Key for integration of HOOP enabled workflows
   | HOOP_INTEGRATION_API_URL             | Variable | HOOP.dev API URL for integration of HOOP enabled workflows, defaults to https://api.hoop.dev
+  | __Apple / macOS Code Signing__       |          | - Required for Go release actions targeting macOS with code signing and notarization                                                         |          |
+  | XCODE_BUILD_CERTIFICATE_BASE64       |  Secret  | Apple Developer certificate (P12) encoded in base64, used for macOS binary signing                                                           |    No    |
+  | XCODE_BUILD_CERTIFICATE_PASS         |  Secret  | Passphrase for the Apple Developer certificate                                                                                               |    No    |
+  | APPLE_STORE_CONNECT_KEY_BASE64       |  Secret  | Apple Store Connect API key encoded in base64, used for notarization                                                                         |    No    |
+  | APPLE_STORE_CONNECT_KEY_ID           |  Secret  | Apple Store Connect API key ID                                                                                                               |    No    |
+  | APPLE_STORE_CONNECT_ISSUER_ID        |  Secret  | Apple Store Connect issuer ID                                                                                                                |    No    |
 
 
 
