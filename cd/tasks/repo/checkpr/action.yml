@@ -146,7 +146,7 @@ runs:
         github-token: ${{ inputs.token }}
         script: |
           const reviewers_json=JSON.parse('' + (process.env.STEPS_REVIEWERS_RESULT || '') + '')
-          const reviewers_count=(process.env.STEPS_REVIEWERS_COUNT_RESULT || '')
+          const reviewers_count=parseInt(process.env.STEPS_REVIEWERS_COUNT_RESULT || '0')
           const actor = '' + (process.env.GITHUB_EVENT_PULL_REQUEST_USER_LOGIN || '') + ''
           
           var reviewers = []
