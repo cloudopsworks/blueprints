@@ -206,7 +206,7 @@ runs:
           const owners_json = owners_text != null ? JSON.parse('' + (process.env.STEPS_OWNERS_LIST_RESULT || '') + '') : [];
           const contrib_text = (process.env.STEPS_CONTRIB_LIST_RESULT || '');
           const contrib_json = contrib_text != null ? JSON.parse('' + (process.env.STEPS_CONTRIB_LIST_RESULT || '') + '') : {};
-          const reviewers_count = (process.env.STEPS_REVIEWERS_COUNT_RESULT || '');
+          const reviewers_count = parseInt(process.env.STEPS_REVIEWERS_COUNT_RESULT || '0');
           const actor = context.actor;
           const is_iac = '' + (process.env.STEPS_REPO_TYPE_RESULT || '') + '' === 'iac';
           
