@@ -48,7 +48,7 @@ EOF
 }
 
 terraform {
-  source = "git::https://github.com/cloudopsworks/terraform-module-gcp-gke-helm-deploy.git//?ref=v1.0.0"
+  source = "git::https://github.com/cloudopsworks/terraform-module-gcp-gke-helm-deploy.git//?ref=v2.0.0"
 }
 
 inputs = {
