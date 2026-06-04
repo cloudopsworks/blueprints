@@ -147,7 +147,7 @@ runs:
 
     - name: Modify GoReleaser config with releaser settings for this pipeline
       shell: bash
-      working-directory: ${{ inputs.blueprint_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
         #find out file to be modified: goreleaser.yaml or .goreleaser.yaml or .goreleaser.yml or goreleaser.yml
         if [ -f "goreleaser.yaml" ]; then
