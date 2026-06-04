@@ -26,6 +26,10 @@ inputs:
     description: 'The pre-release flag'
     required: false
     default: 'false'
+  go_releaser_inuse:
+    description: 'Whether goreleaser is in action or not, if true, the release will be created as draft, final publishing should be done by goreleaser, if false, the release will be published immediately'
+    required: false
+    default: 'false'
   files_globs:
     description: 'The files globs to include in the release'
     required: false
@@ -104,4 +108,5 @@ runs:
         name: "Release ${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
         prerelease: ${{ inputs.is_pre_release }}
+        draft: ${{ inputs.go_releaser_inuse == 'true' }}
         files: ${{ inputs.files_globs }}
