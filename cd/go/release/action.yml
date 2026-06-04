@@ -61,6 +61,14 @@ inputs:
     description: 'The Apple Store Connect issuer id to use for signing the release, comes from secret: APPLE_STORE_CONNECT_ISSUER_ID'
     required: false
     default: ''
+  apple_notary_profile_name:
+    description: 'The Apple Notary profile name to use for signing the release, comes from secret: APPLE_NOTARY_PROFILE_NAME'
+    required: false
+    default: 'goreleaser-notary-profile'
+  apple_keychain_password:
+    description: 'The Apple Keychain password to use for signing the release, comes from secret: APPLE_KEYCHAIN_PASSWORD'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -87,6 +95,55 @@ runs:
       run: |
         git clean -df
 
+    - name: Validate running on MacOS Runner for Apple Notary
+      id: is_macos
+      shell: bash
+      run: |
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build MacOS Runner keychain for Apple Notary
+      if: steps.is_macos.outputs.result == 'true'
+      shell: bash
+      env:
+        MACOS_SIGN_P12: ${{ inputs.apple_certificate_b64 }}
+        MACOS_SIGN_PASSWORD: ${{ inputs.apple_certificate_pass }}
+        MACOS_NOTARY_ISSUER_ID: ${{ inputs.apple_store_connect_issuer_id }}
+        MACOS_NOTARY_KEY_ID: ${{ inputs.apple_store_connect_key_id }}
+        MACOS_NOTARY_KEY: ${{ inputs.apple_store_connect_key_b64 }}
+        MACOS_NOTARY_PROFILE_NAME: ${{ inputs.apple_notary_profile_name }}
+        KEYCHAIN_PASSWORD: ${{ inputs.apple_keychain_password }}
+      run: |
+        # create variables
+        CERTIFICATE_PATH=$RUNNER_TEMP/goreleaser.p12
+        KEY_PATH=$RUNNER_TEMP/goreleaser.p8
+        KEYCHAIN_PATH=$RUNNER_TEMP/goreleaser.keychain-db
+        
+        # import certificate and key from secrets
+        echo -n "$MACOS_SIGN_P12" | base64 --decode -o $CERTIFICATE_PATH
+        echo -n "$MACOS_NOTARY_KEY" | base64 --decode -o $KEY_PATH
+        
+        # create temporary keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        
+        # import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$MACOS_SIGN_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+        
+        # create notary profile
+        xcrun notarytool store-credentials "$MACOS_NOTARY_PROFILE_NAME" \
+          --key "$KEY_PATH" \
+          --key-id "$MACOS_NOTARY_KEY_ID" \
+          --issuer "$MACOS_NOTARY_ISSUER_ID" \
+          --keychain $KEYCHAIN_PATH
+        
+        # export the keychain path
+        echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >>$GITHUB_ENV
+
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v7
       with:
@@ -104,3 +161,5 @@ runs:
         MACOS_NOTARY_ISSUER_ID: ${{ inputs.apple_store_connect_issuer_id }}
         MACOS_NOTARY_KEY_ID: ${{ inputs.apple_store_connect_key_id }}
         MACOS_NOTARY_KEY: ${{ inputs.apple_store_connect_key_b64 }}
+        MACOS_NOTARY_PROFILE_NAME: ${{ inputs.apple_notary_profile_name }}
+        KEYCHAIN_PASSWORD: ${{ inputs.apple_keychain_password }}
