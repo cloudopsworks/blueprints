@@ -164,7 +164,7 @@ runs:
           exit 1
         fi
         # modify the goreleaser config with the releaser settings for this pipeline
-        yq e -i '.release.tag = "Release {{ .Tag }}"' $CONFIG_FILE
+        yq e -i '.release.name_template = "Release {{ .Tag }}"' $CONFIG_FILE
         yq e -i '.release.draft = true' $CONFIG_FILE
         yq e -i '.release.use_existing_draft = true' $CONFIG_FILE
 
