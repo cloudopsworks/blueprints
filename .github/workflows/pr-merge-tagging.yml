@@ -77,4 +77,4 @@ jobs:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           FEATURE=$(echo "${GITHUB_HEAD_REF}" | sed -e 's/feature\///g')
-          make gitflow/feature/purge-no-develop:$FEATURE
+          make gitflow/feature/purge:$FEATURE
