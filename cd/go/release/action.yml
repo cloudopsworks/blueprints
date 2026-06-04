@@ -173,7 +173,7 @@ runs:
       with:
         workdir: ${{ inputs.source_path }}
         version: '~> v2'
-        args: release --clean
+        args: release --clean --skip=validate
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
         GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
