@@ -145,35 +145,12 @@ runs:
         # export the keychain path
         echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >>$GITHUB_ENV
 
-    - name: Modify GoReleaser config with releaser settings for this pipeline
-      shell: bash
-      working-directory: ${{ inputs.source_path }}
-      run: |
-        #find out file to be modified: goreleaser.yaml or .goreleaser.yaml or .goreleaser.yml or goreleaser.yml
-        if [ -f "goreleaser.yaml" ]; then
-          CONFIG_FILE="goreleaser.yaml"
-        elif [ -f ".goreleaser.yaml" ]; then
-          CONFIG_FILE=".goreleaser.yaml"
-        elif [ -f ".goreleaser.yml" ]; then
-          CONFIG_FILE=".goreleaser.yml"
-        elif [ -f "goreleaser.yml" ]; then
-          CONFIG_FILE="goreleaser.yml"
-        else
-          echo "No GoReleaser config file found"
-          echo "::error::No GoReleaser config file found in project, expected one of goreleaser.yaml, .goreleaser.yaml, .goreleaser.yml or goreleaser.yml"
-          exit 1
-        fi
-        # modify the goreleaser config with the releaser settings for this pipeline
-        yq e -i '.release.name_template = "Release {{ .Tag }}"' $CONFIG_FILE
-        yq e -i '.release.draft = false' $CONFIG_FILE
-        yq e -i '.release.use_existing_draft = true' $CONFIG_FILE
-
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v7
       with:
         workdir: ${{ inputs.source_path }}
         version: '~> v2'
-        args: release --clean --skip=validate
+        args: release --clean
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
         GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
