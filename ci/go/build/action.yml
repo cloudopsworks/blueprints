@@ -168,6 +168,36 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
+    - name: Check GoReleaser config with releaser settings for this pipeline
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      if: steps.golang_goreleaser.outputs.result == 'true'
+      continue-on-error: false
+      run: |
+        #find out file to be modified: goreleaser.yaml or .goreleaser.yaml or .goreleaser.yml or goreleaser.yml
+        if [ -f "goreleaser.yaml" ]; then
+          CONFIG_FILE="goreleaser.yaml"
+        elif [ -f ".goreleaser.yaml" ]; then
+          CONFIG_FILE=".goreleaser.yaml"
+        elif [ -f ".goreleaser.yml" ]; then
+          CONFIG_FILE=".goreleaser.yml"
+        elif [ -f "goreleaser.yml" ]; then
+          CONFIG_FILE="goreleaser.yml"
+        else
+          echo "No GoReleaser config file found"
+          echo "::error::No GoReleaser config file found in project, expected one of goreleaser.yaml, .goreleaser.yaml, .goreleaser.yml or goreleaser.yml"
+          exit 1
+        fi
+        # validate in $CONFIG_FILE .release.draft not set or false
+        # validate in $CONFIG_FILE .release.use_existing_draft is set and true
+        # if not, set .release.draft to false and .release.use_existing_draft FAIL exit 1
+        DRAFT=$(yq e ".release.draft // false" "$CONFIG_FILE")
+        USE_EXISTING_DRAFT=$(yq e ".release.use_existing_draft // false" "$CONFIG_FILE")
+        if [ "$DRAFT" != "false" ] || [ "$USE_EXISTING_DRAFT" != "true" ]; then
+          echo "::error::GoReleaser config file $CONFIG_FILE has invalid release settings for this pipeline, expected .release.draft to be false and .release.use_existing_draft to be true"
+          exit 1
+        fi
+
     - name: Get Package Name from configuration
       id: package_name_config
       shell: bash
