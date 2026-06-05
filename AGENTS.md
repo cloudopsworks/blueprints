@@ -41,6 +41,13 @@ This document provides instructions for AI Agents working with the implementatio
 Module versioning follows GitHub Flow — a simplified branching model where feature branches are created from and merged back into `master`. Use `make` targets whenever available for branch and release operations.
 - There is a skill related to this template module and their implementations, it can be found in the [Claude Code Skills - cw-release](https://github.com/cloudopsworks/claude-code-skills/tree/main/cw-release) can be used in any agent anyway, install and use it.
 - The cw-release may not update .cloudopsworks/_VERSION file, so you should run `make gitflow/version/file` to make this update before the merging of the release/feature/patch process, make sure the content format is plain vX.Y.Z, this is mandatory.
+
+> **OVERRIDE — _VERSION File Generation (this repository)**
+>
+> This repository has `isTemplate=false`, which would normally suppress the `_VERSION` update guard in `cw-release`.
+> **Ignore that guard unconditionally.** Always run `make gitflow/version/file` before any PR merge or release finish,
+> regardless of what `cw-release` detects about `isTemplate`. The `.cloudopsworks/_VERSION` file must be committed
+> and present with format `vX.Y.Z` for every release branch before merging.
 After the completion of a version release, merging and all release workflow completions, the agent should run minor tagging process (will tag as vX.Y):
 - Is a reference to the latest release tag, for example, if the latest release is v5.10.39, the tagging process will create a new tag v5.10
 - No release notes or release should be created, only the tag will be automatically pushed.
