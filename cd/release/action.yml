@@ -105,7 +105,7 @@ runs:
       with:
         token: ${{ inputs.token }}
         body: ${{ steps.changelog.outputs.changes != '' && steps.changelog.outputs.changes || steps.changelog-from-to.outputs.changes }}
-        name: "Release ${{ steps.normalize.outputs.result }}"
+        name: "${{ steps.normalize.outputs.result }}"
         tag_name: ${{ steps.normalize.outputs.result }}
         prerelease: ${{ inputs.is_pre_release }}
         draft: ${{ inputs.go_releaser_inuse == 'true' }}
