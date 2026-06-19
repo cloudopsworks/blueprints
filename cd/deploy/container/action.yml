@@ -127,7 +127,7 @@ runs:
     # Docker Build login AWS
     - name: Configure AWS Credentials
       if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn == '' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
         aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
@@ -137,7 +137,7 @@ runs:
     # Docker Build login AWS - w/Assume Role
     - name: Configure AWS Credentials with Assume Role
       if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn != '' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
         aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
