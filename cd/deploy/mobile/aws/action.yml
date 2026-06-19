@@ -266,7 +266,7 @@ runs:
     # Login AWS
     - name: Configure AWS Credentials
       if: ${{ inputs.aws_sts_role_arn == '' }}
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
         aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
@@ -276,7 +276,7 @@ runs:
     # Login AWS - w/Assume Role
     - name: Configure AWS Credentials with Assume Role
       if: ${{ inputs.aws_sts_role_arn != '' }}
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
         aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
