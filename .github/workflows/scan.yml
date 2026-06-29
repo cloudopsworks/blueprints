@@ -63,7 +63,7 @@ jobs:
         uses: cloudopsworks/blueprints/cd/checkout@v5.10
         with:
           token: ${{ secrets.BOT_TOKEN }}
-          source_ref: ${{ github.base_ref }}
+          source_ref: ${{ github.head_ref }}
           blueprint_ref: 'v5.10'
 
       - name: Run Checkov Checks
@@ -86,7 +86,7 @@ jobs:
         uses: cloudopsworks/blueprints/cd/checkout@v5.10
         with:
           token: ${{ secrets.BOT_TOKEN }}
-          source_ref: ${{ github.base_ref }}
+          source_ref: ${{ github.head_ref }}
           blueprint_ref: 'v5.10'
 
       - name: Run Secret Scanning
@@ -94,6 +94,7 @@ jobs:
         uses: ./bp/ci/scan/secrets
         with:
           token: ${{ secrets.BOT_TOKEN }}
+          source_ref: ${{ github.head_ref }}
 
   semgrep:
     name: semgrep/ci
