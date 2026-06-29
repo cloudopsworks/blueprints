@@ -74,3 +74,4 @@ runs:
         checkout_path: ${{ inputs.source_path }}
         sarif_file: ${{ inputs.source_path }}/semgrep.sarif
         wait-for-processing: false
+        token: ${{ inputs.token }}
