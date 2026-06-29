@@ -49,7 +49,7 @@ runs:
         INPUTS_SEMGREP_EXCLUDES: ${{ inputs.semgrep_excludes }}
       run: |
         if [[ -n "${INPUTS_SEMGREP_EXCLUDES}" ]]; then
-          result="--exclude '$(echo \"${INPUTS_SEMGREP_EXCLUDES}\" | sed s/,/' --exclude '/g)'"
+          result="--exclude '$(echo \"${INPUTS_SEMGREP_EXCLUDES}\" | sed s/,/\'\ --exclude\ \'/g)'"
         else
           result=""
         fi
