@@ -323,11 +323,30 @@ runs:
         STEPS_GOLANG_ARCH_RESULT: ${{ steps.golang_arch.outputs.result }}
         STEPS_BUILD_OPTS_RESULT: ${{ steps.build_opts.outputs.result }}
 
-    # SBOM generation
-    - name: SBOM Download for Dtrack
-      uses: CycloneDX/gh-gomod-generate-sbom@v2
-      with:
-        version: v1
+#    # SBOM generation DEPRECATED
+#    - name: SBOM Download for Dtrack
+#      uses: CycloneDX/gh-gomod-generate-sbom@v2
+#      with:
+#        version: v1
+
+    - name: Install CycloneDX Go Module SBOM Generator
+      id: sbom_download
+      shell: bash
+      continue-on-error: true
+      run: |
+        echo "::group::SBOM Download"
+        go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+        echo "::endgroup::"
+
+    - name: Generate CycloneDX SBOM
+      if: steps.sbom_download.outcome == 'success'
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      continue-on-error: true
+      run: |
+        echo "::group::SBOM Generation"
+        $GOPATH/bin/cyclonedx-gomod app -licenses -packages -output bom.xml -main .
+        echo "::endgroup::"
 
     - name: SBOM Generation for Dtrack
       shell: bash
