@@ -584,7 +584,6 @@ runs:
           const rulesetExists = rulesetResult.repository.rulesets.nodes.find((rule) => rule.name === rulesetName);
 
           const rulesetEnforcement = conventionalCommitsEnforced ? 'ACTIVE' : 'EVALUATE';
-          const commitRegex = customCommitsPattern ? customCommitsRegex : defaultConditionalCommitsRegex;
           const inputBase = {
             name: rulesetName,
             target: 'BRANCH',
@@ -595,22 +594,35 @@ runs:
                 exclude: []
               }
             },
-            rules: [
-              {
+            rules: []
+          };
+          inputBase.rules.push(              {
+              type: 'COMMIT_MESSAGE_PATTERN',
+              parameters: {
+                  commitMessagePattern: {
+                      name: 'Conventional Commits Regex',
+                      operator: 'regex',
+                      pattern: defaultConditionalCommitsRegex,
+                      negate: false
+                  }
+              }
+          });
+          if( customCommitsPattern ) {
+            inputBase.rules.push({
                 type: 'COMMIT_MESSAGE_PATTERN',
                 parameters: {
-                  commitMessagePattern: {
-                    name: 'commit-message-pattern',
-                    operator: 'regex',
-                    pattern: commitRegex,
-                    negate: false
-                  }
+                    commitMessagePattern: {
+                        name: 'Custom Commits Regex',
+                        operator: 'regex',
+                        pattern: customCommitsRegex,
+                        negate: false
+                    }
                 }
-              }
-            ]
-          };
-
+            });
+          }
+          
           if (rulesetExists) {
+            inputBase.repositoryRulesetId = rulesetExists.id;
             const updateMutation = `
               mutation($input: UpdateRepositoryRulesetInput!) {
                 updateRepositoryRuleset(input: $input) {
