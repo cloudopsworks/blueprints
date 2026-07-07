@@ -620,7 +620,7 @@ runs:
                 }
             });
           }
-          
+          console.debug('inputBase: ' + JSON.stringify(inputBase));
           if (rulesetExists) {
             const updateMutation = `
               mutation($input: UpdateRepositoryRulesetInput!) {
