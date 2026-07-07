@@ -36,7 +36,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".config.branchProtection and true" /.cloudopsworks/cloudopsworks-ci.yaml)
+        RET=$(yq e ".config.branchProtection and true" .cloudopsworks/cloudopsworks-ci.yaml)
         echo "result=${RET}" >> ${GITHUB_OUTPUT}
 
     - name: Retrieve Conventional Commits ruleset
