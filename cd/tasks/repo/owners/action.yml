@@ -34,102 +34,122 @@ runs:
     - name: Retrieve branch protection rule
       id: branch_protection_rules
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".config.branchProtection" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml" | grep true | wc -l)
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
+        RET=$(yq e ".config.branchProtection and true" /.cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result=${RET}" >> ${GITHUB_OUTPUT}
+
+    - name: Retrieve Conventional Commits ruleset
+      id: conventional_commits
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".config.conventionalCommitsEnabled and true" .cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result=${RET}" >> $GITHUB_OUTPUT
+
+    - name: Retrieve Conventional Commits enforcement
+      id: enforce_conventional_commits
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".config.enforceConventionalCommits and true" .cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result=${RET}" >> $GITHUB_OUTPUT
+
+    - name: Retrieve Custom Commits Pattern Enforcement
+      id: custom_commits_pattern
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".config.enforceCustomCommitsPattern and true" .cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result=${RET}" >> $GITHUB_OUTPUT
+
+    - name: Retrieve Custom Commits Enforcement Pattern
+      id: custom_commits_pattern_regex
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e ".config.enforceCustomCommitsPatternRegex" .cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result=${RET}" >> $GITHUB_OUTPUT
+
     - name: Retrieve protected sources
       id: protected_sources
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 ".config.protectedSources" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        RET=$(yq -o=json -I=0 ".config.protectedSources" .cloudopsworks/cloudopsworks-ci.yaml)
         {
           echo "result<<EOF"
           echo "${RET}"
           echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
+        } >> $GITHUB_OUTPUT
+
     - name: Check if automatic
       id: check_automatic
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".cd.automatic and true" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
+        RET=$(yq e ".cd.automatic and true" .cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result=${RET}" >> $GITHUB_OUTPUT
+
     - name: Reviewers Count
       id: reviewers_count
-      if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
+      if: ${{ steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true' }}
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".config.requiredReviewers" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
+        RET=$(yq e ".config.requiredReviewers" .cloudopsworks/cloudopsworks-ci.yaml)
+        echo "result=${RET}" >> $GITHUB_OUTPUT
+
     - name: Reviewers list as JSON
       id: reviewers_list
-      if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
+      if: ${{ steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true' }}
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 ".config.reviewers" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        RET=$(yq -o=json -I=0 ".config.reviewers" .cloudopsworks/cloudopsworks-ci.yaml)
         {
           echo "result<<EOF"
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Owners list as JSON
       id: owners_list
-      if: ${{ steps.check_automatic.outputs.result == 0 || steps.branch_protection_rules.outputs.result == 1 }}
+      if: ${{ steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true' }}
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 ".config.owners" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        RET=$(yq -o=json -I=0 ".config.owners" .cloudopsworks/cloudopsworks-ci.yaml)
         {
           echo "result<<EOF"
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Contributors list as JSON
       id: contrib_list
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 ".config.contributors" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        RET=$(yq -o=json -I=0 ".config.contributors" .cloudopsworks/cloudopsworks-ci.yaml)
         {
           echo "result<<EOF"
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Deployments JSON
       id: deployments_json
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq -o=json -I=0 ".cd.deployments" "${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        RET=$(yq -o=json -I=0 ".cd.deployments" .cloudopsworks/cloudopsworks-ci.yaml)
         {
           echo "result<<EOF"
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+
     - name: Get repository type
       id: repo_type
       working-directory: ${{ inputs.source_path }}
@@ -185,7 +205,7 @@ runs:
           }
 
     - name: Advanced Protection on GitFlow
-      if: ${{ steps.branch_protection_rules.outputs.result == 1 }}
+      if: ${{ steps.branch_protection_rules.outputs.result == 'true' }}
       uses: actions/github-script@v8
       env:
         STEPS_PROTECTED_SOURCES_RESULT: ${{ steps.protected_sources.outputs.result }}
@@ -515,6 +535,118 @@ runs:
             contexts: ["build / build"]
           };
           await github.graphql(protection_rule, vars);
+
+    - name: Rulesets for Conventional commits
+      if: ${{ steps.branch_protection_rules.outputs.result == 'true' && steps.conventional_commits.outputs.result == 'true' }}
+      uses: actions/github-script@v8
+      env:
+        STEPS_PROTECTED_SOURCES_RESULT: ${{ steps.protected_sources.outputs.result }}
+        STEPS_REVIEWERS_LIST_RESULT: ${{ steps.reviewers_list.outputs.result }}
+        STEPS_OWNERS_LIST_RESULT: ${{ steps.owners_list.outputs.result }}
+        STEPS_CONTRIB_LIST_RESULT: ${{ steps.contrib_list.outputs.result }}
+        STEPS_REVIEWERS_COUNT_RESULT: ${{ steps.reviewers_count.outputs.result }}
+        STEPS_REPO_TYPE_RESULT: ${{ steps.repo_type.outputs.result }}
+        STEPS_ENFORCE_CONVENTIONAL_COMMITS_RESULT: ${{ steps.enforce_conventional_commits.outputs.result }}
+        STEPS_CUSTOM_COMMITS_PATTERN_RESULT: ${{ steps.custom_commits_pattern.outputs.result }}
+        STEPS_CUSTOM_COMMITS_PATTERN_REGEX_RESULT: ${{ steps.custom_commits_pattern_regex.outputs.result }}
+      with:
+        script: |
+          const conventionalCommitsEnforced = '' + (process.env.STEPS_ENFORCE_CONVENTIONAL_COMMITS_RESULT || '') + '' === 'true';
+          const customCommitsPattern = '' + (process.env.STEPS_CUSTOM_COMMITS_PATTERN_RESULT || '') + '' === 'true';
+          const customCommitsRegex = '' + (process.env.STEPS_CUSTOM_COMMITS_PATTERN_REGEX_RESULT || '') + '';
+          const defaultConditionalCommitsRegex = '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\([a-zA-Z0-9_\\-]+\\))?: .*';
+          const rueleset_name = 'commit-message-rules';
+
+          // Conventional Commits Enforcement through GitHub Branch Rulesets
+          // As Rulesets are available on certain org/owner types, this action can fail if the owner type is not supported.
+          // No additional checks will be done.
+          // If ruleset exists and if not create it, if exists update it.
+          // Conventional Commits and Custom Commits Enforcement are REGEX will be done through a single ruleset called "commit-message-rules" and will be applied to all branches
+          // conventionalCommitsEnforced set rueleset enforcement to ENABLED if true or EVALUATE if false
+          // customCommitsPattern if true adds an additional regex condition to the ruleset, if false only conventional commits regex will be used.
+          
+          // Ruleset action
+          const ruleset_query = `
+              query($owner: String!, $repo: String!) {
+              repository(owner:$owner, name:$repo) {
+                  id
+                  rulesets(first: 100) {
+                  nodes {
+                      id
+                      name
+                  }
+                  }
+              }
+              }
+          `;
+          const ruleset_result = await github.graphql(ruleset_query, {owner: context.repo.owner, repo: context.repo.repo});          
+          const ruleset_exists = ruleset_result.repository.rulesets.nodes.find(rule => rule.name === rueleset_name);
+            
+          // Create or Update the ruleset
+          var ruleset_mutation = '';
+          
+          if (ruleset_exists) {
+              ruleset_mutation = `
+                  mutation($rulesetId: ID!, $rulesetName: String!, $rulesetEnforcement: RulesetEnforcement, $rulesetConditions: [RulesetConditionInput!]) {
+                      rulesetUpdate(input: {id: $rulesetId, name: $rulesetName, enforcement: $rulesetEnforcement, conditions: $rulesetConditions}) {
+                          ruleset {
+                              id
+                              name
+                              enforcement
+                              conditions {
+                                  type
+                                  regexCondition {
+                                      regex
+                                  }
+                              }
+                          }
+                      }
+                  }
+              `;
+          } else {
+              ruleset_mutation = `
+                  mutation($owner: String!, $repo: String!, $rulesetName: String!, $rulesetEnforcement: RulesetEnforcement, $rulesetConditions: [RulesetConditionInput!]) {
+                      rulesetCreate(input: {repositoryId: "${ruleset_result.repository.id}", name: $rulesetName, enforcement: $rulesetEnforcement, conditions: $rulesetConditions}) {
+                          ruleset {
+                              id
+                              name
+                              enforcement
+                              conditions {
+                                  type
+                                  regexCondition {
+                                      regex
+                                  }
+                              }
+                          }
+                      }
+                  }
+              `;
+          }
+          
+          const rulesetEnforcement = conventionalCommitsEnforced ? 'ENFORCED' : 'EVALUATE';
+          const rulesetConditions = [];
+          if (customCommitsPattern) {
+              rulesetConditions.push({
+                  type: 'COMMIT_MESSAGE_REGEX',
+                  regexCondition: {
+                      regex: customCommitsRegex
+                  }
+              });
+          } else {
+              rulesetConditions.push({
+                  type: 'COMMIT_MESSAGE_REGEX',
+                  regexCondition: {
+                      regex: defaultConditionalCommitsRegex
+                  }
+              });
+          }
+          const vars = {
+              rulesetId: ruleset_exists ? ruleset_exists.id : null,
+              rulesetName: rueleset_name,
+              rulesetEnforcement: rulesetEnforcement,
+              rulesetConditions: rulesetConditions
+          };
+          await github.graphql(ruleset_mutation, vars);
 
     - name: Advanced Deployment Environments Creation
       id: envs
