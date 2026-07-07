@@ -327,13 +327,33 @@ runs:
         STEPS_TEST_OPTS_RESULT: ${{ steps.test_opts.outputs.result }}
         STEPS_RUN_OPTS_RESULT: ${{ steps.run_opts.outputs.result }}
 
-    # SBOM generation
-    - name: SBOM Generation for Dtrack
-      uses: CycloneDX/gh-dotnet-generate-sbom@v1
-      with:
-        path: ${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}.sln
-        json: false
-        github-bearer-token: ${{ inputs.token }}
+#    # SBOM generation
+#    - name: SBOM Generation for Dtrack
+#      uses: CycloneDX/gh-dotnet-generate-sbom@v1
+#      with:
+#        path: ${{ inputs.source_path }}/${{ steps.project_path.outputs.result }}.sln
+#        json: false
+#        github-bearer-token: ${{ inputs.token }}
+    - name: Install CycloneDX DotNet Tool
+      id: install_cyclonedx
+      shell: bash
+      continue-on-error: true
+      run: |
+        echo "::group::Install CycloneDX DotNet Tool"
+        dotnet tool install --global CycloneDX
+        echo "::endgroup::"
+
+    - name: Generate SBOM
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "::group::Generate SBOM"
+        dotnet CycloneDX $STEPS_PROJECT_PATH_RESULT.sln -o bom.xml -F Xml
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        STEPS_PROJECT_PATH_RESULT: ${{ steps.project_path.outputs.result }}
 
     - name: Run .Net Publishing
       shell: bash

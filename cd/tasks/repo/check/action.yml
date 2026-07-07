@@ -1,0 +1,58 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Check Repository Status
+author: cloudopsworks
+description: This action checks the repository status options and outputs if is pulbic or private or if it has security and vulnerability alerts enabled or not
+outputs:
+  is_public:
+    description: 'Is the repository public or private'
+    value: ${{ steps.is_public.outputs.result }}
+  has_security_alerts:
+    description: 'Does the repository have security alerts enabled'
+    value: ${{ steps.has_security_alerts.outputs.result }}
+  has_vulnerability_alerts:
+    description: 'Does the repository have vulnerability alerts enabled'
+    value: ${{ steps.has_vulnerability_alerts.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check Repository is Public or not
+      id: is_public
+      shell: bash
+      env:
+        EVENT_TYPE: ${{ github.event.repository.private }}
+      run: | 
+        if [[ "$EVENT_TYPE" == "false" ]]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
+    - name: Check Repository has Security Alerts enabled or not
+      id: has_security_alerts
+      shell: bash
+      env:
+        EVENT_TYPE: ${{ github.event.repository.security_and_analysis.security_alerts.status }}
+      run: | 
+        if [[ "$EVENT_TYPE" == "enabled" ]]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
+    - name: Check Repository has Vulnerability Alerts enabled or not
+      id: has_vulnerability_alerts
+      shell: bash
+      env:
+        EVENT_TYPE: ${{ github.event.repository.security_and_analysis.vulnerability_alerts.status }}
+      run: | 
+        if [[ "$EVENT_TYPE" == "enabled" ]]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
