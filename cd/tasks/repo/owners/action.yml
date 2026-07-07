@@ -555,7 +555,7 @@ runs:
           const customCommitsPattern = '' + (process.env.STEPS_CUSTOM_COMMITS_PATTERN_RESULT || '') + '' === 'true';
           const customCommitsRegex = '' + (process.env.STEPS_CUSTOM_COMMITS_PATTERN_REGEX_RESULT || '') + '';
           const defaultConditionalCommitsRegex = '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\([a-zA-Z0-9_\\-]+\\))?: .*';
-          const rueleset_name = 'commit-message-rules';
+          const rulesetName = 'commit-message-rules';
 
           // Conventional Commits Enforcement through GitHub Branch Rulesets
           // As Rulesets are available on certain org/owner types, this action can fail if the owner type is not supported.
@@ -566,87 +566,86 @@ runs:
           // customCommitsPattern if true adds an additional regex condition to the ruleset, if false only conventional commits regex will be used.
           
           // Ruleset action
-          const ruleset_query = `
-              query($owner: String!, $repo: String!) {
-              repository(owner:$owner, name:$repo) {
-                  id
-                  rulesets(first: 100) {
+          const rulesetQuery = `
+            query($owner: String!, $repo: String!) {
+              repository(owner: $owner, name: $repo) {
+                id
+                rulesets(first: 100, targets: [BRANCH]) {
                   nodes {
-                      id
-                      name
+                    id
+                    name
                   }
-                  }
+                }
               }
-              }
+            }
           `;
-          const ruleset_result = await github.graphql(ruleset_query, {owner: context.repo.owner, repo: context.repo.repo});          
-          const ruleset_exists = ruleset_result.repository.rulesets.nodes.find(rule => rule.name === rueleset_name);
-            
-          // Create or Update the ruleset
-          var ruleset_mutation = '';
-          
-          if (ruleset_exists) {
-              ruleset_mutation = `
-                  mutation($rulesetId: ID!, $rulesetName: String!, $rulesetEnforcement: RulesetEnforcement, $rulesetConditions: [RulesetConditionInput!]) {
-                      rulesetUpdate(input: {id: $rulesetId, name: $rulesetName, enforcement: $rulesetEnforcement, conditions: $rulesetConditions}) {
-                          ruleset {
-                              id
-                              name
-                              enforcement
-                              conditions {
-                                  type
-                                  regexCondition {
-                                      regex
-                                  }
-                              }
-                          }
-                      }
+          const rulesetResult = await github.graphql(rulesetQuery, {owner: context.repo.owner, repo: context.repo.repo});
+          const rulesetExists = rulesetResult.repository.rulesets.nodes.find((rule) => rule.name === rulesetName);
+
+          const rulesetEnforcement = conventionalCommitsEnforced ? 'ACTIVE' : 'EVALUATE';
+          const commitRegex = customCommitsPattern ? customCommitsRegex : defaultConditionalCommitsRegex;
+          const inputBase = {
+            name: rulesetName,
+            target: 'BRANCH',
+            enforcement: rulesetEnforcement,
+            conditions: {
+              refName: {
+                include: ['~ALL'],
+                exclude: []
+              }
+            },
+            rules: [
+              {
+                type: 'COMMIT_MESSAGE_PATTERN',
+                parameters: {
+                  commitMessagePattern: {
+                    name: 'commit-message-pattern',
+                    operator: 'regex',
+                    pattern: commitRegex,
+                    negate: false
                   }
-              `;
-          } else {
-              ruleset_mutation = `
-                  mutation($owner: String!, $repo: String!, $rulesetName: String!, $rulesetEnforcement: RulesetEnforcement, $rulesetConditions: [RulesetConditionInput!]) {
-                      rulesetCreate(input: {repositoryId: "${ruleset_result.repository.id}", name: $rulesetName, enforcement: $rulesetEnforcement, conditions: $rulesetConditions}) {
-                          ruleset {
-                              id
-                              name
-                              enforcement
-                              conditions {
-                                  type
-                                  regexCondition {
-                                      regex
-                                  }
-                              }
-                          }
-                      }
-                  }
-              `;
-          }
-          
-          const rulesetEnforcement = conventionalCommitsEnforced ? 'ENFORCED' : 'EVALUATE';
-          const rulesetConditions = [];
-          if (customCommitsPattern) {
-              rulesetConditions.push({
-                  type: 'COMMIT_MESSAGE_REGEX',
-                  regexCondition: {
-                      regex: customCommitsRegex
-                  }
-              });
-          } else {
-              rulesetConditions.push({
-                  type: 'COMMIT_MESSAGE_REGEX',
-                  regexCondition: {
-                      regex: defaultConditionalCommitsRegex
-                  }
-              });
-          }
-          const vars = {
-              rulesetId: ruleset_exists ? ruleset_exists.id : null,
-              rulesetName: rueleset_name,
-              rulesetEnforcement: rulesetEnforcement,
-              rulesetConditions: rulesetConditions
+                }
+              }
+            ]
           };
-          await github.graphql(ruleset_mutation, vars);
+
+          if (rulesetExists) {
+            const updateMutation = `
+              mutation($input: UpdateRepositoryRulesetInput!) {
+                updateRepositoryRuleset(input: $input) {
+                  ruleset {
+                    id
+                    name
+                    enforcement
+                  }
+                }
+              }
+            `;
+            await github.graphql(updateMutation, {
+              input: {
+                id: rulesetExists.id,
+                ...inputBase
+              }
+            });
+          } else {
+            const createMutation = `
+              mutation($input: CreateRepositoryRulesetInput!) {
+                createRepositoryRuleset(input: $input) {
+                  ruleset {
+                    id
+                    name
+                    enforcement
+                  }
+                }
+              }
+            `;
+            await github.graphql(createMutation, {
+              input: {
+                sourceId: rulesetResult.repository.id,
+                ...inputBase
+              }
+            });
+          }
 
     - name: Advanced Deployment Environments Creation
       id: envs
