@@ -555,7 +555,8 @@ runs:
           const conventionalCommitsEnforced = '' + (process.env.STEPS_ENFORCE_CONVENTIONAL_COMMITS_RESULT || '') + '' === 'true';
           const customCommitsPattern = '' + (process.env.STEPS_CUSTOM_COMMITS_PATTERN_RESULT || '') + '' === 'true';
           const customCommitsRegex = '' + (process.env.STEPS_CUSTOM_COMMITS_PATTERN_REGEX_RESULT || '') + '';
-          const defaultConditionalCommitsRegex = '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\([a-zA-Z0-9_\\-]+\\))?: .*';
+          const defaultConditionalCommitsRegexHead = '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\([a-zA-Z0-9_\\-]+\\))?: ';
+          const defaultConditionalCommitsRegexTail = '.*'
           const rulesetName = 'commit-message-rules';
 
           // Conventional Commits Enforcement through GitHub Branch Rulesets
@@ -582,8 +583,12 @@ runs:
           `;
           const rulesetResult = await github.graphql(rulesetQuery, {owner: context.repo.owner, repo: context.repo.repo});
           const rulesetExists = rulesetResult.repository.rulesets.nodes.find((rule) => rule.name === rulesetName);
-
           const rulesetEnforcement = conventionalCommitsEnforced ? 'ACTIVE' : 'EVALUATE';
+          var commitsRegex = defaultConditionalCommitsRegexHead;
+          if (customCommitsPattern) {
+              commitsRegex += customCommitsRegex
+          }
+          commitsRegex += defaultConditionalCommitsRegexTail;
           const inputBase = {
             name: rulesetName,
             target: 'BRANCH',
@@ -594,32 +599,19 @@ runs:
                 exclude: []
               }
             },
-            rules: []
-          };
-          inputBase.rules.push({
-              type: 'COMMIT_MESSAGE_PATTERN',
-              parameters: {
-                  commitMessagePattern: {
-                      name: 'Conventional Commits Regex',
-                      operator: 'regex',
-                      pattern: defaultConditionalCommitsRegex,
-                      negate: false
-                  }
-              }
-          });
-          if( customCommitsPattern ) {
-            inputBase.rules.push({
+            rules: [{
                 type: 'COMMIT_MESSAGE_PATTERN',
                 parameters: {
                     commitMessagePattern: {
-                        name: 'Custom Commits Regex',
+                        name: 'Commits Regex Condition',
                         operator: 'regex',
-                        pattern: customCommitsRegex,
+                        pattern: commitsRegex,
                         negate: false
                     }
                 }
-            });
-          }
+            }]
+          };
+          
           console.log('inputBase: ' + JSON.stringify(inputBase));
           if (rulesetExists) {
             console.log('Ruleset exists, updating it... Id: ' + rulesetExists.id);
