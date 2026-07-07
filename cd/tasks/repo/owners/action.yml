@@ -622,6 +622,7 @@ runs:
           }
           console.log('inputBase: ' + JSON.stringify(inputBase));
           if (rulesetExists) {
+            console.log('Ruleset exists, updating it... Id: ' + rulesetExists.id);
             const updateMutation = `
               mutation($input: UpdateRepositoryRulesetInput!) {
                 updateRepositoryRuleset(input: $input) {
@@ -640,6 +641,7 @@ runs:
               }
             });
           } else {
+            console.log('Ruleset does not exist, creating it...');
             const createMutation = `
               mutation($input: CreateRepositoryRulesetInput!) {
                 createRepositoryRuleset(input: $input) {
