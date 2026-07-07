@@ -550,6 +550,7 @@ runs:
         STEPS_CUSTOM_COMMITS_PATTERN_RESULT: ${{ steps.custom_commits_pattern.outputs.result }}
         STEPS_CUSTOM_COMMITS_PATTERN_REGEX_RESULT: ${{ steps.custom_commits_pattern_regex.outputs.result }}
       with:
+        github-token: '${{ inputs.token }}'
         script: |
           const conventionalCommitsEnforced = '' + (process.env.STEPS_ENFORCE_CONVENTIONAL_COMMITS_RESULT || '') + '' === 'true';
           const customCommitsPattern = '' + (process.env.STEPS_CUSTOM_COMMITS_PATTERN_RESULT || '') + '' === 'true';
