@@ -596,7 +596,7 @@ runs:
             },
             rules: []
           };
-          inputBase.rules.push(              {
+          inputBase.rules.push({
               type: 'COMMIT_MESSAGE_PATTERN',
               parameters: {
                   commitMessagePattern: {
