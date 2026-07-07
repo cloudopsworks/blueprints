@@ -280,29 +280,29 @@ runs:
           
           const owners_ids = [];
           for ( const team_name of owner_teams ) {
-            console.log("team_name: " + team_name)
+            //console.log("team_name: " + team_name)
             team = teams_result.organization.teams.nodes.find( team => team.slug === team_name );
             if ( team != null ) {
-              console.log("team_id" + team.id);
+              //console.log("team_id: " + team.id);
               owners_ids.push(team.id);
             }
           }
           
           for ( const member_name of owners ) {
-            console.log("member_name: " + member_name)
+            //console.log("member_name: " + member_name)
             member = members_result.organization.membersWithRole.nodes.find( member => member.login === member_name );
             if ( member != null ) {
-              console.log("member_id" + member.id);
+              //console.log("member_id: " + member.id);
               owners_ids.push(member.id);
             }
           }
           
           const reviewers_ids = [];
           for ( const reviewer_name of reviewers ) {
-            console.log("reviewer_name: " + reviewer_name);
+            //console.log("reviewer_name: " + reviewer_name);
             reviewer = members_result.organization.membersWithRole.nodes.find( member => member.login === reviewer_name );
             if ( reviewer != null ) {
-              console.log("reviewer_id" + reviewer.id);
+              //console.log("reviewer_id: " + reviewer.id);
               reviewers_ids.push(reviewer.id);
             }
           }
@@ -725,8 +725,8 @@ runs:
             else
               reviewers = false;
           
-            console.debug("deploy: " + deploy);
-            console.debug('deployment: ' + JSON.stringify(deployment));
+            //console.debug("deploy: " + deploy);
+            //console.debug('deployment: ' + JSON.stringify(deployment));
           
             if (deployment['targetName'] != null)
               targetName = deployment.targetName;
@@ -763,7 +763,7 @@ runs:
             }
           }
           
-          console.debug('deployments_list: ' + JSON.stringify(deployments_list));
+          //console.debug('deployments_list: ' + JSON.stringify(deployments_list));
           
           // Create the environment through GraphQL Mutation set environment name and if is also production
           // check first if the environment exists on the repository
