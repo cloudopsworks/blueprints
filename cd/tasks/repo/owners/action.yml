@@ -622,7 +622,6 @@ runs:
           }
           
           if (rulesetExists) {
-            inputBase.repositoryRulesetId = rulesetExists.id;
             const updateMutation = `
               mutation($input: UpdateRepositoryRulesetInput!) {
                 updateRepositoryRuleset(input: $input) {
@@ -636,7 +635,7 @@ runs:
             `;
             await github.graphql(updateMutation, {
               input: {
-                id: rulesetExists.id,
+                repositoryRulesetId: rulesetExists.id,
                 ...inputBase
               }
             });
