@@ -38,7 +38,7 @@ runs:
   using: 'composite'
   steps:
     - name: Terraform Plan prettifier
-      uses: kishaningithub/setup-tf-summarize@v2
+      uses: kishaningithub/setup-tf-summarize@v3
       with:
         github-token: ${{ inputs.token }}
         tf-summarize-version: v${{ inputs.tf_summarize_version }}
