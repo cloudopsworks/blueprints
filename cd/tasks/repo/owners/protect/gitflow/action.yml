@@ -1,0 +1,362 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Advanced Protection on GitFlow
+author: cloudopsworks
+description: 'This action will process a JSON formatted list of contributors and add them to the repository with the specified permissions. It will also set up branch protection rules and review requirements for pull requests.'
+inputs:
+  token:
+    description: 'GitHub Token with repo and admin:org permissions'
+    required: true
+  reviewers_list:
+    description: 'Reviewers list in JSON format'
+    required: true
+  owners_list:
+    description: 'Owners list in JSON format'
+    required: true
+  contrib_list:
+    description: 'Contributors list in JSON format'
+    required: true
+  reviewers_count:
+    description: 'Reviewers count'
+    required: true
+  repo_type:
+    description: 'Repository type'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Advanced Protection on GitFlow
+      uses: actions/github-script@v8
+      env:
+        STEPS_REVIEWERS_LIST_RESULT: ${{ inputs.reviewers_list }}
+        STEPS_OWNERS_LIST_RESULT: ${{ inputs.owners_list }}
+        STEPS_CONTRIB_LIST_RESULT: ${{ inputs.contrib_list }}
+        STEPS_REVIEWERS_COUNT_RESULT: ${{ inputs.reviewers_count }}
+        STEPS_REPO_TYPE_RESULT: ${{ inputs.repo_type }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const branchesStrict = ['main', 'master', 'support/*'];
+          const branchesRelax = ['release/*', 'hotfix/*', 'feature/*', 'develop', 'generatedocstring-*', 'generateunittests-', 'autofix-', 'sonarfix-'];
+          const cannot_delete = ['main', 'master', 'support/*', 'develop'];
+          const reviewers_json = JSON.parse('' + (process.env.STEPS_REVIEWERS_LIST_RESULT || '') + '');
+          const owners_text = (process.env.STEPS_OWNERS_LIST_RESULT || '');
+          const owners_json = owners_text != null ? JSON.parse('' + (process.env.STEPS_OWNERS_LIST_RESULT || '') + '') : [];
+          const contrib_text = (process.env.STEPS_CONTRIB_LIST_RESULT || '');
+          const contrib_json = contrib_text != null ? JSON.parse('' + (process.env.STEPS_CONTRIB_LIST_RESULT || '') + '') : {};
+          const reviewers_count = parseInt(process.env.STEPS_REVIEWERS_COUNT_RESULT || '0');
+          const actor = context.actor;
+          const is_iac = '' + (process.env.STEPS_REPO_TYPE_RESULT || '') + '' === 'iac';
+          
+          // Get reviewers list
+          var reviewers = [];
+          for ( const rev of reviewers_json ) {
+            reviewers.push(rev);
+          }
+          
+          // Get owners list
+          var owners = [];
+          var owner_teams = [];
+          for( const owner of owners_json ) {
+            if ( owner.includes("/") ) {
+                team = owner.split("/");
+                owner_teams.push(team[1]);
+              } else {
+                owners.push(owner);
+              }
+          }
+          
+          teams_query = `
+            query($login: String!) {
+              organization(login: $login) {
+                teams(first: 100) {
+                  nodes {
+                    id
+                    name
+                    slug
+                  }
+                }
+              }
+            }
+          `
+          const teams_result = await github.graphql(teams_query, {login: context.repo.owner});
+          
+          members_query = `
+            query($login: String!) {
+              organization(login: $login) {
+                membersWithRole(first: 100) {
+                  nodes {
+                    login
+                    id
+                  }
+                }
+              }
+            }
+          `
+          
+          const members_result = await github.graphql(members_query, {login: context.repo.owner});
+          
+          const owners_ids = [];
+          for ( const team_name of owner_teams ) {
+            //console.log("team_name: " + team_name)
+            team = teams_result.organization.teams.nodes.find( team => team.slug === team_name );
+            if ( team != null ) {
+              //console.log("team_id: " + team.id);
+              owners_ids.push(team.id);
+            }
+          }
+          
+          for ( const member_name of owners ) {
+            //console.log("member_name: " + member_name)
+            member = members_result.organization.membersWithRole.nodes.find( member => member.login === member_name );
+            if ( member != null ) {
+              //console.log("member_id: " + member.id);
+              owners_ids.push(member.id);
+            }
+          }
+          
+          const reviewers_ids = [];
+          for ( const reviewer_name of reviewers ) {
+            //console.log("reviewer_name: " + reviewer_name);
+            reviewer = members_result.organization.membersWithRole.nodes.find( member => member.login === reviewer_name );
+            if ( reviewer != null ) {
+              //console.log("reviewer_id: " + reviewer.id);
+              reviewers_ids.push(reviewer.id);
+            }
+          }
+          
+          // Protect the Branches using GraphQL
+          const repo_query = `
+            query($owner: String!, $repo: String!) {
+              repository(owner:$owner, name:$repo) {
+                id
+                branchProtectionRules(first: 100) {
+                  nodes {
+                    id
+                    pattern
+                  }
+                }
+              }
+            }
+          `;
+          const repo_result = await github.graphql(repo_query, {owner: context.repo.owner, repo: context.repo.repo});
+          
+          // Perform branch protection for each branch (as they are patterns) Stricter first
+          // this module must cal GraphQL API instead of rest because of lack of support on wildcards
+          // https://github.community/t/graphql-api-for-branch-protection-rules/17230              
+          for ( const branch of branchesStrict ) {
+            const rule_exists = repo_result.repository.branchProtectionRules.nodes.find( rule => rule.pattern === branch );
+            const can_delete = ! cannot_delete.includes(branch);
+            var protection_rule = '';
+          
+            var required_approve = (reviewers_count > 0);
+          
+            const default_approved = true;
+            const default_count = 0;
+          
+            if ( rule_exists == null ) {
+              protection_rule = `
+                mutation($repo_id: ID!, $branch: String!, $required_approve: Boolean!, $reviewers_count: Int!, $admin_ids: [ID!], $reviewers_ids: [ID!], $contexts: [String!], $can_delete: Boolean!) {
+                  createBranchProtectionRule(input: {
+                    repositoryId: $repo_id,
+                    pattern: $branch,
+                    requiresApprovingReviews: $required_approve,
+                    requiredApprovingReviewCount: $reviewers_count,
+                    restrictsPushes: true,
+                    pushActorIds: $admin_ids,
+                    bypassForcePushActorIds: $admin_ids,
+                    bypassPullRequestActorIds: $admin_ids,
+                    restrictsReviewDismissals: true,
+                    reviewDismissalActorIds: $reviewers_ids,
+                    requiredStatusCheckContexts: $contexts,
+                    allowsForcePushes: false,
+                    requiresStrictStatusChecks: true,
+                    requiresStatusChecks: true,
+                    isAdminEnforced: false,
+                    allowsDeletions: $can_delete
+                  }) {
+                    clientMutationId
+                  }
+                }
+              `;
+            } else {
+              protection_rule = `
+                mutation($rule_id: ID!, $required_approve: Boolean!, $reviewers_count: Int!, $admin_ids: [ID!], $reviewers_ids: [ID!], $contexts: [String!], $can_delete: Boolean!) {
+                  updateBranchProtectionRule(input: {
+                    branchProtectionRuleId: $rule_id,
+                    requiresApprovingReviews: $required_approve,
+                    requiredApprovingReviewCount: $reviewers_count,
+                    restrictsPushes: true,
+                    pushActorIds: $admin_ids,
+                    bypassForcePushActorIds: $admin_ids,
+                    bypassPullRequestActorIds: $admin_ids,
+                    restrictsReviewDismissals: true,
+                    reviewDismissalActorIds: $reviewers_ids,
+                    requiredStatusCheckContexts: $contexts,
+                    allowsForcePushes: false,
+                    requiresStrictStatusChecks: true,
+                    requiresStatusChecks: true,
+                    isAdminEnforced: false,
+                    allowsDeletions: $can_delete
+                  }) {
+                    clientMutationId
+                  }
+                }
+              `;
+            }
+          
+            var run_context = ['check-pr'];
+            if ( is_iac ) {
+              run_context = 'plan';
+            }
+          
+            const vars = {
+              repo_id: repo_result.repository.id,
+              rule_id: rule_exists ? rule_exists.id : null,
+              branch: branch,
+              required_approve: default_approved,
+              reviewers_count: default_count,
+              admin_ids: owners_ids,
+              reviewers_ids: reviewers_ids,
+              contexts: run_context,
+              can_delete: can_delete
+            };
+            await github.graphql(protection_rule, vars);
+          }
+          
+          // Perform branch protection for each branch (as they are patterns) Relaxed ones
+          // this module must cal GraphQL API instead of rest because of lack of support on wildcards
+          // https://github.community/t/graphql-api-for-branch-protection-rules/17230              
+          for (const branch of branchesRelax) {
+            const rule_exists = repo_result.repository.branchProtectionRules.nodes.find(rule => rule.pattern === branch);
+            const can_delete = ! cannot_delete.includes(branch);
+            var protection_rule = '';
+          
+            if (rule_exists == null) {
+              protection_rule = `
+                mutation($repo_id: ID!, $branch: String!, $required_approve: Boolean!, $reviewers_count: Int!, $admin_ids: [ID!], $reviewers_ids: [ID!], $contexts: [String!], $can_delete: Boolean!) {
+                  createBranchProtectionRule(input: {
+                    repositoryId: $repo_id,
+                    pattern: $branch,
+                    requiresApprovingReviews: $required_approve,
+                    requiredApprovingReviewCount: $reviewers_count,
+                    restrictsPushes: false,
+                    pushActorIds: $admin_ids,
+                    bypassForcePushActorIds: $admin_ids,
+                    bypassPullRequestActorIds: $admin_ids,
+                    restrictsReviewDismissals: true,
+                    reviewDismissalActorIds: $reviewers_ids,
+                    requiredStatusCheckContexts: $contexts,
+                    allowsForcePushes: false,
+                    requiresStrictStatusChecks: true,
+                    requiresStatusChecks: true,
+                    isAdminEnforced: false,
+                    blocksCreations: false,
+                    allowsDeletions: $can_delete
+                  }) {
+                    clientMutationId
+                  }
+                }
+              `;
+            } else {
+              protection_rule = `
+                mutation($rule_id: ID!, $required_approve: Boolean!, $reviewers_count: Int!, $admin_ids: [ID!], $reviewers_ids: [ID!], $contexts: [String!], $can_delete: Boolean!) {
+                  updateBranchProtectionRule(input: {
+                    branchProtectionRuleId: $rule_id,
+                    requiresApprovingReviews: $required_approve,
+                    requiredApprovingReviewCount: $reviewers_count,
+                    restrictsPushes: false,
+                    pushActorIds: $admin_ids,
+                    bypassForcePushActorIds: $admin_ids,
+                    bypassPullRequestActorIds: $admin_ids,
+                    restrictsReviewDismissals: true,
+                    reviewDismissalActorIds: $reviewers_ids,
+                    requiredStatusCheckContexts: $contexts,
+                    allowsForcePushes: false,
+                    requiresStrictStatusChecks: true,
+                    requiresStatusChecks: true,
+                    isAdminEnforced: false,
+                    blocksCreations: false,
+                    allowsDeletions: $can_delete
+                  }) {
+                    clientMutationId
+                  }
+                }
+              `;
+            }
+          
+            const vars = {
+              repo_id: repo_result.repository.id,
+              rule_id: rule_exists ? rule_exists.id : null,
+              branch: branch,
+              required_approve: false,
+              reviewers_count: 0,
+              admin_ids: owners_ids,
+              reviewers_ids: reviewers_ids,
+              contexts: [],
+              can_delete: can_delete
+            };
+            await github.graphql(protection_rule, vars);
+          }
+          
+          const rule_exists = repo_result.repository.branchProtectionRules.nodes.find(rule => rule.pattern === '*');
+          var protection_rule = '';
+          
+          if (rule_exists != null) {
+            rm_protection_rule = `
+              mutation($rule_id: ID!) {
+                deleteBranchProtectionRule(input: {
+                  branchProtectionRuleId: $rule_id
+                }) {
+                  clientMutationId
+                }
+              }
+            `;
+            const rm_vars = {
+              rule_id: rule_exists.id
+            }
+            await github.graphql(rm_protection_rule, rm_vars);
+          }
+          protection_rule = `
+            mutation($repo_id: ID!, $branch: String!, $required_approve: Boolean!, $reviewers_count: Int!, $admin_ids: [ID!], $reviewers_ids: [ID!], $contexts: [String!]) {
+              createBranchProtectionRule(input: {
+                repositoryId: $repo_id,
+                pattern: $branch,
+                requiresApprovingReviews: $required_approve,
+                requiredApprovingReviewCount: $reviewers_count,
+                restrictsPushes: true,
+                pushActorIds: $admin_ids,
+                bypassForcePushActorIds: $admin_ids,
+                bypassPullRequestActorIds: $admin_ids,
+                restrictsReviewDismissals: true,
+                reviewDismissalActorIds: $reviewers_ids,
+                requiredStatusCheckContexts: $contexts,
+                allowsForcePushes: false,
+                requiresStrictStatusChecks: true,
+                requiresStatusChecks: true,
+                isAdminEnforced: false,
+                blocksCreations: true,
+                allowsDeletions: true
+              }) {
+                clientMutationId
+              }
+            }
+          `;
+          
+          const vars = {
+            repo_id: repo_result.repository.id,
+            branch: '*',
+            required_approve: (reviewers_count > 0),
+            reviewers_count: reviewers_count,
+            admin_ids: owners_ids,
+            reviewers_ids: reviewers_ids,
+            contexts: ["build / build"]
+          };
+          await github.graphql(protection_rule, vars);
