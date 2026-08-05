@@ -180,7 +180,9 @@ runs:
               rules: [{
                 type: 'FILE_PATH_RESTRICTION',
                 parameters: {
-                  restrictedFilePaths: ruleConfig.paths || []
+                  filePathRestriction: {
+                    restrictedFilePaths: ruleConfig.paths || []
+                  }
                 }
               }]
             };
