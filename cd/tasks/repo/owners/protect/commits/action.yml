@@ -60,6 +60,7 @@ runs:
           const defaultConditionalCommitsRegexHead = '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\([a-zA-Z0-9_\\-]+\\))?: ';
           const defaultConditionalCommitsRegexTail = '.*'
           const rulesetName = 'commit-message-rules';
+          const defaultOwners = JSON.parse('' + (process.env.STEPS_OWNERS_LIST_RESULT || '') + '');
 
           // Conventional Commits Enforcement through GitHub Branch Rulesets
           // As Rulesets are available on certain org/owner types, this action can fail if the owner type is not supported.
@@ -69,6 +70,63 @@ runs:
           // conventionalCommitsEnforced set rueleset enforcement to ENABLED if true or EVALUATE if false
           // customCommitsPattern if true adds an additional regex condition to the ruleset, if false only conventional commits regex will be used.
           
+          // defaultOwners are granted ALWAYS bypass on this ruleset. Entries may be an
+          // "<org>/<team>" slug, a user login, or one of the special keywords
+          // "organizationAdmin", "enterpriseOwner" or "enterpriseRole" (matching the
+          // corresponding boolean fields on RepositoryRulesetBypassActorInput), which skip
+          // the team/user lookup entirely.
+          const teamsQuery = `
+            query($login: String!) {
+              organization(login: $login) {
+                teams(first: 100) {
+                  nodes {
+                    id
+                    name
+                    slug
+                  }
+                }
+              }
+            }
+          `;
+          const teamsResult = await github.graphql(teamsQuery, {login: context.repo.owner});
+
+          const membersQuery = `
+            query($login: String!) {
+              organization(login: $login) {
+                membersWithRole(first: 100) {
+                  nodes {
+                    login
+                    id
+                  }
+                }
+              }
+            }
+          `;
+          const membersResult = await github.graphql(membersQuery, {login: context.repo.owner});
+
+          const specialBypassActors = new Set(['organizationAdmin', 'enterpriseOwner', 'enterpriseRole']);
+
+          function resolveBypassActors(actorNames, bypassMode) {
+            const actors = [];
+            for (const name of (actorNames || [])) {
+              if (specialBypassActors.has(name)) {
+                actors.push({[name]: true, bypassMode});
+              } else if (name.includes('/')) {
+                const teamSlug = name.split('/')[1];
+                const team = teamsResult.organization.teams.nodes.find(t => t.slug === teamSlug);
+                if (team) {
+                  actors.push({actorId: team.id, bypassMode});
+                }
+              } else {
+                const member = membersResult.organization.membersWithRole.nodes.find(m => m.login === name);
+                if (member) {
+                  actors.push({actorId: member.id, bypassMode});
+                }
+              }
+            }
+            return actors;
+          }
+
           // Ruleset action
           const rulesetQuery = `
             query($owner: String!, $repo: String!) {
@@ -101,6 +159,7 @@ runs:
                 exclude: []
               }
             },
+            bypassActors: resolveBypassActors(defaultOwners, 'ALWAYS'),
             rules: [{
                 type: 'COMMIT_MESSAGE_PATTERN',
                 parameters: {
