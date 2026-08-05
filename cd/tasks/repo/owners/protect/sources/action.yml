@@ -115,7 +115,7 @@ runs:
             query($owner: String!, $repo: String!) {
               repository(owner: $owner, name: $repo) {
                 id
-                rulesets(first: 100, targets: [BRANCH]) {
+                rulesets(first: 100, targets: [PUSH]) {
                   nodes {
                     id
                     name
@@ -165,7 +165,7 @@ runs:
 
             const inputBase = {
               name: ruleName,
-              target: 'BRANCH',
+              target: 'PUSH',
               enforcement: 'ACTIVE',
               conditions: {
                 refName: {
