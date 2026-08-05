@@ -184,6 +184,7 @@ runs:
       if: ${{ steps.branch_protection_rules.outputs.result == 'true' && steps.conventional_commits.outputs.result == 'true' }}
       uses: cloudopsworks/blueprints/cd/tasks/repo/owners/protect/commits@v5.10
       with:
+        token: ${{ inputs.token }}
         reviewers_list: ${{ steps.reviewers_list.outputs.result }}
         owners_list: ${{ steps.owners_list.outputs.result }}
         contrib_list: ${{ steps.contrib_list.outputs.result }}
