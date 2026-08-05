@@ -167,12 +167,9 @@ runs:
               name: ruleName,
               target: 'PUSH',
               enforcement: 'ACTIVE',
-              conditions: {
-                refName: {
-                  include: ['~ALL'],
-                  exclude: []
-                }
-              },
+              // Push rulesets apply to every push to the repository, so they take no ref
+              // name targeting. conditions is non-null in the schema, hence the empty object.
+              conditions: {},
               bypassActors: [
                 ...resolveBypassActors(allow, 'ALWAYS'),
                 ...resolveBypassActors(exempt, 'EXEMPT')
