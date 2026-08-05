@@ -19,7 +19,7 @@ runs:
   steps:
     - name: Slash Command Dispatch
       if: ${{ !github.event.issue.pull_request }}
-      uses: peter-evans/slash-command-dispatch@v4
+      uses: peter-evans/slash-command-dispatch@v5
       with:
         token: ${{ inputs.token }}
         commands: |
@@ -40,7 +40,7 @@ runs:
 
     - name: Slash Command Dispatch Pull-Request
       if: ${{ github.event.issue.pull_request }}
-      uses: peter-evans/slash-command-dispatch@v4
+      uses: peter-evans/slash-command-dispatch@v5
       with:
         token: ${{ inputs.token }}
         commands: |
