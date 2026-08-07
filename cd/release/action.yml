@@ -100,7 +100,46 @@ runs:
         overwrite: true
         path: ${{ inputs.source_path }}/CHANGELOG.md
 
+    # Draft releases are not returned by getReleaseByTag (a draft holds no real tag yet),
+    # so the full release list is paginated and matched on tag_name instead.
+    - name: Check for existing Release
+      id: existing_release
+      uses: actions/github-script@v8
+      env:
+        STEPS_NORMALIZE_RESULT: ${{ steps.normalize.outputs.result }}
+        INPUTS_GO_RELEASER_INUSE: ${{ inputs.go_releaser_inuse }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const releaseTag = '' + (process.env.STEPS_NORMALIZE_RESULT || '') + '';
+          // goreleaser owns the draft, so drafts only count as an existing release when it is in use
+          const scrubDrafts = ('' + (process.env.INPUTS_GO_RELEASER_INUSE || '') + '') === 'true';
+
+          const releases = await github.paginate(github.rest.repos.listReleases, {
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            per_page: 100
+          });
+
+          const tagged = releases.filter(release => release.tag_name === releaseTag);
+          const existing = tagged.find(release => !release.draft || scrubDrafts);
+
+          for (const release of tagged) {
+            if (release.draft && !scrubDrafts) {
+              core.warning(`Draft release '${releaseTag}' (id ${release.id}) is ignored because go_releaser_inuse is not 'true'`);
+            }
+          }
+
+          if (existing) {
+            console.log(`Release '${releaseTag}' already exists (id ${existing.id}, draft=${existing.draft}, prerelease=${existing.prerelease}), skipping creation`);
+          } else {
+            console.log(`No release found for '${releaseTag}' (drafts ${scrubDrafts ? 'included' : 'ignored'}), it will be created`);
+          }
+
+          core.setOutput('exists', existing ? 'true' : 'false');
+
     - name: Create Release
+      if: ${{ steps.existing_release.outputs.exists != 'true' }}
       uses: softprops/action-gh-release@v3
       with:
         token: ${{ inputs.token }}
