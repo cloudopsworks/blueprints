@@ -195,8 +195,27 @@ runs:
         custom_commits_pattern_regex: ${{ steps.custom_commits_pattern_regex.outputs.result }}
 
 
-    - name: Rulesets for Protected Sources
+    # Push rulesets (FILE_PATH_RESTRICTION) are not supported on public repositories,
+    # the visibility is resolved from the API so it does not depend on the triggering event payload.
+    - name: Check repository visibility
+      id: repo_visibility
       if: ${{ steps.branch_protection_rules.outputs.result == 'true' }}
+      uses: actions/github-script@v8
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const { data } = await github.rest.repos.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          });
+          console.log(`Repository ${context.repo.owner}/${context.repo.repo} visibility: ${data.visibility}`);
+          core.setOutput('is_public', data.private ? 'false' : 'true');
+
+    - name: Rulesets for Protected Sources
+      if: ${{ steps.branch_protection_rules.outputs.result == 'true'
+        && steps.repo_visibility.outputs.is_public != 'true'
+        && steps.protected_sources.outputs.result != ''
+        && steps.protected_sources.outputs.result != 'null' }}
       uses: cloudopsworks/blueprints/cd/tasks/repo/owners/protect/sources@v5.10
       with:
         token: ${{ inputs.token }}
