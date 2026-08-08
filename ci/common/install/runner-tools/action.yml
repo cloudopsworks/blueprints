@@ -45,4 +45,4 @@ runs:
         source_path: ${{ inputs.source_path }}
 
     - name: Install Tronador CLI
-      uses: cloudopsworks/install-tronador@v1
+      uses: cloudopsworks/install-tronador-cli@v1
