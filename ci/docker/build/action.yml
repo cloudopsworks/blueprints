@@ -117,7 +117,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Node Version SET"
-        make version
+        tronador project version --allow-network
         echo "::endgroup::"
 
     - name: Version Capture

@@ -209,7 +209,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Node Version SET"
-        make version
+        tronador project version --allow-network
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -317,7 +317,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::SBOM Generation for Dtrack"
-        npx @cyclonedx/cyclonedx-npm --output-format XML -o bom.xml
+        CI=true npx @cyclonedx/cyclonedx-npm --output-format XML -o bom.xml
         echo "::endgroup::"
 
     # Removal of .npmrc file for security reasons
