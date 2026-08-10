@@ -1,0 +1,188 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Rulesets for Protected Sources Paths
+author: cloudopsworks
+description: 'This action will create rulesets for protected sources paths in a repository, with the specified allow and exempt usergroups, using the GitHub GraphQL API'
+inputs:
+  token:
+    description: 'GitHub Token with repo and admin:org permissions'
+    required: true
+  protected_sources:
+    description: 'Protected sources paths in JSON format'
+    required: true
+  reviewers_list:
+    description: 'Reviewers list in JSON format'
+    required: true
+  owners_list:
+    description: 'Owners list in JSON format'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Rulesets for Protected Sources
+      uses: actions/github-script@v8
+      env:
+        STEPS_PROTECTED_SOURCES_RESULT: ${{ inputs.protected_sources }}
+        STEPS_REVIEWERS_LIST_RESULT: ${{ inputs.reviewers_list }}
+        STEPS_OWNERS_LIST_RESULT: ${{ inputs.owners_list }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const protectedSourcesInput = JSON.parse('' + (process.env.STEPS_PROTECTED_SOURCES_RESULT || '') + '');
+          const defaultReviewers = JSON.parse('' + (process.env.STEPS_REVIEWERS_LIST_RESULT || '') + '');
+          const defaultOwners = JSON.parse('' + (process.env.STEPS_OWNERS_LIST_RESULT || '') + '');
+          // protectedSources new format:
+          // {
+          //   "<rule_name>": {
+          //     "paths": ["<path1>", "<path2>"],
+          //     "allow": ["<org/team-or-user>", ...],   -> bypass mode ALWAYS
+          //     "exempt": ["<org/team-or-user>", ...]   -> bypass mode EXEMPT
+          //   }
+          // }
+          // allow/exempt entries may also be one of the special keywords "organizationAdmin",
+          // "enterpriseOwner" or "enterpriseRole" (matching the corresponding boolean fields on
+          // RepositoryRulesetBypassActorInput) instead of an org/team or user name. These bypass
+          // the team/user actor lookup entirely.
+          // if allow or exempt is not specified, defaultReviewers and defaultOwners will be used respectively.
+          // Old format (deprecated):
+          // [ "path1", "path2", ... ]
+          // A single 'protected-sources' rule is created covering all paths, with allow
+          // and exempt set to defaultReviewers and defaultOwners respectively.
+          const protectedSources = Array.isArray(protectedSourcesInput)
+            ? { 'protected-sources': { paths: protectedSourcesInput, allow: defaultReviewers, exempt: defaultOwners } }
+            : protectedSourcesInput;
+
+          const teamsQuery = `
+            query($login: String!) {
+              organization(login: $login) {
+                teams(first: 100) {
+                  nodes {
+                    id
+                    name
+                    slug
+                  }
+                }
+              }
+            }
+          `;
+          const teamsResult = await github.graphql(teamsQuery, {login: context.repo.owner});
+
+          const membersQuery = `
+            query($login: String!) {
+              organization(login: $login) {
+                membersWithRole(first: 100) {
+                  nodes {
+                    login
+                    id
+                  }
+                }
+              }
+            }
+          `;
+          const membersResult = await github.graphql(membersQuery, {login: context.repo.owner});
+
+          const specialBypassActors = new Set(['organizationAdmin', 'enterpriseOwner', 'enterpriseRole']);
+
+          function resolveBypassActors(actorNames, bypassMode) {
+            const actors = [];
+            for (const name of (actorNames || [])) {
+              if (specialBypassActors.has(name)) {
+                actors.push({[name]: true, bypassMode});
+              } else if (name.includes('/')) {
+                const teamSlug = name.split('/')[1];
+                const team = teamsResult.organization.teams.nodes.find(t => t.slug === teamSlug);
+                if (team) {
+                  actors.push({actorId: team.id, bypassMode});
+                }
+              } else {
+                const member = membersResult.organization.membersWithRole.nodes.find(m => m.login === name);
+                if (member) {
+                  actors.push({actorId: member.id, bypassMode});
+                }
+              }
+            }
+            return actors;
+          }
+
+          const rulesetQuery = `
+            query($owner: String!, $repo: String!) {
+              repository(owner: $owner, name: $repo) {
+                id
+                rulesets(first: 100, targets: [PUSH]) {
+                  nodes {
+                    id
+                    name
+                  }
+                }
+              }
+            }
+          `;
+          const rulesetResult = await github.graphql(rulesetQuery, {owner: context.repo.owner, repo: context.repo.repo});
+
+          const createMutation = `
+            mutation($input: CreateRepositoryRulesetInput!) {
+              createRepositoryRuleset(input: $input) {
+                ruleset {
+                  id
+                  name
+                  enforcement
+                }
+              }
+            }
+          `;
+          const updateMutation = `
+            mutation($input: UpdateRepositoryRulesetInput!) {
+              updateRepositoryRuleset(input: $input) {
+                ruleset {
+                  id
+                  name
+                  enforcement
+                }
+              }
+            }
+          `;
+
+          async function upsertRuleset(existingId, input) {
+            if (existingId) {
+              return github.graphql(updateMutation, {input: {repositoryRulesetId: existingId, ...input}});
+            }
+            return github.graphql(createMutation, {input: {sourceId: rulesetResult.repository.id, ...input}});
+          }
+
+          for (const [ruleName, ruleConfig] of Object.entries(protectedSources)) {
+            const allow = ruleConfig.allow ?? defaultReviewers;
+            const exempt = ruleConfig.exempt ?? defaultOwners;
+            const rulesetExists = rulesetResult.repository.rulesets.nodes.find(rule => rule.name === ruleName);
+
+            console.log(`Processing ruleset '${ruleName}' with paths ${JSON.stringify(ruleConfig.paths)}, allow ${JSON.stringify(allow)}, exempt ${JSON.stringify(exempt)} (${rulesetExists ? 'updating id ' + rulesetExists.id : 'creating'})`);
+
+            const inputBase = {
+              name: ruleName,
+              target: 'PUSH',
+              enforcement: 'ACTIVE',
+              // Push rulesets apply to every push to the repository, so they take no ref
+              // name targeting. conditions is non-null in the schema, hence the empty object.
+              conditions: {},
+              bypassActors: [
+                ...resolveBypassActors(allow, 'ALWAYS'),
+                ...resolveBypassActors(exempt, 'EXEMPT')
+              ],
+              rules: [{
+                type: 'FILE_PATH_RESTRICTION',
+                parameters: {
+                  filePathRestriction: {
+                    restrictedFilePaths: ruleConfig.paths || []
+                  }
+                }
+              }]
+            };
+
+            await upsertRuleset(rulesetExists?.id, inputBase);
+          }

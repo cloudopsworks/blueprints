@@ -173,7 +173,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Maven Version SET"
-        make version
+        tronador project version --allow-network
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}

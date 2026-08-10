@@ -1,0 +1,61 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Contributor Lists processing
+author: cloudopsworks
+description: 'This action will process a JSON formatted list of contributors and add them to the repository with the specified permissions'
+inputs:
+  token:
+    description: 'GitHub Token with repo and admin:org permissions'
+    required: true
+  contrib_list:
+    description: 'Contributors list in JSON format'
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Contributor list form JSON
+      uses: actions/github-script@v8
+      env:
+        STEPS_CONTRIB_LIST_RESULT: ${{ inputs.contrib_list }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const contrib_text = (process.env.STEPS_CONTRIB_LIST_RESULT || '');
+          const contrib_json = contrib_text != null ? JSON.parse('' + (process.env.STEPS_CONTRIB_LIST_RESULT || '') + '') : {};
+
+          // Parse the Contributors List and add them to the repository
+          // Users are plain names teams are prefixed by the org name
+          // The role names are case insensitive and match github's permissions.
+          // The role names are: admin, triage, write, read
+          // The default role is read
+          // contrib_json format will be as follows:
+          //    { "admin": ["user1", "user2"], "triage": ["user3", "org1/team1"], "write": ["user5", "org1/team2"], "read": ["user7", "user8"] }
+          for ( const [role, members] of Object.entries(contrib_json) ) {
+            for ( const member of members ) {
+              if ( member.includes("/") ) {
+                // This is a team
+                const team = member.split("/");
+                github.rest.teams.addOrUpdateRepoPermissionsInOrg({
+                  org: team[0],
+                  team_slug: team[1],
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  permission: role
+                });
+              } else {
+                // This is a user
+                github.rest.repos.addCollaborator({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username: member,
+                  permission: role
+                });
+              }
+            }
+          }

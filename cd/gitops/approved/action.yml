@@ -31,6 +31,9 @@ runs:
           const pull_request = '' + (process.env.GITHUB_SLASH_PULL_REQUEST || '') + ''
           const pull_request_number = '' + (process.env.GITHUB_SLASH_PULL_REQUEST_NUMBER || '') + ''
           const author = '' + (process.env.GITHUB_SLASH_AUTHOR || '') + ''
+          const eventName = '' + (process.env.GITHUB_EVENT_NAME || '') + ''
+          const tfActionsDir = '' + (process.env.ENV_TF_ACTIONS_WORKING_DIR || '') + ''
+          const githubWorkflow = '' + (process.env.GITHUB_WORKFLOW || '') + ''
           
           const {data: thepull} = await github.rest.pulls.get({
             owner: context.repo.owner,
@@ -47,7 +50,7 @@ runs:
           Pull request mergeable?: \`${thepull.mergeable}\`
           Approved by: \`${author}\`
           
-          *Action: \`(process.env.GITHUB_EVENT_NAME || '')\`, Working Directory: \`(process.env.ENV_TF_ACTIONS_WORKING_DIR || '')\`, Workflow: \`(process.env.GITHUB_WORKFLOW || '')\`*`;
+          *Action: \`${eventName}\`, Working Directory: \`${tfActionsDir}\`, Workflow: \`${githubWorkflow}\`*`;
           
           const {data: reviewers} = await github.rest.pulls.listRequestedReviewers({
             owner: context.repo.owner,

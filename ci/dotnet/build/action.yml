@@ -277,7 +277,7 @@ runs:
       shell: bash
       run: |
         echo "::group::.Net Version SET"
-        make version
+        tronador project version --allow-network
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
