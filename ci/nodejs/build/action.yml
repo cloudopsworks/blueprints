@@ -212,7 +212,7 @@ runs:
         node-version: "${{ steps.node_version.outputs.result }}"
         check-latest: true
         token: ${{ inputs.token }}
-        cache: '${{ steps.package_manager.outputs.result }}'
+        cache: '${{ inputs.package_manager }}'
 
 #    # Cache all NPM packages
 #    - name: Cache NPM packages
@@ -313,12 +313,14 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
-        PACKAGE_MANAGER: ${{ steps.package_manager.outputs.result }}
+        PACKAGE_MANAGER: ${{ inputs.package_manager }}
 
     - name: Install AWS open telemetry
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package_manager }}
       run: |
         echo "::group::Install AWS Open Telemetry"
         if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
