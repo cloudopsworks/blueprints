@@ -41,7 +41,8 @@ inputs:
     required: true
   package_manager:
     description: 'The package manager to use'
-    required: true
+    required: false
+    default: 'npm'
   build_command:
     description: 'The build command'
     required: true
