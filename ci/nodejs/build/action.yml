@@ -186,6 +186,21 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
+    # Get if scripts.test is defined in package.json and retrieve if using mocha or jest
+    - name: Get test framework
+      id: test_framework
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        RET=$(yq e -oj -r ".scripts.test" package.json)
+        if [[ "${RET}" == *"mocha"* ]]; then
+          echo "result=mocha" >> $GITHUB_OUTPUT
+        elif [[ "${RET}" == *"jest"* ]]; then
+          echo "result=jest" >> $GITHUB_OUTPUT
+        else
+          echo "result=none" >> $GITHUB_OUTPUT
+        fi
+
     # Setup Node JS for builds with version provided
     - name: Set Node Version
       uses: actions/setup-node@v6
@@ -241,7 +256,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Install Global Dependencies"
-        npm install -g nyc@18.0.0 jest@30.2.0 mocha@11.7.5
+        npm install -g nyc@18.0.0 jest@30.4.2 mocha@11.8.0
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
@@ -298,13 +313,26 @@ runs:
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         INPUTS_BUILD_COMMAND: ${{ inputs.build_command }}
 
-    # Test the code
-    - name: Test Code
+    # Test the code with mocha
+    - name: Mocha Test Code
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         echo "::group::NPM Test"
         bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless"
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
+
+    # Test the code with jest
+    - name: Jest Test Code
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::NPM Test"
+        bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary" 
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
