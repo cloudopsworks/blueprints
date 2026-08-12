@@ -334,7 +334,21 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Test"
-        bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary" 
+        bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} npm test --if-present --no-progress -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary" 
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
+
+    # Test the code with defaults
+    - name: Default Test Code
+      if: ${{ steps.test_framework.outputs.result == 'none' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::NPM Test"
+        bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} npm test --if-present --no-progress" 
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
