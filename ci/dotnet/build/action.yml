@@ -64,6 +64,11 @@ runs:
         which gh || sudo apt-get install -y gh
         echo "::endgroup::"
 
+    - name: Install Tronador CLI
+      uses: cloudopsworks/install-tronador-cli@v0
+      with:
+        token: ${{ inputs.token }}
+
     # Get pipeline conf .Net version Defaults to 9
     - name: Get pipeline .Net version
       id: dotnet_version

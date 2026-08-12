@@ -79,6 +79,11 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
+    - name: Install Tronador CLI
+      uses: cloudopsworks/install-tronador-cli@v0
+      with:
+        token: ${{ inputs.token }}
+
     # Get pipeline conf Python dist
     - name: Get pipeline Python dist
       id: python_dist
