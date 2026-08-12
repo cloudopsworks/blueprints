@@ -280,15 +280,15 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Config Registry Setup"
-        if [[ "${PACKAGE_MANAGER}" == "npm" ]]; then
-          npm config --location=project set "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN"
-          npm config --location=project set "@${STEPS_REPO_OWNER_RESULT}:registry=https://npm.pkg.github.com/"
-        elif [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
+        if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
           yarn config set npmScopes.${STEPS_REPO_OWNER_RESULT}.npmRegistryServer "https://npm.pkg.github.com/"
           yarn config set 'npmRegistries["//npm.pkg.github.com"].npmAuthToken' "$GITHUB_TOKEN"
         elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
           npm config set "@${STEPS_REPO_OWNER_RESULT}:registry" "https://npm.pkg.github.com/"
           pnpm config set "//npm.pkg.github.com/:_authToken" "$GITHUB_TOKEN"
+        else
+          npm config --location=project set "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN"
+          npm config --location=project set "@${STEPS_REPO_OWNER_RESULT}:registry=https://npm.pkg.github.com/"
         fi
         echo "::endgroup::"
       env:
@@ -346,7 +346,6 @@ runs:
 
     # Test the code
     - name: Test Code
-      if: ${{ steps.test_framework.outputs.result == 'mocha' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -362,7 +361,7 @@ runs:
         fi
         if [[ "$TEST_FRAMEWORK" == "mocha" ]]; then
           bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${CONDITIONAL_PRE} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- ${TEST_COMMAND} --no-watch --code-coverage --browsers=ChromeHeadless"
-        if [[ "$TEST_FRAMEWORK" == "jest" ]]; then
+        elif [[ "$TEST_FRAMEWORK" == "jest" ]]; then
           bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND} -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary" 
         else
           echo "::info::No test framework detected, running default test command"
@@ -375,19 +374,6 @@ runs:
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
         TEST_FRAMEWORK: ${{ steps.test_framework.outputs.result }}
-
-    # Test the code with defaults
-    - name: Default Test Code
-      if: ${{ steps.test_framework.outputs.result == 'none' }}
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        echo "::group::NPM Test"
-        echo "::endgroup::"
-      env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
-        INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
 
     # SBOM generation
     - name: SBOM Generation for Dtrack
