@@ -313,23 +313,6 @@ runs:
         INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
 
-    - name: Install AWS open telemetry
-      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      env:
-        PACKAGE_MANAGER: ${{ inputs.package_manager }}
-      run: |
-        echo "::group::Install AWS Open Telemetry"
-        if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
-          yarn add @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
-        elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
-          pnpm add @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
-        else
-          npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
-        fi
-        echo "::endgroup::"
-
     # Build the code! build target MUST be defined in package.json
     - name: Run Build
       working-directory: ${{ inputs.source_path }}
@@ -395,6 +378,23 @@ runs:
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
+
+    - name: Install AWS open telemetry
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package_manager }}
+      run: |
+        echo "::group::Install AWS Open Telemetry"
+        if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
+          yarn add @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
+        elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
+          pnpm add @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
+        else
+          npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
+        fi
+        echo "::endgroup::"
 
     # SBOM generation
     - name: SBOM Generation for Dtrack
