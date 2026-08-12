@@ -218,6 +218,7 @@ runs:
         check-latest: true
         token: ${{ inputs.token }}
         cache: '${{ inputs.package_manager }}'
+        cache-dependency-path: '${{ inputs.source_path }}/*-lock.json'
 
 #    # Cache all NPM packages
 #    - name: Cache NPM packages
