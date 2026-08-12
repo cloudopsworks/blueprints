@@ -364,6 +364,15 @@ runs:
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
         TEST_FRAMEWORK: ${{ steps.test_framework.outputs.result }}
 
+    # SBOM generation
+    - name: SBOM Generation for Dtrack
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      run: |
+        echo "::group::SBOM Generation for Dtrack"
+        CI=true npx @cyclonedx/cyclonedx-npm --output-format XML -o bom.xml
+        echo "::endgroup::"
+
     - name: Re-Install Dependencies - Production Ready
       working-directory: ${{ inputs.source_path }}
       shell: bash
@@ -396,15 +405,6 @@ runs:
         else
           npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
         fi
-        echo "::endgroup::"
-
-    # SBOM generation
-    - name: SBOM Generation for Dtrack
-      shell: bash
-      working-directory: ${{ inputs.source_path }}
-      run: |
-        echo "::group::SBOM Generation for Dtrack"
-        CI=true npx @cyclonedx/cyclonedx-npm --output-format XML -o bom.xml
         echo "::endgroup::"
 
     # Removal of .npmrc file for security reasons
