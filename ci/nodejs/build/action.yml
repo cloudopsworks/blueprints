@@ -315,6 +315,7 @@ runs:
 
     # Test the code with mocha
     - name: Mocha Test Code
+      if: ${{ steps.test_framework.outputs.result == 'mocha' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -328,6 +329,7 @@ runs:
 
     # Test the code with jest
     - name: Jest Test Code
+      if: ${{ steps.test_framework.outputs.result == 'jest' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
