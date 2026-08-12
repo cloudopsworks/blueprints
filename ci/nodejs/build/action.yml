@@ -364,10 +364,10 @@ runs:
         if [[ "$TEST_FRAMEWORK" == "mocha" ]]; then
           bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${CONDITIONAL_PRE} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- ${TEST_COMMAND} --no-watch --code-coverage --browsers=ChromeHeadless"
         elif [[ "$TEST_FRAMEWORK" == "jest" ]]; then
-          bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND} -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary" 
+          bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND} -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary"
         else
           echo "::info::No test framework detected, running default test command"
-          bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND}" 
+          bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND}"
         fi
         echo "::endgroup::"
       env:
