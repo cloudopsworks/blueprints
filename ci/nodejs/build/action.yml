@@ -82,10 +82,9 @@ runs:
     - name: Get pipeline owner
       id: repo_owner
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq eval ".repository_owner // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq eval ".repository_owner // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -101,10 +100,9 @@ runs:
     - name: Get pipeline node version
       id: node_version
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq eval ".node.version // \"24\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq eval ".node.version // \"24\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -115,10 +113,9 @@ runs:
     - name: Get pipeline node dist
       id: node_dist
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq eval ".node.dist // \"adopt\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq eval ".node.dist // \"adopt\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -129,10 +126,9 @@ runs:
     - name: Get pipeline NodeJS image variant
       id: node_image_variant
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".node.image_variant // \"alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".node.image_variant // \"alpine\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -143,10 +139,9 @@ runs:
     - name: Get pipeline zip packaging globs
       id: zip_globs_line
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".zipGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml" | tr '\n' ' ')
+        RET=$(yq e ".zipGlobs[]" "./.cloudopsworks/cloudopsworks-ci.yaml" | tr '\n' ' ')
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -157,10 +152,9 @@ runs:
     - name: Get pipeline zip packaging exclude globs
       id: exclude_globs
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".excludeGlobs[] | \"!\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        RET=$(yq e ".excludeGlobs[] | \"!\" + ." "./.cloudopsworks/cloudopsworks-ci.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -171,10 +165,9 @@ runs:
     - name: Get pipeline zip packaging exclude globs
       id: raw_exclude_globs
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".excludeGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
+        RET=$(yq e ".excludeGlobs[]" "./.cloudopsworks/cloudopsworks-ci.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -185,10 +178,9 @@ runs:
     - name: Get package Name
       id: package_name
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -oj -r ".name" "${INPUTS_SOURCE_PATH}/package.json")
+        RET=$(yq e -oj -r ".name" "package.json")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -251,11 +243,11 @@ runs:
     # Edit package.json in order to include repository for automatic linking
     - name: Package.JSON - REPO auto link
       shell: bash
+      working-directory: ${{ inputs.source_path }}
       env:
         GITHUB_REPOSITORYURL: ${{ github.repositoryUrl }}
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -oj -i ".repository.type=\"git\"|.repository.url=strenv(GITHUB_REPOSITORYURL)" "${INPUTS_SOURCE_PATH}/package.json")
+        RET=$(yq e -oj -i ".repository.type=\"git\"|.repository.url=strenv(GITHUB_REPOSITORYURL)" "package.json")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -353,7 +345,7 @@ runs:
         INPUTS_BUILD_COMMAND: ${{ inputs.build_command }}
 
     # Test the code
-    - name: Test Code
+    - name: Test Code - w/Install Dev Dependencies
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
@@ -362,10 +354,13 @@ runs:
         if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
           CONDITIONAL_PRE="jq -e '.scripts.build' package.json >/dev/null 2>&1 &&"
           TEST_COMMAND="yarn test"
+          INSTALL_COMMAND="yarn install --frozen-lockfile"
         elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
           TEST_COMMAND="pnpm test --if-present --no-progress"
+          INSTALL_COMMAND="pnpm ci"
         else
           TEST_COMMAND="npm test --if-present --no-progress"
+          INSTALL_COMMAND="npm ci"
         fi
         if [[ "$TEST_FRAMEWORK" == "mocha" ]]; then
           bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${CONDITIONAL_PRE} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- ${TEST_COMMAND} --no-watch --code-coverage --browsers=ChromeHeadless"
@@ -373,6 +368,7 @@ runs:
           bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND} -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary"
         else
           echo "::info::No test framework detected, running default test command"
+          bash -c "CI=true ${INSTALL_COMMAND}"
           bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND}"
         fi
         echo "::endgroup::"
@@ -382,6 +378,23 @@ runs:
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
         TEST_FRAMEWORK: ${{ steps.test_framework.outputs.result }}
+
+    - name: Re-Install Dependencies - Production Ready
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::Install Dependencies ($PACKAGE_MANAGER)"
+        if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
+          yarn workspaces focus --all --production
+        fi
+        bash -c "${INPUTS_NODE_EXTRA_ENV} ${INPUTS_INSTALL_COMMAND}"
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
+        INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
+        PACKAGE_MANAGER: ${{ inputs.package_manager }}
 
     # SBOM generation
     - name: SBOM Generation for Dtrack
