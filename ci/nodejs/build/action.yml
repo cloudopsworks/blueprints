@@ -39,6 +39,9 @@ inputs:
   install_command:
     description: 'The install command'
     required: true
+  package_manager:
+    description: 'The package manager to use'
+    required: true
   build_command:
     description: 'The build command'
     required: true
@@ -208,15 +211,16 @@ runs:
         node-version: "${{ steps.node_version.outputs.result }}"
         check-latest: true
         token: ${{ inputs.token }}
+        cache: '${{ steps.package_manager.outputs.result }}'
 
-    # Cache all NPM packages
-    - name: Cache NPM packages
-      uses: actions/cache@v5
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json','**/npm-shrinkwrap.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+#    # Cache all NPM packages
+#    - name: Cache NPM packages
+#      uses: actions/cache@v5
+#      with:
+#        cache: 'npm'
+#        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json','**/npm-shrinkwrap.json') }}
+#        restore-keys: |
+#          ${{ runner.os }}-node-
 
     # Versioning SET
     - name: Version SET
@@ -256,32 +260,51 @@ runs:
       shell: bash
       run: |
         echo "::group::Install Global Dependencies"
-        npm install -g nyc@18.0.0 jest@30.4.2 mocha@11.8.0
+        if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
+          yarn global add nyc@18.0.0 jest@30.4.2 mocha@11.8.0
+        elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
+          pnpm add -g nyc@18.0.0 jest@30.4.2 mocha@11.8.0
+        else
+          npm install -g nyc@18.0.0 jest@30.4.2 mocha@11.8.0
+        fi
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        PACKAGE_MANAGER: ${{ inputs.package_manager }}
 
-    # NPM config registry setup
-    - name: NPM Config Registry Setup
+    # NPM/YARN/PNPM config registry setup
+    - name: NPM/YARN/PNPM Config Registry Setup
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         echo "::group::NPM Config Registry Setup"
-        npm config --location=project set "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN"
-        npm config --location=project set "@${STEPS_REPO_OWNER_RESULT}:registry=https://npm.pkg.github.com/"
+        if [[ "${PACKAGE_MANAGER}" == "npm" ]]; then
+          npm config --location=project set "//npm.pkg.github.com/:_authToken=$GITHUB_TOKEN"
+          npm config --location=project set "@${STEPS_REPO_OWNER_RESULT}:registry=https://npm.pkg.github.com/"
+        elif [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
+          yarn config set npmScopes.${STEPS_REPO_OWNER_RESULT}.npmRegistryServer "https://npm.pkg.github.com/"
+          yarn config set 'npmRegistries["//npm.pkg.github.com"].npmAuthToken' "$GITHUB_TOKEN"
+        elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
+          npm config set "@${STEPS_REPO_OWNER_RESULT}:registry" "https://npm.pkg.github.com/"
+          pnpm config set "//npm.pkg.github.com/:_authToken" "$GITHUB_TOKEN"
+        fi
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
         STEPS_REPO_OWNER_RESULT: ${{ steps.repo_owner.outputs.result }}
+        PACKAGE_MANAGER: ${{ inputs.package_manager }}
 
     # Build the code!
     - name: Install Dependencies
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "::group::NPM Install"
+        echo "::group::Install Dependencies ($PACKAGE_MANAGER)"
+        if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
+          yarn workspaces focus --all --production
+        fi
         bash -c "${INPUTS_NODE_EXTRA_ENV} ${INPUTS_INSTALL_COMMAND}"
         echo "::endgroup::"
       env:
@@ -289,6 +312,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.token }}
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
+        PACKAGE_MANAGER: ${{ steps.package_manager.outputs.result }}
 
     - name: Install AWS open telemetry
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
@@ -296,15 +320,21 @@ runs:
       shell: bash
       run: |
         echo "::group::Install AWS Open Telemetry"
-        npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.9.0
+        if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
+          yarn add @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
+        elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
+          pnpm add @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
+        else
+          npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
+        fi
         echo "::endgroup::"
 
     # Build the code! build target MUST be defined in package.json
-    - name: Run NPM Build
+    - name: Run Build
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
-        echo "::group::NPM Build"
+        echo "::group::Code Build"
         bash -c "${INPUTS_NODE_EXTRA_ENV} ${INPUTS_BUILD_COMMAND}"
         echo "::endgroup::"
       env:
@@ -313,33 +343,37 @@ runs:
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         INPUTS_BUILD_COMMAND: ${{ inputs.build_command }}
 
-    # Test the code with mocha
-    - name: Mocha Test Code
+    # Test the code
+    - name: Test Code
       if: ${{ steps.test_framework.outputs.result == 'mocha' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         echo "::group::NPM Test"
-        bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- npm test --if-present --no-watch --no-progress --code-coverage --browsers=ChromeHeadless"
+        CONDITIONAL_PRE=""
+        if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
+          CONDITIONAL_PRE="jq -e '.scripts.build' package.json >/dev/null 2>&1 &&"
+          TEST_COMMAND="yarn test"
+        elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
+          TEST_COMMAND="pnpm test --if-present --no-progress"
+        else
+          TEST_COMMAND="npm test --if-present --no-progress"
+        fi
+        if [[ "$TEST_FRAMEWORK" == "mocha" ]]; then
+          bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${CONDITIONAL_PRE} nyc --reporter=html --reporter=lcov --reporter=text-summary --reporter=cobertura -- ${TEST_COMMAND} --no-watch --code-coverage --browsers=ChromeHeadless"
+        if [[ "$TEST_FRAMEWORK" == "jest" ]]; then
+          bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND} -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary" 
+        else
+          echo "::info::No test framework detected, running default test command"
+          bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} ${TEST_COMMAND}" 
+        fi
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
-
-    # Test the code with jest
-    - name: Jest Test Code
-      if: ${{ steps.test_framework.outputs.result == 'jest' }}
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      run: |
-        echo "::group::NPM Test"
-        bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} npm test --if-present --no-progress -- --coverage --coverageReporters=html --coverageReporters=lcov --coverageReporters=json --coverageReporters=cobertura --coverageReporters=text-summary" 
-        echo "::endgroup::"
-      env:
-        GITHUB_ACTOR: ${{ inputs.bot_user }}
-        GITHUB_TOKEN: ${{ inputs.token }}
-        INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
+        PACKAGE_MANAGER: ${{ inputs.package_manager }}
+        TEST_FRAMEWORK: ${{ steps.test_framework.outputs.result }}
 
     # Test the code with defaults
     - name: Default Test Code
@@ -348,7 +382,6 @@ runs:
       shell: bash
       run: |
         echo "::group::NPM Test"
-        bash -c "CI=true DISPLAY=:99 ${INPUTS_NODE_EXTRA_ENV} npm test --if-present --no-progress" 
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
