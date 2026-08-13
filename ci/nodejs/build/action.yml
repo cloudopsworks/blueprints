@@ -227,7 +227,9 @@ runs:
       shell: bash
       run: |
         echo "::group::Node Version SET"
-        tronador project version --allow-network
+        #tronador project version --allow-network
+        make version
+
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
