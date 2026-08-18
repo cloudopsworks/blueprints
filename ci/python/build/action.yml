@@ -79,6 +79,11 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
+    - name: Install Tronador CLI
+      uses: cloudopsworks/install-tronador-cli@v0
+      with:
+        token: ${{ inputs.token }}
+
     # Get pipeline conf Python dist
     - name: Get pipeline Python dist
       id: python_dist
@@ -257,6 +262,7 @@ runs:
       run: |
         echo "::group::Python  Version SET"
         tronador project version --allow-network
+        #make version
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}

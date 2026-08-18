@@ -79,6 +79,11 @@ runs:
         which yq || brew install yq
         echo "::endgroup::"
 
+    - name: Install Tronador CLI
+      uses: cloudopsworks/install-tronador-cli@v0
+      with:
+        token: ${{ inputs.token }}
+
     # Versioning SET
     - name: Version SET
       working-directory: ${{ inputs.source_path }}
@@ -86,6 +91,7 @@ runs:
       run: |
         echo "::group::Android SDK Version SET"
         tronador project version --allow-network
+        #make version
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}

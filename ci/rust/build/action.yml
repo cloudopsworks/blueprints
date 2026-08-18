@@ -70,6 +70,11 @@ runs:
         which gh || sudo apt-get install -y gh
         echo "::endgroup::"
 
+    - name: Install Tronador CLI
+      uses: cloudopsworks/install-tronador-cli@v0
+      with:
+        token: ${{ inputs.token }}
+
     # Get pipeline conf Rust version Defaults to 1.87
     - name: Get pipeline Rust version
       id: rust_version
@@ -304,6 +309,7 @@ runs:
       run: |
         echo "::group::Rust Version SET"
         tronador project version --allow-network
+        #make version
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
