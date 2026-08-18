@@ -280,9 +280,8 @@ runs:
       shell: bash
       run: |
         echo "::group::Go Version SET"
-        #tronador project version --allow-network
-        make version
-
+        tronador project version --allow-network
+        #make version
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
