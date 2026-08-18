@@ -210,7 +210,10 @@ runs:
         check-latest: true
         token: ${{ inputs.token }}
         cache: '${{ inputs.package_manager }}'
-        cache-dependency-path: '${{ inputs.source_path }}/package-lock.json,${{ inputs.source_path }}/yarn.lock,${{ inputs.source_path }}/pnpm-lock.yaml'
+        cache-dependency-path: |
+          ${{ inputs.source_path }}/package-lock.json
+          ${{ inputs.source_path }}/yarn.lock
+          ${{ inputs.source_path }}/pnpm-lock.yaml 
 
 #    # Cache all NPM packages
 #    - name: Cache NPM packages
