@@ -1,6 +1,7 @@
 {{- if not .Values.cronjob.enabled }}
 {{- if not .Values.job.enabled }}
 {{- if not .Values.statefulset.enabled }}
+{{- if not .Values.keda.job.enabled }}
 {{- if .Values.daemonset.enabled }}
 apiVersion: apps/v1
 kind: DaemonSet
@@ -189,6 +190,7 @@ spec:
         {{- if .Values.injectedVolumes }}
           {{- toYaml .Values.injectedVolumes | nindent 8 }}
         {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

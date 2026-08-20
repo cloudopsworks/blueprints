@@ -1,0 +1,27 @@
+{{- if .Values.keda.enabled  }}
+{{- range $index, $triggerAuth := .Values.keda.auth }}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  {{- if $.Values.service.name }}
+  name: {{ $triggerAuth.name }}-{{ $.Values.service.name }}
+  {{- else }}
+  name: {{ $triggerAuth.name }}-{{ template "fullname" $ }}
+  {{- end }}
+  labels:
+    draft: {{ default "draft-app" $.Values.draft }}
+    chart: "{{ $.Chart.Name }}-{{ $.Chart.Version | replace "+" "_" }}"
+  {{- if or $.Values.keda.annotations $triggerAuth.annotations }}
+  annotations:
+  {{- with $.Values.keda.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $triggerAuth.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  {{- toYaml $triggerAuth.spec | nindent 4 }}
+{{- end }}
+{{- end }}

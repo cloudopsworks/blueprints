@@ -1,7 +1,8 @@
-{{- if .Values.cronjob.enabled }}
 {{- if not .Values.job.enabled }}
 {{- if not .Values.daemonset.enabled }}
+{{- if not .Values.keda.job.enabled }}
 {{- if not .Values.statefulset.enabled }}
+{{- if .Values.cronjob.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -116,6 +117,7 @@ spec:
           {{- if .Values.injectedVolumes }}
             {{- toYaml .Values.injectedVolumes | nindent 12 }}
           {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
