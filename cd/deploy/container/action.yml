@@ -182,7 +182,7 @@ runs:
       with:
         name: docker-image
 
-    - name: Push Docker image from tar using Skopeo
+    - name: Push Docker image from tar using Crane
       shell: bash
       if: steps.docker_daemon.outputs.docker_daemon != 'true'
       env:
@@ -195,9 +195,11 @@ runs:
         #skopeo copy --all docker-archive:docker-image.tar "${STEPS_TAGS_RESULT}"
         TAG=$(head -1 docker-tags.list)
         crane push docker-image.tar "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG"
+        echo "::notice::Pushed Docker image to ${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG"
         for atag in $(cat docker-tags.list); do
           if [ "$atag" != "$TAG" ]; then
             crane tag "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG" $atag
+            echo "::notice::Tagged Docker image to ${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$atag"
           fi
         done
         echo "::endgroup::"
