@@ -41,13 +41,13 @@ runs:
         path: ${{ inputs.source_path }}
 
     - name: Manual Trivy Setup
-      uses: aquasecurity/setup-trivy@v0.2.0
+      uses: aquasecurity/setup-trivy@v0.3.1
       with:
         cache: true
         version: v0.69.3
 
     - name: Run Trivy vulnerability scanner - sarif output
-      uses: aquasecurity/trivy-action@0.35.0
+      uses: aquasecurity/trivy-action@v0.36.0
       with:
         input: '${{ inputs.source_path }}/docker-image.tar'
         scan-type: 'image'
@@ -60,7 +60,7 @@ runs:
         scanners: 'vuln'
 
     - name: Run Trivy vulnerability scanner - sarif output
-      uses: aquasecurity/trivy-action@0.35.0
+      uses: aquasecurity/trivy-action@v0.36.0
       with:
         input: '${{ inputs.source_path }}/docker-image.tar'
         scan-type: 'image'
