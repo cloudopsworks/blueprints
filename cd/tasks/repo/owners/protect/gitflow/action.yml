@@ -212,9 +212,9 @@ runs:
               `;
             }
           
-            var run_context = ['Check Pull Request / check-pr'];
+            var run_context = ['Check Pull Request'];
             if ( is_iac ) {
-              run_context = ['Plan Infrastructure / plan'];
+              run_context = ['Plan Infrastructure'];
             }
           
             const vars = {
