@@ -1,0 +1,129 @@
+{{- if not .Values.job.enabled }}
+{{- if not .Values.cronjob.enabled }}
+{{- if not .Values.daemonset.enabled }}
+{{- if not .Values.statefulset.enabled }}
+{{- if .Values.keda.job.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  {{- if .Values.service.name }}
+  name: {{ .Values.service.name }}
+  {{- else }}
+  name: {{ template "fullname" . }}
+  {{- end }}
+  labels:
+    draft: {{ default "draft-app" .Values.draft }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+  {{- if or .Values.annotations .Values.keda.annotations }}
+  annotations:
+  {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.keda.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  jobTargetRef:
+    parallelism: {{ .Values.keda.job.parallelism | default 1 }}
+    completions: {{ .Values.keda.job.completions | default 1 }}
+    activeDeadlineSeconds: {{ .Values.keda.job.activeDeadlineSeconds | default 300 }}
+    backoffLimit: {{ .Values.keda.job.backoffLimit | default 6 }}
+    template:
+      metadata:
+        labels:
+          draft: {{ default "draft-app" .Values.draft }}
+          app: {{ template "fullname" . }}
+        {{- with .Values.podAnnotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        {{- with .Values.imagePullSecrets }}
+        imagePullSecrets:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.serviceAccount.create }}
+        {{- if .Values.serviceAccount.name }}
+        serviceAccountName: {{ .Values.serviceAccount.name }}
+        {{- else }}
+        serviceAccountName: {{ template "fullname" . }}
+        {{- end }}
+        {{- else }}
+        {{- if .Values.serviceAccount.enabled }}
+        serviceAccountName: {{ .Values.serviceAccount.name }}
+        {{- end }}
+        {{- end }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        {{- with .Values.initContainers }}
+        initContainers:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        containers:
+          - name: {{ .Chart.Name }}
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            {{- with .Values.env }}
+            env:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+            {{- if or .Values.envFrom .Values.injectEnvFrom }}
+            envFrom:
+            {{- with .Values.envFrom }}
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+            {{- with .Values.injectEnvFrom }}
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+            {{- end }}
+            resources:
+              {{- toYaml .Values.resources | nindent 14 }}
+            volumeMounts:
+            {{- if .Values.additionalVolumeMounts }}
+              {{- toYaml .Values.additionalVolumeMounts | nindent 14 }}
+            {{- end }}
+            {{- if .Values.injectedVolumeMounts }}
+              {{- toYaml .Values.injectedVolumeMounts | nindent 14 }}
+            {{- end }}
+        terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+        {{- with .Values.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.nodeSelector }}
+        nodeSelector:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumes:
+        {{- if .Values.additionalVolumes }}
+          {{- toYaml .Values.additionalVolumes | nindent 10 }}
+        {{- end }}
+        {{- if .Values.injectedVolumes }}
+          {{- toYaml .Values.injectedVolumes | nindent 10 }}
+        {{- end }}
+  pollingInterval: {{ .Values.keda.pollingInterval | default 30 }}
+  successfulJobsHistoryLimit: {{ .Values.keda.job.successfulJobsHistoryLimit | default 5 }}
+  failedJobsHistoryLimit: {{ .Values.keda.job.failedJobsHistoryLimit | default 5 }}
+  minReplicaCount: {{ .Values.keda.minReplicaCount | default 0 }}
+  maxReplicaCount: {{ .Values.keda.maxReplicaCount | default 100 }}
+  {{- with .Values.keda.job.rollout}}
+  rollout:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.keda.job.scalingStrategy }}
+  scalingStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  triggers:
+    {{- toYaml .Values.keda.triggers | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
