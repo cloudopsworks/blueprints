@@ -63,6 +63,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       id: previous_tag
       shell: bash
+      continue-on-error: true
       env:
         STEPS_NORMALIZE_RESULT: ${{ steps.normalize.outputs.result }}
       run: |
