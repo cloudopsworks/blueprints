@@ -27,7 +27,7 @@ runs:
   steps:
     - name: Advanced Deployment Environments Creation
       id: envs
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         STEPS_DEPLOYMENTS_JSON_RESULT: ${{ inputs.deployments_json }}
         STEPS_REVIEWERS_LIST_RESULT: ${{ inputs.reviewers_list }}

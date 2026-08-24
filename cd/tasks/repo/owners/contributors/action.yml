@@ -20,7 +20,7 @@ runs:
   using: composite
   steps:
     - name: Contributor list form JSON
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         STEPS_CONTRIB_LIST_RESULT: ${{ inputs.contrib_list }}
       with:

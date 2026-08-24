@@ -90,7 +90,7 @@ runs:
     # Result is stored as JSON with the format found on the cd.deployments section on .cloudopsworks/cloudopsworks-ci.yaml
     - name: Set the appropriate workspace
       id: workspace
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         STEPS_DEPLOY_CONF_RESULT: ${{ steps.deploy_conf.outputs.result }}
         GITHUB_HEAD_REF: ${{ github.head_ref }}

@@ -212,7 +212,7 @@ runs:
         done
 
     - name: Determine Plan Action
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       id: plan_action
       env:
         INPUTS_DESTROY: ${{ inputs.destroy }}
