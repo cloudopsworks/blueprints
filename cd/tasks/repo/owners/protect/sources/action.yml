@@ -27,7 +27,7 @@ runs:
   using: composite
   steps:
     - name: Rulesets for Protected Sources
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         STEPS_PROTECTED_SOURCES_RESULT: ${{ inputs.protected_sources }}
         STEPS_REVIEWERS_LIST_RESULT: ${{ inputs.reviewers_list }}

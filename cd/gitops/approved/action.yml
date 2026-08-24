@@ -17,7 +17,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - uses: actions/github-script@v8
+    - uses: actions/github-script@v9
       env:
         GITHUB_SLASH_PULL_REQUEST: ${{ github.event.client_payload.slash_command.args.named.pull_request }}
         GITHUB_SLASH_PULL_REQUEST_NUMBER: ${{ github.event.client_payload.slash_command.args.named.pull_request_number }}

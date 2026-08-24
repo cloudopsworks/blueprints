@@ -41,7 +41,7 @@ runs:
   using: composite
   steps:
     - name: Rulesets for Conventional commits
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         STEPS_REVIEWERS_LIST_RESULT: ${{ inputs.reviewers_list }}
         STEPS_OWNERS_LIST_RESULT: ${{ inputs.owners_list }}

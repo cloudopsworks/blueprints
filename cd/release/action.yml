@@ -45,7 +45,7 @@ runs:
   steps:
     - name: Normalize version Tag
       id: normalize
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         INPUTS_RELEASE_TAG: ${{ inputs.release_tag }}
       with:
@@ -105,7 +105,7 @@ runs:
     # so the full release list is paginated and matched on tag_name instead.
     - name: Check for existing Release
       id: existing_release
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         STEPS_NORMALIZE_RESULT: ${{ steps.normalize.outputs.result }}
         INPUTS_GO_RELEASER_INUSE: ${{ inputs.go_releaser_inuse }}

@@ -200,7 +200,7 @@ runs:
     - name: Check repository visibility
       id: repo_visibility
       if: ${{ steps.branch_protection_rules.outputs.result == 'true' }}
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         github-token: ${{ inputs.token }}
         script: |

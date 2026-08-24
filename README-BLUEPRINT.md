@@ -1037,7 +1037,7 @@ Process Git-Ops Approved Command
 | `token` | The GitHub token | true | `` |
 
 #### What it performs
-- Uses: actions/github-script@v8
+- Uses: actions/github-script@v9
 
 ---
 
@@ -1211,8 +1211,8 @@ This action checks the Pull Request and labels it
 - Get Reviewers count
 - Get Reviewers list
 - Assign Milestone to the PR
-- Uses: actions/github-script@v8
-- Uses: actions/github-script@v8
+- Uses: actions/github-script@v9
+- Uses: actions/github-script@v9
 
 ---
 

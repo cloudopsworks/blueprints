@@ -208,7 +208,7 @@ runs:
         printf "%s\n" "${INPUTS_TERRAFORM_STATE_CONF}" > state_conf.yaml
 
     - name: Determine Plan Action
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       id: plan_action
       env:
         INPUTS_DESTROY: ${{ inputs.destroy }}
