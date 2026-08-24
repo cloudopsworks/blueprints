@@ -32,6 +32,10 @@ inputs:
   token:
     description: 'The github token to use for the build'
     required: true
+  environment:
+    description: 'The environment to use for the build, in order to not break current builds, if not set, then snapshot support is not enabled'
+    required: false
+    default: ''
 outputs:
   java_version:
     description: 'The Java version to use for the build'
@@ -70,10 +74,9 @@ runs:
     - name: Get pipeline Java version
       id: java_version
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".java.version // \"25\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".java.version // \"25\"" ".cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -84,10 +87,9 @@ runs:
     - name: Get pipeline Java dist
       id: java_dist
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".java.dist // \"temurin\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".java.dist // \"temurin\"" ".cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -98,10 +100,9 @@ runs:
     - name: Get pipeline Java image variant
       id: java_image_variant
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".java.image_variant // \"alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".java.image_variant // \"alpine\"" ".cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -112,10 +113,9 @@ runs:
     - name: Get Package name
       id: package_name
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -oy ".project.groupId + \".\" + .project.artifactId" "${INPUTS_SOURCE_PATH}/pom.xml")
+        RET=$(yq e -oy ".project.groupId + \".\" + .project.artifactId" "pom.xml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -126,10 +126,9 @@ runs:
     - name: Get Maven options
       id: maven_opts
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -I=0 ".maven_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e -I=0 ".maven_options // \"\"" ".cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -140,10 +139,25 @@ runs:
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".dependencyTrack.type // \"application\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".dependencyTrack.type // \"application\"" ".cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+        
+    # Get the snapshot versioning configuration, default is null
+    - name: Get Pipeline conf Snapshot versioning
+      id: is_snapshot
+      if: ${{ inputs.environment != '' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq e ".snapshot // \"false\"" ".cloudopsworks/vars/inputs-$ENVIRONMENT.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -178,12 +192,13 @@ runs:
       shell: bash
       run: |
         echo "::group::Maven Version SET"
-        tronador project version --allow-network
+        tronador project version --allow-network $SNAPSHOT_FLAG
         #make version
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        SNAPSHOT_FLAG: ${{ steps.is_snapshot.outputs.result == 'true' && '--snapshot' || '' }}
 
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
