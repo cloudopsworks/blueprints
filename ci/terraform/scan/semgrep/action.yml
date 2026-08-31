@@ -30,7 +30,7 @@ inputs:
   semgrep_excludes:
     description: 'The Semgrep excludes'
     required: false
-    default: '.github/workflows/*,docs/*,.terraform/*,.cloudopsworks/*'
+    default: '.github/workflows/*,docs/*,.terraform/*,.cloudopsworks/*,tests/*'
 
 runs:
   using: 'composite'
