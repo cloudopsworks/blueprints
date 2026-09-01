@@ -35,13 +35,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Check GHAS Enabled
-      id: check_ghas
-      uses: cloudopsworks/blueprints/ci/common/advancedsecurity/check@v5.10
-      with:
-        token: ${{ inputs.token }}
-
-
     - name: Split semgrep_excludes
       id: split_excludes
       shell: bash
@@ -66,9 +59,8 @@ runs:
         semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${STEPS_SPLIT_EXCLUDES_RESULT}
 
     - name: Upload SARIF file
-      if: |
-        (success() || failure()) &&
-        (steps.check_ghas.outputs.ghas_enabled == 'true')
+      if: success() || failure()
+      continue-on-error: true
       uses: github/codeql-action/upload-sarif@v4
       with:
         checkout_path: ${{ inputs.source_path }}
