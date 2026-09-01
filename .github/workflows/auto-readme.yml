@@ -34,14 +34,18 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 1
+
+      - name: Install Tronador CLI
+        uses: cloudopsworks/install-tronador-cli@v0
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+
       - name: readme/update
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
-          make init
-          make readme/deps
-          make readme
+          tronador readme build
       # Create a PR only if not on a pull request event (to avoid error)
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v8
