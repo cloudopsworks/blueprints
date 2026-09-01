@@ -42,7 +42,7 @@ jobs:
         uses: cloudopsworks/blueprints/cd/checkout@v5.10
         with:
           token: ${{ secrets.BOT_TOKEN }}
-          source_ref: ${{ github.head_ref }}
+          #source_ref: ${{ github.head_ref }}
           blueprint_ref: 'v5.10'
 
       - name: Pipeline Configuration
@@ -63,7 +63,7 @@ jobs:
         uses: cloudopsworks/blueprints/cd/checkout@v5.10
         with:
           token: ${{ secrets.BOT_TOKEN }}
-          source_ref: ${{ github.head_ref }}
+          #source_ref: ${{ github.head_ref }}
           blueprint_ref: 'v5.10'
 
       - name: Run Checkov Checks
@@ -86,7 +86,7 @@ jobs:
         uses: cloudopsworks/blueprints/cd/checkout@v5.10
         with:
           token: ${{ secrets.BOT_TOKEN }}
-          source_ref: ${{ github.head_ref }}
+          #source_ref: ${{ github.head_ref }}
           blueprint_ref: 'v5.10'
 
       - name: Run Secret Scanning
@@ -119,6 +119,27 @@ jobs:
         continue-on-error: true
         with:
           source_path: ${{ steps.co.outputs.source_path }}
-          semgrep_token: ${{ secrets.semgrep_token }}
-          bot_user: ${{ inputs.bot_user }}
-          token: ${{ secrets.token }}
+          semgrep_token: ${{ secrets.SEMGREP_TOKEN }}
+          bot_user: ${{ vars.BOT_USER }}
+          token: ${{ secrets.BOT_TOKEN }}
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # 'actions' is the only CodeQL-supported language in this repository,
+      # it analyzes the workflows and composite actions under .github/ and ci/ cd/
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: actions
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:actions"
