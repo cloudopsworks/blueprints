@@ -11,14 +11,15 @@ on:
   - pull_request
 
 permissions:
-    contents: read
-    pull-requests: write
+  contents: read
+  pull-requests: write
 
 jobs:
   components:
+    name: Label Components
     runs-on: ubuntu-latest
     steps:
     - uses: actions/labeler@v6
       with:
-        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        repo-token: ${{ secrets.BOT_TOKEN }}
         configuration-path: '.cloudopsworks/auto-label.yml'

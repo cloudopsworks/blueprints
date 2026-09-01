@@ -26,6 +26,7 @@ permissions:
 
 jobs:
   update:
+    name: Update README
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -36,7 +37,7 @@ jobs:
       - name: readme/update
         shell: bash
         env:
-          GITHUB_TOKEN: "${{ secrets.BOT_TOKEN }}"
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           make init
           make readme/deps
@@ -58,13 +59,14 @@ jobs:
       # Push the code into PR if we are in a pull request event
       - name: Push changes
         if: (github.event_name == 'pull_request')
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_ACTOR_ID: ${{ github.actor_id }}
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
-          git config --global user.name "${GITHUB_ACTOR}"
-          git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+          git config --global user.name "$GITACTOR"
+          git config --global user.email "${GITEMAIL}@users.noreply.github.com"
           git add README.md docs/
           git commit -m "Updated README.md" || echo "No changes to commit"
-          git push origin HEAD:"${GITHUB_HEAD_REF}" || echo "No changes to push"
+          git push origin HEAD:$GITHEADREF || echo "No changes to push"
+        env:
+          GITACTOR: ${{ github.actor }}
+          GITEMAIL: ${{ github.actor_id }}+${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GITHEADREF: ${{ github.head_ref }}

@@ -1,0 +1,5 @@
+# This file is used to configure CodeQL analysis for your repository.
+# For more information, see https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning
+paths-ignore:
+  - "tests"
+  - "docs"

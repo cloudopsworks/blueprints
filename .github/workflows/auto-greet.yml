@@ -19,11 +19,12 @@ permissions:
 
 jobs:
   comment:
+    name: Post Greeting Comment
     runs-on: ubuntu-latest
     steps:
     - uses: actions/first-interaction@v3
       with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        repo_token: ${{ secrets.BOT_TOKEN }}
         issue_message: |-
           Thank you for reporting the issue! If you haven't already [joined our slack community](https://slack.cloudops.works), then we invite you to do so.
 

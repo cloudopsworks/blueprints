@@ -1,0 +1,14 @@
+# This file configures Dependabot alerts and security updates for GitHub repositories.
+# For more information, see https://docs.github.com/en/code-security/dependabot/dependabot-alerts/about-dependabot-alerts
+version: 2
+updates:
+  - package-ecosystem: "terraform"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "fix"
+      prefix-development: "chore"
+      include: "scope"
+    cooldown:
+      default-days: 7
