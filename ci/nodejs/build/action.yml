@@ -57,6 +57,10 @@ inputs:
     description: 'The observability agent'
     required: false
     default: 'xray'
+  cloud_type:
+    description: 'Target cloud deployment type, lowercase, k8s, ecs, aks, beanstalk, kubernetes, lambda. Optional override; when empty the value is read from .cloudopsworks/vars/inputs-global.yaml'
+    required: false
+    default: ''
 
 outputs:
   node_version:
@@ -394,15 +398,18 @@ runs:
         INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
 
-    # Get the cloud type from .cloudopsworks/vars/inputs-global.yaml as plain text,
-    # resolving to an empty string when the file or the key is absent.
+    # Get the cloud type from the cloud_type input when it is supplied, otherwise from
+    # .cloudopsworks/vars/inputs-global.yaml as plain text, resolving to an empty string
+    # when the file or the key is absent.
     - name: Get pipeline cloud type
       id: cloud_type
       shell: bash
       working-directory: ${{ inputs.source_path }}
+      env:
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
       run: |
-        RET=""
-        if [ -f "./.cloudopsworks/vars/inputs-global.yaml" ]; then
+        RET="${INPUTS_CLOUD_TYPE}"
+        if [[ -z "${RET}" ]] && [ -f "./.cloudopsworks/vars/inputs-global.yaml" ]; then
           RET=$(yq eval ".cloud_type // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
         fi
         {
@@ -417,8 +424,10 @@ runs:
     # On Lambda the distro is supplied by the AWSOpenTelemetryDistroJs layer that
     # cd/deploy/app/observability/xray/lambda injects into the function, so installing it
     # here would ship a second, differently versioned copy of the whole ADOT stack inside
-    # the deployment package. The cloud type is read from .cloudopsworks/vars/inputs-global.yaml
-    # above; when it cannot be resolved the value is empty and the previous behaviour is kept.
+    # the deployment package. The cloud type is resolved above from the cloud_type input when
+    # a caller supplies one and otherwise from .cloudopsworks/vars/inputs-global.yaml, so no
+    # caller change is required; when it cannot be resolved the value is empty and the
+    # previous behaviour is kept.
     - name: Install AWS open telemetry
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' && steps.cloud_type.outputs.result != 'lambda' }}
       working-directory: ${{ inputs.source_path }}
