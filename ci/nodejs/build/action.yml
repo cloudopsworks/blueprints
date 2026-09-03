@@ -57,6 +57,10 @@ inputs:
     description: 'The observability agent'
     required: false
     default: 'xray'
+  cloud_type:
+    description: 'Target cloud deployment type, lowercase, k8s, ecs, aks, beanstalk, kubernetes, lambda'
+    required: false
+    default: ''
 
 outputs:
   node_version:
@@ -394,20 +398,31 @@ runs:
         INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
 
+    # The AWS Distro for OpenTelemetry is bundled into the build artifact only for
+    # deployment targets that have no other way of providing it (containers, which
+    # start node with --require @aws/aws-distro-opentelemetry-node-autoinstrumentation/register).
+    # On Lambda the distro is supplied by the AWSOpenTelemetryDistroJs layer that
+    # cd/deploy/app/observability/xray/lambda injects into the function, so installing it
+    # here would ship a second, differently versioned copy of the whole ADOT stack inside
+    # the deployment package. cloud_type is optional: when it is empty (callers that do not
+    # yet pass it) the previous behaviour is kept and the distro is installed.
     - name: Install AWS open telemetry
-      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' }}
+      if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'xray' && inputs.cloud_type != 'lambda' }}
       working-directory: ${{ inputs.source_path }}
       shell: bash
       env:
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
       run: |
         echo "::group::Install AWS Open Telemetry"
+        # Neither `yarn add` nor `pnpm add` support an equivalent of npm's --no-save, so on
+        # those package managers the manifest and lockfile are still rewritten by this step.
         if [[ "${PACKAGE_MANAGER}" == "yarn" ]]; then
           yarn add @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
         elif [[ "${PACKAGE_MANAGER}" == "pnpm" ]]; then
           pnpm add @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
         else
-          npm install @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
+          # --no-save keeps package.json / package-lock.json exactly as validated by the build.
+          npm install --no-save @aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0
         fi
         echo "::endgroup::"
 
