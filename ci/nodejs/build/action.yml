@@ -95,6 +95,26 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
+    # Get the cloud type from the cloud_type input when it is supplied, otherwise from
+    # .cloudopsworks/vars/inputs-global.yaml as plain text, resolving to an empty string
+    # when the file or the key is absent.
+    - name: Get pipeline cloud type
+      id: cloud_type
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      env:
+        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
+      run: |
+        RET="${INPUTS_CLOUD_TYPE}"
+        if [[ -z "${RET}" ]] && [ -f "./.cloudopsworks/vars/inputs-global.yaml" ]; then
+          RET=$(yq eval ".cloud_type // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
+        fi
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
     - name: Install Tronador CLI
       uses: cloudopsworks/install-tronador-cli@v0
       with:
@@ -234,12 +254,12 @@ runs:
       shell: bash
       run: |
         echo "::group::Node Version SET"
-        tronador project version --allow-network
-        #make version
+        tronador project version $PLAIN_PARAM --allow-network
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        PLAIN_PARAM: ${{ steps.cloud_type.outputs.result == 'lambda' && '--plain' || '' }}
 
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
@@ -397,26 +417,6 @@ runs:
         INPUTS_NODE_EXTRA_ENV: ${{ inputs.node_extra_env }}
         INPUTS_INSTALL_COMMAND: ${{ inputs.install_command }}
         PACKAGE_MANAGER: ${{ inputs.package_manager }}
-
-    # Get the cloud type from the cloud_type input when it is supplied, otherwise from
-    # .cloudopsworks/vars/inputs-global.yaml as plain text, resolving to an empty string
-    # when the file or the key is absent.
-    - name: Get pipeline cloud type
-      id: cloud_type
-      shell: bash
-      working-directory: ${{ inputs.source_path }}
-      env:
-        INPUTS_CLOUD_TYPE: ${{ inputs.cloud_type }}
-      run: |
-        RET="${INPUTS_CLOUD_TYPE}"
-        if [[ -z "${RET}" ]] && [ -f "./.cloudopsworks/vars/inputs-global.yaml" ]; then
-          RET=$(yq eval ".cloud_type // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
-        fi
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
 
     # The AWS Distro for OpenTelemetry is bundled into the build artifact only for
     # deployment targets that have no other way of providing it (containers, which
