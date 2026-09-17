@@ -1,0 +1,69 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Semgrep code Scanning ArgoCD Manifests
+author: cloudopsworks
+description: This action scans the ArgoCD Manifests using Semgrep and outputs the results in various formats.
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  semgrep_token:
+    description: 'The Semgrep token'
+    required: true
+  bot_user:
+    description: 'The bot user'
+    required: true
+  token:
+    description: 'The Github token'
+    required: true
+  semgrep_excludes:
+    description: 'The Semgrep excludes'
+    required: false
+    default: '.github/workflows/*,docs/*,.cloudopsworks/*,tests/*'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Split semgrep_excludes
+      id: split_excludes
+      shell: bash
+      env:
+        INPUTS_SEMGREP_EXCLUDES: ${{ inputs.semgrep_excludes }}
+      run: |
+        if [[ -n "${INPUTS_SEMGREP_EXCLUDES}" ]]; then
+          result="--exclude '$(echo ${INPUTS_SEMGREP_EXCLUDES} | sed s/,/\'\ --exclude\ \'/g)'"
+        else
+          result=""
+        fi
+        echo "result=$result" >> $GITHUB_OUTPUT
+
+    - name: Semgrep Code Scanning
+      id: semgrep
+      env:
+        SEMGREP_APP_TOKEN: ${{ inputs.semgrep_token }}
+        STEPS_SPLIT_EXCLUDES_RESULT: ${{ steps.split_excludes.outputs.result }}
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        semgrep ci --text --output=semgrep.txt --json-output=semgrep-ci.json --sarif-output=semgrep.sarif ${STEPS_SPLIT_EXCLUDES_RESULT}
+
+    - name: Upload SARIF file
+      if: success() || failure()
+      continue-on-error: true
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        checkout_path: ${{ inputs.source_path }}
+        sarif_file: ${{ inputs.source_path }}/semgrep.sarif
+        wait-for-processing: false
+        #token: ${{ inputs.token }}
