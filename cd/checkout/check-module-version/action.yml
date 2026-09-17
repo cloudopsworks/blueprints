@@ -59,6 +59,7 @@ runs:
         #   - .blueprint (self reference)
         #   - .skills (AI skill builder template)
         #   - .tronador (Tronador Accelerator Repo)
+        #   - .argocd (ArgoCD Manifests Template)
         # ouptuts are:
         #   - repo = cloudopsworks/<moduletype>-app-template
         #   - current_version = content from .cloudopsworks/_VERSION file
@@ -110,6 +111,9 @@ runs:
         elif [ -f ".cloudopsworks/.tronador" ]; then
             echo "Module type is Tronador Accelerator Repo"
             echo "repo=cloudopsworks/tronador" >> $GITHUB_OUTPUT
+        elif [ -f ".cloudopsworks/.argocd" ]; then
+            echo "Module type is ArgoCD Manifests Template"
+            echo "repo=cloudopsworks/argocd-project-template" >> $GITHUB_OUTPUT
         else
           echo "::warning::🚨 No module marker file found in .cloudopsworks directory"
         fi
