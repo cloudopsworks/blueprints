@@ -31,7 +31,11 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # Push the changes to Git TAG before deploying anything
+    - name: Install Tronador CLI
+      uses: cloudopsworks/install-tronador-cli@v1
+      with:
+        token: ${{ secrets.BOT_TOKEN }}
+
     - name: Push TAG
       working-directory: ${{ inputs.source_path }}
       shell: bash
@@ -43,14 +47,14 @@ runs:
         git config --global user.name "${INPUTS_BOT_USER}"
         git config --global user.email "${INPUTS_BOT_EMAIL}"
         git pull --rebase
-        make gitflow/version/tag
+        tronador versions tag --publish
         ret=$?
         count=3
         while [ $ret -ne 0 ] && [ $count -gt 0 ]; do
           echo "::error::Failed to push TAG, retrying in 10 sec..."
           sleep 10
           git pull --rebase
-          make gitflow/version/tag
+          tronador versions tag --publish
           ret=$?
           count=$((count-1))
         done
@@ -58,4 +62,3 @@ runs:
           echo "::error::Failed to push TAG, all retries failed!"
           exit 1
         fi
-        make gitflow/version/publish

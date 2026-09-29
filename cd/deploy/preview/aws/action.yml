@@ -260,7 +260,7 @@ runs:
       shell: bash
       run: |
         echo "::group::TF Summarize of JSON file"
-        tf-summarize tfplan.json
+        tf-summarize -md tfplan.json
         echo "::endgroup::"
 
     - name: Terragrunt Apply

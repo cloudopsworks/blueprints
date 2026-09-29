@@ -28,6 +28,11 @@ jobs:
     if: ${{ github.event.pull_request.merged == true && ( github.base_ref == 'master' || github.base_ref == 'main' || startsWith(github.base_ref,'support/') ) }}
     runs-on: ubuntu-latest
     steps:
+      - name: Install Tronador CLI
+        uses: cloudopsworks/install-tronador-cli@v1
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+
       # Checkout the code
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -47,8 +52,7 @@ jobs:
         run: |
           git config --global user.name "${BOT_USER}"
           git config --global user.email "${BOT_EMAIL}"
-          make gitflow/version/tag
-          make gitflow/version/publish
+          tronador versions tag --publish
 
   branch_deletion:
     name: Delete Branch
@@ -57,6 +61,11 @@ jobs:
       - push_tag
     runs-on: ubuntu-latest
     steps:
+      - name: Install Tronador CLI
+        uses: cloudopsworks/install-tronador-cli@v1
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+
       - name: Check out code
         uses: actions/checkout@v6
         with:
@@ -67,11 +76,11 @@ jobs:
 
       - name: Delete local & remote Release
         if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/') && ( github.base_ref == 'master' || github.base_ref == 'main' || startsWith(github.base_ref,'support/') ) }}
-        run: make gitflow/release/purge
+        run: tronador versions release purge
 
       - name: Delete local & remote Hotfix
         if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'hotfix/') }}
-        run: make gitflow/hotfix/purge
+        run: tronador versions hotfix purge
 
       - name: Delete local & remote Feature
         if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'feature/') }}
@@ -79,4 +88,4 @@ jobs:
           FEATURE_REF: ${{ github.head_ref }}
         run: |
           FEATURE=$(echo "$FEATURE_REF" | sed -e 's/feature\///g')
-          make gitflow/feature/purge:$FEATURE
+          tronador versions feature purge $FEATURE
