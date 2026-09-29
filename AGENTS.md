@@ -45,6 +45,8 @@ This document provides instructions for AI Agents working with the implementatio
 Module versioning follows GitHub Flow — a simplified branching model where feature branches are created from and merged back into `master`. Use `tronador versions` commands for branch and release operations.
 - There is a skill related to this template module and their implementations, it can be found in the [Claude Code Skills - cw-release](https://github.com/cloudopsworks/claude-code-skills/tree/main/cw-release) can be used in any agent anyway, install and use it. When the skill suggests a `make` target, use the `tronador` equivalent from the [command mapping](#make-to-tronador-command-mapping) instead.
 - The cw-release may not update .cloudopsworks/_VERSION file, so you must update it (see override below) before the merging of the release/feature/patch process, make sure the content format is plain vX.Y.Z, this is mandatory.
+- **Every merge to `master` is a release** (the `pr-merge-tagging` workflow tags it), so **every** feature, hotfix
+  or release branch must carry a committed `_VERSION` update. There is no "docs only, no release" exception.
 
 > **OVERRIDE — _VERSION File Generation (this repository)**
 >
@@ -53,17 +55,37 @@ Module versioning follows GitHub Flow — a simplified branching model where fea
 > regardless of what `cw-release` detects about `isTemplate`. The `.cloudopsworks/_VERSION` file must be committed
 > and present with format `vX.Y.Z` for every release branch before merging.
 >
-> 1. Try the CLI first:
->    ```sh
->    tronador project version --generate --yes
->    ```
-> 2. This repository is not catalog-managed, so the CLI currently refuses with
->    `project_version_marker_unsupported`. In that case write the marker from GitVersion directly
->    (same `v<MajorMinorPatch>` format, no trailing newline):
->    ```sh
->    printf 'v%s' "$(gitversion -showvariable MajorMinorPatch)" > .cloudopsworks/_VERSION
->    cat .cloudopsworks/_VERSION   # must print vX.Y.Z
->    ```
+> **Before starting a branch** — make sure the previous release was actually tagged. If `master` has
+> commits past the latest tag that were meant as a release (e.g. a failed `pr-merge-tagging` run), fix
+> and re-release that first; otherwise the branch version and the tag CI creates will not match.
+> ```sh
+> git checkout master && git pull origin master && git fetch --tags
+> git describe --tags --abbrev=0                                                   # latest tag
+> gitversion -config .cloudopsworks/gitversion.yaml -showvariable MajorMinorPatch  # must equal latest tag (without v)
+> ```
+>
+> **On the branch, after the last content commit and before `publish`/`finish`:**
+> ```sh
+> git fetch origin --tags --prune
+> tronador project version --generate --yes     # writes v<MajorMinorPatch> to .cloudopsworks/_VERSION
+> cat .cloudopsworks/_VERSION                   # must print vX.Y.Z (hotfix: must match the hotfix/vX.Y.Z branch name)
+> git add .cloudopsworks/_VERSION
+> git commit -m "chore: Version Bump"
+> ```
+> If the CLI refuses (`project_version_marker_unsupported`), write the same value from GitVersion:
+> ```sh
+> printf 'v%s\n' "$(gitversion -config .cloudopsworks/gitversion.yaml -showvariable MajorMinorPatch)" > .cloudopsworks/_VERSION
+> ```
+>
+> **Before merging the PR** — confirm the file is in the PR: `gh pr diff <PR_NUMBER> --name-only | grep .cloudopsworks/_VERSION`.
+> Do not merge without it.
+>
+> **After the release** — verify the tag CI created matches the file:
+> ```sh
+> git checkout master && git pull origin master && git fetch --tags
+> test "$(cat .cloudopsworks/_VERSION)" = "$(git describe --tags --abbrev=0)" && echo OK || echo MISMATCH
+> ```
+> On `MISMATCH`, report it; never hand-edit `_VERSION` on `master` — the next release branch corrects it.
 
 After the completion of a version release, merging and all release workflow completions, the agent should run minor tagging process (will tag as vX.Y):
 - Is a reference to the latest release tag, for example, if the latest release is v5.10.39, the tagging process will create a new tag v5.10
@@ -83,7 +105,7 @@ After the completion of a version release, merging and all release workflow comp
   ```sh
   LATEST=$(git describe --tags --abbrev=0)   # e.g. v5.10.39
   MINOR=${LATEST%.*}                          # e.g. v5.10
-  git tag -f "$MINOR" "$LATEST"
+  git tag -f "$MINOR" "$LATEST^{commit}"     # point at the commit, not the annotated tag object
   git push origin -f "$MINOR"
   ```
   this pushes the proper minor versioning tag to the repository as vX.Y
@@ -116,7 +138,12 @@ All new features and provider version upgrades branch directly from `master` (th
    tronador versions feature start <feature-name>
    ```
 2. Implement changes and validate (e.g. `terraform fmt -recursive` for Terraform content, `tronador readme lint` for docs).
-3. **Publish first**, then finish — the finish step requires the branch to exist on the remote:
+3. **Update and commit `.cloudopsworks/_VERSION`** (mandatory — see [_VERSION override](#versioning-management)):
+   ```sh
+   tronador project version --generate --yes
+   git add .cloudopsworks/_VERSION && git commit -m "chore: Version Bump"
+   ```
+4. **Publish first**, then finish — the finish step requires the branch to exist on the remote:
    ```sh
    tronador versions feature publish    # push branch to remote (required before finish); name inferred from feature/*
    tronador versions feature finish     # creates the guarded PR to master
@@ -140,12 +167,18 @@ Workflow upgrades and documentation-only fixes are patch-level changes and use t
    ```sh
    git commit -m "docs: sync inputs.yaml and update docs +semver: patch"
    ```
-4. **Publish first**, then finish — the finish step requires the branch to exist on the remote:
+4. **Update and commit `.cloudopsworks/_VERSION`** (mandatory — must equal the `hotfix/vX.Y.Z` branch version):
+   ```sh
+   tronador project version --generate --yes
+   git add .cloudopsworks/_VERSION && git commit -m "chore: Version Bump"
+   ```
+5. **Publish first**, then finish — the finish step requires the branch to exist on the remote:
    ```sh
    tronador versions hotfix publish   # push branch to remote (required before finish)
    tronador versions hotfix finish    # creates the guarded PR (never use --local here; merges go through PRs)
    ```
-5. Wait for all CI checks to pass, then merge with `gh` CLI (see [PR Merge Guidelines](#pr-merge-guidelines)).
+6. Wait for all CI checks to pass, confirm `_VERSION` is in the PR diff, then merge with `gh` CLI (see [PR Merge Guidelines](#pr-merge-guidelines)).
+7. After CI tags the release, run the post-release `_VERSION` check and the minor tagging process above.
 
 ### PR Merge Guidelines
 
