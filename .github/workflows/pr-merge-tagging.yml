@@ -52,7 +52,7 @@ jobs:
         run: |
           git config --global user.name "${BOT_USER}"
           git config --global user.email "${BOT_EMAIL}"
-          tronador versions tag --publish
+          tronador versions tag --publish --allow-network
 
   branch_deletion:
     name: Delete Branch
@@ -76,11 +76,11 @@ jobs:
 
       - name: Delete local & remote Release
         if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/') && ( github.base_ref == 'master' || github.base_ref == 'main' || startsWith(github.base_ref,'support/') ) }}
-        run: tronador versions release purge
+        run: tronador versions release purge --allow-network
 
       - name: Delete local & remote Hotfix
         if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'hotfix/') }}
-        run: tronador versions hotfix purge
+        run: tronador versions hotfix purge --allow-network
 
       - name: Delete local & remote Feature
         if: ${{ github.event.pull_request.merged == true && startsWith(github.head_ref, 'feature/') }}
@@ -88,4 +88,4 @@ jobs:
           FEATURE_REF: ${{ github.head_ref }}
         run: |
           FEATURE=$(echo "$FEATURE_REF" | sed -e 's/feature\///g')
-          tronador versions feature purge $FEATURE
+          tronador versions feature purge $FEATURE --allow-network
