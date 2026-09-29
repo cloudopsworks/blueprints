@@ -47,14 +47,14 @@ runs:
         git config --global user.name "${INPUTS_BOT_USER}"
         git config --global user.email "${INPUTS_BOT_EMAIL}"
         git pull --rebase
-        tronador versions tag --publish
+        tronador versions tag --publish --allow-network
         ret=$?
         count=3
         while [ $ret -ne 0 ] && [ $count -gt 0 ]; do
           echo "::error::Failed to push TAG, retrying in 10 sec..."
           sleep 10
           git pull --rebase
-          tronador versions tag --publish
+          tronador versions tag --publish --allow-network
           ret=$?
           count=$((count-1))
         done
