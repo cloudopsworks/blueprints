@@ -51,7 +51,7 @@ runs:
         git branch $branch develop
         git checkout $branch
         prev_ver=$(cat .cloudopsworks/_VERSION)
-        make repos/upgrade
+        tronador repos upgrade
         ver=$(cat .cloudopsworks/_VERSION)
         echo "prev_ver=$prev_ver" >> $GITHUB_OUTPUT
         echo "ver=$ver" >> $GITHUB_OUTPUT

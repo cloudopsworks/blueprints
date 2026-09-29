@@ -310,7 +310,7 @@ runs:
         echo "::group::TF Summarize of JSON file"
         for item in ${LIST_PLAN} ; do
           echo "Summarizing plan file: ${item}.json"
-          tf-summarize ${item}.json
+          tf-summarize -md ${item}.json
         done
         echo "::endgroup::"
 

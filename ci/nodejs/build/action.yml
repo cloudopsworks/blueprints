@@ -116,7 +116,7 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
     - name: Install Tronador CLI
-      uses: cloudopsworks/install-tronador-cli@v0
+      uses: cloudopsworks/install-tronador-cli@v1
       with:
         token: ${{ inputs.token }}
 
