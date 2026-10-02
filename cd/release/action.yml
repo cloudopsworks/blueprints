@@ -89,6 +89,7 @@ runs:
       with:
         token: ${{ inputs.token }}
         working_dir: ./${{ inputs.source_path }}/
+        excludeTypes: 'build,other'
         fromTag: ${{ steps.normalize.outputs.result }}
         toTag: ${{ steps.previous_tag.outputs.tag }}
         writeToFile: true
