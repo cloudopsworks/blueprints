@@ -46,6 +46,8 @@ runs:
       run: |
         git config --global user.name "${INPUTS_BOT_USER}"
         git config --global user.email "${INPUTS_BOT_EMAIL}"
+        # Composite bash runs with -e; disable it so failures reach the retry loop
+        set +e
         git pull --rebase
         tronador versions tag --publish --allow-network
         ret=$?
