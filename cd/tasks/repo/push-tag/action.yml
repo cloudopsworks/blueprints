@@ -34,7 +34,7 @@ runs:
     - name: Install Tronador CLI
       uses: cloudopsworks/install-tronador-cli@v1
       with:
-        token: ${{ secrets.BOT_TOKEN }}
+        token: ${{ inputs.token }}
 
     - name: Push TAG
       working-directory: ${{ inputs.source_path }}
