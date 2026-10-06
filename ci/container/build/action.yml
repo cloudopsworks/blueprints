@@ -140,6 +140,7 @@ runs:
         echo "patch=${VER_PATCH}" >> $GITHUB_OUTPUT
 
     # Generate Docker Image names and Tags:
+    # Docker tags do not allow '+', so semver build metadata (+xxx) is rewritten as _xxx
     - name: Docker Image names
       id: docker_tags
       shell: bash
@@ -154,24 +155,25 @@ runs:
         STEPS_SEMVERS_MINOR: ${{ steps.semvers.outputs.minor }}
         INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
+        SEMVER_TAG=$(echo "${INPUTS_SEMVER}" | tr '+' '_')
         if [[ "${INPUTS_IS_RELEASE}" == "true" && "${INPUTS_FRONT_END}" != "true" ]]; then
           TAGS="${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:latest
-        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${INPUTS_SEMVER}
+        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${SEMVER_TAG}
         ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${STEPS_SEMVERS_MAJOR}
         ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${STEPS_SEMVERS_MAJOR}.${STEPS_SEMVERS_MINOR}"
-           echo "${INPUTS_SEMVER}
+           echo "${SEMVER_TAG}
         ${STEPS_SEMVERS_MAJOR}.${STEPS_SEMVERS_MINOR}
         ${STEPS_SEMVERS_MAJOR}
         latest" > docker-tags.list
         elif [[ "${INPUTS_FRONT_END}" == "true" ]]; then
           TAGS="${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:latest-${INPUTS_ENVIRONMENT}
-        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${INPUTS_SEMVER}-${INPUTS_ENVIRONMENT}"
-          echo "${INPUTS_SEMVER}-${INPUTS_ENVIRONMENT}
+        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${SEMVER_TAG}-${INPUTS_ENVIRONMENT}"
+          echo "${SEMVER_TAG}-${INPUTS_ENVIRONMENT}
         latest-${INPUTS_ENVIRONMENT}" > docker-tags.list
         else
           TAGS="${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:latest-${INPUTS_ENVIRONMENT}
-        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${INPUTS_SEMVER}"
-          echo "${INPUTS_SEMVER}
+        ${INPUTS_DOCKER_REGISTRY}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:${SEMVER_TAG}"
+          echo "${SEMVER_TAG}
         latest-${INPUTS_ENVIRONMENT}" > docker-tags.list
         fi
         echo "$TAGS" > docker-repository-tags.list
