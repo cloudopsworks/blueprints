@@ -26,3 +26,6 @@ tronador/
 # Generated Dockerfile and Image
 Dockerfile
 docker-image.tar*
+.cloudopsworks/*
+.tronador*
+tronador/*
