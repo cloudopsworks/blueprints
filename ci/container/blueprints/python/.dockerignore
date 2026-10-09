@@ -39,3 +39,7 @@ coverage.xml
 test-results.xml
 htmlcov/
 python-dependencies.tar
+coverage/*
+.cloudopsworks/*
+.tronador*
+tronador/*

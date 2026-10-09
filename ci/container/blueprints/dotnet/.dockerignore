@@ -49,3 +49,7 @@ out/
 packages/
 project.lock.json
 project.fragment.lock.json
+coverage/*
+.cloudopsworks/*
+.tronador*
+tronador/*

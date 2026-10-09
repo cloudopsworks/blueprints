@@ -30,3 +30,6 @@ docker-image.tar*
 .nyc_output/*
 coverage/*
 bom.xml
+.cloudopsworks/*
+.tronador*
+tronador/*
