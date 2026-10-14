@@ -51,6 +51,18 @@ outputs:
   rust_goreleaser:
     description: 'The GoReleaser configuration to use for the build'
     value: ${{ steps.rust_goreleaser.outputs.result }}
+  rust_goreleaser_macos:
+    description: 'The GoReleaser configuration for MacOS to use for the build'
+    value: ${{ steps.rust_goreleaser_macos.outputs.result }}
+  rust_goreleaser_macos_config:
+    description: 'The GoReleaser configuration for MacOS to use for the build'
+    value: 'macos.goreleaser.yml' ##${{ steps.rust_goreleaser_macos.outputs.result }}
+  rust_goreleaser_chocolatey:
+    description: 'The GoReleaser configuration for chocolatey/windows to use for the build'
+    value: ${{ steps.rust_goreleaser_chocolatey.outputs.result }}
+  rust_goreleaser_chocolatey_config:
+    description: 'The GoReleaser configuration for chocolatey/windows to use for the build'
+    value: 'windows.goreleaser.yml' ##${{ steps.rust_goreleaser_chocolatey.outputs.result }}
   semver:
     description: 'The semver version'
     value: ${{ steps.semver.outputs.result }}
@@ -79,10 +91,9 @@ runs:
     - name: Get pipeline Rust version
       id: rust_version
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".rust.version // \"stable\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".rust.version // \"stable\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -92,10 +103,9 @@ runs:
     - name: Get pipeline Rust components
       id: rust_components
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".rust.components // [] | join(\",\")" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".rust.components // [] | join(\",\")" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -106,10 +116,9 @@ runs:
     - name: Get pipeline Rust dist
       id: rust_dist
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".rust.dist // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".rust.dist // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -120,10 +129,9 @@ runs:
     - name: Get pipeline Rust arch
       id: rust_arch
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".rust.arch // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".rust.arch // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -134,10 +142,9 @@ runs:
     - name: Get pipeline Rust image variant
       id: rust_image_variant
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".rust.image_variant // \"alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".rust.image_variant // \"alpine\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -148,10 +155,35 @@ runs:
     - name: Get pipeline GoReleaser configuration
       id: rust_goreleaser
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".rust.goreleaser // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e "(.rust.goreleaser == true) or (.rust.goreleaser.enabled == true)" "./.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
+    # GoReleaser configuration: macos enabled?
+    - name: Get pipeline GoReleaser configuration for MacOS
+      id: rust_goreleaser_macos
+      shell: bash
+      working-directory: ${{inputs.source_path}}
+      run: |
+        RET=$(yq e ".rust.goreleaser.macos == true" "./.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
+    # GoReleaser configuration: chocolatey/windows enabled?
+    - name: Get pipeline GoReleaser configuration for chocolatey/windows
+      id: rust_goreleaser_chocolatey
+      shell: bash
+      working-directory: ${{inputs.source_path}}
+      run: |
+        RET=$(yq e ".rust.goreleaser.chocolatey == true" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -192,10 +224,9 @@ runs:
     - name: Get package name
       id: package_name
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -otoml ".package.name" "./${INPUTS_SOURCE_PATH}/Cargo.toml")
+        RET=$(yq e -otoml ".package.name" "./Cargo.toml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -206,10 +237,9 @@ runs:
     - name: Get Rust Build options
       id: build_opts
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -I=0 ".build_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e -I=0 ".build_options // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -220,10 +250,9 @@ runs:
     - name: Get Rust Build options
       id: test_opts
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -I=0 ".test_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e -I=0 ".test_options // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -234,10 +263,9 @@ runs:
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-        RET=$(yq e ".dependencyTrack.type // \"application\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".dependencyTrack.type // \"application\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"

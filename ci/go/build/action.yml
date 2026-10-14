@@ -51,6 +51,18 @@ outputs:
   golang_goreleaser:
     description: 'The GoReleaser configuration to use for the build'
     value: ${{ steps.golang_goreleaser.outputs.result }}
+  golang_goreleaser_macos:
+    description: 'The GoReleaser configuration for MacOS to use for the build'
+    value: ${{ steps.golang_goreleaser_macos.outputs.result }}
+  golang_goreleaser_macos_config:
+    description: 'The GoReleaser configuration for MacOS to use for the build'
+    value: 'macos.goreleaser.yml' ##${{ steps.golang_goreleaser_macos.outputs.result }}
+  golang_goreleaser_chocolatey:
+    description: 'The GoReleaser configuration for chocolatey/windows to use for the build'
+    value: ${{ steps.golang_goreleaser_chocolatey.outputs.result }}
+  golang_goreleaser_chocolatey_config:
+    description: 'The GoReleaser configuration for chocolatey/windows to use for the build'
+    value: 'windows.goreleaser.yml' ##${{ steps.golang_goreleaser_chocolatey.outputs.result }}
   semver:
     description: 'The semver version'
     value: ${{ steps.semver.outputs.result }}
@@ -79,10 +91,9 @@ runs:
     - name: Get pipeline GoLang version
       id: golang_version
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".golang.version // \"1.25\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".golang.version // \"1.25\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -93,10 +104,9 @@ runs:
     - name: Get pipeline GoLang dist
       id: golang_dist
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".golang.dist // \"linux\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".golang.dist // \"linux\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -107,10 +117,9 @@ runs:
     - name: Get pipeline GoLang arch
       id: golang_arch
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".golang.arch // \"amd64\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".golang.arch // \"amd64\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -121,10 +130,9 @@ runs:
     - name: Get pipeline GoLang image variant
       id: golang_image_variant
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".golang.image_variant // \"alpine\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".golang.image_variant // \"alpine\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -135,10 +143,9 @@ runs:
     - name: Get pipeline GoLang main file
       id: main_file
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".golang.main_file // \"main.go\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".golang.main_file // \"main.go\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -149,10 +156,9 @@ runs:
     - name: Get pipeline GoLang main file
       id: disable_cgo
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".golang.disable_cgo // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".golang.disable_cgo // \"false\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -163,10 +169,35 @@ runs:
     - name: Get pipeline GoReleaser configuration
       id: golang_goreleaser
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".golang.goreleaser // \"false\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e "(.golang.goreleaser == true) or (.golang.goreleaser.enabled == true)" "./.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
+    # GoReleaser configuration: macos enabled?
+    - name: Get pipeline GoReleaser configuration for MacOS
+      id: golang_goreleaser_macos
+      shell: bash
+      working-directory: ${{inputs.source_path}}
+      run: |
+        RET=$(yq e ".golang.goreleaser.macos == true" "./.cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
+    # GoReleaser configuration: chocolatey/windows enabled?
+    - name: Get pipeline GoReleaser configuration for chocolatey/windows
+      id: golang_goreleaser_chocolatey
+      shell: bash
+      working-directory: ${{inputs.source_path}}
+      run: |
+        RET=$(yq e ".golang.goreleaser.chocolatey == true" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -206,10 +237,9 @@ runs:
     - name: Get Package Name from configuration
       id: package_name_config
       shell: bash
-      env:
-          INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{ inputs.source_path }}
       run: |
-          RET=$(yq e ".golang.package_name // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+          RET=$(yq e ".golang.package_name // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
           echo "result=${RET}" >> $GITHUB_OUTPUT
 
     # Get the Package name from go.mod
@@ -241,10 +271,9 @@ runs:
     - name: Get Go options
       id: build_opts
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e -I=0 ".build_options // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e -I=0 ".build_options // \"\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -255,10 +284,9 @@ runs:
     - name: Get Pipeline conf DependencyTrack Project type
       id: dtrack_project_type
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory: ${{inputs.source_path}}
       run: |
-        RET=$(yq e ".dependencyTrack.type // \"application\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e ".dependencyTrack.type // \"application\"" "./.cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"

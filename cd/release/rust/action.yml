@@ -1,0 +1,163 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Release Workflow for GoReleaser pipeline
+author: cloudopsworks
+description: Release Workflow for GoReleaser pipeline
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The github token to use for the release'
+    required: true
+  gpg_private_key:
+    description: 'The GPG private key to use for signing the release'
+    required: true
+  gpg_passphrase:
+    description: 'The GPG passphrase to use for signing the release'
+    required: true
+  semver:
+    description: 'The semver version to use for the release'
+    required: true
+  golang_version:
+    description: 'The GoLang version to use for the release'
+    required: true
+  homebrew_tap_token:
+    description: 'The github token to use for the homebrew tap release, comes from secret: HOMEBREW_TAP_TOKEN'
+    required: false
+    default: ''
+  chocolatey_api_key:
+    description: 'The chocolatey api key to use for the chocolatey release, comes from secret: CHOCOLATEY_API_KEY'
+    required: false
+    default: ''
+  apple_certificate_b64:
+    description: 'The Apple certificate in base64 format to use for signing the release, comes from secret: XCODE_BUILD_CERTIFICATE_BASE64'
+    required: false
+    default: ''
+  apple_certificate_pass:
+    description: 'The Apple certificate passphrase to use for signing the release, comes from secret: XCODE_BUILD_CERTIFICATE_PASS'
+    required: false
+    default: ''
+  apple_store_connect_key_b64:
+    description: 'The Apple Store Connect key in base64 format to use for signing the release, comes from secret: APPLE_STORE_CONNECT_KEY_BASE64'
+    required: false
+    default: ''
+  apple_store_connect_key_id:
+    description: 'The Apple Store Connect key id to use for signing the release, comes from secret: APPLE_STORE_CONNECT_KEY_ID'
+    required: false
+    default: ''
+  apple_store_connect_issuer_id:
+    description: 'The Apple Store Connect issuer id to use for signing the release, comes from secret: APPLE_STORE_CONNECT_ISSUER_ID'
+    required: false
+    default: ''
+  apple_notary_profile_name:
+    description: 'The Apple Notary profile name to use for signing the release, comes from secret: APPLE_NOTARY_PROFILE_NAME'
+    required: false
+    default: 'goreleaser-notary-profile'
+  apple_keychain_password:
+    description: 'The Apple Keychain password to use for signing the release, comes from secret: APPLE_KEYCHAIN_PASSWORD'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v6
+      with:
+        token: ${{ inputs.token }}
+        check-latest: true
+        cache: true
+
+    - name: Import GPG key
+      id: import_gpg
+      uses: crazy-max/ghaction-import-gpg@v7
+      with:
+        gpg_private_key: ${{ inputs.gpg_private_key }}
+        passphrase: ${{ inputs.gpg_passphrase }}
+
+    - name: Cleanup for goreleaser
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        git clean -df
+
+    - name: Validate running on MacOS Runner for Apple Notary
+      id: is_macos
+      shell: bash
+      run: |
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build MacOS Runner keychain for Apple Notary
+      if: steps.is_macos.outputs.result == 'true'
+      shell: bash
+      env:
+        MACOS_SIGN_P12: ${{ inputs.apple_certificate_b64 }}
+        MACOS_SIGN_PASSWORD: ${{ inputs.apple_certificate_pass }}
+        MACOS_NOTARY_ISSUER_ID: ${{ inputs.apple_store_connect_issuer_id }}
+        MACOS_NOTARY_KEY_ID: ${{ inputs.apple_store_connect_key_id }}
+        MACOS_NOTARY_KEY: ${{ inputs.apple_store_connect_key_b64 }}
+        MACOS_NOTARY_PROFILE_NAME: ${{ inputs.apple_notary_profile_name }}
+        KEYCHAIN_PASSWORD: ${{ inputs.apple_keychain_password }}
+      run: |
+        # create variables
+        CERTIFICATE_PATH=$RUNNER_TEMP/goreleaser.p12
+        KEY_PATH=$RUNNER_TEMP/goreleaser.p8
+        KEYCHAIN_PATH=$RUNNER_TEMP/goreleaser.keychain-db
+        
+        # import certificate and key from secrets
+        echo -n "$MACOS_SIGN_P12" | base64 --decode -o $CERTIFICATE_PATH
+        echo -n "$MACOS_NOTARY_KEY" | base64 --decode -o $KEY_PATH
+        
+        # create temporary keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        
+        # import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$MACOS_SIGN_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+        
+        # create notary profile
+        xcrun notarytool store-credentials "$MACOS_NOTARY_PROFILE_NAME" \
+          --key "$KEY_PATH" \
+          --key-id "$MACOS_NOTARY_KEY_ID" \
+          --issuer "$MACOS_NOTARY_ISSUER_ID" \
+          --keychain $KEYCHAIN_PATH
+        
+        # export the keychain path
+        echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >>$GITHUB_ENV
+
+    - name: Run GoReleaser
+      uses: goreleaser/goreleaser-action@v7
+      with:
+        workdir: ${{ inputs.source_path }}
+        version: '~> v2'
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+        PASSPHRASE: ${{ inputs.gpg_passphrase }}
+        HOMEBREW_TAP_TOKEN: ${{ inputs.homebrew_tap_token }}
+        CHOCOLATEY_API_KEY: ${{ inputs.chocolatey_api_key }}
+        MACOS_SIGN_P12: ${{ inputs.apple_certificate_b64 }}
+        MACOS_SIGN_PASSWORD: ${{ inputs.apple_certificate_pass }}
+        MACOS_NOTARY_ISSUER_ID: ${{ inputs.apple_store_connect_issuer_id }}
+        MACOS_NOTARY_KEY_ID: ${{ inputs.apple_store_connect_key_id }}
+        MACOS_NOTARY_KEY: ${{ inputs.apple_store_connect_key_b64 }}
+        MACOS_NOTARY_PROFILE_NAME: ${{ inputs.apple_notary_profile_name }}
+        KEYCHAIN_PASSWORD: ${{ inputs.apple_keychain_password }}
