@@ -25,4 +25,4 @@ runs:
       id: deployment
       uses: actions/deploy-pages@v5
       with:
-        token : ${{ inputs.token }}
+        token: ${{ inputs.token }}
