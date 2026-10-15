@@ -22,7 +22,7 @@ runs:
       working-directory: ${{ runner.temp }}
       shell: pwsh
       run: |
-        choco install -y jq zip unzip yq wget curl
+        choco install -r -y jq zip unzip yq wget curl
 
     - name: Check sourcedir existence
       id: sourcedir
