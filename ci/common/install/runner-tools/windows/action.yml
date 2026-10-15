@@ -18,6 +18,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Install runner-tools
+      working-directory: ${{ runner.temp }}
+      shell: pwsh
+      run: |
+        choco install -y jq zip unzip yq wget curl
+
     - name: Check sourcedir existence
       id: sourcedir
       working-directory: ${{ inputs.source_path }}
@@ -53,17 +59,6 @@ runs:
         else
           echo "result=ALL" >> $GITHUB_OUTPUT
         fi
-
-    - name: Install runner-tools
-      working-directory: ${{ runner.temp }}
-      shell: pwsh
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-        EXPR_STEPS_SOURCEDIR_OUTPUTS_RESULT_TRUE: ${{ steps.sourcedir.outputs.result == 'true' }}
-        STEPS_SOURCEDIR_RESULT: ${{ steps.sourcedir.outputs.result }}
-        STEPS_CLOUD_SRC_RESULT: ${{ steps.cloud_src.outputs.result }}
-      run: |
-        choco install -y jq zip unzip yq wget curl
 
     - name: Download and Install AWS CLI
       working-directory: ${{ runner.temp }}
