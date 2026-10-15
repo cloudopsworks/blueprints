@@ -52,8 +52,8 @@ runs:
         --config "$repo_root/$DOCS_PATH/_config.yml" \
         "$@"
 
-      # The optional-front-matter plugin creates rendered HTML pages while Jekyll
-      # also copies the original Markdown source. Publish only the rendered pages.
+        # The optional-front-matter plugin creates rendered HTML pages while Jekyll
+        # also copies the original Markdown source. Publish only the rendered pages.
         find "$repo_root/$PAGES_PATH" -type f -name '*.md' -delete
 
     - name: Upload Pages artifact
