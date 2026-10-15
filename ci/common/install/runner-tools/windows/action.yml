@@ -66,7 +66,7 @@ runs:
       if: contains(fromJSON('["AWS","ALL"]'), steps.cloud.outputs.result)
       run: |
         echo "::group::Download and install AWS CLI"
-        choco install -y awscli
+        choco install -r -y awscli
         echo "::endgroup::"
 
     - name: Download and Install Azure CLI
@@ -75,7 +75,7 @@ runs:
       if: contains(fromJSON('["AZURE","AZ","ALL"]'), steps.cloud.outputs.result)
       run: |
         echo "::group::Download and install Azure CLI"
-        choco install -y azure-cli
+        choco install -r  -y azure-cli
         echo "::endgroup::"
 
     # GCP CLI installation when the GCP CLI is available in the base image
@@ -85,5 +85,5 @@ runs:
       if: contains(fromJSON('["GCP","ALL"]'), steps.cloud.outputs.result)
       run: |
         echo "::group::Download and install GCP CLI"
-        choco install -y gcloud
+        choco install -r -y gcloud
         echo "::endgroup::"
