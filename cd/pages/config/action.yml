@@ -42,21 +42,33 @@ runs:
       shell: bash
       run: |
         pages_enabled=$(yq e "(.pages.enabled == false)" ".cloudopsworks/vars/inputs-global.yaml")
-        echo "result=$pages_enabled" >> $GITHUB_OUTPUT
+        {
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$pages_enabled" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        }
 
     - name: Get GitHub Pages docs path configuration from project
       id: docs_path
       shell: bash
       run: |
         pages_path=$(yq e ".pages.docs_path // \"docs\"" ".cloudopsworks/vars/inputs-global.yaml")
-        echo "result=$pages_path" >> $GITHUB_OUTPUT
+        {
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$pages_path" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        }
 
     - name: Get GitHub Pages docs destination pages path configuration from project
       id: pages_path
       shell: bash
       run: |
         pages_path=$(yq e ".pages.pages_path // \"docs-pages\"" ".cloudopsworks/vars/inputs-global.yaml")
-        echo "result=$pages_path" >> $GITHUB_OUTPUT
+        {
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$pages_path" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        }
 
     # If GitHub Pages is enabled then output as informational message to the build as notice
     - name: Start GitHub Pages Build
