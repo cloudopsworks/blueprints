@@ -100,16 +100,8 @@ runs:
       run: |
         git clean -df
 
-    - name: Validate running on MacOS Runner for Apple Notary
-      id: is_macos
-      shell: bash
-      run: |
-        if [[ "$(uname -s)" == "Darwin" ]]; then
-          echo "result=true" >> $GITHUB_OUTPUT
-        fi
-
     - name: Build MacOS Runner keychain for Apple Notary
-      if: steps.is_macos.outputs.result == 'true'
+      if: (runner.os == 'macOS')
       shell: bash
       env:
         MACOS_SIGN_P12: ${{ inputs.apple_certificate_b64 }}
@@ -168,3 +160,18 @@ runs:
         MACOS_NOTARY_KEY: ${{ inputs.apple_store_connect_key_b64 }}
         MACOS_NOTARY_PROFILE_NAME: ${{ inputs.apple_notary_profile_name }}
         KEYCHAIN_PASSWORD: ${{ inputs.apple_keychain_password }}
+
+    - name: Run Chocolatey Release - Only when go_releaser_config starts with windows* and if runner is windows
+      if: (startsWith(inputs.goreleaser_config, 'windows') && runner.os == 'Windows')
+      shell: pwsh
+      working-directory: ${{ inputs.source_path }}
+      env:
+        CHOCOLATEY_API_KEY: ${{ inputs.chocolatey_api_key }}
+      run: |
+        # Check if the CHOCOLATEY_API_KEY is set
+        if (-not $env:CHOCOLATEY_API_KEY) {
+            Write-Host "CHOCOLATEY_API_KEY is not set. Skipping Chocolatey release."
+            exit 0
+        }
+        choco apikey --key $env:CHOCOLATEY_API_KEY --source https://push.chocolatey.org/
+        choco push dist\*.nupkg --source https://push.chocolatey.org/ --execution-timeout 5400
