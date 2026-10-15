@@ -44,12 +44,10 @@ runs:
         DOCS_PATH: ${{ inputs.docs_path }}
         PAGES_PATH: ${{ inputs.pages_path }}
       run: |
-        repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-        
         bundle exec jekyll build \
-        --source "$repo_root/$DOCS_PATH" \
-        --destination "$repo_root/$PAGES_PATH" \
-        --config "$repo_root/$DOCS_PATH/_config.yml" \
+        --source ./$DOCS_PATH" \
+        --destination "./$PAGES_PATH" \
+        --config "./$DOCS_PATH/_config.yml" \
         "$@"
 
         # The optional-front-matter plugin creates rendered HTML pages while Jekyll
