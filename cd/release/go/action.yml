@@ -190,20 +190,24 @@ runs:
             Write-Host "CHOCOLATEY_API_KEY is not set. Skipping Chocolatey release."
             exit 0
         }
-        choco apikey --key $env:CHOCOLATEY_API_KEY --source https://push.chocolatey.org/
-        # 1. Double check that files actually exist in the target directory
-        $packages = Get-ChildItem -Path "dist-windows\*.nupkg" -ErrorAction SilentlyContinue
+        # 1. Double check that packages actually exist in the GoReleaser dist directory
+        $packages = Get-ChildItem -Path (Join-Path $env:DIST_PATH '*.nupkg') -ErrorAction SilentlyContinue
 
-        if (null -eq $packages) {
-            Write-Error "No .nupkg files found in dist-windows/ directory!"
+        if (-not $packages) {
+            Write-Host "::error::No .nupkg files found in $env:DIST_PATH directory!"
             exit 1
         }
 
-        # 2. Loop through each resolved path and push with an extended timeout configuration
+        # 2. Push each package with an extended timeout, stopping on the first failed push
         foreach ($package in $packages) {
             Write-Host "Pushing package: $($package.FullName)"
 
             choco push "$($package.FullName)" `
-              --source "https://chocolatey.org" `
+              --source "https://push.chocolatey.org/" `
+              --api-key "$env:CHOCOLATEY_API_KEY" `
               --execution-timeout 14400
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "::error::choco push failed for $($package.Name) with exit code $LASTEXITCODE"
+                exit $LASTEXITCODE
+            }
         }
