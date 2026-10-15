@@ -48,14 +48,14 @@ runs:
       id: docs_path
       shell: bash
       run: |
-        pages_path=$(yq e ".pages.docs_path // 'docs'" ".cloudopsworks/vars/inputs-global.yaml")
+        pages_path=$(yq e ".pages.docs_path // \"docs\"" ".cloudopsworks/vars/inputs-global.yaml")
         echo "result=$pages_path" >> $GITHUB_OUTPUT
 
     - name: Get GitHub Pages docs destination pages path configuration from project
       id: pages_path
       shell: bash
       run: |
-        pages_path=$(yq e ".pages.pages_path // 'docs-pages'" ".cloudopsworks/vars/inputs-global.yaml")
+        pages_path=$(yq e ".pages.pages_path // \"docs-pages\"" ".cloudopsworks/vars/inputs-global.yaml")
         echo "result=$pages_path" >> $GITHUB_OUTPUT
 
     # If GitHub Pages is enabled then output as informational message to the build as notice
