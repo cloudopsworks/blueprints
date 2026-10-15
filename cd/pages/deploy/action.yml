@@ -13,6 +13,10 @@ inputs:
   token:
     description: 'The github token to use for the release'
     required: true
+outputs:
+  page_url:
+    description: 'The URL of the deployed GitHub Pages site'
+    value: ${{ steps.deployment.outputs.page_url }}
 
 runs:
   using: 'composite'
