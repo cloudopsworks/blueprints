@@ -120,4 +120,4 @@ runs:
         registry: "${{ steps.library_registry.outputs.result }}"
         strategy: "${{ steps.library_strategy.outputs.result }}"
         access: "${{ steps.library_access.outputs.result }}"
-        tag: "${{ inputs.semver }}"
+        tag: "${{ inputs.is_pre_release == 'true' && 'beta' || 'next' }}"
