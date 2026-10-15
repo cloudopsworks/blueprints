@@ -22,7 +22,7 @@ runs:
       working-directory: ${{ runner.temp }}
       shell: pwsh
       run: |
-        choco install -r -y jq zip unzip yq wget curl
+        choco install --no-progress -y jq zip unzip yq wget curl
 
     - name: Check sourcedir existence
       id: sourcedir
@@ -66,7 +66,7 @@ runs:
       if: contains(fromJSON('["AWS","ALL"]'), steps.cloud.outputs.result)
       run: |
         echo "::group::Download and install AWS CLI"
-        choco install -r -y awscli
+        choco install --no-progress -y awscli
         echo "::endgroup::"
 
     - name: Download and Install Azure CLI
@@ -75,7 +75,7 @@ runs:
       if: contains(fromJSON('["AZURE","AZ","ALL"]'), steps.cloud.outputs.result)
       run: |
         echo "::group::Download and install Azure CLI"
-        choco install -r  -y azure-cli
+        choco install --no-progress -y azure-cli
         echo "::endgroup::"
 
     # GCP CLI installation when the GCP CLI is available in the base image
@@ -85,5 +85,5 @@ runs:
       if: contains(fromJSON('["GCP","ALL"]'), steps.cloud.outputs.result)
       run: |
         echo "::group::Download and install GCP CLI"
-        choco install -r -y gcloud
+        choco install --no-progress -y gcloud
         echo "::endgroup::"
