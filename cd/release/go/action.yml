@@ -100,6 +100,17 @@ runs:
       run: |
         git clean -df
 
+    # Get GoReleaser dist path from config file, default to "dist" if not set
+    - name: Get GoReleaser Dist Path
+      id: dist_path
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      env:
+        GORELEASER_CONFIG: ${{ inputs.goreleaser_config }}
+      run: |
+        DIST_PATH=$(yq e '.dist // "dist"' $GORELEASER_CONFIG)
+        echo "result=$DIST_PATH" >> $GITHUB_OUTPUT
+
     - name: Build MacOS Runner keychain for Apple Notary
       if: (runner.os == 'macOS')
       shell: bash
@@ -167,6 +178,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       env:
         CHOCOLATEY_API_KEY: ${{ inputs.chocolatey_api_key }}
+        DIST_PATH: ${{ steps.dist_path.outputs.result }}
       run: |
         # Check if the CHOCOLATEY_API_KEY is set
         if (-not $env:CHOCOLATEY_API_KEY) {
@@ -174,4 +186,4 @@ runs:
             exit 0
         }
         choco apikey --key $env:CHOCOLATEY_API_KEY --source https://push.chocolatey.org/
-        choco push dist\*.nupkg --source https://push.chocolatey.org/ --execution-timeout 5400
+        choco push $env:DIST_PATH\*.nupkg --source https://push.chocolatey.org/ --execution-timeout 5400
