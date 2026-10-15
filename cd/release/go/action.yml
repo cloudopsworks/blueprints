@@ -191,4 +191,20 @@ runs:
             exit 0
         }
         choco apikey --key $env:CHOCOLATEY_API_KEY --source https://push.chocolatey.org/
-        choco push $env:DIST_PATH\*.nupkg --source https://push.chocolatey.org/ --execution-timeout 5400
+        # 1. Double check that files actually exist in the target directory
+        \$packages = Get-ChildItem -Path "dist-windows\*.nupkg" -ErrorAction SilentlyContinue
+
+        if (null -eq packages) {
+            Write-Error "No .nupkg files found in dist-windows/ directory!"
+            exit 1
+        }
+
+        # 2. Loop through each resolved path and push with an extended timeout configuration
+        foreach (package in packages) {
+            Write-Host "Pushing package: (package.FullName)"
+
+            choco push "(package.FullName)" `
+              --api-key="\$env:CHOCO_API_KEY" `
+              --source="https://chocolatey.org" `
+              --execution-timeout=14400
+        }
