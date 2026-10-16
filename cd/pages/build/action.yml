@@ -45,7 +45,7 @@ runs:
         PAGES_PATH: ${{ inputs.pages_path }}
       run: |
         bundle exec jekyll build \
-        --source ./$DOCS_PATH" \
+        --source "./$DOCS_PATH" \
         --destination "./$PAGES_PATH" \
         --config "./$DOCS_PATH/_config.yml" \
         "$@"
