@@ -176,6 +176,7 @@ runs:
         MACOS_NOTARY_KEY: ${{ inputs.apple_store_connect_key_b64 }}
         MACOS_NOTARY_PROFILE_NAME: ${{ inputs.apple_notary_profile_name }}
         KEYCHAIN_PASSWORD: ${{ inputs.apple_keychain_password }}
+
     # Only when go_releaser_config starts with windows* and if runner is windows
     - name: Run Chocolatey Release - Windows
       if: (startsWith(inputs.goreleaser_config, 'windows') && runner.os == 'Windows')

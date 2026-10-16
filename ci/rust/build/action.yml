@@ -247,7 +247,7 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
     # Get from global inputs the custom Rust Test Options
-    - name: Get Rust Build options
+    - name: Get Rust Test Build options
       id: test_opts
       shell: bash
       working-directory: ${{ inputs.source_path }}
