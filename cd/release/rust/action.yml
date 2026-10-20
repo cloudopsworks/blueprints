@@ -189,45 +189,8 @@ runs:
         MACOS_NOTARY_PROFILE_NAME: ${{ inputs.apple_notary_profile_name }}
         KEYCHAIN_PASSWORD: ${{ inputs.apple_keychain_password }}
 
-    # Only when go_releaser_config starts with windows* and if runner is windows
-    - name: Run Chocolatey Release - Windows
-      if: (startsWith(inputs.goreleaser_config, 'windows') && runner.os == 'Windows')
-      shell: pwsh
-      working-directory: ${{ inputs.source_path }}
-      env:
-        CHOCOLATEY_API_KEY: ${{ inputs.chocolatey_api_key }}
-        DIST_PATH: ${{ steps.dist_path.outputs.result }}
-        SEMVER: ${{ inputs.semver }}
-      run: |
-        # Check if the CHOCOLATEY_API_KEY is set
-        if (-not $env:CHOCOLATEY_API_KEY) {
-            Write-Host "CHOCOLATEY_API_KEY is not set. Skipping Chocolatey release."
-            exit 0
-        }
-        # The Chocolatey Community Repository does not support SemVer 2.0.0 versions
-        # (dotted prerelease like 1.0.0-alpha.1, or +build metadata), so skip those
-        if ($env:SEMVER -match '^v?[0-9.]+-[^+]*\.' -or $env:SEMVER -match '\+') {
-            Write-Host "::warning::Version $env:SEMVER is SemVer 2.0.0, not supported by the Chocolatey Community Repository. Skipping Chocolatey release."
-            exit 0
-        }
-        # 1. Double check that packages actually exist in the GoReleaser dist directory
-        $packages = Get-ChildItem -Path (Join-Path $env:DIST_PATH '*.nupkg') -ErrorAction SilentlyContinue
-
-        if (-not $packages) {
-            Write-Host "::error::No .nupkg files found in $env:DIST_PATH directory!"
-            exit 1
-        }
-
-        # 2. Push each package with an extended timeout, stopping on the first failed push
-        foreach ($package in $packages) {
-            Write-Host "Pushing package: $($package.FullName)"
-
-            choco push "$($package.FullName)" `
-              --source "https://push.chocolatey.org/" `
-              --api-key "$env:CHOCOLATEY_API_KEY" `
-              --execution-timeout 14400
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "::error::choco push failed for $($package.Name) with exit code $LASTEXITCODE"
-                exit $LASTEXITCODE
-            }
-        }
+    - name: Upload NuPKG Artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: nupkg-artifacts
+        path: ${{ steps.dist_path.outputs.result }}/*.nupkg
