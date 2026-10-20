@@ -181,4 +181,4 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         name: nupkg-artifacts
-        path: ${{ steps.dist_path.outputs.result }}/*.nupkg
+        path: ${{ inputs.source_path }}/${{ steps.dist_path.outputs.result }}/*.nupkg

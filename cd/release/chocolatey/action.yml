@@ -73,16 +73,28 @@ runs:
             exit 1
         }
 
-        # 2. Push each package with an extended timeout, stopping on the first failed push
+        # 2. Push each package with an extended timeout, retrying failed pushes after a cooldown,
+        #    stopping on the first package that still fails after all attempts
+        $maxAttempts = 3
+        $cooldownSeconds = 30
         foreach ($package in $packages) {
-            Write-Host "Pushing package: $($package.FullName)"
+            for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+                Write-Host "Pushing package: $($package.FullName) (attempt $attempt of $maxAttempts)"
 
-            choco push "$($package.FullName)" `
-              --source "https://push.chocolatey.org/" `
-              --api-key "$env:CHOCOLATEY_API_KEY" `
-              --execution-timeout 14400
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "::error::choco push failed for $($package.Name) with exit code $LASTEXITCODE"
-                exit $LASTEXITCODE
+                choco push "$($package.FullName)" `
+                  --source "https://push.chocolatey.org/" `
+                  --api-key "$env:CHOCOLATEY_API_KEY" `
+                  --execution-timeout 14400
+                $exitCode = $LASTEXITCODE
+                if ($exitCode -eq 0) {
+                    break
+                }
+                if ($attempt -lt $maxAttempts) {
+                    Write-Host "::warning::choco push failed for $($package.Name) with exit code $exitCode, retrying in $cooldownSeconds seconds..."
+                    Start-Sleep -Seconds $cooldownSeconds
+                } else {
+                    Write-Host "::error::choco push failed for $($package.Name) with exit code $exitCode after $maxAttempts attempts"
+                    exit $exitCode
+                }
             }
         }
