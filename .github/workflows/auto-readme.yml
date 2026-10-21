@@ -46,6 +46,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           tronador readme build
+
       # Create a PR only if not on a pull request event (to avoid error)
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v8
@@ -56,8 +57,8 @@ jobs:
           commit-message: Update README.md
           title: Automatic Update of README.md
           body: |-
-            This is an auto-generated PR which updates the `README.md` from the `README.yaml` 
-            using the [`cloudopsworks/tronador`](https://github.com/cloudopsworks/tronador).
+            This is an auto-generated PR which updates the `README.md` from the `README.yaml`
+            using the [`cloudopsworks/tronador-cli`](https://github.com/cloudopsworks/tronador-cli).
           branch: feature/auto-readme
           #branch-suffix: none
       # Push the code into PR if we are in a pull request event

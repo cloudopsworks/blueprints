@@ -1,0 +1,60 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: GitHub Pages Build Workflow
+author: cloudopsworks
+description: GitHub Pages Build Workflow
+inputs:
+  pages_enabled:
+    description: 'Whether to enable GitHub Pages for the repository'
+    required: true
+  docs_path:
+    description: 'The path to the docs folder'
+    required: true
+  pages_path:
+    description: 'The path to the output pages folder'
+    required: true
+  token:
+    description: 'The github token to use for the release'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure GitHub Pages
+      uses: actions/configure-pages@v6
+      with:
+        token: ${{ inputs.token }}
+        enablement: 'true'
+
+    - name: Set up Ruby and install locked dependencies
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: "3.3"
+        bundler-cache: true
+
+    - name: Build Jekyll site
+      shell: bash
+      env:
+        DOCS_PATH: ${{ inputs.docs_path }}
+        PAGES_PATH: ${{ inputs.pages_path }}
+      run: |
+        bundle exec jekyll build \
+        --source "./$DOCS_PATH" \
+        --destination "./$PAGES_PATH" \
+        --config "./$DOCS_PATH/_config.yml" \
+        "$@"
+
+        # The optional-front-matter plugin creates rendered HTML pages while Jekyll
+        # also copies the original Markdown source. Publish only the rendered pages.
+        find "./$PAGES_PATH" -type f -name '*.md' -delete
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v5
+      with:
+        path: ./${{ inputs.pages_path }}

@@ -1,0 +1,100 @@
+##
+# (c) 2021-2025
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Release Workflow for Chocolatey Push
+author: cloudopsworks
+description: Release Workflow for Chocolatey, this process is only executed when the goreleaser ends and leaves the .nupkg files in as artifacts.
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  token:
+    description: 'The github token to use for the release'
+    required: true
+  semver:
+    description: 'The semver version to use for the release'
+    required: true
+  goreleaser_config:
+    description: 'The GoReleaser config file to use for the release'
+    required: false
+    default: '.goreleaser.yml'
+  chocolatey_api_key:
+    description: 'The chocolatey api key to use for the chocolatey release, comes from secret: CHOCOLATEY_API_KEY'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Pull NuPKG Artifacts
+      id: nupkg
+      uses: actions/download-artifact@v8
+      with:
+        name: nupkg-artifacts
+        path: ./${{ inputs.source_path }}/dist_path
+        github-token: ${{ inputs.token }}
+
+    # Only when go_releaser_config starts with windows* and if runner is windows
+    - name: Run Chocolatey Release - Windows
+      if: (startsWith(inputs.goreleaser_config, 'windows') && runner.os == 'Windows')
+      shell: pwsh
+      working-directory: ${{ inputs.source_path }}
+      env:
+        CHOCOLATEY_API_KEY: ${{ inputs.chocolatey_api_key }}
+        DIST_PATH: "dist_path"
+        SEMVER: ${{ inputs.semver }}
+      run: |
+        # Check if the CHOCOLATEY_API_KEY is set
+        if (-not $env:CHOCOLATEY_API_KEY) {
+            Write-Host "CHOCOLATEY_API_KEY is not set. Skipping Chocolatey release."
+            exit 0
+        }
+        # The Chocolatey Community Repository does not support SemVer 2.0.0 versions
+        # (dotted prerelease like 1.0.0-alpha.1, or +build metadata), so skip those
+        if ($env:SEMVER -match '^v?[0-9.]+-[^+]*\.' -or $env:SEMVER -match '\+') {
+            Write-Host "::warning::Version $env:SEMVER is SemVer 2.0.0, not supported by the Chocolatey Community Repository. Skipping Chocolatey release."
+            exit 0
+        }
+        # 1. Double check that packages actually exist in the GoReleaser dist directory
+        $packages = Get-ChildItem -Path (Join-Path $env:DIST_PATH '*.nupkg') -ErrorAction SilentlyContinue
+
+        if (-not $packages) {
+            Write-Host "::error::No .nupkg files found in $env:DIST_PATH directory!"
+            exit 1
+        }
+
+        # 2. Push each package with an extended timeout, retrying failed pushes after a cooldown,
+        #    stopping on the first package that still fails after all attempts
+        $maxAttempts = 3
+        $cooldownSeconds = 30
+        foreach ($package in $packages) {
+            for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+                Write-Host "Pushing package: $($package.FullName) (attempt $attempt of $maxAttempts)"
+
+                choco push "$($package.FullName)" `
+                  --source "https://push.chocolatey.org/" `
+                  --api-key "$env:CHOCOLATEY_API_KEY" `
+                  --execution-timeout 14400
+                $exitCode = $LASTEXITCODE
+                if ($exitCode -eq 0) {
+                    break
+                }
+                if ($attempt -lt $maxAttempts) {
+                    Write-Host "::warning::choco push failed for $($package.Name) with exit code $exitCode, retrying in $cooldownSeconds seconds..."
+                    Start-Sleep -Seconds $cooldownSeconds
+                } else {
+                    Write-Host "::error::choco push failed for $($package.Name) with exit code $exitCode after $maxAttempts attempts"
+                    exit $exitCode
+                }
+            }
+        }

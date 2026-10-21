@@ -1,0 +1,28 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: GitHub Pages Deployment Workflow
+author: cloudopsworks
+description: GitHub Pages Deployment Workflow
+inputs:
+  token:
+    description: 'The github token to use for the release'
+    required: true
+outputs:
+  page_url:
+    description: 'The URL of the deployed GitHub Pages site'
+    value: ${{ steps.deployment.outputs.page_url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v5
+      with:
+        token: ${{ inputs.token }}

@@ -1,0 +1,81 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: GitHub Pages Build Workflow Configuration
+author: cloudopsworks
+description: GitHub Pages Build Workflow Checkout code and configuration
+inputs:
+  token:
+    description: 'The github token to use for the release'
+    required: true
+outputs:
+  pages_enabled:
+    description: 'Whether GitHub Pages is enabled for this project'
+    value: ${{ steps.pages_enabled.outputs.result }}
+  docs_path:
+    description: 'The path to the docs source code'
+    value: ${{ steps.docs_path.outputs.result }}
+  pages_path:
+    description: 'The path to the docs destination pages code'
+    value: ${{ steps.pages_path.outputs.result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout source code
+      uses: actions/checkout@v7
+      with:
+        token: ${{ inputs.token }}
+
+    - name: Install runner-tools
+      uses: cloudopsworks/blueprints/ci/common/install/runner-tools@v5.10
+      with:
+        source_path: ${{ inputs.source_path }}
+
+    - name: Get GitHub Pages is enabled configuration from project
+      id: pages_enabled
+      shell: bash
+      run: |
+        pages_enabled=$(yq e "(.pages.enabled == true)" ".cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$pages_enabled" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        }
+
+    - name: Get GitHub Pages docs path configuration from project
+      id: docs_path
+      shell: bash
+      run: |
+        pages_path=$(yq e ".pages.docs_path // \"docs\"" ".cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$pages_path" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        }
+
+    - name: Get GitHub Pages docs destination pages path configuration from project
+      id: pages_path
+      shell: bash
+      run: |
+        pages_path=$(yq e ".pages.pages_path // \"docs-pages\"" ".cloudopsworks/vars/inputs-global.yaml")
+        {
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$pages_path" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        }
+
+    # If GitHub Pages is enabled then output as informational message to the build as notice
+    - name: Start GitHub Pages Build
+      if: steps.pages_enabled.outputs.result == 'true'
+      shell: bash
+      env:
+        PAGES_PATH: ${{ steps.pages_path.outputs.result }}
+        DOCS_PATH: ${{ steps.docs_path.outputs.result }}
+      run: |
+        echo "::notice::GitHub Pages is enabled for this project, starting build process...\nDocs source path: $DOCS_PATH\nDocs destination path: $PAGES_PATH"

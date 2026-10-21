@@ -5,7 +5,8 @@
 #       GitHub: https://github.com/cloudopsworks
 #       WebSite: https://cloudops.works
 #     Distributed Under Apache v2.0 License
-#
+# DEPRECATED: moved to cd/release/go/action.yml
+# TODO: remove this file in v5.11+
 name: Release Workflow for GoReleaser pipeline
 author: cloudopsworks
 description: Release Workflow for GoReleaser pipeline

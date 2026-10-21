@@ -249,17 +249,17 @@ runs:
 #          ${{ runner.os }}-node-
 
     # Versioning SET
+    # Fix: Removal of PLAIN_PARAM because of reportedly issues with lambda deployments, after first commit.
     - name: Version SET
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         echo "::group::Node Version SET"
-        tronador project version $PLAIN_PARAM --allow-network
+        tronador project version --allow-network
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
-        PLAIN_PARAM: ${{ steps.cloud_type.outputs.result == 'lambda' && '--plain' || '' }}
 
     - name: Version Capture
       working-directory: ${{ inputs.source_path }}
