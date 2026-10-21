@@ -1,7 +1,7 @@
-# Set to true to add reviewers to pull requests
+# Pull requests only: request reviewers on opened or reopened pull requests.
 addReviewers: true
 
-# Set to author to set PR creator as assignee
+# Pull requests and issues: assign the PR creator or issue author.
 addAssignees: author
 
 # A list of reviewers to be added to pull requests (GitHub user name)
