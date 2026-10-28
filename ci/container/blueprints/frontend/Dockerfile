@@ -24,8 +24,8 @@ ARG BUILD_DIR=./build/
 ## Stage 1: Create NGINX configuration
 USER root
 
-## Install shadow only if alpine based image is used
-RUN if [ -f /etc/alpine-release ]; then apk add --no-cache shadow; fi
+### Install shadow only if alpine based image is used
+#RUN if [ -f /etc/alpine-release ]; then apk add --no-cache shadow; fi
 
 FROM base AS nginx-observable-false
 COPY ./nginx.conf /etc/nginx/nginx.conf

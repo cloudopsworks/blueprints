@@ -21,8 +21,8 @@ ARG GROUP_NAME=webapp
 ## Stage 1: Create basic entries
 USER root
 
-## Install shadow only if alpine based image is used
-RUN if [ -f /etc/alpine-release ]; then apk add --no-cache shadow; fi
+### Install shadow only if alpine based image is used
+#RUN if [ -f /etc/alpine-release ]; then apk add --no-cache shadow; fi
 
 RUN mkdir -p /app/webapp/
 
