@@ -13,6 +13,7 @@ ARG NGINX_ERROR_LOG_LEVEL=warn
 ARG NGINX_ERROR_LOG_PATH="/var/log/nginx/error.log"
 ARG NGINX_ACCESS_LOG_TYPE=json
 ARG NGINX_ACCESS_LOG_PATH="/var/log/nginx/access.log"
+ARG OBSERVABILITY_ENABLED=false
 ARG USER_ID=10001
 ARG GROUP_ID=10001
 ARG USER_NAME=webapp
@@ -22,6 +23,8 @@ ARG BUILD_DIR=./build/
 
 ## Stage 1: Create NGINX configuration
 USER root
+
+FROM base as nginx-observable-false
 COPY ./nginx.conf /etc/nginx/nginx.conf
 RUN sed -i 's|\[ERROR_LOG\]|'"${NGINX_ERROR_LOG_PATH} ${NGINX_ERROR_LOG_LEVEL}"'|g' /etc/nginx/nginx.conf
 RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
@@ -34,8 +37,24 @@ RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
 COPY ./nginx-app.conf /etc/nginx/conf.d/default.conf
 COPY $BUILD_DIR /usr/share/nginx/html/
 
+FROM base as nginx-observable-true
+COPY ./nginx-otel.conf /etc/nginx/nginx.conf
+RUN sed -i 's|\[ERROR_LOG\]|'"${NGINX_ERROR_LOG_PATH} ${NGINX_ERROR_LOG_LEVEL}"'|g' /etc/nginx/nginx.conf
+RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
+    then \
+        sed -i 's|\[ACCESS_LOG\]|'"${NGINX_ACCESS_LOG_TYPE}"'|g' /etc/nginx/nginx.conf ; \
+    else \
+        sed -i 's|\[ACCESS_LOG\]|'"${NGINX_ACCESS_LOG_PATH} ${NGINX_ACCESS_LOG_TYPE}"'|g' /etc/nginx/nginx.conf ; \
+    fi
+# Override rest of nginx configuration
+COPY ./nginx-app-otel.conf /etc/nginx/conf.d/default.conf
+
+FROM nginx-observable-${OBSERVABILITY_ENABLED} as nginx
+
+COPY $BUILD_DIR /usr/share/nginx/html/
+
 # Stage 2: Customized configuation injection occurs at command line
-FROM base AS customized
+FROM nginx AS customized
 WORKDIR /app/webapp
 #<DOCKER-INJECTION-POINT>
 

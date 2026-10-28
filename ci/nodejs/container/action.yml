@@ -108,11 +108,13 @@ runs:
       working-directory:  ${{ inputs.source_path }}
       env:
         INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+        OBSERVABILITY_ENABLED: ${{ inputs.observability_enabled }}
       run: |
         RET=$(yq e -I=0 ".docker_args // \"\"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
+          echo "OBSERVABILITY_ENABLED=${OBSERVABILITY_ENABLED}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
