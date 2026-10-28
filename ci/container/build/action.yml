@@ -97,6 +97,7 @@ runs:
       shell: bash
       env:
         INPUTS_CUSTOM_USERGROUP: ${{ inputs.custom_usergroup }}
+        IMAGE_VARIANT: ${{ inputs.docker_image_name }}
       run: |
         echo "::group::Injecting Image Variant user/group creation..."
         DOCKERFILE=Dockerfile

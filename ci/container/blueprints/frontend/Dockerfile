@@ -24,7 +24,10 @@ ARG BUILD_DIR=./build/
 ## Stage 1: Create NGINX configuration
 USER root
 
-FROM base as nginx-observable-false
+## Install shadow only if alpine based image is used
+RUN if [ -f /etc/alpine-release ]; then apk add --no-cache shadow; fi
+
+FROM base AS nginx-observable-false
 COPY ./nginx.conf /etc/nginx/nginx.conf
 RUN sed -i 's|\[ERROR_LOG\]|'"${NGINX_ERROR_LOG_PATH} ${NGINX_ERROR_LOG_LEVEL}"'|g' /etc/nginx/nginx.conf
 RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
@@ -37,7 +40,7 @@ RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
 COPY ./nginx-app.conf /etc/nginx/conf.d/default.conf
 COPY $BUILD_DIR /usr/share/nginx/html/
 
-FROM base as nginx-observable-true
+FROM base AS nginx-observable-true
 COPY ./nginx-otel.conf /etc/nginx/nginx.conf
 RUN sed -i 's|\[ERROR_LOG\]|'"${NGINX_ERROR_LOG_PATH} ${NGINX_ERROR_LOG_LEVEL}"'|g' /etc/nginx/nginx.conf
 RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
@@ -49,7 +52,7 @@ RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
 # Override rest of nginx configuration
 COPY ./nginx-app-otel.conf /etc/nginx/conf.d/default.conf
 
-FROM nginx-observable-${OBSERVABILITY_ENABLED} as nginx
+FROM nginx-observable-${OBSERVABILITY_ENABLED} AS nginx
 
 COPY $BUILD_DIR /usr/share/nginx/html/
 
