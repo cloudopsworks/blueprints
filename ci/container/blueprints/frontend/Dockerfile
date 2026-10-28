@@ -7,8 +7,6 @@
 #
 ARG IMAGE_NAME=nginxinc/nginx-unprivileged:1.29-alpine
 
-FROM $IMAGE_NAME AS base
-
 ARG NGINX_ERROR_LOG_LEVEL=warn
 ARG NGINX_ERROR_LOG_PATH="/var/log/nginx/error.log"
 ARG NGINX_ACCESS_LOG_TYPE=json
@@ -18,8 +16,9 @@ ARG USER_ID=10001
 ARG GROUP_ID=10001
 ARG USER_NAME=webapp
 ARG GROUP_NAME=webapp
-
 ARG BUILD_DIR=./build/
+
+FROM $IMAGE_NAME AS base
 
 ## Stage 1: Create NGINX configuration
 USER root
