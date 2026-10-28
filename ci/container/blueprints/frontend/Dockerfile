@@ -60,10 +60,6 @@ WORKDIR /app/webapp
 
 # Stage 3: Final image
 FROM customized AS final
-ARG USER_NAME
-ARG USER_ID
-ARG GROUP_NAME
-ARG GROUP_ID
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
 #RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \
 #    && adduser --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME
