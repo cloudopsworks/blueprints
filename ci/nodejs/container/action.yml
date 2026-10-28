@@ -170,7 +170,7 @@ runs:
       if: ${{ inputs.front_end != 'true' }}
       shell: bash
       env:
-         : ${{ inputs.blueprint_path }}
+        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
         INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
         cp -pf ${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/* ${INPUTS_SOURCE_PATH}/
