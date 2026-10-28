@@ -145,12 +145,12 @@ runs:
     - name: Copy Dockerfile Front-End App
       if: ${{ inputs.front_end == 'true' }}
       shell: bash
-      working-directory: ${{ inputs.source_path }}
       env:
         INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/"* "./"
-        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/.dockerignore" "./"
+        cp -pf ${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/* ${INPUTS_SOURCE_PATH}/
+        cp -pf ${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/.dockerignore ${INPUTS_SOURCE_PATH}/
 
     - name: Get default config_map mount point for environment
       id: config_map_mount_point
@@ -169,12 +169,12 @@ runs:
     - name: Copy Dockerfile Node.js App
       if: ${{ inputs.front_end != 'true' }}
       shell: bash
-      working-directory: ${{ inputs.source_path }}
       env:
-        INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+         : ${{ inputs.blueprint_path }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/"* "./"
-        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/.dockerignore" "./"
+        cp -pf ${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/* ${INPUTS_SOURCE_PATH}/
+        cp -pf ${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/.dockerignore ${INPUTS_SOURCE_PATH}/
 
     - name: APM Arguments setup
       id: apm_args
