@@ -66,12 +66,12 @@ runs:
     - name: Get Docker Registry value if set into the ENV file
       id: docker_registry
       shell: bash
+      working-directory: ${{ inputs.source_path }}
       env:
         INPUTS_DEFAULT_REGISTRY_ADDRESS: ${{ inputs.default_registry_address }}
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
         INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        RET=$(yq -I=0 ".container_registry // strenv(INPUTS_DEFAULT_REGISTRY_ADDRESS)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        RET=$(yq -I=0 ".container_registry // strenv(INPUTS_DEFAULT_REGISTRY_ADDRESS)" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -81,10 +81,9 @@ runs:
     - name: Get Docker Inline Setting
       id: docker_inline
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory:  ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -I=0 ".docker_inline // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e -I=0 ".docker_inline // \"\"" ".cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -94,10 +93,9 @@ runs:
     - name: Get Docker Arguments
       id: docker_args_global
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory:  ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -I=0 ".docker_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e -I=0 ".docker_args // \"\"" ".cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -107,11 +105,11 @@ runs:
     - name: Get Docker Arguments for ${{ inputs.environment }}
       id: docker_args_env
       shell: bash
+      working-directory:  ${{ inputs.source_path }}
       env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
         INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        RET=$(yq e -I=0 ".docker_args // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        RET=$(yq e -I=0 ".docker_args // \"\"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -121,10 +119,9 @@ runs:
     - name: Get Custom Run Command
       id: custom_run_command
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory:  ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -I=0 ".custom_run_command // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e -I=0 ".custom_run_command // \"\"" ".cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -134,10 +131,9 @@ runs:
     - name: Get Custom Usergroup
       id: custom_usergroup
       shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      working-directory:  ${{ inputs.source_path }}
       run: |
-        RET=$(yq e -I=0 ".custom_usergroup // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(yq e -I=0 ".custom_usergroup // \"\"" ".cloudopsworks/vars/inputs-global.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -147,21 +143,21 @@ runs:
     - name: Copy Dockerfile Front-End App
       if: ${{ inputs.front_end == 'true' }}
       shell: bash
+      working-directory: ${{ inputs.source_path }}
       env:
         INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/"* "${INPUTS_SOURCE_PATH}/"
-        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/.dockerignore" "${INPUTS_SOURCE_PATH}/"
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/"* "./"
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/frontend/.dockerignore" "./"
 
     - name: Get default config_map mount point for environment
       id: config_map_mount_point
       shell: bash
+      working-directory:  ${{ inputs.source_path }}
       env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
         INPUTS_ENVIRONMENT: ${{ inputs.environment }}
       run: |
-        RET=$(yq e -I=0 ".config_map.mount_point // \"/app/configmap\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
+        RET=$(yq e -I=0 ".config_map.mount_point // \"/app/configmap\"" ".cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml")
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -171,12 +167,12 @@ runs:
     - name: Copy Dockerfile Node.js App
       if: ${{ inputs.front_end != 'true' }}
       shell: bash
+      working-directory: ${{ inputs.source_path }}
       env:
         INPUTS_BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
       run: |
-        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/"* "${INPUTS_SOURCE_PATH}/"
-        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/.dockerignore" "${INPUTS_SOURCE_PATH}/"
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/"* "./"
+        cp -pf "${INPUTS_BLUEPRINT_PATH}/ci/container/blueprints/nodejs/.dockerignore" "./"
 
     - name: APM Arguments setup
       id: apm_args
@@ -226,6 +222,27 @@ runs:
           esac
         fi
 
+    - name: Set output with front-end Image Variant
+      if: ${{ inputs.front_end == 'true' }}
+      id: docker_image_name_fe
+      shell: bash
+      env:
+        IMAGE_VARIANT: ${{ inputs.node_image_variant }}
+        OBSERVABILITY_ENABLED: ${{ inputs.observability_enabled }}
+      run: |
+        image_stub="nginxinc/nginx-unprivileged:1.31"
+        if [ "${IMAGE_VARIANT}" != "" ] ; then
+          image_stub="${image_stub}-${IMAGE_VARIANT}"
+        else
+          image_stub="${image_stub}-alpine"
+        fi
+        if [ "${OBSERVABILITY_ENABLED}" == "true" ]; then
+          image_stub="${image_stub}-otel"
+        fi
+        if [ "${IMAGE_VARIANT}" != "" ] && [ "${OBSERVABILITY_ENABLED}" == "true" ]; then
+          echo "result=IMAGE_NAME=${image_stub}" >> $GITHUB_OUTPUT
+        fi
+
     # if custom_run_command is non empty then need to override the startup.sh scripts with new content, write the file in-place
     - name: Set custom run command
       working-directory: ${{ inputs.source_path }}
@@ -251,7 +268,7 @@ runs:
         semver: ${{ inputs.semver }}
         docker_registry: ${{ steps.docker_registry.outputs.result }}
         docker_inline: ${{ steps.docker_inline.outputs.result }}
-        docker_image_name: ${{ steps.docker_image_name.outputs.result }}
+        docker_image_name: ${{ steps.docker_image_name.outputs.result != '' && steps.docker_image_name.outputs.result || steps.docker_image_name_fe.outputs.result }}
         docker_args: ${{ steps.docker_args_env.outputs.result == '' && steps.docker_args_global.outputs.result || steps.docker_args_env.outputs.result }}
         apm_args: ${{ inputs.observability_enabled == 'true' && steps.apm_args.outputs.result || '' }}
         environment: ${{ inputs.environment }}
