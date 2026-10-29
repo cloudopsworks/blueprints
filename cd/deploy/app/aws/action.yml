@@ -247,7 +247,7 @@ runs:
         release_name: ${{ inputs.release_name }}
         release_version: ${{ inputs.release_version }}
         project_key: ${{ inputs.project_key }}
-        deployment_name: ${{ inputs.deployment_name }}x
+        deployment_name: ${{ inputs.deployment_name }}
         environment: ${{ inputs.environment }}
 
     - name: Generate Observability configuration for datadog
