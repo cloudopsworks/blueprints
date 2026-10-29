@@ -35,19 +35,15 @@ RUN mkdir -p /etc/nginx/otel.d
 
 FROM base AS nginx-observable-false
 COPY ./nginx.conf /etc/nginx/nginx.conf
-RUN sed -i 's|\[ERROR_LOG\]|'"${NGINX_ERROR_LOG_PATH} ${NGINX_ERROR_LOG_LEVEL}"'|g' /etc/nginx/nginx.conf
-RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
-    then \
-        sed -i 's|\[ACCESS_LOG\]|'"${NGINX_ACCESS_LOG_TYPE}"'|g' /etc/nginx/nginx.conf ; \
-    else \
-        sed -i 's|\[ACCESS_LOG\]|'"${NGINX_ACCESS_LOG_PATH} ${NGINX_ACCESS_LOG_TYPE}"'|g' /etc/nginx/nginx.conf ; \
-    fi
-# Override rest of nginx configuration
 COPY ./nginx-app.conf /etc/nginx/conf.d/default.conf
 COPY $BUILD_DIR /usr/share/nginx/html/
 
 FROM base AS nginx-observable-true
 COPY ./nginx-otel.conf /etc/nginx/nginx.conf
+COPY ./nginx-app-otel.conf /etc/nginx/conf.d/default.conf
+
+FROM nginx-observable-${OBSERVABILITY_ENABLED} AS nginx
+# Override rest of nginx configuration
 RUN sed -i 's|\[ERROR_LOG\]|'"${NGINX_ERROR_LOG_PATH} ${NGINX_ERROR_LOG_LEVEL}"'|g' /etc/nginx/nginx.conf
 RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
     then \
@@ -55,10 +51,6 @@ RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
     else \
         sed -i 's|\[ACCESS_LOG\]|'"${NGINX_ACCESS_LOG_PATH} ${NGINX_ACCESS_LOG_TYPE}"'|g' /etc/nginx/nginx.conf ; \
     fi
-# Override rest of nginx configuration
-COPY ./nginx-app-otel.conf /etc/nginx/conf.d/default.conf
-
-FROM nginx-observable-${OBSERVABILITY_ENABLED} AS nginx
 
 COPY $BUILD_DIR /usr/share/nginx/html/
 
