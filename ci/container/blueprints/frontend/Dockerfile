@@ -7,6 +7,8 @@
 #
 ARG IMAGE_NAME=nginxinc/nginx-unprivileged:1.29-alpine
 
+ARG OBSERVABILITY_ENABLED=false
+
 FROM $IMAGE_NAME AS base
 
 ARG NGINX_ERROR_LOG_LEVEL=warn
@@ -17,12 +19,31 @@ ARG USER_ID=10001
 ARG GROUP_ID=10001
 ARG USER_NAME=webapp
 ARG GROUP_NAME=webapp
-
 ARG BUILD_DIR=./build/
 
 ## Stage 1: Create NGINX configuration
 USER root
+
+### Install shadow only if alpine based image is used
+#RUN if [ -f /etc/alpine-release ]; then apk add --no-cache shadow; fi
+
+### Render target for the OpenTelemetry exporter config that startup.sh writes at
+### container start. Owned by the runtime user below; /etc/nginx itself stays
+### root-owned and read-only to the app, and nothing is written to a shared
+### world-writable path such as /tmp.
+RUN mkdir -p /etc/nginx/otel.d
+
+FROM base AS nginx-observable-false
 COPY ./nginx.conf /etc/nginx/nginx.conf
+COPY ./nginx-app.conf /etc/nginx/conf.d/default.conf
+COPY $BUILD_DIR /usr/share/nginx/html/
+
+FROM base AS nginx-observable-true
+COPY ./nginx-otel.conf /etc/nginx/nginx.conf
+COPY ./nginx-app-otel.conf /etc/nginx/conf.d/default.conf
+
+FROM nginx-observable-${OBSERVABILITY_ENABLED} AS nginx
+# Override rest of nginx configuration
 RUN sed -i 's|\[ERROR_LOG\]|'"${NGINX_ERROR_LOG_PATH} ${NGINX_ERROR_LOG_LEVEL}"'|g' /etc/nginx/nginx.conf
 RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
     then \
@@ -30,24 +51,23 @@ RUN if [[ "${NGINX_ACCESS_LOG_TYPE}" == "off" ]] ; \
     else \
         sed -i 's|\[ACCESS_LOG\]|'"${NGINX_ACCESS_LOG_PATH} ${NGINX_ACCESS_LOG_TYPE}"'|g' /etc/nginx/nginx.conf ; \
     fi
-# Override rest of nginx configuration
-COPY ./nginx-app.conf /etc/nginx/conf.d/default.conf
+
 COPY $BUILD_DIR /usr/share/nginx/html/
 
 # Stage 2: Customized configuation injection occurs at command line
-FROM base AS customized
+FROM nginx AS customized
 WORKDIR /app/webapp
 #<DOCKER-INJECTION-POINT>
 
 # Stage 3: Final image
 FROM customized AS final
-
 # Create the user and group use addgroup in cases OS supports elsewhere use groupadd
 #RUN addgroup --gid $GROUP_ID --system $GROUP_NAME \
 #    && adduser --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME
 #<USERGROUP-INJECTION-POINT>
 RUN chown -R $USER_NAME:$GROUP_NAME /usr/share/nginx/html \
-    && chown -R $USER_NAME:$GROUP_NAME /app/webapp/
+    && chown -R $USER_NAME:$GROUP_NAME /app/webapp/ \
+    && chown -R $USER_NAME:$GROUP_NAME /etc/nginx/otel.d
 
 COPY ./startup.sh /app/webapp/
 RUN chmod +x /app/webapp/startup.sh
