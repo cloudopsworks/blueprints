@@ -59,9 +59,9 @@ runs:
         CLUSTER_NAME=$(yq e '.cluster_name' inputs.yaml)
         NAMESPACE=$(yq e '.namespace' inputs.yaml)
         OTEL_EXTRA=""
-        if [[ -n "${INPUTS_FRONT_END}" == "true" ]]; then
+        if [[ "${INPUTS_FRONT_END}" == "true" ]]; then
           OTEL_EXTRA=",deployment.environment=eks:${CLUSTER_NAME}/${NAMESPACE}"
         fi
         OTEL_RESOURCE_ATTRIBUTES="service.name=${INPUTS_RELEASE_NAME},service.version=${INPUTS_RELEASE_VERSION},service.env=${INPUTS_ENVIRONMENT},service.sourceProject=${INPUTS_PROJECT_KEY}${OTEL_EXTRA}" \
-          yq e -i ".env += [{\"name\":\"OTEL_RESOURCE_ATTRIBUTES\",\"value\":strenv(OTEL_RESOURCE_ATTRIBUTES)}]" helm-values.yaml
+        yq e -i ".env += [{\"name\":\"OTEL_RESOURCE_ATTRIBUTES\",\"value\":strenv(OTEL_RESOURCE_ATTRIBUTES)}]" helm-values.yaml
         echo "::endgroup::"
