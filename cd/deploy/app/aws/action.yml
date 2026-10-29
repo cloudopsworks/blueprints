@@ -249,6 +249,7 @@ runs:
         project_key: ${{ inputs.project_key }}
         deployment_name: ${{ inputs.deployment_name }}
         environment: ${{ inputs.environment }}
+        front_end: ${{ inputs.front_end }}
 
     - name: Generate Observability configuration for datadog
       if: ${{ inputs.observability_enabled == 'true' && inputs.observability_agent == 'datadog' }}
