@@ -27,6 +27,12 @@ USER root
 ### Install shadow only if alpine based image is used
 #RUN if [ -f /etc/alpine-release ]; then apk add --no-cache shadow; fi
 
+### Render target for the OpenTelemetry exporter config that startup.sh writes at
+### container start. Owned by the runtime user below; /etc/nginx itself stays
+### root-owned and read-only to the app, and nothing is written to a shared
+### world-writable path such as /tmp.
+RUN mkdir -p /etc/nginx/otel.d
+
 FROM base AS nginx-observable-false
 COPY ./nginx.conf /etc/nginx/nginx.conf
 RUN sed -i 's|\[ERROR_LOG\]|'"${NGINX_ERROR_LOG_PATH} ${NGINX_ERROR_LOG_LEVEL}"'|g' /etc/nginx/nginx.conf
@@ -68,7 +74,8 @@ FROM customized AS final
 #    && adduser --uid $USER_ID --system --ingroup $GROUP_NAME --home /app/webapp $USER_NAME
 #<USERGROUP-INJECTION-POINT>
 RUN chown -R $USER_NAME:$GROUP_NAME /usr/share/nginx/html \
-    && chown -R $USER_NAME:$GROUP_NAME /app/webapp/
+    && chown -R $USER_NAME:$GROUP_NAME /app/webapp/ \
+    && chown -R $USER_NAME:$GROUP_NAME /etc/nginx/otel.d
 
 COPY ./startup.sh /app/webapp/
 RUN chmod +x /app/webapp/startup.sh
