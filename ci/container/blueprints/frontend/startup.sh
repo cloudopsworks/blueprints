@@ -33,7 +33,7 @@ EOF
         printf '%s' "$OTEL_RESOURCE_ATTRIBUTES" | tr ',' '\n' | while IFS= read -r attribute; do
             key=${attribute%%=*}
             value=${attribute#*=}
-            printf 'otel_resource_attribute %s %s;\n' "$key" "$value" >> "$OTEL_DIR/exporter.conf"
+            printf 'otel_resource_attr %s %s;\n' "$key" "$value" >> "$OTEL_DIR/exporter.conf"
         done
     fi
 fi
