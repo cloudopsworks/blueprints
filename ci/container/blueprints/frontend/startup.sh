@@ -30,11 +30,10 @@ otel_trace_context ${OTEL_TRACE_CONTEXT:-inject};
 EOF
     #Generate otel_resouce_attributes entries from variable OTEL_RESOURCE_ATTRIBUTES
     if [ -n "${OTEL_RESOURCE_ATTRIBUTES:-}" ]; then
-        IFS=',' read -r -a attributes <<< "$OTEL_RESOURCE_ATTRIBUTES"
-        for attribute in "${attributes[@]}"; do
-            key=$(printf '%s' "$attribute" | cut -d '=' -f 1)
-            value=$(printf '%s' "$attribute" | cut -d '=' -f 2-)
-            echo "otel_resource_attribute ${key} ${value};" >> "$OTEL_DIR/exporter.conf"
+        printf '%s' "$OTEL_RESOURCE_ATTRIBUTES" | tr ',' '\n' | while IFS= read -r attribute; do
+            key=${attribute%%=*}
+            value=${attribute#*=}
+            printf 'otel_resource_attribute %s %s;\n' "$key" "$value" >> "$OTEL_DIR/exporter.conf"
         done
     fi
 fi
