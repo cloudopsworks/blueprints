@@ -39,6 +39,10 @@ inputs:
   environment:
     description: 'The environment'
     required: true
+  front_end:
+    description: 'Deployment is a front end'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -56,6 +60,7 @@ runs:
         project_key: ${{ inputs.project_key }}
         deployment_name: ${{ inputs.deployment_name }}
         environment: ${{ inputs.environment }}
+        front_end: ${{ inputs.front_end }}
 
     - name: Xray/OTEL for Lambdas
       id: xray_lambda

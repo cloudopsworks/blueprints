@@ -97,6 +97,16 @@ runs:
         blueprint_path: ${{ inputs.blueprint_path }}
         token: ${{ inputs.token }}
 
+    - name: SemVer Normalize
+      id: semver_normalize
+      shell: bash
+      env:
+        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+      run: |
+        # Normalize the release version to SemVer format
+        SEMVER=$(echo "${INPUTS_RELEASE_VERSION}" | tr '+' '_')
+        echo "result=$SEMVER" >> $GITHUB_OUTPUT
+
     - name: Copy configurations
       shell: bash
       env:
@@ -162,7 +172,7 @@ runs:
       env:
         INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
         INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
-        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        INPUTS_RELEASE_VERSION: ${{ steps.semver_normalize.outputs.result }}
         INPUTS_FRONTEND_ENV_SUFFIX: ${{ inputs.front_end == 'true' && format('-{0}', inputs.environment) || '' }}
       run: |
         printf "%s\n" \
@@ -187,7 +197,7 @@ runs:
       shell: bash
       env:
         INPUTS_RELEASE_NAME: ${{ inputs.release_name }}
-        INPUTS_RELEASE_VERSION: ${{ inputs.release_version }}
+        INPUTS_RELEASE_VERSION: ${{ steps.semver_normalize.outputs.result }}
         STEPS_HASH_VALUE_RESULT: ${{ steps.hash_value.outputs.result }}
       run: |
         BUCKET_PATH="${INPUTS_RELEASE_NAME}/${INPUTS_RELEASE_VERSION}/${INPUTS_RELEASE_NAME}-${INPUTS_RELEASE_VERSION}-${STEPS_HASH_VALUE_RESULT}.zip"

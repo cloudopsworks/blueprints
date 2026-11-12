@@ -1,6 +1,16 @@
 # Default values for Maven projects.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+
+# Resource names default to "<release>-<chart name>", e.g. "my-app-helm".
+# nameOverride replaces the chart-name suffix; fullnameOverride replaces the whole name and
+# is the only way to drop the suffix. The resulting name becomes the Deployment name, which
+# is what CloudWatch reports as the Application Signals service name.
+# Renaming an existing release replaces its Deployment and Service rather than renaming them
+# in place, and earlier telemetry stays under the old name.
+#nameOverride: ""
+#fullnameOverride: ""
+
 replicaCount: 1
 image:
   repository: draft
