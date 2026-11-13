@@ -398,7 +398,7 @@ runs:
       working-directory: ${{ inputs.source_path }}
       run: |
         echo "::group::SBOM Generation for Dtrack"
-        CI=true npx @cyclonedx/cyclonedx-npm --output-format XML -o bom.xml
+        CI=true npx --yes --package=@cyclonedx/cyclonedx-npm --package=xmlbuilder2 cyclonedx-npm --output-format XML -o bom.xml
         echo "::endgroup::"
 
     - name: Re-Install Dependencies - Production Ready
