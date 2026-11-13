@@ -45,7 +45,7 @@ generate "backend" {
     "  backend \"s3\" {",
     "    bucket         = \"${local.state_conf.s3.bucket}\"",
     "    region         = \"${local.state_conf.s3.region}\"",
-    "    kms_key_id     = \"${local.state_conf.s3.kms_key_id}\"",
+    try(local.state_conf.s3.kms_key_id, "") != "" ? "    kms_key_id     = \"${local.state_conf.s3.kms_key_id}\"" : "",
     "    dynamodb_table = \"${local.state_conf.s3.dynamodb_table}\"",
     "    key            = \"${local.state_prefix}/terraform.tfstate\"",
     "  }",
