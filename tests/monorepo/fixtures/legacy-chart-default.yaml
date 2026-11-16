@@ -1,0 +1,72 @@
+---
+# Source: helm/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: compatibility-helm
+  labels:
+    chart: "helm-5.10.0"
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: compatibility-helm
+---
+# Source: helm/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: compatibility-helm
+  labels:
+    draft: draft-app
+    chart: "helm-5.10.0"
+  namespace: default
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: compatibility-helm
+  replicas: 1
+  paused: false
+  template:
+    metadata:
+      labels:
+        draft: draft-app
+        app: compatibility-helm
+    spec:
+      securityContext:
+        null
+      containers:
+      - name: helm
+        image: "draft:dev"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            scheme: HTTP
+            path: /healthz
+            port: 8080
+          periodSeconds: 1
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+            {}
+        volumeMounts:
+      terminationGracePeriodSeconds: 30
+      volumes:

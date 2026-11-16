@@ -34,9 +34,27 @@ inputs:
     description: 'The Github token'
     required: true
 
+  component-mode: {description: 'Opt-in typed component analysis; existing legacy flow remains default', default: 'false'}
+  plan: {description: 'Component mode: independently endorsed BuildPlan file', default: ''}
+  component-result: {description: 'Component mode: verified ComponentResult and local main payload', default: ''}
+  component: {description: 'Component mode: selected component ID', default: ''}
+  source-sha: {description: 'Component mode: endorsed exact source commit', default: ''}
+  trusted: {description: 'Component mode: caller-established trusted source execution decision, not standalone authorization', default: 'false'}
+  quality-gate-enabled: {description: 'Component mode: existing normalized Sonar qualityGateEnabled policy', default: 'true'}
+  fail-on-quality-gate: {description: 'Component mode: existing normalized Sonar failOnQualityGate policy', default: 'false'}
+outputs:
+  result: {description: 'Component mode: validated ScannerResult file', value: '${{ steps.component.outputs.result }}'}
+  status: {description: 'Component mode: classified ScannerResult status', value: '${{ steps.component.outputs.status }}'}
 runs:
   using: 'composite'
   steps:
+    - id: mode
+      uses: actions/github-script@v9
+      env:
+        COMPONENT_MODE: ${{ inputs.component-mode }}
+      with:
+        script: |
+          if (!['true', 'false'].includes(process.env.COMPONENT_MODE)) throw new Error('sonar-component-mode');
     - name: Get Repository Owner from inputs-global.yaml
       id: repo_owner
       shell: bash
@@ -50,7 +68,26 @@ runs:
           echo "${RET}"
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
+    - name: Analyze typed .NET component
+      id: component
+      if: inputs.component-mode == 'true'
+      uses: ./bp/ci/dotnet/scan/sonarqube/component
+      with:
+        source-path: ${{ inputs.source_path }}
+        plan: ${{ inputs.plan }}
+        component-result: ${{ inputs.component-result }}
+        component: ${{ inputs.component }}
+        source-sha: ${{ inputs.source-sha }}
+        trusted: ${{ inputs.trusted }}
+        token: ${{ inputs.sonarqube_token }}
+        server: ${{ inputs.sonarqube_url }}
+        organization: ${{ steps.repo_owner.outputs.result }}
+        project-key: ${{ format('{0}:{1}', inputs.sonarqube_project_key, inputs.component) }}
+        version: ${{ inputs.semver }}
+        quality-gate-enabled: ${{ inputs.quality-gate-enabled }}
+        fail-on-quality-gate: ${{ inputs.fail-on-quality-gate }}
     - name: Get Sonnar Scanner version, if needed to be adjusted, allways defaults to latest
+      if: inputs.component-mode != 'true'
       id: sonar_scanner_version
       shell: bash
       env:
@@ -63,6 +100,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Sonar sources form inputs-global.yaml
+      if: inputs.component-mode != 'true'
       id: source_path
       shell: bash
       env:
@@ -75,6 +113,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Sonar binaries from inputs-global.yaml
+      if: inputs.component-mode != 'true'
       id: binaries_path
       shell: bash
       env:
@@ -87,6 +126,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Sonar libraries from inputs-global.yaml
+      if: inputs.component-mode != 'true'
       id: libraries_path
       shell: bash
       env:
@@ -99,6 +139,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Sonar tests from inputs-global.yaml (defaults to source_path)
+      if: inputs.component-mode != 'true'
       id: tests_path
       shell: bash
       env:
@@ -113,6 +154,7 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar test binaries from inputs-global.yaml
+      if: inputs.component-mode != 'true'
       id: test_binaries_path
       shell: bash
       env:
@@ -125,6 +167,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Sonar test inclusions from inputs-global.yaml
+      if: inputs.component-mode != 'true'
       id: test_inclusions_path
       shell: bash
       env:
@@ -139,6 +182,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Sonar test libraries from inputs-global.yaml
+      if: inputs.component-mode != 'true'
       id: test_libraries_path
       shell: bash
       env:
@@ -153,6 +197,7 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
     - name: Get Sonar extra exclusions from inputs-global.yaml
+      if: inputs.component-mode != 'true'
       id: extra_exclusions_paths
       shell: bash
       env:
@@ -165,6 +210,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Sonar exclusions from inputs-global.yaml
+      if: inputs.component-mode != 'true'
       id: exclusions_paths
       shell: bash
       env:
@@ -179,6 +225,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get if sonar branch setting is disabled
+      if: inputs.component-mode != 'true'
       id: branch_disabled
       shell: bash
       env:
@@ -191,12 +238,14 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Install .Net Sonar Scanner
+      if: inputs.component-mode != 'true'
       shell: bash
       run: |
         dotnet tool install --global dotnet-sonarscanner
         echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
     - name: Run Sonar Scanner .Net
+      if: inputs.component-mode != 'true'
       shell: bash
       env:
         INPUTS_SONARQUBE_PROJECT_KEY: ${{ inputs.sonarqube_project_key }}

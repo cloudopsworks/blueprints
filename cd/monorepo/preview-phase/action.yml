@@ -1,0 +1,86 @@
+name: Protected preview phase
+description: Fresh fixed scope selection and three isolated selected captures, with no source execution
+inputs:
+  phase: {description: Fixed preview phase enum, required: true}
+  target: {description: Verified target routing hint, required: true}
+  environment: {description: Exact native protected environment, required: true}
+  component: {description: Exact component for component phases, default: ''}
+  handle: {description: Historical handle digest routing hint only, default: ''}
+  failure-isolation: {description: Standing typed isolation failure policy, default: 'false'}
+outputs:
+  failure-cleanup:
+    description: Routing hint only; cleanup independently verifies exact protected job evidence
+    value: ${{ steps.execute.outputs.failure-cleanup }}
+runs:
+  using: composite
+  steps:
+    - id: selected
+      name: Independently select exact pair and frozen root backend before OIDC
+      shell: bash
+      env:
+        PHASE: ${{ inputs.phase }}
+        TARGET: ${{ inputs.target }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        COMPONENT: ${{ inputs.component }}
+        HANDLE: ${{ inputs.handle }}
+      run: python3 "$GITHUB_ACTION_PATH/../runtime/preview_entry.py" configure --phase "$PHASE" --target "$TARGET" --environment "$ENVIRONMENT" --component "$COMPONENT" --handle "$HANDLE"
+    - uses: ./bp/cd/monorepo/tools
+      with:
+        provider: ${{ steps.selected.outputs.workload-provider }}
+        kubectl-version: ${{ env.CLOUDOPSWORKS_KUBECTL_VERSION || 'v1.37.2' }}
+    - uses: ./bp/cd/monorepo/tools
+      if: steps.selected.outputs.backend-provider != steps.selected.outputs.workload-provider
+      with:
+        provider: ${{ steps.selected.outputs.backend-provider }}
+    - uses: ./bp/cd/monorepo/tools
+      if: steps.selected.outputs.root-backend-provider != steps.selected.outputs.workload-provider && steps.selected.outputs.root-backend-provider != steps.selected.outputs.backend-provider
+      with:
+        provider: ${{ steps.selected.outputs.root-backend-provider }}
+    - uses: ./bp/cd/deploy/common/iac
+      with:
+        token: ${{ github.token }}
+        tofu_version: '1.11.4'
+        tg_version: '0.99.4'
+    - id: workload
+      uses: ./bp/cd/monorepo/auth
+      with:
+        provider: ${{ steps.selected.outputs.workload-provider }}
+        auth-ref: ${{ steps.selected.outputs.workload-ref }}
+        bindings: ${{ env.CLOUDOPSWORKS_AUTH }}
+        install-tools: 'false'
+        context-name: workload
+    - id: backend
+      uses: ./bp/cd/monorepo/auth
+      if: steps.selected.outputs.same-binding != 'true'
+      with:
+        provider: ${{ steps.selected.outputs.backend-provider }}
+        auth-ref: ${{ steps.selected.outputs.backend-ref }}
+        bindings: ${{ env.CLOUDOPSWORKS_AUTH }}
+        install-tools: 'false'
+        context-name: backend
+    - id: root-backend
+      uses: ./bp/cd/monorepo/auth
+      if: steps.selected.outputs.root-same-workload != 'true' && steps.selected.outputs.root-same-backend != 'true'
+      with:
+        provider: ${{ steps.selected.outputs.root-backend-provider }}
+        auth-ref: ${{ steps.selected.outputs.root-backend-ref }}
+        bindings: ${{ env.CLOUDOPSWORKS_AUTH }}
+        install-tools: 'false'
+        context-name: root-backend
+    - id: execute
+      name: Re-fetch host, source policy, native root UID and predecessor proof before saved apply
+      shell: bash
+      env:
+        PHASE: ${{ inputs.phase }}
+        TARGET: ${{ inputs.target }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        COMPONENT: ${{ inputs.component }}
+        HANDLE: ${{ inputs.handle }}
+        FAILURE_ISOLATION: ${{ inputs.failure-isolation }}
+        WORKLOAD_CONTEXT: ${{ steps.workload.outputs.context-path }}
+        BACKEND_CONTEXT: ${{ steps.backend.outputs.context-path }}
+        ROOT_BACKEND_CONTEXT: ${{ steps.root-backend.outputs.context-path }}
+      run: |
+        args=()
+        if [[ "$FAILURE_ISOLATION" == true ]]; then args+=(--failure-isolation); fi
+        python3 "$GITHUB_ACTION_PATH/../runtime/preview_entry.py" execute --phase "$PHASE" --target "$TARGET" --environment "$ENVIRONMENT" --component "$COMPONENT" --handle "$HANDLE" "${args[@]}"

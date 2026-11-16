@@ -1,0 +1,268 @@
+name: Verified component Snyk scan
+description: Exact-source advisory Snyk test; source jobs must have no deployment credentials or OIDC
+inputs:
+  source-path: {description: Exact source worktree with installed toolchains, required: true}
+  plan: {description: Independently endorsed BuildPlan file, required: true}
+  component-result: {description: Verified ComponentResult with local main payload, required: true}
+  component: {description: Selected component identity, required: true}
+  source-sha: {description: Endorsed source commit, required: true}
+  trusted: {description: Trusted caller authorization for source execution, required: true}
+  token: {description: Scoped Snyk scan token only, required: false}
+outputs:
+  result: {description: Validated advisory ScannerResult file, value: '${{ steps.report.outputs.result }}'}
+  status: {description: Classified scanner outcome, value: '${{ steps.report.outputs.status }}'}
+runs:
+  using: composite
+  steps:
+    - name: Bind source and verified main artifact
+      id: prepare
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        PLAN_PATH: ${{ inputs.plan }}
+        COMPONENT_RESULT: ${{ inputs.component-result }}
+        COMPONENT: ${{ inputs.component }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        TRUSTED: ${{ inputs.trusted }}
+        SNYK_TOKEN: ${{ inputs.token }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const env = process.env;
+          if (!['true', 'false'].includes(env.TRUSTED)) throw new Error('snyk-trust');
+          const root = await fs.realpath(env.SOURCE_PATH);
+          const safeFile = async (file, limit, read = true) => {
+            const stat = await fs.lstat(file);
+            if (!stat.isFile() || await fs.realpath(file) !== file || stat.size > limit) throw new Error('snyk-file');
+            return read ? fs.readFile(file) : undefined;
+          };
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'snyk-component-'));
+          await fs.chmod(directory, 0o700);
+          const options = {silent: true, ignoreReturnCode: true};
+          const planCheck = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {...options, input: await safeFile(env.PLAN_PATH, 4194304)});
+          if (planCheck.exitCode !== 0 || Buffer.byteLength(planCheck.stdout) > 4194304) throw new Error('snyk-plan-contract');
+          const plan = JSON.parse(planCheck.stdout).record;
+          const component = plan.components.find(item => item.id === env.COMPONENT);
+          if (!component || plan.headSha !== env.SOURCE_SHA || !plan.buildSelection.some(item => item.componentId === component.id)) throw new Error('snyk-plan-link');
+          const relativePath = component.path;
+          if (typeof relativePath !== 'string' || relativePath.includes('\\') || path.isAbsolute(relativePath) || relativePath !== '.' && relativePath.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('snyk-component-path');
+          const source = path.join(root, relativePath);
+          if (await fs.realpath(source) !== source || !(await fs.stat(source)).isDirectory()) throw new Error('snyk-source-path');
+          const linked = path.join(directory, 'linked.json');
+          const planPath = path.join(directory, 'plan.json');
+          await fs.writeFile(linked, JSON.stringify({plan}), {mode: 0o600, flag: 'wx'});
+          await fs.writeFile(planPath, JSON.stringify(plan), {mode: 0o600, flag: 'wx'});
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {...options, input: await safeFile(env.COMPONENT_RESULT, 4194304)});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('snyk-result-contract');
+          const record = JSON.parse(checked.stdout).record;
+          if (record.componentId !== component.id || record.headSha !== plan.headSha || record.status !== 'succeeded') throw new Error('snyk-result-link');
+          const artifact = record.mainArtifact;
+          const relative = artifact?.location?.path;
+          if (artifact?.location?.kind !== 'local' || typeof relative !== 'string' || !relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('snyk-payload-path');
+          const payload = path.join(root, relative);
+          await safeFile(payload, 536870912, false);
+          const descriptor = path.join(directory, 'artifact.json');
+          await fs.writeFile(descriptor, JSON.stringify(artifact), {mode: 0o600, flag: 'wx'});
+          const verified = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', payload], options);
+          if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 65536) throw new Error('snyk-payload-integrity');
+          const evidence = JSON.parse(verified.stdout);
+          if (evidence.payloadVerified !== true || evidence.digest !== artifact.digest) throw new Error('snyk-payload-binding');
+          const head = await exec.getExecOutput('git', ['-C', root, 'rev-parse', 'HEAD'], options);
+          if (head.exitCode !== 0 || head.stdout.trim() !== plan.headSha) throw new Error('snyk-source-sha');
+          const profiles = {npm: ['package.json', 'npm'], pnpm: ['package.json', 'pnpm'], yarn: ['package.json', 'yarn'], go: ['go.mod', 'gomodules'], maven: ['pom.xml', 'maven'], gradle: ['build.gradle', 'gradle'], dotnet: ['', 'nuget'], python: ['requirements.txt', 'pip'], bundler: ['Gemfile', 'rubygems'], rails: ['Gemfile', 'rubygems'], cargo: ['', '']};
+          const profile = component.buildProfile;
+          if (!Object.hasOwn(profiles, profile)) throw new Error('snyk-build-profile');
+          let [manifest, manager] = profiles[profile];
+          const exists = async name => fs.lstat(path.join(source, name)).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
+          if (profile === 'gradle' && !await exists(manifest)) manifest = 'build.gradle.kts';
+          if (profile === 'python') {
+            if (await exists('poetry.lock')) { manifest = 'pyproject.toml'; manager = 'poetry'; }
+            else if (await exists('Pipfile.lock')) manifest = 'Pipfile';
+          }
+          if (manifest) await safeFile(path.join(source, manifest), 16777216);
+          const decision = env.TRUSTED !== 'true' ? 'snyk-untrusted-source' : !env.SNYK_TOKEN ? 'snyk-missing-credential' : profile === 'cargo' ? 'snyk-cargo-test-unsupported' : 'ready';
+          const identity = {componentId: component.id, sourceSha: plan.headSha, artifactDigest: artifact.digest, profile, scanner: 'snyk'};
+          const canonical = JSON.stringify(Object.fromEntries(Object.keys(identity).sort().map(key => [key, identity[key]])));
+          const correlationId = 'scan-' + crypto.createHash('sha256').update(canonical).digest('hex').slice(0, 32);
+          const scanContext = {...identity, correlationId, buildProfile: profile, source, manifest, manager, decision};
+          await fs.writeFile(path.join(directory, 'context.json'), JSON.stringify(scanContext), {mode: 0o600, flag: 'wx'});
+          for (const [key, value] of Object.entries({directory, decision, manifest, manager, 'build-profile': profile, source, root, 'python-command': path.join(source, '.venv/bin/python3'), 'source-sha': plan.headSha, plan: planPath})) core.setOutput(key, value);
+    - name: Prepare dependencies without token and run bounded pinned Snyk
+      id: scan
+      shell: bash
+      env:
+        DIRECTORY: ${{ steps.prepare.outputs.directory }}
+        DECISION: ${{ steps.prepare.outputs.decision }}
+        SOURCE_PATH: ${{ steps.prepare.outputs.root }}
+        SOURCE_SHA: ${{ steps.prepare.outputs.source-sha }}
+        COMPONENT_PATH: ${{ steps.prepare.outputs.source }}
+        PLAN_PATH: ${{ steps.prepare.outputs.plan }}
+        COMPONENT: ${{ inputs.component }}
+        MANIFEST: ${{ steps.prepare.outputs.manifest }}
+        MANAGER: ${{ steps.prepare.outputs.manager }}
+        BUILD_PROFILE: ${{ steps.prepare.outputs.build-profile }}
+        PYTHON_COMMAND: ${{ steps.prepare.outputs.python-command }}
+        SNYK_TOKEN: ${{ inputs.token }}
+      run: |
+        set +x
+        set -euo pipefail
+        umask 077
+        if [[ "$DECISION" != ready ]]; then exit 0; fi
+        for name in $(compgen -e); do
+          case "$name" in
+            AWS_*|AZURE_*|GOOGLE_*|GCLOUD_*|ARM_*|TF_*|TERRAGRUNT_*|ACTIONS_ID_TOKEN_*|CLOUDOPSWORKS_*)
+              printf 'error=snyk-credential-boundary\n' >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
+        done
+        for name in $(compgen -e); do
+          case "$name" in
+            PATH|JAVA_HOME|GOROOT|GEM_HOME|GEM_PATH|DOTNET_ROOT|DIRECTORY|DECISION|SOURCE_PATH|SOURCE_SHA|COMPONENT_PATH|PLAN_PATH|COMPONENT|MANIFEST|MANAGER|BUILD_PROFILE|PYTHON_COMMAND|SNYK_TOKEN|GITHUB_OUTPUT) ;;
+            *) unset "$name" ;;
+          esac
+        done
+        # Keep fixed shell output writes, but do not export their destination to source children.
+        export -n GITHUB_OUTPUT
+        export HOME="$DIRECTORY/home" TMPDIR="$DIRECTORY/tmp" CI=true SNYK_DISABLE_ANALYTICS=1
+        set -o noclobber
+        if ! { : > "$DIRECTORY/capture.lock" && : > "$DIRECTORY/control.stderr"; } 2>/dev/null; then
+          printf 'error=snyk-capture-exists\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        exec 2>> "$DIRECTORY/control.stderr"
+        # Re-read only the immutable original HEAD; generated/untracked build files are allowed.
+        check_head() {
+          set +e
+          GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null timeout --kill-after=10s 30s git -C "$SOURCE_PATH" rev-parse HEAD 2>&1 | timeout --kill-after=10s 40s head -c 42 > "$DIRECTORY/head-$1.txt"
+          head_codes=("${PIPESTATUS[@]}")
+          set -e
+          if [[ "${head_codes[0]}" != 0 || "${head_codes[1]}" != 0 || $(wc -c < "$DIRECTORY/head-$1.txt") -ne 41 || "$(cat "$DIRECTORY/head-$1.txt")" != "$SOURCE_SHA" ]]; then printf 'error=snyk-source-drift\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        }
+        mkdir -m 700 "$HOME" "$TMPDIR"
+        # Bound only private streams: source/dependency artifacts must not inherit a file-size limit.
+        mkfifo -m 600 "$DIRECTORY/diagnostics.pipe"
+        timeout --kill-after=10s 40s head -c 16777216 < "$DIRECTORY/diagnostics.pipe" > "$DIRECTORY/version.stderr" &
+        reader=$!
+        set +e
+        timeout --kill-after=10s 30s snyk --version 2> "$DIRECTORY/diagnostics.pipe" | timeout --kill-after=10s 40s head -c 32 > "$DIRECTORY/version.txt"
+        codes=("${PIPESTATUS[@]}")
+        wait "$reader"; diagnostic_exit=$?
+        set -e
+        if [[ "${codes[0]}" != 0 || "${codes[1]}" != 0 || "$diagnostic_exit" != 0 || $(wc -c < "$DIRECTORY/version.txt") -ge 32 || $(wc -c < "$DIRECTORY/version.stderr") -ge 16777216 || "$(cat "$DIRECTORY/version.txt")" != 1.1308.4 ]]; then
+          printf 'error=snyk-version-mismatch\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        token=$SNYK_TOKEN
+        unset SNYK_TOKEN
+        timeout --kill-after=10s 620s head -c 16777216 < "$DIRECTORY/diagnostics.pipe" > "$DIRECTORY/build.stderr" &
+        reader=$!
+        set +e
+        timeout --kill-after=10s 600s tronador components build "$COMPONENT" --workdir "$SOURCE_PATH" --plan "$PLAN_PATH" --allow-network --no-install-tools --json 2> "$DIRECTORY/diagnostics.pipe" | timeout --kill-after=10s 620s head -c 4194304 > "$DIRECTORY/build.json"
+        codes=("${PIPESTATUS[@]}")
+        wait "$reader"; diagnostic_exit=$?
+        set -e
+        build_exit=${codes[0]}
+        if [[ "${codes[1]}" != 0 || "$diagnostic_exit" != 0 || $(wc -c < "$DIRECTORY/build.json") -ge 4194304 || $(wc -c < "$DIRECTORY/build.stderr") -ge 16777216 ]]; then
+          printf 'error=snyk-capture-limit\nexit=%s\n' "$build_exit" >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        if [[ "$build_exit" != 0 ]]; then
+          printf 'error=snyk-build-preparation\nexit=%s\n' "$build_exit" >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        if [[ "$BUILD_PROFILE" == dotnet ]]; then
+          if ! MANIFEST=$(jq -er --arg cwd "$COMPONENT_PATH" '.calls | map(select(.tool == "dotnet" and .workingDirectory == $cwd and .arguments[0] == "restore")) | if length == 1 then .[0].arguments[1] else error("project") end' "$DIRECTORY/build.json"); then
+            printf 'error=snyk-project-selection\n' >> "$GITHUB_OUTPUT"; exit 0
+          fi
+        fi
+        if [[ -z "$MANIFEST" || "$MANIFEST" == /* || "$MANIFEST" =~ (^|/)\.\.?(/|$)|//|\\ || "$MANIFEST" == *$'\n'* || "$MANIFEST" == *$'\r'* || "$(realpath -- "$COMPONENT_PATH/$MANIFEST")" != "$COMPONENT_PATH/$MANIFEST" || ! -f "$COMPONENT_PATH/$MANIFEST" ]]; then
+          printf 'error=snyk-manifest-path\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        check_head prepared
+        export SNYK_TOKEN=$token
+        unset token
+        # Match the existing CLI Ruby preparation location, not a second install.
+        case "$BUILD_PROFILE" in
+          bundler|rails) export BUNDLE_PATH="$COMPONENT_PATH/.bundle/vendor" BUNDLE_FROZEN=true ;;
+        esac
+        cd "$COMPONENT_PATH"
+        args=(test "--file=$MANIFEST" "--package-manager=$MANAGER" --json)
+        case "$BUILD_PROFILE/$MANAGER" in
+          python/pip) args+=("--command=$PYTHON_COMMAND") ;;
+        esac
+        # Documented --json emits only the test result on stdout; stderr has its own bounded pipe.
+        timeout --kill-after=10s 620s head -c 16777216 < "$DIRECTORY/diagnostics.pipe" > "$DIRECTORY/scan.stderr" &
+        reader=$!
+        set +e
+        timeout --kill-after=10s 600s snyk "${args[@]}" 2> "$DIRECTORY/diagnostics.pipe" | timeout --kill-after=10s 620s head -c 16777216 > "$DIRECTORY/snyk.json"
+        codes=("${PIPESTATUS[@]}")
+        wait "$reader"; diagnostic_exit=$?
+        set -e
+        scan_exit=${codes[0]}
+        unset SNYK_TOKEN
+        if [[ "${codes[1]}" != 0 || "$diagnostic_exit" != 0 || $(wc -c < "$DIRECTORY/snyk.json") -ge 16777216 || $(wc -c < "$DIRECTORY/scan.stderr") -ge 16777216 ]]; then
+          printf 'error=snyk-capture-limit\nexit=%s\n' "$scan_exit" >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        check_head completed
+        printf 'exit=%s\nmanifest=%s\n' "$scan_exit" "$MANIFEST" >> "$GITHUB_OUTPUT"
+    - name: Validate complete report and emit advisory ScannerResult
+      id: report
+      if: always() && steps.prepare.outcome == 'success'
+      uses: actions/github-script@v9
+      env:
+        DIRECTORY: ${{ steps.prepare.outputs.directory }}
+        NATIVE_EXIT: ${{ steps.scan.outputs.exit }}
+        NATIVE_ERROR: ${{ steps.scan.outputs.error }}
+        NATIVE_MANIFEST: ${{ steps.scan.outputs.manifest }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          const directory = env.DIRECTORY;
+          if (await fs.realpath(directory) !== directory || !(await fs.lstat(directory)).isDirectory()) throw new Error('snyk-report-directory');
+          const contextPath = path.join(directory, 'context.json');
+          if (!(await fs.lstat(contextPath)).isFile() || await fs.realpath(contextPath) !== contextPath || (await fs.stat(contextPath)).size > 65536) throw new Error('snyk-context');
+          const scanContext = JSON.parse(await fs.readFile(contextPath, 'utf8'));
+          let status = 'infrastructure-error', errorCode = 'snyk-tool-error';
+          if (scanContext.decision === 'snyk-untrusted-source') { status = 'unavailable-untrusted-context'; errorCode = scanContext.decision; }
+          else if (scanContext.decision === 'snyk-cargo-test-unsupported') { status = 'unsupported-profile'; errorCode = scanContext.decision; }
+          else if (scanContext.decision === 'snyk-missing-credential') errorCode = scanContext.decision;
+          else if (env.NATIVE_ERROR) {
+            const allowed = ['snyk-credential-boundary', 'snyk-capture-limit', 'snyk-capture-exists', 'snyk-version-mismatch', 'snyk-build-preparation', 'snyk-project-selection', 'snyk-manifest-path', 'snyk-source-drift'];
+            errorCode = allowed.includes(env.NATIVE_ERROR) ? env.NATIVE_ERROR : 'snyk-tool-error';
+          } else if (env.NATIVE_EXIT === '3') { status = 'unsupported-profile'; errorCode = 'snyk-no-supported-project'; }
+          else if (['124', '143'].includes(env.NATIVE_EXIT)) errorCode = 'snyk-timeout';
+          else if (/^\d+$/.test(env.NATIVE_EXIT || '') && Number(env.NATIVE_EXIT) >= 128) errorCode = 'snyk-tool-signal';
+          else if (env.NATIVE_EXIT && !['0', '1', '2'].includes(env.NATIVE_EXIT)) errorCode = 'snyk-tool-exit';
+          else if (['0', '1'].includes(env.NATIVE_EXIT)) {
+            try {
+              const file = path.join(directory, 'snyk.json');
+              const stat = await fs.lstat(file);
+              if (!stat.isFile() || await fs.realpath(file) !== file || stat.size < 2 || stat.size > 16777216 || stat.nlink !== 1 || stat.mode & 0o077) throw new Error('report-file');
+              const report = JSON.parse(await fs.readFile(file, 'utf8'));
+              const rows = Array.isArray(report) ? report : [report];
+              if (!rows.length) throw new Error('report-empty');
+              let findings = 0;
+              for (const row of rows) {
+                if (!row || typeof row !== 'object' || Array.isArray(row) || ['error', 'errors', 'errorCode', 'errorMessage', 'err'].some(key => row[key] !== undefined) || typeof row.ok !== 'boolean' || !Array.isArray(row.vulnerabilities) || row.ok === Boolean(row.vulnerabilities.length)) throw new Error('report-shape');
+                if (row.packageManager !== scanContext.manager || row.path !== undefined && row.path !== scanContext.source) throw new Error('report-target');
+                // Plugins may replace a .NET solution/project with its restored assets file.
+                if (row.targetFile !== undefined) {
+                  if (typeof row.targetFile !== 'string' || !row.targetFile || path.isAbsolute(row.targetFile) || row.targetFile.includes('\\') || row.targetFile.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('report-target');
+                  const target = path.join(scanContext.source, row.targetFile);
+                  if (await fs.realpath(target) !== target || !(await fs.lstat(target)).isFile()) throw new Error('report-target-file');
+                }
+                for (const vulnerability of row.vulnerabilities) if (!vulnerability || typeof vulnerability.id !== 'string' || !vulnerability.id || !['low', 'medium', 'high', 'critical'].includes(vulnerability.severity)) throw new Error('report-vulnerability');
+                findings += row.vulnerabilities.length;
+              }
+              if ((env.NATIVE_EXIT === '1') !== Boolean(findings)) throw new Error('report-exit');
+              status = findings ? 'findings-advisory' : 'passed'; errorCode = null;
+            } catch { errorCode = 'snyk-report-invalid'; }
+          }
+          const record = {apiVersion: 'cloudopsworks.io/operations/v1', kind: 'ScannerResult', scanner: 'snyk', profile: scanContext.profile, componentId: scanContext.componentId, sourceSha: scanContext.sourceSha, status, required: false, artifactDigest: scanContext.artifactDigest, correlationId: scanContext.correlationId, errorCode};
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('snyk-scanner-contract');
+          const validated = JSON.parse(checked.stdout).record;
+          if (!validated || Object.keys(validated).length !== Object.keys(record).length || Object.keys(record).some(key => validated[key] !== record[key])) throw new Error('snyk-scanner-roundtrip');
+          const output = path.join(directory, 'scanner-result.json');
+          await fs.writeFile(output, JSON.stringify(record), {mode: 0o600, flag: 'wx'});
+          core.setOutput('result', output);
+          core.setOutput('status', status);

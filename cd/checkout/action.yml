@@ -10,6 +10,14 @@ name: Checkout Code & Blueprint here
 author: cloudopsworks
 description: Checkout the code and blueprint for the current branch
 inputs:
+  source_path:
+    description: 'Relative source checkout destination; root is allowed with reserved bp subtree'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'Relative trusted Blueprint checkout destination'
+    required: false
+    default: 'bp'
   source_ref:
     description: 'The branch or tag to checkout'
     required: false
@@ -22,34 +30,78 @@ inputs:
     description: 'The GitHub token'
     required: false
     default: ''
+  checkout_source:
+    description: 'Checkout caller source; false for data-only privileged component consumers'
+    required: false
+    default: 'true'
+  persist_credentials:
+    description: 'Persist checkout credentials; component jobs use false'
+    required: false
+    default: 'true'
+  check_module_version:
+    description: 'Run the legacy source module-version lookup'
+    required: false
+    default: 'true'
 outputs:
   source_path:
     description: 'The path to the source code'
-    value: 'source'
+    value: ${{ inputs.source_path }}
   blueprint_path:
     description: 'The path to the blueprint'
-    value: 'bp'
+    value: ${{ inputs.blueprint_path }}
 runs:
   using: 'composite'
   steps:
+    - name: Validate checkout mode
+      id: validate
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source_path }}
+        BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        CHECKOUT_SOURCE: ${{ inputs.checkout_source }}
+        PERSIST_CREDENTIALS: ${{ inputs.persist_credentials }}
+        CHECK_MODULE_VERSION: ${{ inputs.check_module_version }}
+      with:
+        script: |
+          const {SOURCE_PATH: source, BLUEPRINT_PATH: blueprint,
+            CHECKOUT_SOURCE: checkoutSource, PERSIST_CREDENTIALS: persistCredentials,
+            CHECK_MODULE_VERSION: checkModuleVersion} = process.env;
+          const safePath = value => typeof value === 'string' && value.length > 0 && value.length <= 256 &&
+            !/[^A-Za-z0-9._/-]/.test(value) && !value.startsWith('/') &&
+            value.split('/').every(part => !['', '..', '.', '.git'].includes(part));
+          if (!(source === '.' || safePath(source)) || !safePath(blueprint))
+            throw new Error('Unsafe checkout destination');
+          if (source === '.') {
+            if (blueprint !== 'bp') throw new Error('Root source reserves only fixed bp subtree');
+          } else if (source === blueprint || source.startsWith(blueprint + '/') || blueprint.startsWith(source + '/')) {
+            throw new Error('Overlapping checkout destinations');
+          }
+          if (checkModuleVersion === 'true' && blueprint !== 'bp')
+            throw new Error('Legacy module lookup requires fixed bp checkout');
+          if (![checkoutSource, persistCredentials, checkModuleVersion].every(value => ['true', 'false'].includes(value)))
+            throw new Error('Invalid checkout boolean mode');
+          if (checkoutSource === 'false' && checkModuleVersion === 'true')
+            throw new Error('Data-only checkout requires module version lookup disabled');
     - name: Checkout Source Code
       uses: actions/checkout@v6
-      if: ${{ inputs.token == '' }}
+      if: ${{ inputs.checkout_source == 'true' && inputs.token == '' }}
       with:
         ref: ${{ inputs.source_ref }}
         fetch-tags: true
         fetch-depth: 0
-        path: source
+        persist-credentials: ${{ inputs.persist_credentials }}
+        path: ${{ inputs.source_path }}
 
     - name: Checkout Source Code w/PAT
       uses: actions/checkout@v6
-      if: ${{ inputs.token != '' }}
+      if: ${{ inputs.checkout_source == 'true' && inputs.token != '' }}
       with:
         token: ${{ inputs.token }}
         ref: ${{ inputs.source_ref }}
         fetch-tags: true
         fetch-depth: 0
-        path: source
+        persist-credentials: ${{ inputs.persist_credentials }}
+        path: ${{ inputs.source_path }}
 
     - name: Checkout Blueprint
       uses: actions/checkout@v6
@@ -57,11 +109,13 @@ runs:
         repository: 'cloudopsworks/blueprints'
         ref: ${{ inputs.blueprint_ref }}
         fetch-depth: 1
-        path: bp
+        persist-credentials: ${{ inputs.persist_credentials }}
+        path: ${{ inputs.blueprint_path }}
 
     - name: Check Source Module version
+      if: ${{ inputs.check_module_version == 'true' }}
       uses: ./bp/cd/checkout/check-module-version
       with:
-        source_path: source
-        blueprint_path: bp
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
         token: ${{ inputs.token }}

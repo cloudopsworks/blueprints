@@ -1,0 +1,175 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "BuildPlan",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "version": "1.2.3",
+  "event": "release",
+  "prNumber": null,
+  "components": [
+    {
+      "id": "api",
+      "path": "components/api",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "api"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "container",
+        "dockerfile": "Dockerfile",
+        "context": ".",
+        "platform": "linux/amd64"
+      },
+      "preview": {
+        "mode": "container",
+        "source": "main",
+        "port": 8080,
+        "healthPath": "/health"
+      },
+      "dependsOn": [],
+      "targetIds": [
+        "prod-run"
+      ],
+      "workload": {
+        "kind": "http",
+        "port": 3000,
+        "healthPath": "/ready"
+      }
+    },
+    {
+      "id": "worker",
+      "path": "components/worker",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "worker"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "container",
+        "dockerfile": "Dockerfile",
+        "context": ".",
+        "platform": "linux/amd64"
+      },
+      "preview": {
+        "mode": "container",
+        "source": "main",
+        "port": 8080,
+        "healthPath": "/health"
+      },
+      "dependsOn": [],
+      "targetIds": [
+        "prod-run"
+      ],
+      "workload": {
+        "kind": "http",
+        "port": 3000,
+        "healthPath": "/ready"
+      }
+    }
+  ],
+  "targets": [
+    {
+      "id": "prod-run",
+      "environment": "prod",
+      "provider": "aws",
+      "authRef": "aws-prod",
+      "configDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "kind": "aws.eks",
+      "region": "us-east-1",
+      "cluster": "shared",
+      "namespace": "apps",
+      "readiness": {
+        "deadlineSeconds": 600,
+        "intervalSeconds": 5,
+        "probe": {
+          "kind": "http",
+          "path": null,
+          "method": "GET",
+          "requestBody": "",
+          "expectedStatus": 200,
+          "responseContains": "ok",
+          "auth": {
+            "kind": "none"
+          }
+        }
+      }
+    }
+  ],
+  "buildSelection": [
+    {
+      "componentId": "api",
+      "reasons": [
+        "component-path-changed"
+      ]
+    },
+    {
+      "componentId": "worker",
+      "reasons": [
+        "component-path-changed"
+      ]
+    }
+  ],
+  "removedComponents": [],
+  "buildNoop": false,
+  "matrix": {
+    "include": [
+      {
+        "componentId": "api",
+        "closure": [
+          "api"
+        ],
+        "toolchains": [
+          {
+            "tool": "go",
+            "version": "1.26.7",
+            "distribution": "default",
+            "components": [
+              "api"
+            ]
+          }
+        ]
+      },
+      {
+        "componentId": "worker",
+        "closure": [
+          "worker"
+        ],
+        "toolchains": [
+          {
+            "tool": "go",
+            "version": "1.26.7",
+            "distribution": "default",
+            "components": [
+              "worker"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "previewPolicy": {
+    "enabled": false,
+    "targets": []
+  }
+}

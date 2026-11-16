@@ -1,0 +1,209 @@
+name: Execute bounded retained Lambda recovery
+description: Native conditional proof precedes init and each mutation; unlock never renders or reads application sources
+inputs:
+  state-handle: {description: Independently authenticated historical handle file, required: true}
+  proof: {description: Exact native backend baseline, required: true}
+  operation: {description: destroy or unlock, required: true}
+  lock-id: {description: Exact retained ID for unlock only, default: ''}
+  confirmation: {description: Exact scoped operator confirmation, required: true}
+  historical-context: {description: Independently reconstructed historical config for destroy only, default: ''}
+outputs:
+  operation-plan: {description: Private validated typed operation, value: '${{ steps.plan.outputs.operation-plan }}'}
+runs:
+  using: composite
+  steps:
+    - id: host
+      uses: ./bp/cd/tasks/repo/context
+    - id: plan
+      uses: actions/github-script@v9
+      env:
+        STATE_HANDLE: ${{ inputs.state-handle }}
+        PROOF: ${{ inputs.proof }}
+        OPERATION: ${{ inputs.operation }}
+        LOCK_ID: ${{ inputs.lock-id }}
+        CONFIRMATION: ${{ inputs.confirmation }}
+        HISTORICAL_CONTEXT: ${{ inputs.historical-context }}
+        SOURCE_SHA: ${{ steps.host.outputs.source-sha }}
+        BLUEPRINT_SHA: ${{ steps.host.outputs.blueprint-sha }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path');
+          const e = process.env, temp = await fs.realpath(e.RUNNER_TEMP);
+          async function read(file) {
+            const resolved=path.resolve(file || ''), stat=await fs.lstat(resolved);
+            if (!resolved.startsWith(temp+path.sep) || await fs.realpath(resolved)!==resolved || stat.isSymbolicLink() || !stat.isFile() || (stat.mode&0o077) || stat.size>4194304) throw new Error('recovery-private-input');
+            return JSON.parse(await fs.readFile(resolved,'utf8'));
+          }
+          if (!['destroy','unlock'].includes(e.OPERATION) || (e.OPERATION==='unlock' ? !/^[^\x00-\x20/]{1,256}$/.test(e.LOCK_ID || '') || !!e.HISTORICAL_CONTEXT : !!e.LOCK_ID || !e.HISTORICAL_CONTEXT)) throw new Error('recovery-operation');
+          const handle=await read(e.STATE_HANDLE), proof=await read(e.PROOF), selection=await read(proof.selection);
+          const run=(await github.rest.actions.getWorkflowRunAttempt({...context.repo,run_id:e.GITHUB_RUN_ID,attempt_number:e.GITHUB_RUN_ATTEMPT})).data;
+          if (String(run.id)!==e.GITHUB_RUN_ID || String(run.run_attempt)!==e.GITHUB_RUN_ATTEMPT || String(run.repository?.id)!==e.GITHUB_REPOSITORY_ID || run.head_sha!==e.SOURCE_SHA || !/^[0-9a-f]{40}$/.test(e.BLUEPRINT_SHA || '') || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\[bot\])?$/.test(run.triggering_actor?.login || '')) throw new Error('recovery-current-invocation');
+          const invocation={repository:{id:e.GITHUB_REPOSITORY_ID,fullName:context.repo.owner+'/'+context.repo.repo},sourceSha:e.SOURCE_SHA,runId:e.GITHUB_RUN_ID,runAttempt:e.GITHUB_RUN_ATTEMPT,blueprintSha:e.BLUEPRINT_SHA,actor:run.triggering_actor.login};
+          const checked=await exec.getExecOutput('tronador',['components','contracts','validate','--kind','StateHandle'],{silent:true,ignoreReturnCode:true,input:Buffer.from(JSON.stringify(handle))});
+          if (checked.exitCode || Buffer.byteLength(checked.stdout)>4194304) throw new Error('recovery-handle-contract');
+          const validated=JSON.parse(checked.stdout), lockId=e.LOCK_ID || null;
+          const module=path.join(e.GITHUB_WORKSPACE,'bp/terraform/monorepo/modules/aws-lambda');
+          const metadata=await exec.getExecOutput('tronador',['components','contracts','validate','--kind','StateHandle','--module-root',module],{silent:true,ignoreReturnCode:true,input:Buffer.from(JSON.stringify(handle))});
+          if (metadata.exitCode || Buffer.byteLength(metadata.stdout)>4194304) throw new Error('recovery-module-contract');
+          const bound=JSON.parse(metadata.stdout);
+          if (validated.valid!==true || bound.valid!==true || !/^sha256:[0-9a-f]{64}$/.test(validated.digest || '') ||
+              bound.digest!==validated.digest || JSON.stringify(bound.record)!==JSON.stringify(validated.record) ||
+              bound.module?.activationBlocked!==false || Object.keys(bound.module).sort().join()!=='activationBlocked,metadata' ||
+              bound.module.metadata?.moduleId!=='aws-lambda') throw new Error('recovery-module-blocked');
+          if (validated.digest!==proof.handleDigest || validated.digest!==selection.digest || JSON.stringify(handle)!==JSON.stringify(selection.handle) || proof.operation!==e.OPERATION || proof.lockId!==lockId || selection.operation!==e.OPERATION || selection.lockId!==lockId) throw new Error('recovery-proof-binding');
+          if (JSON.stringify(proof.resourceClaims)!==JSON.stringify(selection.resourceClaims)) throw new Error('recovery-reservation-proof');
+          const expected=e.OPERATION+' '+handle.protectedEnvironment+'/'+handle.targetId+'/'+handle.componentId+(lockId?' '+lockId:'');
+          if (e.CONFIRMATION!==expected) throw new Error('recovery-confirmation');
+          const plan={apiVersion:'cloudopsworks.io/operations/v1',kind:'OperationPlan',operation:e.OPERATION,invocation,stateHandle:handle,stateHandleDigest:validated.digest,inputs:null,lockId};
+          const result=await exec.getExecOutput('tronador',['components','contracts','validate','--kind','OperationPlan'],{silent:true,ignoreReturnCode:true,input:Buffer.from(JSON.stringify(plan))});
+          if (result.exitCode || Buffer.byteLength(result.stdout)>4194304 || JSON.parse(result.stdout).valid!==true) throw new Error('recovery-operation-contract');
+          const directory=await fs.mkdtemp(path.join(temp,'recovery-execute-')); await fs.chmod(directory,0o700);
+          const file=path.join(directory,'operation.json'); await fs.writeFile(file,JSON.stringify(plan),{mode:0o600,flag:'wx'});
+          core.setOutput('operation-plan',file); core.setOutput('directory',directory);
+          for (const key of ['selection','workloadContext','backendContext']) core.setOutput(key,proof[key]);
+    - id: pre-init
+      uses: ./bp/cd/monorepo/recovery/backend/read
+      with:
+        selection: ${{ steps.plan.outputs.selection }}
+        workload-context: ${{ steps.plan.outputs.workloadContext }}
+        backend-context: ${{ steps.plan.outputs.backendContext }}
+        previous-proof: ${{ inputs.proof }}
+    - id: unlock-init
+      if: inputs.operation == 'unlock'
+      uses: actions/github-script@v9
+      env:
+        OPERATION_PLAN: ${{ steps.plan.outputs.operation-plan }}
+        DIRECTORY: ${{ steps.plan.outputs.directory }}
+        BACKEND_CONTEXT: ${{ steps.plan.outputs.backendContext }}
+        WORKLOAD_CONTEXT: ${{ steps.plan.outputs.workloadContext }}
+      with:
+        script: |
+          const fs=require('node:fs/promises'),path=require('node:path');
+          const e=process.env,p=JSON.parse(await fs.readFile(e.OPERATION_PLAN,'utf8')),backend=JSON.parse(await fs.readFile(e.BACKEND_CONTEXT,'utf8')),workload=JSON.parse(await fs.readFile(e.WORKLOAD_CONTEXT,'utf8'));
+          if (p.operation!=='unlock' || !/^[^\x00-\x20/]{1,256}$/.test(p.lockId || '')) throw new Error('recovery-unlock-only');
+          const root=path.join(e.DIRECTORY,'unlock'); await fs.mkdir(root,{mode:0o700});
+          const b=p.stateHandle.backend,options={bucket:b.bucket,key:b.key,region:b.region,use_lockfile:true,access_key:backend.env.AWS_ACCESS_KEY_ID,secret_key:backend.env.AWS_SECRET_ACCESS_KEY,token:backend.env.AWS_SESSION_TOKEN};
+          for (const [key,native] of [['encrypt','encrypt'],['kmsKeyId','kms_key_id']]) if (b[key]!==undefined) options[native]=b[key];
+          await fs.writeFile(path.join(root,'backend.tf.json'),JSON.stringify({terraform:{backend:{s3:options}}}),{mode:0o600,flag:'wx'});
+          await fs.writeFile(path.join(root,'terragrunt.hcl'),'terraform {}\n',{mode:0o600,flag:'wx'});
+          const env={...workload.env,TF_IN_AUTOMATION:'1',TF_INPUT:'0',TG_NON_INTERACTIVE:'true',TG_TF_PATH:'tofu'};
+          const version=await exec.getExecOutput('tofu',['version','-json'],{env,silent:true,ignoreReturnCode:true});
+          if (version.exitCode || JSON.parse(version.stdout).terraform_version!=='1.11.4') throw new Error('recovery-tool-version');
+          const tg=await exec.getExecOutput('terragrunt',['--version'],{env,silent:true,ignoreReturnCode:true});
+          if (tg.exitCode || tg.stdout.trim()!=='terragrunt version v0.99.4') throw new Error('recovery-tool-version');
+          const result=await exec.getExecOutput('terragrunt',['--non-interactive','--working-dir',root,'run','--','init','-input=false','-get=false'],{env,silent:true,ignoreReturnCode:true});
+          if (result.exitCode) throw new Error('recovery-unlock-init-retained');
+          core.setOutput('root',root);
+    - id: pre-unlock
+      if: inputs.operation == 'unlock'
+      uses: ./bp/cd/monorepo/recovery/backend/read
+      with:
+        selection: ${{ steps.plan.outputs.selection }}
+        workload-context: ${{ steps.plan.outputs.workloadContext }}
+        backend-context: ${{ steps.plan.outputs.backendContext }}
+        previous-proof: ${{ steps.pre-init.outputs.proof }}
+    - id: unlock
+      if: inputs.operation == 'unlock'
+      uses: actions/github-script@v9
+      env:
+        OPERATION_PLAN: ${{ steps.plan.outputs.operation-plan }}
+        ROOT: ${{ steps.unlock-init.outputs.root }}
+        WORKLOAD_CONTEXT: ${{ steps.plan.outputs.workloadContext }}
+        PROOF: ${{ steps.pre-unlock.outputs.proof }}
+      with:
+        script: |
+          const fs=require('node:fs/promises');
+          const e=process.env,p=JSON.parse(await fs.readFile(e.OPERATION_PLAN,'utf8')),proof=JSON.parse(await fs.readFile(e.PROOF,'utf8')),credential=JSON.parse(await fs.readFile(e.WORKLOAD_CONTEXT,'utf8'));
+          if (p.operation!=='unlock' || !/^[^\x00-\x20/]{1,256}$/.test(p.lockId || '') || proof.operation!=='unlock' || proof.lockId!==p.lockId || proof.handleDigest!==p.stateHandleDigest || !proof.lockETag || !proof.lockDigest) throw new Error('recovery-unlock-proof');
+          const env={...credential.env,TF_IN_AUTOMATION:'1',TF_INPUT:'0',TG_NON_INTERACTIVE:'true',TG_TF_PATH:'tofu'};
+          const result=await exec.getExecOutput('terragrunt',['--non-interactive','--working-dir',e.ROOT,'run','--','force-unlock','-force',p.lockId],{env,silent:true,ignoreReturnCode:true});
+          if (result.exitCode) throw new Error('recovery-unlock-failed-retained');
+          core.info('Exact native lock released; historical reservation retained. Native unlock is not an atomic conditional S3 delete.');
+    - id: destroy-prepare
+      if: inputs.operation == 'destroy'
+      uses: actions/github-script@v9
+      env:
+        OPERATION_PLAN: ${{ steps.plan.outputs.operation-plan }}
+        DIRECTORY: ${{ steps.plan.outputs.directory }}
+        HISTORICAL_CONTEXT: ${{ inputs.historical-context }}
+        PROOF: ${{ steps.pre-init.outputs.proof }}
+        BACKEND_CONTEXT: ${{ steps.plan.outputs.backendContext }}
+        WORKLOAD_CONTEXT: ${{ steps.plan.outputs.workloadContext }}
+      with:
+        script: |
+          const fs=require('node:fs/promises'),path=require('node:path');
+          const e=process.env,p=JSON.parse(await fs.readFile(e.OPERATION_PLAN,'utf8')),proof=JSON.parse(await fs.readFile(e.PROOF,'utf8')),backend=JSON.parse(await fs.readFile(e.BACKEND_CONTEXT,'utf8')),credential=JSON.parse(await fs.readFile(e.WORKLOAD_CONTEXT,'utf8'));
+          if (p.operation!=='destroy' || p.lockId!==null || proof.operation!=='destroy' || proof.lockId!==null || proof.lockETag!==null || proof.handleDigest!==p.stateHandleDigest || !Array.isArray(proof.resourceAddresses) || !proof.resourceAddresses.length) throw new Error('recovery-destroy-proof');
+          const root=path.join(e.DIRECTORY,'destroy'); await fs.mkdir(root,{mode:0o700});
+          const historical=path.resolve(e.HISTORICAL_CONTEXT || ''),stat=await fs.lstat(historical),temp=await fs.realpath(e.RUNNER_TEMP);
+          if (!historical.startsWith(temp+path.sep) || await fs.realpath(historical)!==historical || !stat.isFile() || stat.isSymbolicLink() || (stat.mode&0o077) || stat.size>4194304) throw new Error('recovery-historical-config');
+          const config=JSON.parse(await fs.readFile(historical,'utf8')),component=config.plan?.components?.find(c=>c.id===p.stateHandle.componentId);
+          if (!component || JSON.stringify(config.historicalHandle)!==JSON.stringify(p.stateHandle)) throw new Error('recovery-historical-handle');
+          const derived=path.join(e.DIRECTORY,'derived.json'); await fs.writeFile(derived,JSON.stringify({component}),{mode:0o600,flag:'wx'});
+          const module=path.join(e.GITHUB_WORKSPACE,'bp/terraform/monorepo/modules/aws-lambda');
+          const rendered=await exec.getExecOutput('tronador',['components','operations','render','--plan',e.OPERATION_PLAN,'--module-root',module,'--output',root,'--historical-config',historical,'--prior-state',proof.statePath,'--derived',derived],{silent:true,ignoreReturnCode:true});
+          if (rendered.exitCode || Buffer.byteLength(rendered.stdout)>65536 || JSON.parse(rendered.stdout).evaluationOnly!==true) throw new Error('recovery-destroy-render');
+          for (const name of ['.terraform.lock.hcl','main.tf','versions.tf','terragrunt.hcl']) {
+            const source=path.join(module,name),st=await fs.lstat(source);
+            if (!st.isFile() || st.isSymbolicLink() || st.size>4194304) throw new Error('recovery-fixed-module');
+            await fs.writeFile(path.join(root,name),await fs.readFile(source),{mode:0o600,flag:'wx'});
+          }
+          const b=p.stateHandle.backend,options={bucket:b.bucket,key:b.key,region:b.region,use_lockfile:true,access_key:backend.env.AWS_ACCESS_KEY_ID,secret_key:backend.env.AWS_SECRET_ACCESS_KEY,token:backend.env.AWS_SESSION_TOKEN};
+          for (const [key,native] of [['encrypt','encrypt'],['kmsKeyId','kms_key_id']]) if (b[key]!==undefined) options[native]=b[key];
+          await fs.writeFile(path.join(root,'backend.tf.json'),JSON.stringify({terraform:{backend:{s3:options}}}),{mode:0o600,flag:'wx'});
+          const env={...credential.env,TF_IN_AUTOMATION:'1',TF_INPUT:'0',TG_NON_INTERACTIVE:'true',TG_TF_PATH:'tofu'};
+          async function native(args,bound=65536) {
+            const result=await exec.getExecOutput('terragrunt',['--non-interactive','--working-dir',root,'run','--',...args],{env,silent:true,ignoreReturnCode:true});
+            if (result.exitCode || Buffer.byteLength(result.stdout)>bound) throw new Error('recovery-destroy-native-retained'); return result.stdout;
+          }
+          const version=await exec.getExecOutput('tofu',['version','-json'],{env,silent:true,ignoreReturnCode:true});
+          const tg=await exec.getExecOutput('terragrunt',['--version'],{env,silent:true,ignoreReturnCode:true});
+          if (version.exitCode || JSON.parse(version.stdout).terraform_version!=='1.11.4' || tg.exitCode || tg.stdout.trim()!=='terragrunt version v0.99.4') throw new Error('recovery-tool-version');
+          await native(['init','-input=false','-lockfile=readonly']);
+          await native(['plan','-destroy','-input=false','-out=operation.tfplan']);
+          const inspected=JSON.parse(await native(['show','-json','operation.tfplan'],4194304));
+          if (!Array.isArray(inspected.resource_changes) || !inspected.resource_changes.length || inspected.deferred_changes?.length || inspected.errored===true || inspected.complete===false) throw new Error('recovery-destroy-saved-plan');
+          const deleted=[];
+          for (const change of inspected.resource_changes) {
+            const actions=change.change?.actions;
+            if (change.mode==='data' && JSON.stringify(actions)==='["no-op"]') continue;
+            if (change.mode!=='managed' || !proof.resourceAddresses.includes(change.address) || JSON.stringify(actions)!=='["delete"]' || change.change?.after!==null || change.previous_address) throw new Error('recovery-delete-only-owned-plan');
+            const identity=proof.resourceIdentities?.[change.address],before=change.change.before;
+            if (!identity || !before || typeof before!=='object' || Object.entries(identity).some(([key,value])=>key==='ownerDigest'?before.tags?.['cloudopsworks-owner']!==value:(before[key] ?? null)!==value)) throw new Error('recovery-saved-before-identity');
+            deleted.push(change.address);
+          }
+          if (JSON.stringify(deleted.sort())!==JSON.stringify(proof.resourceAddresses)) throw new Error('recovery-owned-delete-set');
+          const saved=path.join(root,'operation.tfplan'),savedStat=await fs.lstat(saved);
+          if (!savedStat.isFile() || savedStat.isSymbolicLink() || savedStat.size>16777216 || savedStat.size<1) throw new Error('recovery-private-saved-plan');
+          await fs.chmod(saved,0o600);
+          const crypto=require('node:crypto'),digest=crypto.createHash('sha256').update(await fs.readFile(saved)).digest('hex');
+          const receipt=path.join(e.DIRECTORY,'saved-plan.json'); await fs.writeFile(receipt,JSON.stringify({root,digest,handleDigest:p.stateHandleDigest,resourceAddresses:proof.resourceAddresses,resourceIdentities:proof.resourceIdentities,resourceClaims:proof.resourceClaims}),{mode:0o600,flag:'wx'});
+          core.setOutput('saved-plan',receipt);
+    - id: pre-apply
+      if: inputs.operation == 'destroy'
+      uses: ./bp/cd/monorepo/recovery/backend/read
+      with:
+        selection: ${{ steps.plan.outputs.selection }}
+        workload-context: ${{ steps.plan.outputs.workloadContext }}
+        backend-context: ${{ steps.plan.outputs.backendContext }}
+        previous-proof: ${{ steps.pre-init.outputs.proof }}
+    - id: destroy
+      if: inputs.operation == 'destroy'
+      uses: actions/github-script@v9
+      env:
+        OPERATION_PLAN: ${{ steps.plan.outputs.operation-plan }}
+        SAVED_PLAN: ${{ steps.destroy-prepare.outputs.saved-plan }}
+        PROOF: ${{ steps.pre-apply.outputs.proof }}
+        WORKLOAD_CONTEXT: ${{ steps.plan.outputs.workloadContext }}
+      with:
+        script: |
+          const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
+          const e=process.env,p=JSON.parse(await fs.readFile(e.OPERATION_PLAN,'utf8')),saved=JSON.parse(await fs.readFile(e.SAVED_PLAN,'utf8')),proof=JSON.parse(await fs.readFile(e.PROOF,'utf8')),credential=JSON.parse(await fs.readFile(e.WORKLOAD_CONTEXT,'utf8'));
+          if (p.operation!=='destroy' || p.lockId!==null || proof.operation!=='destroy' || proof.lockETag!==null || proof.handleDigest!==p.stateHandleDigest || saved.handleDigest!==p.stateHandleDigest || JSON.stringify(proof.resourceAddresses)!==JSON.stringify(saved.resourceAddresses)) throw new Error('recovery-destroy-proof');
+          if (JSON.stringify(proof.resourceIdentities)!==JSON.stringify(saved.resourceIdentities) || JSON.stringify(proof.resourceClaims)!==JSON.stringify(saved.resourceClaims)) throw new Error('recovery-saved-identity-proof');
+          const file=path.join(saved.root,'operation.tfplan'),stat=await fs.lstat(file);
+          if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode&0o077) || stat.size>16777216 || crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex')!==saved.digest) throw new Error('recovery-saved-plan-changed');
+          const env={...credential.env,TF_IN_AUTOMATION:'1',TF_INPUT:'0',TG_NON_INTERACTIVE:'true',TG_TF_PATH:'tofu'};
+          const result=await exec.getExecOutput('terragrunt',['--non-interactive','--working-dir',saved.root,'run','--','apply','-input=false','operation.tfplan'],{env,silent:true,ignoreReturnCode:true});
+          if (result.exitCode) throw new Error('recovery-destroy-failed-retained');
+          core.info('Exact saved delete-only plan completed; historical reservation retained for independent convergence.');

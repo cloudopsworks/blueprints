@@ -1,0 +1,248 @@
+name: Verified .NET component Sonar analysis
+description: Exact-source isolated begin/build/end with completed correlated analysis; requires pinned scanner/toolchain setup
+inputs:
+  source-path: {description: Exact source worktree with installed toolchains, required: true}
+  plan: {description: Independently endorsed BuildPlan, required: true}
+  component-result: {description: Verified ComponentResult with local main payload, required: true}
+  component: {description: Selected component ID, required: true}
+  source-sha: {description: Endorsed exact source commit, required: true}
+  trusted: {description: Caller-established source execution trust, not standalone authorization, required: true}
+  token: {description: Scoped Sonar token only, required: false}
+  server: {description: Trusted HTTPS Sonar host/context, required: true}
+  organization: {description: Existing resolved repository owner used only for SonarCloud organization, required: false}
+  project-key: {description: Stable component-specific project key, required: true}
+  version: {description: Frozen shared repository version, required: true}
+  quality-gate-enabled: {description: Existing normalized qualityGateEnabled policy, default: 'true'}
+  fail-on-quality-gate: {description: Existing normalized failOnQualityGate policy, default: 'false'}
+outputs:
+  result: {description: Validated ScannerResult file, value: '${{ steps.report.outputs.result }}'}
+  status: {description: Policy-normalized scanner outcome, value: '${{ steps.report.outputs.status }}'}
+runs:
+  using: composite
+  steps:
+    - name: Bind exact .NET source and verified main artifact
+      id: prepare
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        PLAN_PATH: ${{ inputs.plan }}
+        COMPONENT_RESULT: ${{ inputs.component-result }}
+        COMPONENT: ${{ inputs.component }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        TRUSTED: ${{ inputs.trusted }}
+        CREDENTIAL_PRESENT: ${{ inputs.token != '' }}
+        SONAR_URL: ${{ inputs.server }}
+        PROJECT_KEY: ${{ inputs.project-key }}
+        ORGANIZATION: ${{ inputs.organization }}
+        VERSION: ${{ inputs.version }}
+        QUALITY_GATE_ENABLED: ${{ inputs.quality-gate-enabled }}
+        FAIL_ON_QUALITY_GATE: ${{ inputs.fail-on-quality-gate }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path'), crypto = require('node:crypto'), env = process.env;
+          for (const key of ['TRUSTED', 'CREDENTIAL_PRESENT', 'QUALITY_GATE_ENABLED', 'FAIL_ON_QUALITY_GATE']) if (!['true', 'false'].includes(env[key])) throw new Error('sonar-policy');
+          const server = new URL(env.SONAR_URL), serverContext = server.pathname.replace(/\/$/, '');
+          if (server.protocol !== 'https:' || server.username || server.password || server.search || server.hash || serverContext.includes('//') ||
+              !serverContext.split('/').slice(1).every(part => /^[A-Za-z0-9_~-][A-Za-z0-9._~-]*$/.test(part)) ||
+              ![server.origin + serverContext, server.origin + serverContext + '/'].includes(env.SONAR_URL)) throw new Error('sonar-server');
+          const cloud = ['https://sonarcloud.io', 'https://sonarcloud.us'].includes(server.origin), organization = cloud ? env.ORGANIZATION : '';
+          if (cloud && !/^[A-Za-z0-9_.:-]{1,255}$/.test(organization || '')) throw new Error('sonar-organization');
+          if (!/^[A-Za-z0-9_.:-]{1,400}$/.test(env.PROJECT_KEY || '')) throw new Error('sonar-project-key');
+          const root = await fs.realpath(env.SOURCE_PATH), temporary = await fs.realpath(env.RUNNER_TEMP);
+          const safeFile = async (file, maximum, read = true) => {
+            const stat = await fs.lstat(file);
+            if (!stat.isFile() || await fs.realpath(file) !== file || stat.size > maximum) throw new Error('sonar-file');
+            return read ? fs.readFile(file) : undefined;
+          };
+          const directory = await fs.mkdtemp(path.join(temporary, 'sonar-dotnet-'));
+          await fs.chmod(directory, 0o700);
+          const options = {silent: true, ignoreReturnCode: true, env: {PATH: env.PATH, HOME: directory, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null'}};
+          const checkedPlan = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {...options, input: await safeFile(env.PLAN_PATH, 4194304)});
+          if (checkedPlan.exitCode !== 0 || Buffer.byteLength(checkedPlan.stdout) > 4194304) throw new Error('sonar-plan-contract');
+          const plan = JSON.parse(checkedPlan.stdout).record, component = plan.components.find(item => item.id === env.COMPONENT);
+          if (!component || component.language !== 'dotnet' || component.buildProfile !== 'dotnet' || plan.headSha !== env.SOURCE_SHA || plan.version !== env.VERSION || !plan.buildSelection.some(item => item.componentId === component.id)) throw new Error('sonar-plan-link');
+          if (typeof component.path !== 'string' || component.path.includes('\\') || path.isAbsolute(component.path) || component.path !== '.' && component.path.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('sonar-component-path');
+          const source = path.join(root, component.path);
+          if (await fs.realpath(source) !== source || !(await fs.lstat(source)).isDirectory()) throw new Error('sonar-source');
+          const linked = path.join(directory, 'linked.json'), planPath = path.join(directory, 'plan.json');
+          await fs.writeFile(linked, JSON.stringify({plan}), {mode: 0o600, flag: 'wx'});
+          await fs.writeFile(planPath, JSON.stringify(plan), {mode: 0o600, flag: 'wx'});
+          const checkedResult = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {...options, input: await safeFile(env.COMPONENT_RESULT, 4194304)});
+          if (checkedResult.exitCode !== 0 || Buffer.byteLength(checkedResult.stdout) > 4194304) throw new Error('sonar-result-contract');
+          const result = JSON.parse(checkedResult.stdout).record, artifact = result.mainArtifact, relative = artifact?.location?.path;
+          if (result.componentId !== component.id || result.headSha !== plan.headSha || result.status !== 'succeeded') throw new Error('sonar-result-link');
+          if (artifact?.location?.kind !== 'local' || typeof relative !== 'string' || !relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('sonar-payload-path');
+          const payload = path.join(root, relative), descriptor = path.join(directory, 'artifact.json');
+          await safeFile(payload, 536870912, false);
+          await fs.writeFile(descriptor, JSON.stringify(artifact), {mode: 0o600, flag: 'wx'});
+          const verified = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', payload], options);
+          if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 65536) throw new Error('sonar-payload-integrity');
+          const evidence = JSON.parse(verified.stdout);
+          if (evidence.payloadVerified !== true || evidence.digest !== artifact.digest) throw new Error('sonar-payload-binding');
+          const head = await exec.getExecOutput('git', ['-C', root, 'rev-parse', 'HEAD'], options);
+          if (head.exitCode !== 0 || head.stdout.trim() !== plan.headSha) throw new Error('sonar-source-sha');
+          const decision = env.TRUSTED !== 'true' ? 'sonar-untrusted-source' : env.CREDENTIAL_PRESENT !== 'true' ? 'sonar-missing-credential' : 'ready';
+          const identity = {artifactDigest: artifact.digest, componentId: component.id, profile: 'dotnet', scanner: 'sonar', sourceSha: plan.headSha};
+          const correlationId = 'scan-' + crypto.createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0, 32);
+          await fs.writeFile(path.join(directory, 'context.json'), JSON.stringify({...identity, correlationId, decision, qualityGate: env.QUALITY_GATE_ENABLED === 'true', required: env.QUALITY_GATE_ENABLED === 'true' && env.FAIL_ON_QUALITY_GATE === 'true'}), {mode: 0o600, flag: 'wx'});
+          const metadata = await fs.mkdtemp(path.join(temporary, 'sonar-analysis-'));
+          await fs.chmod(metadata, 0o700);
+          for (const [key, value] of Object.entries({directory, source, root, decision, organization, 'source-sha': plan.headSha, plan: planPath, server: server.origin + serverContext, version: plan.version, 'metadata-directory': metadata, started: String(Date.now()), 'scanner-directory': path.join(temporary, 'cloudopsworks-scanner-tools/dotnet')})) core.setOutput(key, value);
+    - name: Prepare tokenless dependencies and instrument exact .NET project
+      id: scan
+      shell: bash
+      env:
+        DIRECTORY: ${{ steps.prepare.outputs.directory }}
+        DECISION: ${{ steps.prepare.outputs.decision }}
+        SOURCE_PATH: ${{ steps.prepare.outputs.root }}
+        SOURCE_SHA: ${{ steps.prepare.outputs.source-sha }}
+        COMPONENT_PATH: ${{ steps.prepare.outputs.source }}
+        PLAN_PATH: ${{ steps.prepare.outputs.plan }}
+        COMPONENT: ${{ inputs.component }}
+        SCANNER_DIRECTORY: ${{ steps.prepare.outputs.scanner-directory }}
+        METADATA_DIRECTORY: ${{ steps.prepare.outputs.metadata-directory }}
+        SERVER: ${{ steps.prepare.outputs.server }}
+        ORGANIZATION: ${{ steps.prepare.outputs.organization }}
+        PROJECT_KEY: ${{ inputs.project-key }}
+        VERSION: ${{ steps.prepare.outputs.version }}
+        SONAR_TOKEN: ${{ inputs.token }}
+      run: |
+        set +x
+        set -euo pipefail
+        umask 077
+        if [[ "$DECISION" != ready ]]; then exit 0; fi
+        for name in $(compgen -e); do
+          case "$name" in
+            AWS_*|AZURE_*|GOOGLE_*|GCLOUD_*|ARM_*|TF_*|TERRAGRUNT_*|ACTIONS_ID_TOKEN_*|CLOUDOPSWORKS_*)
+              printf 'error=sonar-credential-boundary\n' >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
+        done
+        for name in $(compgen -e); do
+          case "$name" in
+            PATH|JAVA_HOME|GOROOT|GEM_HOME|GEM_PATH|DOTNET_ROOT|DIRECTORY|DECISION|SOURCE_PATH|SOURCE_SHA|COMPONENT_PATH|PLAN_PATH|COMPONENT|SCANNER_DIRECTORY|METADATA_DIRECTORY|SERVER|ORGANIZATION|PROJECT_KEY|VERSION|SONAR_TOKEN|GITHUB_OUTPUT) ;;
+            *) unset "$name" ;;
+          esac
+        done
+        # Keep the shell's output destination away from source-executing children.
+        export -n GITHUB_OUTPUT
+        begin_arguments=(begin)
+        case "$SERVER" in
+          https://sonarcloud.io|https://sonarcloud.io/*|https://sonarcloud.us|https://sonarcloud.us/*)
+            if [[ ! "${ORGANIZATION:-}" =~ ^[A-Za-z0-9_.:-]{1,255}$ ]]; then printf 'error=sonar-organization\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+            begin_arguments+=("/o:$ORGANIZATION")
+            if [[ "$SERVER" == https://sonarcloud.us || "$SERVER" == https://sonarcloud.us/* ]]; then begin_arguments+=(/d:sonar.region=us); fi ;;
+        esac
+        token=$SONAR_TOKEN
+        unset SONAR_TOKEN
+        export HOME="$DIRECTORY/home" TMPDIR="$DIRECTORY/tmp" CI=true DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+        set -o noclobber
+        if ! { : > "$DIRECTORY/capture.lock" && : > "$DIRECTORY/control.stderr"; } 2>/dev/null; then
+          printf 'error=sonar-capture-exists\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        exec 2>> "$DIRECTORY/control.stderr"
+        # Re-read only the immutable original HEAD; generated/untracked build files are allowed.
+        check_head() {
+          set +e
+          GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null timeout --kill-after=10s 30s git -C "$SOURCE_PATH" rev-parse HEAD 2>&1 | timeout --kill-after=10s 40s head -c 42 > "$DIRECTORY/head-$1.txt"
+          head_codes=("${PIPESTATUS[@]}")
+          set -e
+          if [[ "${head_codes[0]}" != 0 || "${head_codes[1]}" != 0 || $(wc -c < "$DIRECTORY/head-$1.txt") -ne 41 || "$(cat "$DIRECTORY/head-$1.txt")" != "$SOURCE_SHA" ]]; then printf 'error=sonar-source-drift\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        }
+        mkdir -m 700 "$HOME" "$TMPDIR"
+        scanner="$SCANNER_DIRECTORY/dotnet-sonarscanner"
+        if [[ ! -x "$scanner" || -L "$scanner" || "$(realpath -- "$scanner")" != "$scanner" ]]; then printf 'error=sonar-tool-version\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        set +e
+        timeout --kill-after=10s 30s dotnet tool list --tool-path "$SCANNER_DIRECTORY" 2>&1 | timeout --kill-after=10s 40s head -c 65536 > "$DIRECTORY/version.txt"
+        codes=("${PIPESTATUS[@]}")
+        set -e
+        if [[ "${codes[0]}" != 0 || "${codes[1]}" != 0 || $(wc -c < "$DIRECTORY/version.txt") -ge 65536 ]] || ! awk '$1=="dotnet-sonarscanner" { if ($2!="12.1.0" || $3!="dotnet-sonarscanner") exit 1; count++ } END { if (count!=1) exit 1 }' "$DIRECTORY/version.txt"; then printf 'error=sonar-tool-version\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        # Fixed private stream captures do not impose limits on legitimate build artifacts.
+        mkfifo -m 600 "$DIRECTORY/diagnostics.pipe"
+        timeout --kill-after=10s 620s head -c 16777216 < "$DIRECTORY/diagnostics.pipe" > "$DIRECTORY/prepare.stderr" &
+        reader=$!
+        set +e
+        timeout --kill-after=10s 600s tronador components build "$COMPONENT" --workdir "$SOURCE_PATH" --plan "$PLAN_PATH" --allow-network --no-install-tools --json 2> "$DIRECTORY/diagnostics.pipe" | timeout --kill-after=10s 620s head -c 4194304 > "$DIRECTORY/build.json"
+        codes=("${PIPESTATUS[@]}")
+        wait "$reader"; diagnostic_exit=$?
+        set -e
+        if [[ "${codes[0]}" != 0 || "${codes[1]}" != 0 || "$diagnostic_exit" != 0 || $(wc -c < "$DIRECTORY/build.json") -ge 4194304 || $(wc -c < "$DIRECTORY/prepare.stderr") -ge 16777216 ]]; then printf 'error=sonar-build-preparation\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        if ! project=$(jq -er --arg cwd "$COMPONENT_PATH" '.calls | map(select(.tool == "dotnet" and .workingDirectory == $cwd)) | if length == 2 and .[0].arguments[0] == "restore" and .[1].arguments == ["build", .[0].arguments[1], "--no-restore", "--configuration", "Release"] then .[0].arguments[1] else error("project") end' "$DIRECTORY/build.json"); then printf 'error=sonar-project-selection\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        if [[ -z "$project" || "$project" == [-/]* || "$project" =~ (^|/)\.\.?(/|$)|//|\\ || "$project" == *$'\n'* || "$project" == *$'\r'* || "$(realpath -- "$COMPONENT_PATH/$project")" != "$COMPONENT_PATH/$project" || ! -f "$COMPONENT_PATH/$project" ]]; then printf 'error=sonar-project-path\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        if [[ -e "$METADATA_DIRECTORY/report-task.txt" || -L "$METADATA_DIRECTORY/report-task.txt" || -e "$COMPONENT_PATH/.sonarqube" || -L "$COMPONENT_PATH/.sonarqube" ]]; then printf 'error=sonar-stale-analysis\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        if [[ -z "$token" || "$token" =~ [[:space:][:cntrl:]] || ${#token} -gt 8192 ]]; then printf 'error=sonar-missing-credential\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        check_head prepared
+        SONARQUBE_SCANNER_PARAMS=$(SONAR_TOKEN="$token" jq -cn '{"sonar.token":env.SONAR_TOKEN}')
+        export SONARQUBE_SCANNER_PARAMS
+        unset token
+        cd "$COMPONENT_PATH"
+        set +e
+        timeout --kill-after=10s 600s "$scanner" "${begin_arguments[@]}" "/k:$PROJECT_KEY" "/v:$VERSION" "/d:sonar.host.url=$SERVER" "/d:sonar.scanner.metadataFilePath=$METADATA_DIRECTORY/report-task.txt" 2>&1 | timeout --kill-after=10s 620s head -c 16777216 > "$DIRECTORY/begin.log"
+        codes=("${PIPESTATUS[@]}")
+        set -e
+        if [[ "${codes[0]}" != 0 || "${codes[1]}" != 0 || $(wc -c < "$DIRECTORY/begin.log") -ge 16777216 ]]; then printf 'error=sonar-begin-failed\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        set +e
+        timeout --kill-after=10s 600s dotnet build "$project" --no-restore --configuration Release --no-incremental --disable-build-servers 2>&1 | timeout --kill-after=10s 620s head -c 16777216 > "$DIRECTORY/instrumented-build.log"
+        codes=("${PIPESTATUS[@]}")
+        set -e
+        if [[ "${codes[0]}" != 0 || "${codes[1]}" != 0 || $(wc -c < "$DIRECTORY/instrumented-build.log") -ge 16777216 ]]; then printf 'error=sonar-instrumented-build-failed\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        check_head instrumented
+        set +e
+        timeout --kill-after=10s 600s "$scanner" end 2>&1 | timeout --kill-after=10s 620s head -c 16777216 > "$DIRECTORY/end.log"
+        codes=("${PIPESTATUS[@]}")
+        unset SONARQUBE_SCANNER_PARAMS
+        set -e
+        if [[ "${codes[0]}" != 0 || "${codes[1]}" != 0 || $(wc -c < "$DIRECTORY/end.log") -ge 16777216 ]]; then printf 'error=sonar-end-failed\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        check_head completed
+        printf 'status=uploaded\n' >> "$GITHUB_OUTPUT"
+    - name: Await completed matching analysis and gate
+      id: gate
+      if: steps.scan.outputs.status == 'uploaded'
+      uses: ./bp/ci/scan/sonarqube/quality-gate
+      with:
+        component-mode: 'true'
+        sonarqube_url: ${{ steps.prepare.outputs.server }}
+        sonarqube_token: ${{ inputs.token }}
+        metadata-directory: ${{ steps.prepare.outputs.metadata-directory }}
+        analysis-started-at: ${{ steps.prepare.outputs.started }}
+        project-key: ${{ inputs.project-key }}
+    - name: Normalize completed analysis under current policy
+      id: report
+      if: always() && steps.prepare.outcome == 'success'
+      uses: actions/github-script@v9
+      env:
+        DIRECTORY: ${{ steps.prepare.outputs.directory }}
+        NATIVE_STATUS: ${{ steps.scan.outputs.status }}
+        NATIVE_ERROR: ${{ steps.scan.outputs.error }}
+        GATE_STATUS: ${{ steps.gate.outputs.component-status }}
+        GATE_QUALITY: ${{ steps.gate.outputs.component-quality-gate-status }}
+        TASK_ID: ${{ steps.gate.outputs.task-id }}
+        ANALYSIS_ID: ${{ steps.gate.outputs.analysis-id }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path'), env = process.env;
+          const directory = env.DIRECTORY, contextPath = path.join(directory, 'context.json');
+          if (await fs.realpath(directory) !== directory || !(await fs.lstat(directory)).isDirectory() || (await fs.lstat(contextPath)).size > 65536 || await fs.realpath(contextPath) !== contextPath || !(await fs.lstat(contextPath)).isFile()) throw new Error('sonar-context');
+          const scanContext = JSON.parse(await fs.readFile(contextPath, 'utf8'));
+          let status = 'infrastructure-error', errorCode = 'sonar-analysis-unavailable';
+          if (scanContext.decision === 'sonar-untrusted-source') { status = 'unavailable-untrusted-context'; errorCode = scanContext.decision; }
+          else if (scanContext.decision === 'sonar-missing-credential') errorCode = scanContext.decision;
+          else if (env.NATIVE_ERROR) {
+            const known = ['sonar-organization', 'sonar-credential-boundary', 'sonar-capture-exists', 'sonar-tool-version', 'sonar-build-preparation', 'sonar-project-selection', 'sonar-project-path', 'sonar-stale-analysis', 'sonar-missing-credential', 'sonar-begin-failed', 'sonar-instrumented-build-failed', 'sonar-end-failed', 'sonar-source-drift'];
+            errorCode = known.includes(env.NATIVE_ERROR) ? env.NATIVE_ERROR : 'sonar-analysis-unavailable';
+          } else if (env.NATIVE_STATUS === 'uploaded' && /^[A-Za-z0-9_-]{1,128}$/.test(env.TASK_ID || '') && /^[A-Za-z0-9_-]{1,128}$/.test(env.ANALYSIS_ID || '')) {
+            const quality = {passed: 'OK', 'gate-failed': 'ERROR', 'gate-warning': 'WARN', 'no-gate': 'NONE'};
+            if (Object.hasOwn(quality, env.GATE_STATUS) && quality[env.GATE_STATUS] === env.GATE_QUALITY) {
+              if (env.GATE_STATUS === 'passed' || env.GATE_STATUS === 'no-gate' && !scanContext.qualityGate) { status = 'passed'; errorCode = null; }
+              else if (env.GATE_STATUS === 'no-gate') { status = 'unsupported-profile'; errorCode = 'sonar-quality-gate-missing'; }
+              else { status = scanContext.required ? 'required-gate-failure' : 'findings-advisory'; errorCode = null; }
+            }
+          }
+          const record = {apiVersion: 'cloudopsworks.io/operations/v1', kind: 'ScannerResult', scanner: 'sonar', profile: 'dotnet', componentId: scanContext.componentId, sourceSha: scanContext.sourceSha, status, required: scanContext.required, artifactDigest: scanContext.artifactDigest, correlationId: scanContext.correlationId, errorCode};
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('sonar-scanner-contract');
+          const validated = JSON.parse(checked.stdout).record;
+          if (!validated || Object.keys(validated).length !== Object.keys(record).length || Object.keys(record).some(key => validated[key] !== record[key])) throw new Error('sonar-scanner-roundtrip');
+          const output = path.join(directory, 'scanner-result.json');
+          await fs.writeFile(output, JSON.stringify(record), {mode: 0o600, flag: 'wx'});
+          core.setOutput('result', output); core.setOutput('status', status);
+          if (scanContext.required && status !== 'passed') core.setFailed(status);

@@ -1,0 +1,930 @@
+{
+  "apiVersion": "cloudopsworks.io/conformance/v1",
+  "source": {
+    "path": ".omx/plans/contract-monorepo-v511.md",
+    "sha256": "a4c9e9940eb55fbe116ce8bf0c0ba1d7863666788f2cc8d9fb37f52cbdef6801"
+  },
+  "cases": [
+    {
+      "id": "build-plan",
+      "payload": "valid/build-plan.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "component-result",
+      "payload": "valid/component-result.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "release-manifest",
+      "payload": "valid/release-manifest.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "deployment-request",
+      "payload": "valid/deployment-request.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "deployment-result",
+      "payload": "valid/deployment-result.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "deployment-receipt",
+      "payload": "valid/deployment-receipt.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "preview-state",
+      "payload": "valid/preview-state.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "unknown-field",
+      "payload": "invalid/unknown-field.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "unknown-field"
+    },
+    {
+      "id": "unknown-kind",
+      "payload": "invalid/unknown-kind.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "unknown-kind"
+    },
+    {
+      "id": "unknown-api-version",
+      "payload": "invalid/unknown-api-version.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "unknown-api-version"
+    },
+    {
+      "id": "duplicate-json-key",
+      "payload": "invalid/duplicate-json-key.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "duplicate-json-key"
+    },
+    {
+      "id": "invalid-utf8",
+      "payload": "invalid/invalid-utf8.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "invalid-utf8"
+    },
+    {
+      "id": "nonfinite-number",
+      "payload": "invalid/nonfinite-number.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "nonfinite-number"
+    },
+    {
+      "id": "repository-mismatch",
+      "payload": "invalid/repository-mismatch.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "repository-mismatch",
+      "context": {
+        "plan": "valid/build-plan.json"
+      }
+    },
+    {
+      "id": "component-mismatch",
+      "payload": "invalid/component-mismatch.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "component-mismatch",
+      "context": {
+        "plan": "valid/build-plan.json"
+      }
+    },
+    {
+      "id": "source-sha-mismatch",
+      "payload": "invalid/source-sha-mismatch.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "source-sha-mismatch",
+      "context": {
+        "plan": "valid/build-plan.json"
+      }
+    },
+    {
+      "id": "artifact-digest-mismatch",
+      "payload": "invalid/artifact-digest-mismatch.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "artifact-digest-mismatch",
+      "context": {
+        "manifest": "valid/release-manifest.json"
+      }
+    },
+    {
+      "id": "target-provider-mismatch",
+      "payload": "invalid/target-provider-mismatch.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "target-provider-mismatch"
+    },
+    {
+      "id": "target-discriminator-unknown",
+      "payload": "invalid/target-discriminator-unknown.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "target-discriminator-unknown"
+    },
+    {
+      "id": "incompatible-artifact-format",
+      "payload": "invalid/incompatible-artifact-format.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "incompatible-artifact-format"
+    },
+    {
+      "id": "toolchain-version-conflict",
+      "payload": "invalid/toolchain-version-conflict.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "toolchain-version-conflict"
+    },
+    {
+      "id": "incomplete-dependency-closure",
+      "payload": "invalid/incomplete-dependency-closure.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "incomplete-dependency-closure"
+    },
+    {
+      "id": "selection-matrix-mismatch",
+      "payload": "invalid/selection-matrix-mismatch.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "selection-matrix-mismatch"
+    },
+    {
+      "id": "selection-noop-mismatch",
+      "payload": "invalid/selection-noop-mismatch.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "selection-noop-mismatch"
+    },
+    {
+      "id": "successful-result-with-error",
+      "payload": "invalid/successful-result-with-error.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "successful-result-with-error"
+    },
+    {
+      "id": "failed-result-without-error",
+      "payload": "invalid/failed-result-without-error.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "failed-result-without-error"
+    },
+    {
+      "id": "manifest-local-artifact",
+      "payload": "invalid/manifest-local-artifact.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "manifest-local-artifact"
+    },
+    {
+      "id": "draft-release-baseline",
+      "payload": "invalid/draft-release-baseline.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "draft-release-baseline",
+      "context": {
+        "githubRelease": {
+          "tag": "v1.2.3",
+          "draft": true,
+          "targetCommitish": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "assetsVerified": true
+        }
+      }
+    },
+    {
+      "id": "fabricated-success-receipt",
+      "payload": "invalid/fabricated-success-receipt.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "receipt-not-verified",
+      "context": {
+        "github": {
+          "deploymentId": "1042",
+          "statusId": "1043",
+          "state": "failure",
+          "repositoryId": "12345"
+        }
+      }
+    },
+    {
+      "id": "preview-ready-without-isolation",
+      "payload": "invalid/preview-ready-without-isolation.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "preview-ready-without-isolation"
+    },
+    {
+      "id": "preview-ready-with-failed-component",
+      "payload": "invalid/preview-ready-with-failed-component.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "preview-ready-with-failed-component"
+    },
+    {
+      "id": "missing-normal-workload",
+      "payload": "invalid/missing-normal-workload.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "missing-normal-workload"
+    },
+    {
+      "id": "missing-target-readiness",
+      "payload": "invalid/missing-target-readiness.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "missing-target-readiness"
+    },
+    {
+      "id": "privileged-http-port",
+      "payload": "invalid/privileged-http-port.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "privileged-http-port"
+    },
+    {
+      "id": "unknown-readiness-command",
+      "payload": "invalid/unknown-readiness-command.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "unknown-readiness-command"
+    },
+    {
+      "id": "readiness-external-url",
+      "payload": "invalid/readiness-external-url.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "readiness-external-url"
+    },
+    {
+      "id": "readiness-path-traversal",
+      "payload": "invalid/readiness-path-traversal.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "readiness-path-traversal"
+    },
+    {
+      "id": "readiness-get-body",
+      "payload": "invalid/readiness-get-body.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "readiness-get-body"
+    },
+    {
+      "id": "incompatible-readiness-kind",
+      "payload": "invalid/incompatible-readiness-kind.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "incompatible-readiness-kind"
+    },
+    {
+      "id": "deployment-success-not-ready",
+      "payload": "invalid/deployment-success-not-ready.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "deployment-success-not-ready"
+    },
+    {
+      "id": "deployment-failure-without-error",
+      "payload": "invalid/deployment-failure-without-error.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "deployment-failure-without-error"
+    },
+    {
+      "id": "normal-workload-kind-mismatch",
+      "payload": "invalid/normal-workload-kind-mismatch.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "normal-workload-kind-mismatch"
+    },
+    {
+      "id": "native-package-missing-preview",
+      "payload": "invalid/native-package-missing-preview.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "native-package-missing-preview"
+    },
+    {
+      "id": "singleton-resource-collision",
+      "payload": "invalid/singleton-resource-collision.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "singleton-resource-collision"
+    },
+    {
+      "id": "alias-resource-collision",
+      "payload": "invalid/alias-resource-collision.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "alias-resource-collision"
+    },
+    {
+      "id": "static-prefix-overlap",
+      "payload": "invalid/static-prefix-overlap.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "static-prefix-overlap"
+    },
+    {
+      "id": "resolved-account-changed",
+      "payload": "invalid/resolved-account-changed.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "resolved-account-mismatch",
+      "context": {
+        "resolvedAccount": {
+          "provider": "gcp",
+          "expected": "example-prod",
+          "actual": "unexpected-prod"
+        }
+      }
+    },
+    {
+      "id": "shared-kubernetes-namespace",
+      "payload": "valid/shared-kubernetes-namespace.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "oci-image-valid",
+      "payload": "valid/oci-image-valid.json",
+      "validation": "artifact",
+      "expected": "accept",
+      "expectedReason": null,
+      "artifact": "artifacts/image.oci.tar"
+    },
+    {
+      "id": "oci-image-repacked-valid",
+      "payload": "valid/oci-image-repacked-valid.json",
+      "validation": "artifact",
+      "expected": "accept",
+      "expectedReason": null,
+      "artifact": "artifacts/image-repacked.oci.tar"
+    },
+    {
+      "id": "oci-outer-tar-hash-not-image",
+      "payload": "invalid/oci-outer-tar-hash-not-image.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "oci-outer-tar-hash-not-image",
+      "artifact": "artifacts/image.oci.tar"
+    },
+    {
+      "id": "oci-layer-corrupt",
+      "payload": "invalid/oci-layer-corrupt.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "oci-layer-corrupt",
+      "artifact": "artifacts/image-corrupt-layer.oci.tar"
+    },
+    {
+      "id": "oci-layer-missing",
+      "payload": "invalid/oci-layer-missing.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "oci-layer-missing",
+      "artifact": "artifacts/image-missing-layer.oci.tar"
+    },
+    {
+      "id": "oci-unexpected-entry",
+      "payload": "invalid/oci-unexpected-entry.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "oci-unexpected-entry",
+      "artifact": "artifacts/image-unexpected-entry.oci.tar"
+    },
+    {
+      "id": "oci-archive-traversal",
+      "payload": "invalid/oci-archive-traversal.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "oci-archive-traversal",
+      "artifact": "artifacts/image-traversal.oci.tar"
+    },
+    {
+      "id": "zip-valid",
+      "payload": "valid/zip-valid.json",
+      "validation": "artifact",
+      "expected": "accept",
+      "expectedReason": null,
+      "artifact": "artifacts/app.zip"
+    },
+    {
+      "id": "zip-byte-corruption",
+      "payload": "invalid/zip-byte-corruption.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "zip-byte-corruption",
+      "artifact": "artifacts/app-corrupt.zip"
+    },
+    {
+      "id": "openapi-valid",
+      "payload": "valid/openapi-valid.json",
+      "validation": "artifact",
+      "expected": "accept",
+      "expectedReason": null,
+      "artifact": "artifacts/openapi.json"
+    },
+    {
+      "id": "openapi-byte-corruption",
+      "payload": "invalid/openapi-byte-corruption.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-byte-corruption",
+      "artifact": "artifacts/openapi-corrupt.json"
+    },
+    {
+      "id": "oci-safe-layer-links",
+      "payload": "valid/oci-safe-layer-links.json",
+      "validation": "artifact",
+      "expected": "accept",
+      "expectedReason": null,
+      "artifact": "artifacts/oci-safe-layer-links.oci.tar"
+    },
+    {
+      "id": "oci-layer-rootescape",
+      "payload": "invalid/oci-layer-rootescape.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "oci-layer-rootescape",
+      "artifact": "artifacts/oci-layer-rootescape.oci.tar"
+    },
+    {
+      "id": "oci-layer-linkcycle",
+      "payload": "invalid/oci-layer-linkcycle.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "oci-layer-linkcycle",
+      "artifact": "artifacts/oci-layer-linkcycle.oci.tar"
+    },
+    {
+      "id": "openapi-yaml-valid",
+      "payload": "valid/openapi-yaml-valid.json",
+      "validation": "artifact",
+      "expected": "accept",
+      "expectedReason": null,
+      "artifact": "artifacts/openapi-yaml-valid.yaml"
+    },
+    {
+      "id": "swagger-yaml-valid",
+      "payload": "valid/swagger-yaml-valid.json",
+      "validation": "artifact",
+      "expected": "accept",
+      "expectedReason": null,
+      "artifact": "artifacts/swagger-yaml-valid.yaml"
+    },
+    {
+      "id": "openapi31-json-valid",
+      "payload": "valid/openapi31-json-valid.json",
+      "validation": "artifact",
+      "expected": "accept",
+      "expectedReason": null,
+      "artifact": "artifacts/openapi31-json-valid.json"
+    },
+    {
+      "id": "openapi-json-malformed",
+      "payload": "invalid/openapi-json-malformed.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-malformed",
+      "artifact": "artifacts/openapi-json-malformed.json"
+    },
+    {
+      "id": "openapi-json-duplicate",
+      "payload": "invalid/openapi-json-duplicate.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-duplicate",
+      "artifact": "artifacts/openapi-json-duplicate.json"
+    },
+    {
+      "id": "openapi-json-root-array",
+      "payload": "invalid/openapi-json-root-array.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-root-array",
+      "artifact": "artifacts/openapi-json-root-array.json"
+    },
+    {
+      "id": "openapi-json-unsupported-version",
+      "payload": "invalid/openapi-json-unsupported-version.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-unsupported-version",
+      "artifact": "artifacts/openapi-json-unsupported-version.json"
+    },
+    {
+      "id": "openapi-json-numeric-version",
+      "payload": "invalid/openapi-json-numeric-version.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-numeric-version",
+      "artifact": "artifacts/openapi-json-numeric-version.json"
+    },
+    {
+      "id": "openapi-json-info-missing",
+      "payload": "invalid/openapi-json-info-missing.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-info-missing",
+      "artifact": "artifacts/openapi-json-info-missing.json"
+    },
+    {
+      "id": "openapi-json-info-wrong",
+      "payload": "invalid/openapi-json-info-wrong.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-info-wrong",
+      "artifact": "artifacts/openapi-json-info-wrong.json"
+    },
+    {
+      "id": "openapi-json-paths-wrong",
+      "payload": "invalid/openapi-json-paths-wrong.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-paths-wrong",
+      "artifact": "artifacts/openapi-json-paths-wrong.json"
+    },
+    {
+      "id": "openapi-json-pathitem-wrong",
+      "payload": "invalid/openapi-json-pathitem-wrong.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-pathitem-wrong",
+      "artifact": "artifacts/openapi-json-pathitem-wrong.json"
+    },
+    {
+      "id": "openapi-json-pathkey-wrong",
+      "payload": "invalid/openapi-json-pathkey-wrong.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-json-pathkey-wrong",
+      "artifact": "artifacts/openapi-json-pathkey-wrong.json"
+    },
+    {
+      "id": "openapi-yaml-malformed",
+      "payload": "invalid/openapi-yaml-malformed.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-yaml-malformed",
+      "artifact": "artifacts/openapi-yaml-malformed.yaml"
+    },
+    {
+      "id": "openapi-yaml-nonspec",
+      "payload": "invalid/openapi-yaml-nonspec.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-yaml-nonspec",
+      "artifact": "artifacts/openapi-yaml-nonspec.yaml"
+    },
+    {
+      "id": "openapi-yaml-duplicate",
+      "payload": "invalid/openapi-yaml-duplicate.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-yaml-duplicate",
+      "artifact": "artifacts/openapi-yaml-duplicate.yaml"
+    },
+    {
+      "id": "openapi-yaml-multidoc",
+      "payload": "invalid/openapi-yaml-multidoc.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-yaml-multidoc",
+      "artifact": "artifacts/openapi-yaml-multidoc.yaml"
+    },
+    {
+      "id": "openapi-yaml-alias",
+      "payload": "invalid/openapi-yaml-alias.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-yaml-alias",
+      "artifact": "artifacts/openapi-yaml-alias.yaml"
+    },
+    {
+      "id": "openapi-yaml-empty",
+      "payload": "invalid/openapi-yaml-empty.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-yaml-empty",
+      "artifact": "artifacts/openapi-yaml-empty.yaml"
+    },
+    {
+      "id": "openapi-yaml-root-list",
+      "payload": "invalid/openapi-yaml-root-list.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-yaml-root-list",
+      "artifact": "artifacts/openapi-yaml-root-list.yaml"
+    },
+    {
+      "id": "openapi-yaml-both-versions",
+      "payload": "invalid/openapi-yaml-both-versions.json",
+      "validation": "artifact",
+      "expected": "reject",
+      "expectedReason": "openapi-yaml-both-versions",
+      "artifact": "artifacts/openapi-yaml-both-versions.yaml"
+    },
+    {
+      "id": "actions-component-result",
+      "payload": "valid/actions-component-result.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "actions-invalid-artifactid",
+      "payload": "invalid/actions-invalid-artifactid.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "actions-invalid-artifactid"
+    },
+    {
+      "id": "actions-invalid-runid",
+      "payload": "invalid/actions-invalid-runid.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "actions-invalid-runid"
+    },
+    {
+      "id": "actions-invalid-path",
+      "payload": "invalid/actions-invalid-path.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "actions-invalid-path"
+    },
+    {
+      "id": "actions-invalid-artifactname",
+      "payload": "invalid/actions-invalid-artifactname.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "actions-invalid-artifactname"
+    },
+    {
+      "id": "actions-staged-manifest",
+      "payload": "valid/actions-staged-manifest.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "actions-public-manifest",
+      "payload": "invalid/actions-public-manifest.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "actions-public-manifest",
+      "context": {
+        "githubRelease": {
+          "tag": "v1.2.3",
+          "draft": false,
+          "targetCommitish": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "assetsVerified": true
+        }
+      }
+    },
+    {
+      "id": "actions-wrong-owner",
+      "payload": "invalid/actions-wrong-owner.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "actions-wrong-owner"
+    },
+    {
+      "id": "actions-context-repositoryid",
+      "payload": "invalid/actions-context-repositoryid.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "actions-context-repositoryid",
+      "context": {
+        "actionsArtifact": {
+          "repositoryId": "999",
+          "runId": "100",
+          "runAttempt": "1",
+          "artifactId": "300",
+          "artifactName": "components-100-1-api"
+        }
+      }
+    },
+    {
+      "id": "actions-context-runid",
+      "payload": "invalid/actions-context-runid.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "actions-context-runid",
+      "context": {
+        "actionsArtifact": {
+          "repositoryId": "12345",
+          "runId": "999",
+          "runAttempt": "1",
+          "artifactId": "300",
+          "artifactName": "components-100-1-api"
+        }
+      }
+    },
+    {
+      "id": "actions-context-runattempt",
+      "payload": "invalid/actions-context-runattempt.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "actions-context-runattempt",
+      "context": {
+        "actionsArtifact": {
+          "repositoryId": "12345",
+          "runId": "100",
+          "runAttempt": "999",
+          "artifactId": "300",
+          "artifactName": "components-100-1-api"
+        }
+      }
+    },
+    {
+      "id": "actions-context-artifactid",
+      "payload": "invalid/actions-context-artifactid.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "actions-context-artifactid",
+      "context": {
+        "actionsArtifact": {
+          "repositoryId": "12345",
+          "runId": "100",
+          "runAttempt": "1",
+          "artifactId": "999",
+          "artifactName": "components-100-1-api"
+        }
+      }
+    },
+    {
+      "id": "actions-context-artifactname",
+      "payload": "invalid/actions-context-artifactname.json",
+      "validation": "context",
+      "expected": "reject",
+      "expectedReason": "actions-context-artifactname",
+      "context": {
+        "actionsArtifact": {
+          "repositoryId": "12345",
+          "runId": "100",
+          "runAttempt": "1",
+          "artifactId": "300",
+          "artifactName": "components-100-1-other"
+        }
+      }
+    },
+    {
+      "id": "appengine-flex-custom-config",
+      "payload": "valid/appengine-flex-custom-config.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "appengine-config-secret",
+      "payload": "invalid/appengine-config-secret.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "appengine-config-secret"
+    },
+    {
+      "id": "appengine-config-runtime-conflict",
+      "payload": "invalid/appengine-config-runtime-conflict.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "appengine-config-runtime-conflict"
+    },
+    {
+      "id": "appengine-config-flex-basic",
+      "payload": "invalid/appengine-config-flex-basic.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "appengine-config-flex-basic"
+    },
+    {
+      "id": "appengine-config-flex-cpu-required",
+      "payload": "invalid/appengine-config-flex-cpu-required.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "appengine-config-flex-cpu-required"
+    },
+    {
+      "id": "appengine-config-duration",
+      "payload": "invalid/appengine-config-duration.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "appengine-config-duration"
+    },
+    {
+      "id": "appengine-native-container-mode",
+      "payload": "invalid/appengine-native-container-mode.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "appengine-native-container-mode"
+    },
+    {
+      "id": "appengine-flex-native-config",
+      "payload": "valid/appengine-flex-native-config.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "appengine-standard-config",
+      "payload": "valid/appengine-standard-config.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "appengine-standard-entrypoint-required",
+      "payload": "invalid/appengine-standard-entrypoint-required.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "appengine-standard-entrypoint-required"
+    },
+    {
+      "id": "rest-managed-fresh-no-id",
+      "payload": "valid/rest-managed-fresh-no-id.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "rest-existing-id",
+      "payload": "valid/rest-existing-id.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "rest-external-missing-id",
+      "payload": "invalid/rest-external-missing-id.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "rest-external-missing-id"
+    },
+    {
+      "id": "rest-default-missing-id",
+      "payload": "invalid/rest-default-missing-id.json",
+      "validation": "structural",
+      "expected": "reject",
+      "expectedReason": "rest-default-missing-id"
+    },
+    {
+      "id": "rest-fresh-name-collision",
+      "payload": "invalid/rest-fresh-name-collision.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "rest-fresh-name-collision"
+    },
+    {
+      "id": "azure-slot-sibling-claims",
+      "payload": "valid/azure-slot-sibling-claims.json",
+      "validation": "semantic",
+      "expected": "accept",
+      "expectedReason": null
+    },
+    {
+      "id": "azure-site-slot-parent-conflict",
+      "payload": "invalid/azure-site-slot-parent-conflict.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "azure-site-slot-parent-conflict"
+    },
+    {
+      "id": "azure-slot-case-alias-conflict",
+      "payload": "invalid/azure-slot-case-alias-conflict.json",
+      "validation": "semantic",
+      "expected": "reject",
+      "expectedReason": "azure-slot-case-alias-conflict"
+    }
+  ]
+}

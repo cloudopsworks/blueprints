@@ -1,0 +1,33 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "PreviewState",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "prNumber": 42,
+  "targetId": "preview-gke",
+  "namespace": "p-12345-42-preview-gke-61d82e",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "runId": "9001",
+  "phase": "ready",
+  "isolation": {
+    "policyDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "probeImageDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "verifiedAt": "2026-11-12T20:00:00Z",
+    "admissionRestricted": true,
+    "ingressDnsAllowed": true,
+    "unintendedEgressDenied": true,
+    "metadataDenied": true
+  },
+  "components": [
+    {
+      "componentId": "api",
+      "status": "ready",
+      "releaseName": "api",
+      "desiredDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "successfulDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "error": null
+    }
+  ]
+}

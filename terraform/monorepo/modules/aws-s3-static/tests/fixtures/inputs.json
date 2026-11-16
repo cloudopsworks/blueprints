@@ -1,0 +1,29 @@
+{
+  "resource": {
+    "kind": "aws.s3-static",
+    "provider": "aws",
+    "region": "us-east-1",
+    "bucket": "existing-website",
+    "prefix": "components/web"
+  },
+  "configuration": {
+    "kind": "aws.s3-static"
+  },
+  "workload": {
+    "kind": "static"
+  },
+  "artifact": {
+    "digest": "sha256:d6de5ebffc0f3790651cd4b572371d0b1b4bbdd46776d0b9d7ce64e738a805b5",
+    "format": "zip",
+    "path": "tests/fixtures/index.html",
+    "imageReference": null,
+    "files": [
+      {
+        "path": "tests/fixtures/index.html",
+        "key": "index.html",
+        "contentType": "text/html"
+      }
+    ]
+  },
+  "owner_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

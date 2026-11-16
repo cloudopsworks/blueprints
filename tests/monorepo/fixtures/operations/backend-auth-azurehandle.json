@@ -1,0 +1,61 @@
+{
+  "apiIdentity": null,
+  "apiVersion": "cloudopsworks.io/operations/v1",
+  "authRefs": [
+    "azure-state",
+    "gcp-prod"
+  ],
+  "backend": {
+    "authRef": "azure-state",
+    "containerName": "state",
+    "key": "deployments/release/prod/example/monorepo/prod-run/api/gcp-cloudrun/terraform.tfstate",
+    "kind": "azurerm",
+    "storageAccountName": "stateexample",
+    "useAzureadAuth": true,
+    "useOidc": true,
+    "workspace": "default"
+  },
+  "backendIdentity": {
+    "provider": "azure",
+    "subscriptionId": "99999999-9999-9999-9999-999999999999",
+    "tenantId": "11111111-1111-1111-1111-111111111111"
+  },
+  "componentId": "api",
+  "effectiveEnvironment": "release/prod",
+  "environment": "prod",
+  "kind": "StateHandle",
+  "moduleId": "gcp-cloudrun",
+  "native": {
+    "dynamodbLockId": null,
+    "leaseMetadataKey": "terraformlockid",
+    "lockAddress": null,
+    "stateAddress": "https://stateexample.blob.core.windows.net/state/deployments/release/prod/example/monorepo/prod-run/api/gcp-cloudrun/terraform.tfstate"
+  },
+  "origin": {
+    "blueprintSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "moduleRevision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "providerLockDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "repository": {
+      "fullName": "example/mixed-app",
+      "id": "12345"
+    },
+    "runAttempt": "1",
+    "runId": "100",
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "ownership": "external",
+  "prNumber": null,
+  "protectedEnvironment": "release/prod",
+  "providerIdentity": "123456789012",
+  "qualifier": null,
+  "releaseName": "example",
+  "resourceIdentity": {
+    "kind": "gcp.cloudrun",
+    "project": "example-prod",
+    "provider": "gcp",
+    "region": "us-central1",
+    "service": "api"
+  },
+  "scope": "component",
+  "targetId": "prod-run"
+}

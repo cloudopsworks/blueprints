@@ -1,0 +1,7 @@
+# Operator documentation example for org/team DEPLOYMENT_STATE_CONF; not application-repository configuration.
+# backend-aws is an existing binding in the SAME protected AUTH map, independent of target authRef.
+s3:
+  bucket: REPLACE_EXISTING_STATE_BUCKET
+  region: us-east-1
+  use_lockfile: true
+  auth_ref: backend-aws

@@ -1,0 +1,119 @@
+name: Independently verify protected monorepo source
+description: Read-only strong branch policy and fresh source ancestry; exact-source configuration for tag eligibility
+inputs:
+  origin-facts: {description: Bounded closed original identity data; every authority is independently checked, required: true}
+  host-ref: {description: Additional actual delivery host only; paired with host-sha, default: ''}
+  host-sha: {description: Additional actual delivery host commit; paired with host-ref, default: ''}
+outputs:
+  trusted-source: {description: Independently protected source; never inherited from host or base, value: '${{ steps.verify.outputs.trusted-source }}'}
+runs:
+  using: composite
+  steps:
+    - id: identity
+      uses: actions/github-script@v9
+      env:
+        FACTS: ${{ inputs.origin-facts }}
+      with:
+        script: |
+          if (Buffer.byteLength(process.env.FACTS || '') > 65536) throw new Error('protected-source-facts-bound');
+          const facts = JSON.parse(process.env.FACTS), fields = ['event','ref','hostSha','callerPath','callerSha','blueprintSha','sourceSha','sourceRef','sourceRepositoryId','trustedSource','prNumber','headRepositoryId','headSha','headRef','baseRef','policySha','closed','merged'];
+          if (Object.keys(facts).sort().join() !== fields.sort().join()) throw new Error('protected-source-facts-fields');
+          const env = {...process.env, SOURCE_SHA:facts.sourceSha, SOURCE_REF:facts.sourceRef};
+          if (!/^[0-9a-f]{40}$/.test(env.SOURCE_SHA || '') || !/^refs\/(heads|tags)\/[^\s\x00-\x1f]{1,256}$/.test(env.SOURCE_REF || '')) throw new Error('protected-source-identity');
+          const repository = (await github.rest.repos.get({...context.repo})).data;
+          if (String(repository.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('protected-source-repository');
+          const tag = env.SOURCE_REF.startsWith('refs/tags/');
+          if (tag) {
+            let object = (await github.rest.git.getRef({...context.repo, ref: env.SOURCE_REF.slice('refs/'.length)})).data.object;
+            if (object?.type === 'tag') object = (await github.rest.git.getTag({...context.repo, tag_sha: object.sha})).data.object;
+            if (object?.type !== 'commit' || object.sha !== env.SOURCE_SHA) throw new Error('protected-source-tag');
+          }
+          core.setOutput('tag', String(tag));
+    - id: configuration
+      if: steps.identity.outputs.tag == 'true'
+      uses: ./bp/ci/monorepo/source
+      with:
+        source-sha: ${{ fromJSON(inputs.origin-facts).sourceSha }}
+    - id: verify
+      uses: actions/github-script@v9
+      env:
+        FACTS: ${{ inputs.origin-facts }}
+        HOST_REF: ${{ inputs.host-ref }}
+        HOST_SHA: ${{ inputs.host-sha }}
+        TAG: ${{ steps.identity.outputs.tag }}
+        DIRECTORY: ${{ steps.configuration.outputs.directory }}
+      with:
+        script: |
+          const facts = JSON.parse(process.env.FACTS);
+          const env = {...process.env, EVENT:facts.event, SOURCE_SHA:facts.sourceSha, SOURCE_REF:facts.sourceRef,
+            SOURCE_REPOSITORY_ID:facts.sourceRepositoryId, BASE_REF:facts.baseRef, POLICY_SHA:facts.policySha};
+          const sha = value => /^[0-9a-f]{40}$/.test(value || '');
+          if (!['push','create','workflow_dispatch','pull_request','pull_request_target'].includes(env.EVENT) || !sha(env.SOURCE_SHA) || !/^[1-9][0-9]*$/.test(env.SOURCE_REPOSITORY_ID || '')) throw new Error('protected-source-event');
+          const ancestor = async (from, to) => {
+            if (from === to) return true;
+            const result = (await github.rest.repos.compareCommitsWithBasehead({...context.repo, basehead: from + '...' + to})).data;
+            return ['ahead','identical'].includes(result.status) && result.base_commit?.sha === from && result.merge_base_commit?.sha === from;
+          };
+          const protectedBranch = async (branch, commit, required = true, requireAncestry = required) => {
+            if (typeof branch !== 'string' || !branch || branch.length > 256 || !sha(commit)) throw new Error('protected-source-branch');
+            const current = (await github.rest.repos.getBranch({...context.repo, branch})).data;
+            if (current.protected !== true) { if (required) throw new Error('protected-source-policy'); return false; }
+            if (!sha(current.commit?.sha)) throw new Error('protected-source-tip');
+            const result = await github.graphql(`query($owner:String!,$repo:String!,$ref:String!){repository(owner:$owner,name:$repo){ref(qualifiedName:$ref){branchProtectionRule{
+              requiresApprovingReviews requiredApprovingReviewCount requiredStatusCheckContexts isAdminEnforced dismissesStaleReviews requiresStatusChecks requiresStrictStatusChecks allowsForcePushes
+              bypassPullRequestAllowances(first:100){totalCount pageInfo{hasNextPage} nodes{actor{__typename}}}
+              bypassForcePushAllowances(first:100){totalCount pageInfo{hasNextPage} nodes{actor{__typename}}}}}}`, {...context.repo, ref:'refs/heads/' + branch});
+            const rule = result?.repository?.ref?.branchProtectionRule;
+            if (result?.errors || !rule) throw new Error('protected-source-policy');
+            for (const key of ['bypassPullRequestAllowances','bypassForcePushAllowances']) {
+              const value = rule[key];
+              if (!value || value.totalCount !== 0 || !Array.isArray(value.nodes) || value.nodes.length || value.pageInfo?.hasNextPage !== false) throw new Error('protected-source-bypass');
+            }
+            const strong = rule.requiresApprovingReviews === true && Number.isSafeInteger(rule.requiredApprovingReviewCount) && rule.requiredApprovingReviewCount >= 1 &&
+              rule.requiresStatusChecks === true && rule.requiresStrictStatusChecks === true && rule.isAdminEnforced === true && rule.dismissesStaleReviews === true && rule.allowsForcePushes === false &&
+              Array.isArray(rule.requiredStatusCheckContexts) && rule.requiredStatusCheckContexts.includes('checkpr / Check Pull Request');
+            if (!strong) { if (required) throw new Error('protected-source-policy'); return false; }
+            const valid = await ancestor(commit, current.commit.sha);
+            if (!valid && requireAncestry) throw new Error('protected-source-ancestry');
+            return valid;
+          };
+          const pull = ['pull_request','pull_request_target'].includes(env.EVENT);
+          if (pull && (!sha(env.POLICY_SHA) || !env.BASE_REF)) throw new Error('protected-source-base');
+          if (pull) await protectedBranch(env.BASE_REF, env.POLICY_SHA);
+          if (env.EVENT === 'pull_request_target') {
+            if (!facts.ref?.startsWith('refs/heads/') || !sha(facts.hostSha)) throw new Error('protected-source-host');
+            await protectedBranch(facts.ref.slice('refs/heads/'.length), facts.hostSha);
+            if (!await ancestor(env.POLICY_SHA, env.SOURCE_SHA)) throw new Error('protected-source-ancestry');
+          }
+          if (env.HOST_REF || env.HOST_SHA) {
+            if (context.eventName !== 'workflow_run' || !env.HOST_REF?.startsWith('refs/heads/') || !sha(env.HOST_SHA) || env.GITHUB_REF !== env.HOST_REF || env.GITHUB_SHA !== env.HOST_SHA) throw new Error('protected-source-host');
+            await protectedBranch(env.HOST_REF.slice('refs/heads/'.length), env.HOST_SHA);
+          }
+          let trusted = false;
+          if (env.SOURCE_REPOSITORY_ID === env.GITHUB_REPOSITORY_ID) {
+            if (env.TAG === 'true') {
+              if (pull || !env.DIRECTORY) throw new Error('protected-source-tag-context');
+              const seen = new Set();
+              for (let page = 1; page <= 20; page++) {
+                const branches = (await github.rest.repos.listBranches({...context.repo, protected:true, per_page:100, page})).data;
+                if (!Array.isArray(branches) || branches.length > 100) throw new Error('protected-source-branches');
+                for (const {name} of branches) {
+                  if (typeof name !== 'string' || name.length > 256 || seen.has(name)) throw new Error('protected-source-branches');
+                  seen.add(name);
+                  if (!/^(?:main|master|develop|support\/[^/]+|release\/[^/]+)$/.test(name)) continue;
+                  const output = await exec.getExecOutput('tronador', ['components','lifecycle','--config-only','--workdir',env.DIRECTORY,'--event','push','--ref','refs/heads/' + name,'--base-ref','','--json'], {silent:true,ignoreReturnCode:true});
+                  if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 65536) throw new Error('protected-source-lifecycle');
+                  const lifecycle = JSON.parse(output.stdout);
+                  if (typeof lifecycle.eligible !== 'boolean') throw new Error('protected-source-lifecycle');
+                  if (lifecycle.eligible) trusted = await protectedBranch(name, env.SOURCE_SHA, true, false) || trusted;
+                }
+                if (branches.length < 100) break;
+                if (page === 20) throw new Error('protected-source-branches-bound');
+              }
+              if (!trusted) throw new Error('protected-source-tag-lineage');
+            } else {
+              if (!env.SOURCE_REF.startsWith('refs/heads/')) throw new Error('protected-source-ref');
+              trusted = await protectedBranch(env.SOURCE_REF.slice('refs/heads/'.length), env.SOURCE_SHA, env.EVENT !== 'pull_request');
+            }
+          } else if (env.EVENT !== 'pull_request') throw new Error('protected-source-origin-repository');
+          core.setOutput('trusted-source', String(trusted));

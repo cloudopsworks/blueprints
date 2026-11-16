@@ -1,0 +1,54 @@
+{
+  "backend": {
+    "kind": "s3",
+    "bucket": "state-example",
+    "region": "us-east-1",
+    "workspace": "default",
+    "workspaceKeyPrefix": "env:",
+    "useLockfile": true,
+    "dynamodbTable": null
+  },
+  "origin": {
+    "repository": {
+      "id": "123",
+      "fullName": "example/monorepo"
+    },
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runId": "100",
+    "runAttempt": "1",
+    "blueprintSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "moduleRevision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "providerLockDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "invocation": {
+    "repository": {
+      "id": "123",
+      "fullName": "example/monorepo"
+    },
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runId": "100",
+    "runAttempt": "1",
+    "blueprintSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "actor": "operator"
+  },
+  "releaseName": "example",
+  "authRefs": [
+    "aws-dev"
+  ],
+  "prNumber": null,
+  "historicalHandle": null,
+  "lifecycle": {
+    "eligible": true,
+    "reason": "eligible",
+    "refClass": "develop",
+    "environment": "dev",
+    "deploymentEnabled": true,
+    "isRelease": false,
+    "isPreRelease": false,
+    "hasQualifier": false,
+    "targetName": "",
+    "deploymentName": "develop/dev",
+    "protectedEnvironment": "develop/dev"
+  },
+  "providerIdentity": "123456789012"
+}

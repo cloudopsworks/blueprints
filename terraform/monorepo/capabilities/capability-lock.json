@@ -1,0 +1,698 @@
+{
+  "schemaVersion": 1,
+  "purpose": "P0 capability lock, NOT an executable module allowlist or rollout-complete claim",
+  "activationBlocked": true,
+  "tools": {
+    "opentofu": "1.11.4",
+    "terragrunt": "0.99.4",
+    "terragruntDarwinArm64Sha256": "5b33dec8e3e720347732713a4f5a7d3fed70c0c87771c38943dd59ef4fa3f055"
+  },
+  "providers": {
+    "aws": "6.35.0",
+    "google": "7.0.0",
+    "google-beta": "7.0.0",
+    "azurerm": "4.66.0",
+    "kubernetes": "2.38.0",
+    "helm": "3.0.2"
+  },
+  "providerLockPath": "terraform/monorepo/capabilities/.terraform.lock.hcl",
+  "providerLockDigest": "sha256:2335d086a6659ad072edaec16d57808520e7e0f9da17fbba360e83eda22d01f5",
+  "revisionFiles": [
+    "versions.tf",
+    "main.tf.json",
+    "terragrunt.hcl",
+    "tests/schema_plan.tftest.hcl"
+  ],
+  "capabilityRevision": "sha256:e2e33b9ac67550d8c8e7e374f5c9d0188ec442659e30f257b5a526a763e369b2",
+  "families": [
+    {
+      "moduleId": "aws-eks",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "oci"
+      ],
+      "resourceAddresses": [
+        "helm_release.component[\"aws-eks\"]"
+      ],
+      "externalParents": [
+        "cluster",
+        "normal namespace",
+        "identity",
+        "network"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "server/dry-run/PodSecurity/CNI and release ownership path",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "gcp-gke",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "oci"
+      ],
+      "resourceAddresses": [
+        "helm_release.component[\"gcp-gke\"]"
+      ],
+      "externalParents": [
+        "cluster",
+        "normal namespace",
+        "identity",
+        "network"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "server/dry-run/PodSecurity/CNI and release ownership path",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "azure-aks",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "oci"
+      ],
+      "resourceAddresses": [
+        "helm_release.component[\"azure-aks\"]"
+      ],
+      "externalParents": [
+        "cluster",
+        "normal namespace",
+        "identity",
+        "network"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "server/dry-run/PodSecurity/CNI and release ownership path",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "aws-beanstalk",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "native-zip",
+        "oci-dockerrun"
+      ],
+      "resourceAddresses": [
+        "aws_s3_object.package",
+        "aws_elastic_beanstalk_application_version.component",
+        "aws_elastic_beanstalk_environment.component"
+      ],
+      "externalParents": [
+        "application",
+        "bucket",
+        "service role",
+        "instance profile",
+        "network"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "Dockerrun exact immutable-image fixture and private registry behavior",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "aws-lambda",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "zip",
+        "image"
+      ],
+      "resourceAddresses": [
+        "aws_s3_object.package",
+        "aws_lambda_function.zip",
+        "aws_lambda_function.image",
+        "aws_lambda_alias.component"
+      ],
+      "externalParents": [
+        "role",
+        "bucket",
+        "ECR repository"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "reject in-place ZIP/Image mode conversion",
+        "same-region private ECR proof",
+        "source S3 version/hash readback",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "aws-s3-static",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "static-archive"
+      ],
+      "resourceAddresses": [
+        "aws_s3_object.static"
+      ],
+      "externalParents": [
+        "bucket",
+        "website configuration",
+        "CDN"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "aws-apigateway-rest",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "openapi-json",
+        "openapi-yaml"
+      ],
+      "resourceAddresses": [
+        "aws_api_gateway_rest_api.component",
+        "aws_api_gateway_deployment.component",
+        "aws_api_gateway_stage.component"
+      ],
+      "externalParents": [
+        "account",
+        "domain",
+        "roles"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "strict exact scoped unit selection; no run-all",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "gcp-cloudrun",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "oci"
+      ],
+      "resourceAddresses": [
+        "google_cloud_run_v2_service.component"
+      ],
+      "externalParents": [
+        "project",
+        "network",
+        "service account",
+        "registry"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "gcp-appengine",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "native-standard-zip",
+        "native-flexible-zip",
+        "flexible-oci"
+      ],
+      "resourceAddresses": [
+        "google_storage_bucket_object.package",
+        "google_app_engine_standard_app_version.native",
+        "google_app_engine_flexible_app_version.native",
+        "google_app_engine_flexible_app_version.container",
+        "google_app_engine_service_split_traffic.component"
+      ],
+      "externalParents": [
+        "project",
+        "App Engine application",
+        "bucket",
+        "service identity"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "native runtime/profile and immutable source generation binding",
+        "service traffic children must never delete shared service",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "gcp-functions-gen2",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "native-zip"
+      ],
+      "resourceAddresses": [
+        "google_storage_bucket_object.package",
+        "google_cloudfunctions2_function.component"
+      ],
+      "externalParents": [
+        "project",
+        "bucket",
+        "build account",
+        "service account",
+        "trigger parents"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "explicit preserved trigger configuration and Gen2 backing ownership",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "gcp-storage-static",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "static-archive"
+      ],
+      "resourceAddresses": [
+        "google_storage_bucket_object.static"
+      ],
+      "externalParents": [
+        "bucket",
+        "CDN"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "gcp-apigateway",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "openapi-json",
+        "openapi-yaml"
+      ],
+      "resourceAddresses": [
+        "google_api_gateway_api.component",
+        "google_api_gateway_api_config.component",
+        "google_api_gateway_gateway.component"
+      ],
+      "externalParents": [
+        "project",
+        "service account",
+        "network"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "google-beta7.0.0 selected; stable google7.0.0 has no gateway resources",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "azure-containerapps",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "oci"
+      ],
+      "resourceAddresses": [
+        "azurerm_container_app.component"
+      ],
+      "externalParents": [
+        "managed environment",
+        "resource group",
+        "registry",
+        "identity"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "azure-appservice",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "linux-zip-production",
+        "windows-zip-production",
+        "linux-zip-slot",
+        "windows-zip-slot",
+        "linux-oci-production",
+        "linux-oci-slot"
+      ],
+      "resourceAddresses": [
+        "azurerm_linux_web_app.zip",
+        "azurerm_windows_web_app.zip",
+        "azurerm_linux_web_app_slot.zip",
+        "azurerm_windows_web_app_slot.zip",
+        "azurerm_linux_web_app.image",
+        "azurerm_linux_web_app_slot.image"
+      ],
+      "externalParents": [
+        "service plan",
+        "resource group",
+        "storage",
+        "identity",
+        "slot parent site"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "standard zip_deploy_file publishing capability must already be enabled; never enable BasicAuth",
+        "fixed extension alternative must prove application language behavior",
+        "Windows OCI rejected",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "azure-functions",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "premium-linux-zip-production",
+        "premium-linux-zip-slot",
+        "premium-windows-zip-production",
+        "premium-windows-zip-slot",
+        "dedicated-linux-zip-production",
+        "dedicated-linux-zip-slot",
+        "dedicated-windows-zip-production",
+        "dedicated-windows-zip-slot",
+        "premium-linux-oci-production",
+        "premium-linux-oci-slot",
+        "dedicated-linux-oci-production",
+        "dedicated-linux-oci-slot",
+        "flex-linux-zip-production"
+      ],
+      "resourceAddresses": [
+        "azurerm_linux_function_app.zip",
+        "azurerm_windows_function_app.zip",
+        "azurerm_linux_function_app_slot.zip",
+        "azurerm_windows_function_app_slot.zip",
+        "azurerm_linux_function_app.image",
+        "azurerm_linux_function_app_slot.image",
+        "azurerm_function_app_flex_consumption.zip",
+        "azurerm_storage_blob.package",
+        "azurerm_resource_group_template_deployment.onedeploy",
+        "azurerm_resource_group_template_deployment.linux_production",
+        "azurerm_resource_group_template_deployment.linux_slot",
+        "azurerm_resource_group_template_deployment.windows_production",
+        "azurerm_resource_group_template_deployment.windows_slot"
+      ],
+      "externalParents": [
+        "service plan",
+        "runtime storage",
+        "deployment storage/container",
+        "resource group",
+        "identity",
+        "slot parent site"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "Flex OneDeploy signed-URL private-source access is documented transport inference plus local protocol model, not live proof",
+        "host runtime marker/managed-package completion and exact slot behavior",
+        "Flex containers/Windows/slots/run-from-package rejected",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "azure-blob-static",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "static-archive"
+      ],
+      "resourceAddresses": [
+        "azurerm_storage_blob.static"
+      ],
+      "externalParents": [
+        "storage account",
+        "web container",
+        "website configuration",
+        "CDN"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "azure-apim",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "openapi-json",
+        "openapi-yaml"
+      ],
+      "resourceAddresses": [
+        "azurerm_api_management_api.component"
+      ],
+      "externalParents": [
+        "APIM service",
+        "resource group",
+        "domains",
+        "policies",
+        "identity"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "explicit API revision/version-set ownership where selected",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "aws-preview-environment",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "kubernetes-preview"
+      ],
+      "resourceAddresses": [
+        "kubernetes_namespace_v1.preview",
+        "kubernetes_network_policy_v1.preview",
+        "kubernetes_pod_v1.canary",
+        "kubernetes_pod_v1.control",
+        "kubernetes_pod_v1.ingress"
+      ],
+      "externalParents": [
+        "cluster",
+        "external control namespace",
+        "external ingress namespace",
+        "runner identity"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "generated real canary/control/ingress probe commands and pre-destroy ownership checks",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "gcp-preview-environment",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "kubernetes-preview"
+      ],
+      "resourceAddresses": [
+        "kubernetes_namespace_v1.preview",
+        "kubernetes_network_policy_v1.preview",
+        "kubernetes_pod_v1.canary",
+        "kubernetes_pod_v1.control",
+        "kubernetes_pod_v1.ingress"
+      ],
+      "externalParents": [
+        "cluster",
+        "external control namespace",
+        "external ingress namespace",
+        "runner identity"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "generated real canary/control/ingress probe commands and pre-destroy ownership checks",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    },
+    {
+      "moduleId": "azure-preview-environment",
+      "capabilityRoot": "terraform/monorepo/capabilities",
+      "modes": [
+        "kubernetes-preview"
+      ],
+      "resourceAddresses": [
+        "kubernetes_namespace_v1.preview",
+        "kubernetes_network_policy_v1.preview",
+        "kubernetes_pod_v1.canary",
+        "kubernetes_pod_v1.control",
+        "kubernetes_pod_v1.ingress"
+      ],
+      "externalParents": [
+        "cluster",
+        "external control namespace",
+        "external ingress namespace",
+        "runner identity"
+      ],
+      "proof": {
+        "schema": "validated",
+        "plan": "mock-provider-plan",
+        "sourceOperation": "partial-see-source-fixtures",
+        "ownership": "not-implemented",
+        "live": "not-run"
+      },
+      "activationBlocked": true,
+      "remaining": [
+        "generated real canary/control/ingress probe commands and pre-destroy ownership checks",
+        "complete provider create/update/delete operation-path fixtures per accepted mode",
+        "concrete execution root and exact state ownership/preexisting-rejection/saved-plan/destroy tests",
+        "credentialed provider readiness and runtime activation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,542 @@
+{
+  "schemaVersion": 1,
+  "blueprintRef": "v5.11.0",
+  "activationPrerequisite": "publish coordinated Blueprint v5.11.0 and Tronador v0.6.0; fixed paths are contracts, not proof of hosted execution",
+  "untrustedJobs": {
+    "permissions": {
+      "contents": "read",
+      "actions": "read"
+    },
+    "secrets": [],
+    "oidc": false
+  },
+  "stagePublisher": {
+    "jobId": "stage",
+    "logicalJobName": "monorepo-stage-publisher",
+    "uniquePerAttempt": true,
+    "expectedFullNames": {
+      "main-build.yml": "lifecycle / monorepo-stage-publisher",
+      "pr-build.yml": "ci / monorepo-stage-publisher",
+      "pr-close.yaml": "close / lifecycle / monorepo-stage-publisher"
+    },
+    "nameMatching": "exact-no-suffix-or-extra-hops",
+    "activationProof": "reviewed graph inference; actual hosted jobs API name verification required before activation"
+  },
+  "aggregate": {
+    "jobId": "result",
+    "jobName": "Monorepo lifecycle result"
+  },
+  "callers": [
+    {
+      "caller": "main-build.yml",
+      "jobId": "lifecycle",
+      "reusable": ".github/workflows/monorepo-main-build.yml",
+      "events": [
+        "create",
+        "push",
+        "workflow_dispatch"
+      ],
+      "permissions": {
+        "contents": "write",
+        "actions": "read",
+        "pull-requests": "read",
+        "deployments": "write",
+        "packages": "write",
+        "id-token": "write",
+        "security-events": "write",
+        "statuses": "write",
+        "checks": "write"
+      },
+      "secrets": {
+        "SONARQUBE_TOKEN": "SONARQUBE_TOKEN",
+        "SNYK_TOKEN": "SNYK_TOKEN",
+        "SEMGREP_TOKEN": "SEMGREP_TOKEN",
+        "DEPENDENCYTRACK_TOKEN": "DEPENDENCYTRACK_TOKEN",
+        "DEPLOYMENT_STATE_CONF": "DEPLOYMENT_STATE_CONF",
+        "CLOUDOPSWORKS_AUTH": "CLOUDOPSWORKS_AUTH",
+        "CLOUDOPSWORKS_PROBE_SECRETS": "CLOUDOPSWORKS_PROBE_SECRETS",
+        "CLOUDOPSWORKS_HOST_KEYS": "CLOUDOPSWORKS_HOST_KEYS"
+      },
+      "inputs": {},
+      "displayName": "lifecycle"
+    },
+    {
+      "caller": "pr-build.yml",
+      "jobId": "ci",
+      "reusable": ".github/workflows/monorepo-pr-build.yml",
+      "events": [
+        "pull_request"
+      ],
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+        "deployments": "read"
+      },
+      "secrets": {},
+      "inputs": {},
+      "displayName": "ci"
+    },
+    {
+      "caller": "pr-build.yml",
+      "jobId": "preview",
+      "reusable": ".github/workflows/monorepo-preview.yml",
+      "events": [
+        "workflow_run"
+      ],
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+        "deployments": "write",
+        "packages": "write",
+        "id-token": "write"
+      },
+      "secrets": {
+        "DEPLOYMENT_STATE_CONF": "DEPLOYMENT_STATE_CONF",
+        "CLOUDOPSWORKS_AUTH": "CLOUDOPSWORKS_AUTH",
+        "CLOUDOPSWORKS_PROBE_SECRETS": "CLOUDOPSWORKS_PROBE_SECRETS",
+        "CLOUDOPSWORKS_HOST_KEYS": "CLOUDOPSWORKS_HOST_KEYS",
+        "SONARQUBE_TOKEN": "SONARQUBE_TOKEN",
+        "SNYK_TOKEN": "SNYK_TOKEN",
+        "SEMGREP_TOKEN": "SEMGREP_TOKEN",
+        "DEPENDENCYTRACK_TOKEN": "DEPENDENCYTRACK_TOKEN"
+      },
+      "inputs": {},
+      "displayName": "preview"
+    },
+    {
+      "caller": "pr-close.yaml",
+      "jobId": "close",
+      "reusable": ".github/workflows/monorepo-pr-close.yml",
+      "events": [
+        "pull_request_target:closed"
+      ],
+      "permissions": {
+        "contents": "write",
+        "actions": "read",
+        "pull-requests": "read",
+        "deployments": "write",
+        "packages": "write",
+        "id-token": "write",
+        "security-events": "write",
+        "statuses": "write",
+        "checks": "write"
+      },
+      "secrets": {
+        "DEPLOYMENT_STATE_CONF": "DEPLOYMENT_STATE_CONF",
+        "CLOUDOPSWORKS_AUTH": "CLOUDOPSWORKS_AUTH",
+        "CLOUDOPSWORKS_PROBE_SECRETS": "CLOUDOPSWORKS_PROBE_SECRETS",
+        "CLOUDOPSWORKS_HOST_KEYS": "CLOUDOPSWORKS_HOST_KEYS",
+        "SONARQUBE_TOKEN": "SONARQUBE_TOKEN",
+        "SNYK_TOKEN": "SNYK_TOKEN",
+        "SEMGREP_TOKEN": "SEMGREP_TOKEN",
+        "DEPENDENCYTRACK_TOKEN": "DEPENDENCYTRACK_TOKEN"
+      },
+      "inputs": {},
+      "displayName": "close"
+    },
+    {
+      "caller": "slash-commands.yml",
+      "jobId": "gitops",
+      "reusable": ".github/workflows/monorepo-slash-command.yml",
+      "events": [
+        "issue_comment:created"
+      ],
+      "permissions": {
+        "contents": "read",
+        "issues": "write",
+        "pull-requests": "read"
+      },
+      "secrets": {
+        "BOT_TOKEN": "BOT_TOKEN"
+      },
+      "inputs": {},
+      "displayName": "gitops"
+    },
+    {
+      "caller": "slash-on-approve.yml",
+      "jobId": "approve",
+      "reusable": ".github/workflows/monorepo-approval.yml",
+      "events": [
+        "repository_dispatch:approved-command",
+        "repository_dispatch:approve-command",
+        "repository_dispatch:lgtm-command"
+      ],
+      "permissions": {
+        "contents": "read",
+        "issues": "write",
+        "pull-requests": "write"
+      },
+      "secrets": {
+        "BOT_TOKEN": "BOT_TOKEN"
+      },
+      "inputs": {},
+      "displayName": "approve"
+    },
+    {
+      "caller": "slash-on-retry-automerge.yml",
+      "jobId": "retry",
+      "reusable": ".github/workflows/monorepo-retry.yml",
+      "events": [
+        "repository_dispatch:retry-command"
+      ],
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "checks": "read",
+        "pull-requests": "write"
+      },
+      "secrets": {
+        "BOT_TOKEN": "BOT_TOKEN"
+      },
+      "inputs": {},
+      "displayName": "retry"
+    },
+    {
+      "caller": "automerge.yml",
+      "jobId": "automerge",
+      "reusable": ".github/workflows/monorepo-automerge.yml",
+      "events": [
+        "pull_request_target",
+        "check_suite:completed",
+        "status"
+      ],
+      "permissions": {
+        "contents": "write",
+        "pull-requests": "write",
+        "checks": "read"
+      },
+      "secrets": {
+        "BOT_TOKEN": "BOT_TOKEN"
+      },
+      "inputs": {},
+      "displayName": "automerge"
+    },
+    {
+      "caller": "checkpr.yml",
+      "jobId": "checkpr",
+      "reusable": ".github/workflows/monorepo-checkpr.yml",
+      "events": [
+        "pull_request_target:opened",
+        "pull_request_target:synchronize",
+        "pull_request_target:edited",
+        "pull_request_target:reopened"
+      ],
+      "permissions": {
+        "contents": "read",
+        "issues": "write",
+        "pull-requests": "write"
+      },
+      "secrets": {
+        "BOT_TOKEN": "BOT_TOKEN"
+      },
+      "inputs": {},
+      "displayName": "checkpr"
+    },
+    {
+      "caller": "process-owners.yml",
+      "jobId": "process-owners",
+      "reusable": ".github/workflows/monorepo-process-owners.yml",
+      "events": [
+        "push:master/main/develop",
+        "workflow_dispatch"
+      ],
+      "permissions": {
+        "actions": "write",
+        "contents": "write",
+        "issues": "write",
+        "packages": "write",
+        "statuses": "write"
+      },
+      "secrets": {
+        "BOT_TOKEN": "BOT_TOKEN",
+        "BOT_TOKEN_SCOPED": "BOT_TOKEN_SCOPED"
+      },
+      "inputs": {},
+      "displayName": "process-owners"
+    },
+    {
+      "caller": "scan.yml",
+      "jobId": "scan",
+      "reusable": ".github/workflows/monorepo-scan.yml",
+      "events": [
+        "workflow_dispatch"
+      ],
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+        "packages": "write",
+        "security-events": "write",
+        "statuses": "write",
+        "checks": "write"
+      },
+      "secrets": {
+        "SONARQUBE_TOKEN": "SONARQUBE_TOKEN",
+        "SNYK_TOKEN": "SNYK_TOKEN",
+        "SEMGREP_TOKEN": "SEMGREP_TOKEN",
+        "DEPENDENCYTRACK_TOKEN": "DEPENDENCYTRACK_TOKEN"
+      },
+      "inputs": {},
+      "displayName": "scan"
+    },
+    {
+      "caller": "deploy.yml",
+      "jobId": "operation",
+      "reusable": ".github/workflows/monorepo-manual-apply.yml",
+      "events": [
+        "workflow_dispatch"
+      ],
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+        "deployments": "write",
+        "packages": "write",
+        "id-token": "write"
+      },
+      "secrets": {
+        "DEPLOYMENT_STATE_CONF": "DEPLOYMENT_STATE_CONF",
+        "CLOUDOPSWORKS_AUTH": "CLOUDOPSWORKS_AUTH",
+        "CLOUDOPSWORKS_PROBE_SECRETS": "CLOUDOPSWORKS_PROBE_SECRETS",
+        "CLOUDOPSWORKS_HOST_KEYS": "CLOUDOPSWORKS_HOST_KEYS",
+        "SONARQUBE_TOKEN": "SONARQUBE_TOKEN",
+        "SNYK_TOKEN": "SNYK_TOKEN",
+        "SEMGREP_TOKEN": "SEMGREP_TOKEN",
+        "DEPENDENCYTRACK_TOKEN": "DEPENDENCYTRACK_TOKEN"
+      },
+      "inputs": {
+        "operation": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "apply",
+            "destroy",
+            "unlock"
+          ],
+          "fixed": "apply"
+        },
+        "environment": {
+          "type": "string",
+          "required": true,
+          "meaning": "exact protected environment identity, not cloud env; manual type:environment"
+        },
+        "target": {
+          "type": "string",
+          "required": true
+        },
+        "component": {
+          "type": "string",
+          "required": true
+        },
+        "qualifier": {
+          "type": "string",
+          "default": ""
+        },
+        "lock-id": {
+          "type": "string",
+          "default": ""
+        },
+        "confirmation": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "displayName": "operation"
+    },
+    {
+      "caller": "environment-destroy.yml",
+      "jobId": "operation",
+      "reusable": ".github/workflows/monorepo-operation.yml",
+      "events": [
+        "workflow_dispatch"
+      ],
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+        "deployments": "write",
+        "packages": "read",
+        "id-token": "write"
+      },
+      "secrets": {
+        "DEPLOYMENT_STATE_CONF": "DEPLOYMENT_STATE_CONF",
+        "CLOUDOPSWORKS_AUTH": "CLOUDOPSWORKS_AUTH",
+        "CLOUDOPSWORKS_PROBE_SECRETS": "CLOUDOPSWORKS_PROBE_SECRETS",
+        "CLOUDOPSWORKS_HOST_KEYS": "CLOUDOPSWORKS_HOST_KEYS"
+      },
+      "inputs": {
+        "operation": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "apply",
+            "destroy",
+            "unlock"
+          ],
+          "fixed": "destroy"
+        },
+        "environment": {
+          "type": "string",
+          "required": true,
+          "meaning": "exact protected environment identity, not cloud env; manual type:environment"
+        },
+        "target": {
+          "type": "string",
+          "required": true
+        },
+        "component": {
+          "type": "string",
+          "required": true
+        },
+        "qualifier": {
+          "type": "string",
+          "default": ""
+        },
+        "lock-id": {
+          "type": "string",
+          "default": ""
+        },
+        "confirmation": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "displayName": "operation"
+    },
+    {
+      "caller": "environment-unlock.yml",
+      "jobId": "operation",
+      "reusable": ".github/workflows/monorepo-operation.yml",
+      "events": [
+        "workflow_dispatch"
+      ],
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+        "deployments": "write",
+        "packages": "read",
+        "id-token": "write"
+      },
+      "secrets": {
+        "DEPLOYMENT_STATE_CONF": "DEPLOYMENT_STATE_CONF",
+        "CLOUDOPSWORKS_AUTH": "CLOUDOPSWORKS_AUTH",
+        "CLOUDOPSWORKS_PROBE_SECRETS": "CLOUDOPSWORKS_PROBE_SECRETS",
+        "CLOUDOPSWORKS_HOST_KEYS": "CLOUDOPSWORKS_HOST_KEYS"
+      },
+      "inputs": {
+        "operation": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "apply",
+            "destroy",
+            "unlock"
+          ],
+          "fixed": "unlock"
+        },
+        "environment": {
+          "type": "string",
+          "required": true,
+          "meaning": "exact protected environment identity, not cloud env; manual type:environment"
+        },
+        "target": {
+          "type": "string",
+          "required": true
+        },
+        "component": {
+          "type": "string",
+          "required": true
+        },
+        "qualifier": {
+          "type": "string",
+          "default": ""
+        },
+        "lock-id": {
+          "type": "string",
+          "default": ""
+        },
+        "confirmation": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "displayName": "operation"
+    },
+    {
+      "caller": "deploy-container.yml",
+      "jobId": "publish",
+      "reusable": ".github/workflows/monorepo-container.yml",
+      "events": [
+        "workflow_dispatch"
+      ],
+      "permissions": {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+        "packages": "write"
+      },
+      "secrets": {},
+      "inputs": {
+        "component": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "displayName": "publish"
+    }
+  ],
+  "manualOperationGuards": {
+    "componentRequired": true,
+    "implicitAllScope": false,
+    "unlockLockIdRequired": true,
+    "destroyConfirmation": "destroy <environment>/<target>/<component>",
+    "unlockConfirmation": "unlock <environment>/<target>/<component> <lock-id>",
+    "environmentResolution": "exact canonical lifecycle identity for apply; actor-verified historical handle for destroy/unlock; never split arbitrary strings/default prod"
+  },
+  "requiredChecks": {
+    "componentMode": {
+      "caller": "checkpr.yml",
+      "callerJobId": "checkpr",
+      "callerDisplayName": "checkpr",
+      "reusable": ".github/workflows/monorepo-checkpr.yml",
+      "jobId": "checkpr",
+      "logicalJobName": "Check Pull Request",
+      "expectedFullName": "checkpr / Check Pull Request",
+      "activationProof": "reviewed graph inference; verify actual hosted check-runs API name before activation"
+    },
+    "legacy": "Check Pull Request"
+  },
+  "namingEvidence": {
+    "official": "https://docs.github.com/en/actions/concepts/workflows-and-actions/reusing-workflow-configurations",
+    "scope": "Reusable workflows create jobs, composites do not add jobs. Exact hosted concatenation delimiter is not established by this reference."
+  },
+  "previewCallerGuard": {
+    "eventName": "workflow_run",
+    "sourceEvent": "pull_request",
+    "conclusion": "success",
+    "authority": "central publisher independently re-verifies exact run/attempt/workflow/PR/head and caller graph"
+  },
+  "previewPhaseGraph": {
+    "callerPrefixes": {
+      "pr-build.yml": "preview / monorepo-preview-{target} / ",
+      "pr-close.yaml": "close / preview / monorepo-preview-{target} / "
+    },
+    "jobNames": {
+      "root": "monorepo-preview-root-{target}",
+      "component": "monorepo-preview-component-{target}-{component}",
+      "cleanup": "monorepo-preview-cleanup-{target}-{component}",
+      "destroy": "monorepo-preview-destroy-{target}",
+      "scan": "monorepo-scan-barrier",
+      "component-scan": "monorepo-component-scan-{component}"
+    },
+    "requiredReusables": [
+      "monorepo-preview.yml",
+      "monorepo-preview-target.yml"
+    ],
+    "nameMatching": "exact-no-suffix-or-extra-hops",
+    "activationProof": "reviewed graph inference; actual hosted jobs API name verification required before activation"
+  }
+}

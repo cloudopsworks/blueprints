@@ -1,0 +1,7 @@
+{
+  "kind": "gcp.functions-gen2",
+  "eventSource": {
+    "source": "pubsub",
+    "resource": "projects/project/topics/events"
+  }
+}

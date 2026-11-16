@@ -1,0 +1,422 @@
+{
+  "schemaVersion": 1,
+  "providerVersion": "7.0.0",
+  "proofLevel": "pinned upstream source + actual selected-provider validation/mocks + App Engine offline provider plans/graphs; not cloud execution",
+  "sources": {
+    "cloudrun": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google/v7.0.0/google/services/cloudrunv2/resource_cloud_run_v2_service.go",
+      "sha256": "f9bd1763fc34f61d87eff966cbd557240e7c59cd2bb6eee34be75668c966d47c",
+      "operations": [
+        {
+          "function": "resourceCloudRunV2ServiceCreate",
+          "startLine": 1303,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "projects/{{project}}/locations/{{location}}/services/{{name}}",
+            "{{CloudRunV2BasePath}}projects/{{project}}/locations/{{location}}/services?serviceId={{name}}"
+          ]
+        },
+        {
+          "function": "resourceCloudRunV2ServiceUpdate",
+          "startLine": 1608,
+          "methods": [
+            "PATCH"
+          ],
+          "requestPaths": [
+            "{{CloudRunV2BasePath}}projects/{{project}}/locations/{{location}}/services/{{name}}"
+          ]
+        },
+        {
+          "function": "resourceCloudRunV2ServiceDelete",
+          "startLine": 1750,
+          "methods": [
+            "DELETE"
+          ],
+          "requestPaths": [
+            "{{CloudRunV2BasePath}}projects/{{project}}/locations/{{location}}/services/{{name}}"
+          ]
+        }
+      ]
+    },
+    "appengine_standard": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google/v7.0.0/google/services/appengine/resource_app_engine_standard_app_version.go",
+      "sha256": "81731ff7bb2ab9e5af979a73b6dfc9b9c125ccd4fc3e955c0303a5430563d61e",
+      "operations": [
+        {
+          "function": "resourceAppEngineStandardAppVersionCreate",
+          "startLine": 485,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "apps/{{project}}",
+            "apps/{{project}}/services/{{service}}/versions/{{version_id}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}/versions"
+          ]
+        },
+        {
+          "function": "resourceAppEngineStandardAppVersionUpdate",
+          "startLine": 760,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "apps/{{project}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}/versions"
+          ]
+        },
+        {
+          "function": "resourceAppEngineStandardAppVersionDelete",
+          "startLine": 928,
+          "methods": [
+            "DELETE"
+          ],
+          "requestPaths": [
+            "apps/{{project}}/services/{{service}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}/versions/{{version_id}}"
+          ]
+        }
+      ],
+      "createWaitFailureClearsIdLine": 651
+    },
+    "appengine_flexible": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google/v7.0.0/google/services/appengine/resource_app_engine_flexible_app_version.go",
+      "sha256": "a3a709129db1a5a2042dee07d67b7879d3ee50cbd717ba1543dfb5d4baeb496b",
+      "operations": [
+        {
+          "function": "resourceAppEngineFlexibleAppVersionCreate",
+          "startLine": 903,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "apps/{{project}}",
+            "apps/{{project}}/services/{{service}}/versions/{{version_id}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}/versions"
+          ]
+        },
+        {
+          "function": "resourceAppEngineFlexibleAppVersionUpdate",
+          "startLine": 1264,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "apps/{{project}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}/versions"
+          ]
+        },
+        {
+          "function": "resourceAppEngineFlexibleAppVersionDelete",
+          "startLine": 1491,
+          "methods": [
+            "DELETE"
+          ],
+          "requestPaths": [
+            "apps/{{project}}/services/{{service}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}/versions/{{version_id}}"
+          ]
+        }
+      ],
+      "createWaitFailureClearsIdLine": 1128
+    },
+    "appengine_traffic": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google/v7.0.0/google/services/appengine/resource_app_engine_service_split_traffic.go",
+      "sha256": "78f8280c74f174349d5e2d9250cce394df0d747319685c73ca1ce5db70d739da",
+      "operations": [
+        {
+          "function": "resourceAppEngineServiceSplitTrafficCreate",
+          "startLine": 103,
+          "methods": [
+            "PATCH"
+          ],
+          "requestPaths": [
+            "apps/{{project}}",
+            "apps/{{project}}/services/{{service}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}?migrateTraffic={{migrate_traffic}}&updateMask=split"
+          ]
+        },
+        {
+          "function": "resourceAppEngineServiceSplitTrafficUpdate",
+          "startLine": 236,
+          "methods": [
+            "PATCH"
+          ],
+          "requestPaths": [
+            "apps/{{project}}",
+            "{{AppEngineBasePath}}apps/{{project}}/services/{{service}}?migrateTraffic={{migrate_traffic}}"
+          ]
+        },
+        {
+          "function": "resourceAppEngineServiceSplitTrafficDelete",
+          "startLine": 331,
+          "methods": [],
+          "requestPaths": []
+        }
+      ]
+    },
+    "functions_gen2": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google/v7.0.0/google/services/cloudfunctions2/resource_cloudfunctions2_function.go",
+      "sha256": "275242a011025113c1eebada0d3395841334989e5573a71688786d37730fe706",
+      "operations": [
+        {
+          "function": "resourceCloudfunctions2functionCreate",
+          "startLine": 598,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "projects/{{project}}/locations/{{location}}/functions/{{name}}",
+            "{{Cloudfunctions2BasePath}}projects/{{project}}/locations/{{location}}/functions?functionId={{name}}"
+          ]
+        },
+        {
+          "function": "resourceCloudfunctions2functionUpdate",
+          "startLine": 794,
+          "methods": [
+            "PATCH"
+          ],
+          "requestPaths": [
+            "{{Cloudfunctions2BasePath}}projects/{{project}}/locations/{{location}}/functions/{{name}}"
+          ]
+        },
+        {
+          "function": "resourceCloudfunctions2functionDelete",
+          "startLine": 927,
+          "methods": [
+            "DELETE"
+          ],
+          "requestPaths": [
+            "{{Cloudfunctions2BasePath}}projects/{{project}}/locations/{{location}}/functions/{{name}}"
+          ]
+        }
+      ]
+    },
+    "storage_object": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google/v7.0.0/google/services/storage/resource_storage_bucket_object.go",
+      "sha256": "d88b1313e75e1b2d29d7c736d53a0dcd6f3e1f26eb162dd5891398a2df11a18f",
+      "operations": [
+        {
+          "function": "resourceStorageBucketObjectCreate",
+          "startLine": 343,
+          "methods": [],
+          "requestPaths": []
+        },
+        {
+          "function": "resourceStorageBucketObjectUpdate",
+          "startLine": 436,
+          "methods": [],
+          "requestPaths": []
+        },
+        {
+          "function": "resourceStorageBucketObjectDelete",
+          "startLine": 591,
+          "methods": [],
+          "requestPaths": []
+        }
+      ]
+    },
+    "apigateway_api": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google-beta/v7.0.0/google-beta/services/apigateway/resource_api_gateway_api.go",
+      "sha256": "fcef7180fb1e5e0a906cdad55ee483fb86525062b7236aba0cd151ff5b0a6ffd",
+      "operations": [
+        {
+          "function": "resourceApiGatewayApiCreate",
+          "startLine": 124,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "projects/{{project}}/locations/global/apis/{{api_id}}",
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/global/apis?apiId={{api_id}}"
+          ]
+        },
+        {
+          "function": "resourceApiGatewayApiUpdate",
+          "startLine": 274,
+          "methods": [
+            "PATCH"
+          ],
+          "requestPaths": [
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/global/apis/{{api_id}}"
+          ]
+        },
+        {
+          "function": "resourceApiGatewayApiDelete",
+          "startLine": 362,
+          "methods": [
+            "DELETE"
+          ],
+          "requestPaths": [
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/global/apis/{{api_id}}"
+          ]
+        }
+      ]
+    },
+    "apigateway_config": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google-beta/v7.0.0/google-beta/services/apigateway/resource_api_gateway_api_config.go",
+      "sha256": "7989960c2a026bd77050f640f21c16db3af0349e8ee6b559254758aa36a2bcec",
+      "operations": [
+        {
+          "function": "resourceApiGatewayApiConfigCreate",
+          "startLine": 278,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "projects/{{project}}/locations/global/apis/{{api}}/configs/{{api_config_id}}",
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/global/apis/{{api}}/configs?apiConfigId={{api_config_id}}"
+          ]
+        },
+        {
+          "function": "resourceApiGatewayApiConfigUpdate",
+          "startLine": 454,
+          "methods": [
+            "PATCH"
+          ],
+          "requestPaths": [
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/global/apis/{{api}}/configs/{{api_config_id}}"
+          ]
+        },
+        {
+          "function": "resourceApiGatewayApiConfigDelete",
+          "startLine": 577,
+          "methods": [
+            "DELETE"
+          ],
+          "requestPaths": [
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/global/apis/{{api}}/configs/{{api_config_id}}"
+          ]
+        }
+      ]
+    },
+    "apigateway_gateway": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-google-beta/v7.0.0/google-beta/services/apigateway/resource_api_gateway_gateway.go",
+      "sha256": "64ae689649f1609311d206ee79fabbc73a87fe462fa709bc11b4fbb4c6446589",
+      "operations": [
+        {
+          "function": "resourceApiGatewayGatewayCreate",
+          "startLine": 131,
+          "methods": [
+            "POST"
+          ],
+          "requestPaths": [
+            "projects/{{project}}/locations/{{region}}/gateways/{{gateway_id}}",
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/{{region}}/gateways?gatewayId={{gateway_id}}"
+          ]
+        },
+        {
+          "function": "resourceApiGatewayGatewayUpdate",
+          "startLine": 281,
+          "methods": [
+            "PATCH"
+          ],
+          "requestPaths": [
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/{{region}}/gateways/{{gateway_id}}"
+          ]
+        },
+        {
+          "function": "resourceApiGatewayGatewayDelete",
+          "startLine": 379,
+          "methods": [
+            "DELETE"
+          ],
+          "requestPaths": [
+            "{{ApiGatewayBasePath}}projects/{{project}}/locations/{{region}}/gateways/{{gateway_id}}"
+          ]
+        }
+      ]
+    }
+  },
+  "adapterDelta": {
+    "cloudrun": "Reuse existing v2 service primitive; explicit identity, immutable digest, external SA instead of generated names/tag image/IAM creation.",
+    "appengine": "Reuse existing standard version primitive and selected-provider flexible primitive, external source bucket/SA, source-bound closed app.yaml projection. Reviewed exclusive nondefault service contract uses service-delete true/noop false/destroy-before-create with downtime; shared history/inventory/single-writer/saved-plan guard is mandatory and activation remains blocked.",
+    "other": "Narrow selected-provider native roots own child workload/artifact resources only; no parent provisioning or auto-import."
+  },
+  "destroyCaveat": "Reviewed whole-service deletion is valid only for historically verified exclusive nondefault services. Traffic resource Delete remains state-only; provider Create wait errors can leave live survivors absent from native state.",
+  "localProof": {
+    "tofu": "1.11.4",
+    "google": "7.0.0",
+    "googleBeta": "7.0.0",
+    "mockCases": 31,
+    "modes": [
+      "cloudrun-oci",
+      "appengine-standard-native",
+      "appengine-flex-native",
+      "appengine-flex-oci",
+      "gen2-http",
+      "gen2-pubsub",
+      "gen2-storage-finalize",
+      "static-objectset",
+      "apigateway-yaml",
+      "apigateway-json",
+      "static-zip-objectset"
+    ],
+    "realProviderOfflinePlans": {
+      "modes": [
+        "appengine-standard-native",
+        "appengine-flex-native",
+        "appengine-flex-oci"
+      ],
+      "externalData": "test-only frozen previously mocked values",
+      "network": "fake noncredential access token; all HTTP(S) forced to dead-loopback proxy",
+      "normalVersionReplacement": [
+        "delete",
+        "create"
+      ],
+      "graph": "new same-mode version waits old version destroy; traffic waits new version",
+      "notProved": [
+        "cloud API apply/delete success",
+        "global service ownership and absence of foreign versions",
+        "standard-flex cross-mode transition ordering",
+        "partial-failure hosted recovery",
+        "readiness",
+        "historical oldfalse/native ownership rejection belongs trusted runtime semantic guard",
+        "protected single-writer activation prerequisite and pre-apply inventory recheck"
+      ],
+      "actualRootPolicy": {
+        "delete_service_on_destroy": true,
+        "noop_on_destroy": false,
+        "create_before_destroy": false
+      },
+      "planCases": [
+        "fresh create",
+        "synthetic already-exclusive-owned state update",
+        "same-mode changed-artifact replacement",
+        "whole-service destroy"
+      ],
+      "destroyScope": [
+        "exclusive nondefault service via version Delete true (ALL enclosed versions)",
+        "owned immutable package objects",
+        "traffic state removal only"
+      ]
+    }
+  },
+  "candidateBoundary": {
+    "productionRoot": "Approved exclusive-service root: true service-delete, false no-op, same-mode delete-before-create. Activation remains blocked until runtime semantic ownership/inventory/recovery proof.",
+    "flagOnlyUpdate": "Both selected version Update implementations unconditionally POST version deployment, not state-only; no migration of historical false-flag states.",
+    "crossEnvironment": "standard/flexible count-resource switch is not a same-address replacement and lacks safe service-wide ordering; trusted runtime must reject before apply.",
+    "failureRecovery": "Deletion then creation failure leaves outage. Preserve verified state handle and canonical service claim; unknown pending operation or live survivor absent from native state blocks for separately reviewed reconciliation/adoption. Never automatic import/delete or blind retry. Exact Create ID-clear lines recorded per source.",
+    "ownershipAssumption": "Prior state in offline plans is generated by mock Apply of actual root. This does not establish fresh-service history, global uniqueness, inventory or operator single-writer prerequisites."
+  },
+  "existingBlueprintSources": [
+    {
+      "id": "gcp-cloudrun",
+      "repository": "https://github.com/cloudopsworks/terraform-module-gcp-cloudrun-deploy.git",
+      "ref": "v1.0.3",
+      "commit": "d90f544730b4db1050085d2cc2e4ec9832646833",
+      "captureFixture": "aws_gcp_source.json"
+    },
+    {
+      "id": "gcp-appengine",
+      "repository": "https://github.com/cloudopsworks/terraform-module-gcp-appengine-deploy.git",
+      "ref": "v1.0.4",
+      "commit": "4009948af86aa6444f20dceac8c580f87d905a75",
+      "captureFixture": "aws_gcp_source.json"
+    }
+  ]
+}

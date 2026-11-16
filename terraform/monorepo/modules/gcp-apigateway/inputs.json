@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "moduleId": "gcp-apigateway",
+  "variables": {
+    "resource": [
+      "kind",
+      "project",
+      "region",
+      "api",
+      "gateway",
+      "backendServiceAccount"
+    ],
+    "configuration": [
+      "kind"
+    ],
+    "workload": [
+      "kind"
+    ],
+    "artifact": [
+      "digest",
+      "format",
+      "path",
+      "imageReference",
+      "files"
+    ],
+    "owner_digest": []
+  },
+  "ownedResourceTypes": [
+    "google_api_gateway_api",
+    "google_api_gateway_api_config",
+    "google_api_gateway_gateway"
+  ],
+  "ownedResourceAddresses": [
+    "google_api_gateway_api.component",
+    "google_api_gateway_api_config.component",
+    "google_api_gateway_gateway.component"
+  ],
+  "externalParents": [
+    "GCP project",
+    "backend service account"
+  ],
+  "activationBlocked": true,
+  "remaining": [
+    "global trusted execution and selected source authorization integration",
+    "credentialed readiness and lifecycle proof"
+  ],
+  "replaceResourceAddresses": [
+    "google_api_gateway_api_config.component"
+  ],
+  "applyDeleteResourceAddresses": []
+}

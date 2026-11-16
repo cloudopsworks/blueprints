@@ -1,0 +1,14 @@
+{
+  "sourceDigest": "sha256:4571b05cde2522f36300f33a22b71c79cd9bb0785239d6499179d42f8d8bb35a",
+  "service": "default",
+  "runtime": "python313",
+  "environment": "standard",
+  "entrypoint": "gunicorn app:app",
+  "instanceClass": null,
+  "runtimeConfig": null,
+  "scaling": {
+    "kind": "basic",
+    "maxInstances": 2,
+    "idleTimeout": "60s"
+  }
+}

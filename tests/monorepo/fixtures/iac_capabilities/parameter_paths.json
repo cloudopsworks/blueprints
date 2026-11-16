@@ -1,0 +1,229 @@
+{
+  "evidenceScope": "selected-provider-schema paths; proposed CLI-owned field spellings, not a standalone config schema",
+  "parameters": [
+    {
+      "kind": "aws.lambda",
+      "field": "roleArn",
+      "providerPath": "aws_lambda_function.role",
+      "classification": "external-parent",
+      "requirement": "managed production; required for ZIP and Image"
+    },
+    {
+      "kind": "aws.lambda",
+      "field": "sourceBucket",
+      "providerPath": "aws_lambda_function.s3_bucket",
+      "classification": "external-parent",
+      "requirement": "ZIP source object only"
+    },
+    {
+      "kind": "aws.lambda",
+      "field": "sourcePrefix",
+      "providerPath": "aws_s3_object.key",
+      "classification": "owned-object-scope",
+      "requirement": "ZIP source object only"
+    },
+    {
+      "kind": "aws.beanstalk",
+      "field": "solutionStackName",
+      "providerPath": "aws_elastic_beanstalk_environment.solution_stack_name",
+      "classification": "mutable-configuration",
+      "requirement": "managed environment; no role/profile/network creation"
+    },
+    {
+      "kind": "aws.beanstalk",
+      "field": "serviceRoleArn",
+      "providerPath": "aws_elastic_beanstalk_environment.setting[aws:elasticbeanstalk:environment/ServiceRole].value",
+      "classification": "external-parent",
+      "requirement": "managed environment; no role/profile/network creation"
+    },
+    {
+      "kind": "aws.beanstalk",
+      "field": "instanceProfileName",
+      "providerPath": "aws_elastic_beanstalk_environment.setting[aws:autoscaling:launchconfiguration/IamInstanceProfile].value",
+      "classification": "external-parent",
+      "requirement": "managed environment; no role/profile/network creation"
+    },
+    {
+      "kind": "aws.beanstalk",
+      "field": "vpcId",
+      "providerPath": "aws_elastic_beanstalk_environment.setting[aws:ec2:vpc/VPCId].value",
+      "classification": "external-parent",
+      "requirement": "managed environment; no role/profile/network creation"
+    },
+    {
+      "kind": "aws.beanstalk",
+      "field": "subnetIds",
+      "providerPath": "aws_elastic_beanstalk_environment.setting[aws:ec2:vpc/Subnets].value",
+      "classification": "external-parent",
+      "requirement": "managed environment; no role/profile/network creation"
+    },
+    {
+      "kind": "aws.beanstalk",
+      "field": "securityGroupIds",
+      "providerPath": "aws_elastic_beanstalk_environment.setting[aws:autoscaling:launchconfiguration/SecurityGroups].value",
+      "classification": "external-parent",
+      "requirement": "managed environment; no role/profile/network creation"
+    },
+    {
+      "kind": "gcp.appengine",
+      "field": "sourceBucket",
+      "providerPath": "google_app_engine_standard_app_version.deployment.zip.source_url",
+      "classification": "external-parent",
+      "requirement": "native ZIP; source bucket also used by native flexible deployment"
+    },
+    {
+      "kind": "gcp.appengine",
+      "field": "serviceAccount",
+      "providerPath": "google_app_engine_flexible_app_version.service_account",
+      "classification": "external-parent",
+      "requirement": "native ZIP; source bucket also used by native flexible deployment"
+    },
+    {
+      "kind": "gcp.appengine",
+      "field": "entrypoint",
+      "providerPath": "google_app_engine_standard_app_version.entrypoint.shell",
+      "classification": "mutable-configuration",
+      "requirement": "native ZIP; source bucket also used by native flexible deployment"
+    },
+    {
+      "kind": "gcp.functions-gen2",
+      "field": "sourceBucket",
+      "providerPath": "google_cloudfunctions2_function.build_config.source.storage_source.bucket",
+      "classification": "external-parent",
+      "requirement": "native ZIP; existing trigger and runtime stay typed target fields"
+    },
+    {
+      "kind": "gcp.functions-gen2",
+      "field": "buildServiceAccount",
+      "providerPath": "google_cloudfunctions2_function.build_config.service_account",
+      "classification": "external-parent",
+      "requirement": "native ZIP; existing trigger and runtime stay typed target fields"
+    },
+    {
+      "kind": "gcp.functions-gen2",
+      "field": "entryPoint",
+      "providerPath": "google_cloudfunctions2_function.build_config.entry_point",
+      "classification": "mutable-configuration",
+      "requirement": "native ZIP; existing trigger and runtime stay typed target fields"
+    },
+    {
+      "kind": "azure.containerapps",
+      "field": "managedEnvironmentId",
+      "providerPath": "azurerm_container_app.container_app_environment_id",
+      "classification": "external-parent",
+      "requirement": "managed app; identity required for private registry"
+    },
+    {
+      "kind": "azure.containerapps",
+      "field": "identityId",
+      "providerPath": "azurerm_container_app.identity.identity_ids",
+      "classification": "external-parent",
+      "requirement": "managed app; identity required for private registry"
+    },
+    {
+      "kind": "azure.containerapps",
+      "field": "cpu",
+      "providerPath": "azurerm_container_app.template.container.cpu",
+      "classification": "mutable-configuration",
+      "requirement": "managed app; identity required for private registry"
+    },
+    {
+      "kind": "azure.containerapps",
+      "field": "memory",
+      "providerPath": "azurerm_container_app.template.container.memory",
+      "classification": "mutable-configuration",
+      "requirement": "managed app; identity required for private registry"
+    },
+    {
+      "kind": "azure.appservice",
+      "field": "servicePlanId",
+      "providerPath": "azurerm_linux_web_app.service_plan_id",
+      "classification": "external-parent",
+      "requirement": "production managed app only; slot uses existing parent app ID from target"
+    },
+    {
+      "kind": "azure.appservice",
+      "field": "identityId",
+      "providerPath": "azurerm_linux_web_app.identity.identity_ids",
+      "classification": "external-parent",
+      "requirement": "existing user-assigned identity; no IAM/RBAC creation"
+    },
+    {
+      "kind": "azure.appservice",
+      "field": "packageStorage.accountId",
+      "providerPath": "azurerm_storage_blob.storage_account_name (name parsed from existing account ARM ID)",
+      "classification": "external-parent",
+      "requirement": "ZIP ARM package source; digest/fixed basename derived, never arbitrary URI"
+    },
+    {
+      "kind": "azure.appservice",
+      "field": "packageStorage.container",
+      "providerPath": "azurerm_storage_blob.storage_container_name",
+      "classification": "external-parent",
+      "requirement": "ZIP ARM package source; digest/fixed basename derived, never arbitrary URI"
+    },
+    {
+      "kind": "azure.appservice",
+      "field": "packageStorage.prefix",
+      "providerPath": "azurerm_storage_blob.name",
+      "classification": "owned-object-scope",
+      "requirement": "ZIP ARM package source; digest/fixed basename derived, never arbitrary URI"
+    },
+    {
+      "kind": "azure.functions",
+      "field": "servicePlanId",
+      "providerPath": "azurerm_linux_function_app.service_plan_id",
+      "classification": "external-parent",
+      "requirement": "production managed app only; slot uses existing parent app ID from target"
+    },
+    {
+      "kind": "azure.functions",
+      "field": "identityId",
+      "providerPath": "azurerm_linux_function_app.identity.identity_ids",
+      "classification": "external-parent",
+      "requirement": "existing user-assigned identity; no IAM/RBAC creation"
+    },
+    {
+      "kind": "azure.functions",
+      "field": "packageStorage.accountId",
+      "providerPath": "azurerm_storage_blob.storage_account_name (name parsed from existing account ARM ID)",
+      "classification": "external-parent",
+      "requirement": "ZIP ARM package source; digest/fixed basename derived, never arbitrary URI"
+    },
+    {
+      "kind": "azure.functions",
+      "field": "packageStorage.container",
+      "providerPath": "azurerm_storage_blob.storage_container_name",
+      "classification": "external-parent",
+      "requirement": "ZIP ARM package source; digest/fixed basename derived, never arbitrary URI"
+    },
+    {
+      "kind": "azure.functions",
+      "field": "packageStorage.prefix",
+      "providerPath": "azurerm_storage_blob.name",
+      "classification": "owned-object-scope",
+      "requirement": "ZIP ARM package source; digest/fixed basename derived, never arbitrary URI"
+    },
+    {
+      "kind": "azure.functions",
+      "field": "storageAccountId",
+      "providerPath": "azurerm_linux_function_app.storage_account_name (name parsed from existing account ARM ID)",
+      "classification": "external-parent",
+      "requirement": "non-Flex runtime storage; AzureRM storage_uses_managed_identity=true"
+    },
+    {
+      "kind": "azure.functions",
+      "field": "deploymentContainer",
+      "providerPath": "azurerm_function_app_flex_consumption.storage_container_endpoint",
+      "classification": "external-parent",
+      "requirement": "Flex existing deployment container in selected storage account, identity from identityId"
+    },
+    {
+      "kind": "azure.functions",
+      "field": "storageAccountId",
+      "providerPath": "azurerm_function_app_flex_consumption.storage_container_endpoint",
+      "classification": "external-parent",
+      "requirement": "Flex existing deployment storage account; auth type UserAssignedIdentity"
+    }
+  ]
+}

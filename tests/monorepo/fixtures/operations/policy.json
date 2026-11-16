@@ -1,0 +1,52 @@
+{
+  "branchProtection": true,
+  "conventionalCommitsEnabled": false,
+  "enforceConventionalCommits": false,
+  "enforceCustomCommitsPattern": false,
+  "automatic": false,
+  "enforceCustomCommitsPatternRegex": "",
+  "requiredReviewers": 1,
+  "protectedSources": [
+    ".github/**"
+  ],
+  "owners": [
+    "example/admin"
+  ],
+  "reviewers": [
+    "example/engineering"
+  ],
+  "contributors": {
+    "push": [
+      "example/engineering"
+    ]
+  },
+  "environments": [
+    {
+      "name": "develop/dev",
+      "reviewers": false,
+      "variables": {}
+    },
+    {
+      "name": "pull_request/preview",
+      "reviewers": false,
+      "variables": {}
+    },
+    {
+      "name": "release/blue/prod",
+      "reviewers": true,
+      "variables": {
+        "CHANNEL": "blue"
+      }
+    },
+    {
+      "name": "release/prod",
+      "reviewers": true,
+      "variables": {}
+    },
+    {
+      "name": "support/uat",
+      "reviewers": true,
+      "variables": {}
+    }
+  ]
+}

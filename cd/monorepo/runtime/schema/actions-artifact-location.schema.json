@@ -1,0 +1,55 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "enum": [
+        "actions-artifact"
+      ]
+    },
+    "repositoryId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "runAttempt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "artifactId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "artifactName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^components-[1-9][0-9]*-[1-9][0-9]*-[a-z][a-z0-9-]{0,47}$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    }
+  },
+  "required": [
+    "kind",
+    "repositoryId",
+    "runId",
+    "runAttempt",
+    "artifactId",
+    "artifactName",
+    "path"
+  ]
+}

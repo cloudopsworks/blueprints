@@ -1,0 +1,266 @@
+name: Verified component Semgrep scan
+description: Exact-source advisory configured Semgrep CI; source jobs must have no deployment credentials or OIDC
+inputs:
+  source-path: {description: Exact source worktree with installed toolchains, required: true}
+  plan: {description: Independently endorsed BuildPlan file, required: true}
+  component-result: {description: Verified ComponentResult with local main payload, required: true}
+  component: {description: Selected component identity, required: true}
+  source-sha: {description: Endorsed source commit, required: true}
+  source-ref: {description: Independently authenticated original branch or literal tag ref, required: true}
+  trusted: {description: Trusted caller authorization for source execution, required: true}
+  token: {description: Scoped Semgrep scan token only, required: false}
+outputs:
+  result: {description: Validated advisory ScannerResult file, value: '${{ steps.report.outputs.result }}'}
+  status: {description: Classified scanner outcome, value: '${{ steps.report.outputs.status }}'}
+runs:
+  using: composite
+  steps:
+    - name: Bind source and verified main artifact
+      id: prepare
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        PLAN_PATH: ${{ inputs.plan }}
+        COMPONENT_RESULT: ${{ inputs.component-result }}
+        COMPONENT: ${{ inputs.component }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        SOURCE_REF: ${{ inputs.source-ref }}
+        TRUSTED: ${{ inputs.trusted }}
+        SEMGREP_APP_TOKEN: ${{ inputs.token }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const env = process.env;
+          if (!['true', 'false'].includes(env.TRUSTED)) throw new Error('semgrep-trust');
+          const root = await fs.realpath(env.SOURCE_PATH);
+          const safeFile = async (file, limit, read = true) => {
+            const stat = await fs.lstat(file);
+            if (!stat.isFile() || await fs.realpath(file) !== file || stat.size > limit) throw new Error('semgrep-file');
+            return read ? fs.readFile(file) : undefined;
+          };
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'semgrep-component-'));
+          await fs.chmod(directory, 0o700);
+          const options = {silent: true, ignoreReturnCode: true};
+          const planCheck = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {...options, input: await safeFile(env.PLAN_PATH, 4194304)});
+          if (planCheck.exitCode !== 0 || Buffer.byteLength(planCheck.stdout) > 4194304) throw new Error('semgrep-plan-contract');
+          const plan = JSON.parse(planCheck.stdout).record;
+          const component = plan.components.find(item => item.id === env.COMPONENT);
+          if (!component || plan.headSha !== env.SOURCE_SHA || !plan.buildSelection.some(item => item.componentId === component.id)) throw new Error('semgrep-plan-link');
+          const relativePath = component.path;
+          if (typeof relativePath !== 'string' || relativePath.includes('\\') || path.isAbsolute(relativePath) || relativePath !== '.' && relativePath.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('semgrep-component-path');
+          const source = path.join(root, relativePath);
+          if (await fs.realpath(source) !== source || !(await fs.stat(source)).isDirectory()) throw new Error('semgrep-source-path');
+          const linked = path.join(directory, 'linked.json');
+          await fs.writeFile(linked, JSON.stringify({plan}), {mode: 0o600, flag: 'wx'});
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {...options, input: await safeFile(env.COMPONENT_RESULT, 4194304)});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('semgrep-result-contract');
+          const record = JSON.parse(checked.stdout).record;
+          if (record.componentId !== component.id || record.headSha !== plan.headSha || record.status !== 'succeeded') throw new Error('semgrep-result-link');
+          const artifact = record.mainArtifact;
+          const relative = artifact?.location?.path;
+          if (artifact?.location?.kind !== 'local' || typeof relative !== 'string' || !relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('semgrep-payload-path');
+          const payload = path.join(root, relative);
+          await safeFile(payload, 536870912, false);
+          const descriptor = path.join(directory, 'artifact.json');
+          await fs.writeFile(descriptor, JSON.stringify(artifact), {mode: 0o600, flag: 'wx'});
+          const verified = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', payload], options);
+          if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 65536) throw new Error('semgrep-payload-integrity');
+          const evidence = JSON.parse(verified.stdout);
+          if (evidence.payloadVerified !== true || evidence.digest !== artifact.digest) throw new Error('semgrep-payload-binding');
+          const head = await exec.getExecOutput('git', ['-C', root, 'rev-parse', 'HEAD'], options);
+          if (head.exitCode !== 0 || head.stdout.trim() !== plan.headSha) throw new Error('semgrep-source-sha');
+          const profile = component.buildProfile;
+          if (!['npm', 'pnpm', 'yarn', 'go', 'maven', 'gradle', 'dotnet', 'python', 'bundler', 'rails', 'cargo'].includes(profile)) throw new Error('semgrep-build-profile');
+          const eventBytes = await safeFile(env.GITHUB_EVENT_PATH, 4194304);
+          const event = JSON.parse(eventBytes);
+          const repository = plan.repository;
+          if (env.GITHUB_ACTIONS !== 'true' || env.GITHUB_REPOSITORY !== repository.fullName || env.GITHUB_REPOSITORY_ID !== String(repository.id) || event.repository?.full_name !== repository.fullName || String(event.repository?.id) !== String(repository.id)) throw new Error('semgrep-repository');
+          if (![env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA || '') || !/^refs\/(heads|tags|pull)\/[^\s\\]+$/.test(env.GITHUB_REF || '')) throw new Error('semgrep-run-metadata');
+          for (const name of ['GITHUB_SERVER_URL', 'GITHUB_API_URL']) {
+            const url = new URL(env[name]);
+            if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('semgrep-host-metadata');
+          }
+          if (!['push', 'workflow_run', 'workflow_dispatch', 'release', 'create', 'issue_comment'].includes(env.GITHUB_EVENT_NAME)) throw new Error('semgrep-event');
+          if (!/^refs\/(heads|tags)\/[^\s\\]+$/.test(env.SOURCE_REF || '') || env.SOURCE_REF.includes('..') || env.SOURCE_REF.includes('@{')) throw new Error('semgrep-source-ref');
+          if (env.GITHUB_EVENT_NAME === 'push' && (env.GITHUB_SHA !== plan.headSha || env.SOURCE_REF !== env.GITHUB_REF)) throw new Error('semgrep-push-source');
+          const branch = env.SOURCE_REF.startsWith('refs/heads/') ? env.SOURCE_REF.slice(11) : env.SOURCE_REF;
+          const display = `${repository.fullName}/${component.id}`;
+          const eventPath = path.join(directory, 'event.json');
+          await fs.writeFile(eventPath, eventBytes, {mode: 0o600, flag: 'wx'});
+          const decision = env.TRUSTED !== 'true' ? 'semgrep-untrusted-source' : !env.SEMGREP_APP_TOKEN ? 'semgrep-missing-credential' : 'ready';
+          const identity = {componentId: component.id, sourceSha: plan.headSha, artifactDigest: artifact.digest, profile, scanner: 'semgrep'};
+          const canonical = JSON.stringify(Object.fromEntries(Object.keys(identity).sort().map(key => [key, identity[key]])));
+          const correlationId = 'scan-' + crypto.createHash('sha256').update(canonical).digest('hex').slice(0, 32);
+          await fs.writeFile(path.join(directory, 'context.json'), JSON.stringify({...identity, correlationId, source, root, decision}), {mode: 0o600, flag: 'wx'});
+          for (const [key, value] of Object.entries({directory, decision, source, root, branch, subdir: relativePath, repository: repository.fullName, display, event: eventPath})) core.setOutput(key, value);
+    - name: Run pinned configured Semgrep CI in an isolated source worktree
+      id: scan
+      shell: bash
+      env:
+        DIRECTORY: ${{ steps.prepare.outputs.directory }}
+        DECISION: ${{ steps.prepare.outputs.decision }}
+        SOURCE_PATH: ${{ steps.prepare.outputs.root }}
+        COMPONENT_PATH: ${{ steps.prepare.outputs.source }}
+        COMPONENT_SUBDIR: ${{ steps.prepare.outputs.subdir }}
+        ORIGINAL_BRANCH: ${{ steps.prepare.outputs.branch }}
+        REPOSITORY_NAME: ${{ steps.prepare.outputs.repository }}
+        REPOSITORY_DISPLAY: ${{ steps.prepare.outputs.display }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        VALIDATED_EVENT_PATH: ${{ steps.prepare.outputs.event }}
+        SEMGREP_APP_TOKEN: ${{ inputs.token }}
+      run: |
+        set +x
+        set -euo pipefail
+        umask 077
+        if [[ "$DECISION" != ready ]]; then exit 0; fi
+        if [[ "$GITHUB_EVENT_NAME" == pull_request || "$GITHUB_EVENT_NAME" == pull_request_target ]]; then
+          printf 'error=semgrep-host-source\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        if [[ -z "${ORIGINAL_BRANCH:-}" || "$REPOSITORY_NAME" != "$GITHUB_REPOSITORY" || "$REPOSITORY_DISPLAY" != "$REPOSITORY_NAME/"* || -z "${COMPONENT_SUBDIR:-}" ]]; then
+          printf 'error=semgrep-source-context\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        if [[ -z "${SEMGREP_APP_TOKEN:-}" ]]; then
+          printf 'error=semgrep-missing-credential\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        for name in $(compgen -e); do
+          case "$name" in
+            AWS_*|AZURE_*|GOOGLE_*|GCLOUD_*|ARM_*|TF_*|TERRAGRUNT_*|ACTIONS_ID_TOKEN_*|CLOUDOPSWORKS_*)
+              printf 'error=semgrep-credential-boundary\n' >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
+        done
+        for name in $(compgen -e); do
+          case "$name" in
+            PATH|DIRECTORY|DECISION|SOURCE_PATH|COMPONENT_PATH|COMPONENT_SUBDIR|ORIGINAL_BRANCH|REPOSITORY_NAME|REPOSITORY_DISPLAY|SOURCE_SHA|VALIDATED_EVENT_PATH|SEMGREP_APP_TOKEN|GITHUB_OUTPUT|GITHUB_ACTIONS|GITHUB_EVENT_NAME|GITHUB_EVENT_PATH|GITHUB_REPOSITORY|GITHUB_REPOSITORY_ID|GITHUB_REPOSITORY_OWNER_ID|GITHUB_RUN_ID|GITHUB_RUN_ATTEMPT|GITHUB_REF|GITHUB_SHA|GITHUB_HEAD_REF|GITHUB_BASE_REF|GITHUB_SERVER_URL|GITHUB_API_URL|GITHUB_ACTOR) ;;
+            *) unset "$name" ;;
+          esac
+        done
+        # Fixed parent outputs remain writable, but source children do not receive their destination.
+        export -n GITHUB_OUTPUT
+        export HOME="$DIRECTORY/home" TMPDIR="$DIRECTORY/tmp" CI=true
+        export SEMGREP_SETTINGS_FILE="$DIRECTORY/home/settings.yml" SEMGREP_LOG_FILE=/dev/null
+        export SEMGREP_BRANCH="$ORIGINAL_BRANCH" SEMGREP_REPO_NAME="$REPOSITORY_NAME" SEMGREP_REPO_DISPLAY_NAME="$REPOSITORY_DISPLAY"
+        set -o noclobber
+        if ! { : > "$DIRECTORY/capture.lock" && : > "$DIRECTORY/control.stderr"; } 2>/dev/null; then
+          printf 'error=semgrep-capture-exists\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        exec 2>> "$DIRECTORY/control.stderr"
+        mkdir -m 700 "$HOME" "$TMPDIR"
+        mkfifo -m 600 "$DIRECTORY/diagnostics.pipe"
+        timeout --kill-after=10s 40s head -c 16777216 < "$DIRECTORY/diagnostics.pipe" > "$DIRECTORY/version.stderr" &
+        reader=$!
+        set +e
+        timeout --kill-after=10s 30s semgrep --version 2> "$DIRECTORY/diagnostics.pipe" | timeout --kill-after=10s 40s head -c 32 > "$DIRECTORY/version.txt"
+        codes=("${PIPESTATUS[@]}")
+        wait "$reader"; diagnostic_exit=$?
+        set -e
+        if [[ "${codes[0]}" != 0 || "${codes[1]}" != 0 || "$diagnostic_exit" != 0 || $(wc -c < "$DIRECTORY/version.txt") -ge 32 || $(wc -c < "$DIRECTORY/version.stderr") -ge 16777216 || "$(cat "$DIRECTORY/version.txt")" != 1.185.0 ]]; then
+          printf 'error=semgrep-version-mismatch\n' >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        verify_source() {
+          local phase="$1"
+          set +e
+          timeout --kill-after=10s 30s git -C "$SOURCE_PATH" rev-parse HEAD 2>&1 | timeout --kill-after=10s 40s head -c 42 > "$DIRECTORY/$phase-head.txt"
+          head_codes=("${PIPESTATUS[@]}")
+          set -e
+          [[ "${head_codes[0]}" == 0 && "${head_codes[1]}" == 0 && $(wc -c < "$DIRECTORY/$phase-head.txt") -eq 41 && "$(cat "$DIRECTORY/$phase-head.txt")" == "$SOURCE_SHA" ]] || return 1
+          timeout --kill-after=10s 10s cmp -s "$GITHUB_EVENT_PATH" "$VALIDATED_EVENT_PATH"
+        }
+        if ! verify_source before; then printf 'error=semgrep-source-drift\n' >> "$GITHUB_OUTPUT"; exit 0; fi
+        cd "$SOURCE_PATH"
+        # No global file-size limit: bound streams, not legitimate source/dependency artifacts.
+        timeout --kill-after=10s 620s head -c 16777216 < "$DIRECTORY/diagnostics.pipe" > "$DIRECTORY/scan.stderr" &
+        reader=$!
+        set +e
+        timeout --kill-after=10s 600s semgrep ci --subdir "$COMPONENT_SUBDIR" --json --no-suppress-errors --disable-version-check 2> "$DIRECTORY/diagnostics.pipe" | timeout --kill-after=10s 620s head -c 16777216 > "$DIRECTORY/semgrep.json"
+        codes=("${PIPESTATUS[@]}")
+        wait "$reader"; diagnostic_exit=$?
+        set -e
+        scan_exit=${codes[0]}
+        unset SEMGREP_APP_TOKEN
+        if [[ "${codes[1]}" != 0 || "$diagnostic_exit" != 0 || $(wc -c < "$DIRECTORY/semgrep.json") -ge 16777216 || $(wc -c < "$DIRECTORY/scan.stderr") -ge 16777216 ]]; then
+          printf 'error=semgrep-capture-limit\nexit=%s\n' "$scan_exit" >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        if ! verify_source after; then
+          printf 'error=semgrep-source-drift\nexit=%s\n' "$scan_exit" >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        printf 'exit=%s\n' "$scan_exit" >> "$GITHUB_OUTPUT"
+    - name: Validate reported scope and emit advisory ScannerResult
+      id: report
+      if: always() && steps.prepare.outcome == 'success'
+      uses: actions/github-script@v9
+      env:
+        DIRECTORY: ${{ steps.prepare.outputs.directory }}
+        NATIVE_EXIT: ${{ steps.scan.outputs.exit }}
+        NATIVE_ERROR: ${{ steps.scan.outputs.error }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          const directory = env.DIRECTORY;
+          if (await fs.realpath(directory) !== directory || !(await fs.lstat(directory)).isDirectory()) throw new Error('semgrep-report-directory');
+          const privateFile = async (name, limit) => {
+            const file = path.join(directory, name), stat = await fs.lstat(file);
+            if (!stat.isFile() || await fs.realpath(file) !== file || stat.nlink !== 1 || stat.mode & 0o077 || stat.size > limit || stat.size < 2) throw new Error('semgrep-report-file');
+            return JSON.parse(await fs.readFile(file, 'utf8'));
+          };
+          const scanContext = await privateFile('context.json', 65536);
+          let status = 'infrastructure-error', errorCode = 'semgrep-tool-error';
+          if (scanContext.decision === 'semgrep-untrusted-source') { status = 'unavailable-untrusted-context'; errorCode = scanContext.decision; }
+          else if (scanContext.decision === 'semgrep-missing-credential') errorCode = scanContext.decision;
+          else if (env.NATIVE_ERROR) {
+            const allowed = ['semgrep-missing-credential', 'semgrep-credential-boundary', 'semgrep-capture-exists', 'semgrep-capture-limit', 'semgrep-version-mismatch', 'semgrep-source-drift', 'semgrep-host-source', 'semgrep-source-context'];
+            errorCode = allowed.includes(env.NATIVE_ERROR) ? env.NATIVE_ERROR : 'semgrep-tool-error';
+          } else if (['124', '143'].includes(env.NATIVE_EXIT)) errorCode = 'semgrep-timeout';
+          else if (/^\d+$/.test(env.NATIVE_EXIT || '') && Number(env.NATIVE_EXIT) >= 128) errorCode = 'semgrep-tool-signal';
+          else if (!['0', '1'].includes(env.NATIVE_EXIT)) {
+            const codes = {'2': 'tool-error', '3': 'target-parse', '4': 'rule-parse', '5': 'config-yaml', '7': 'missing-config', '8': 'language', '13': 'authentication'};
+            errorCode = 'semgrep-' + (codes[env.NATIVE_EXIT] || (env.NATIVE_EXIT ? 'tool-exit' : 'tool-error'));
+          } else {
+            try {
+              const report = await privateFile('semgrep.json', 16777216);
+              const object = value => value && typeof value === 'object' && !Array.isArray(value);
+              if (!object(report) || report.version !== '1.185.0' || !Array.isArray(report.results) || !Array.isArray(report.errors) || !object(report.paths) || !Array.isArray(report.paths.scanned)) throw new Error('report-shape');
+              if (report.errors.length || report.skipped_rules !== undefined && (!Array.isArray(report.skipped_rules) || report.skipped_rules.length)) throw new Error('reported-errors');
+              const target = async name => {
+                if (typeof name !== 'string') throw new Error('target-path');
+                name = name.replace(/^\.\//, '');
+                if (!name || path.isAbsolute(name) || name.includes('\\') || name.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('target-path');
+                const file = path.join(scanContext.root, name);
+                if (!file.startsWith(scanContext.source + path.sep)) throw new Error('target-scope');
+                if (await fs.realpath(file) !== file || !(await fs.lstat(file)).isFile()) throw new Error('target-file');
+                return name;
+              };
+              if (!report.paths.scanned.length) throw new Error('empty-targets');
+              const targets = new Set();
+              for (const name of report.paths.scanned) { const normalized = await target(name); if (targets.has(normalized)) throw new Error('duplicate-target'); targets.add(normalized); }
+              if (report.paths.skipped !== undefined && (!Array.isArray(report.paths.skipped) || report.paths.skipped.length)) throw new Error('skipped-targets');
+              const position = value => object(value) && Number.isInteger(value.line) && value.line > 0 && Number.isInteger(value.col) && value.col > 0 && (value.offset === undefined || Number.isInteger(value.offset) && value.offset >= -1);
+              const severities = ['ERROR', 'WARNING', 'EXPERIMENT', 'INVENTORY', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
+              for (const row of report.results) {
+                if (!object(row) || typeof row.check_id !== 'string' || !row.check_id || !targets.has(await target(row.path)) || !position(row.start) || !position(row.end) || !object(row.extra)) throw new Error('finding-shape');
+                const extra = row.extra;
+                if (typeof extra.message !== 'string' || !object(extra.metadata) || !severities.includes(extra.severity) || typeof extra.fingerprint !== 'string' || typeof extra.lines !== 'string') throw new Error('finding-extra');
+              }
+              if (report.subprojects !== undefined) {
+                if (!Array.isArray(report.subprojects)) throw new Error('subprojects');
+                for (const row of report.subprojects) {
+                  if (!object(row) || row.resolved !== true || row.unresolved_reason !== undefined || !Array.isArray(row.dependency_sources)) throw new Error('subproject-resolution');
+                  for (const name of row.dependency_sources) await target(name);
+                }
+              }
+              // Only selected-current reported target scope: JSON cannot prove all rules or complete SCA coverage.
+              status = env.NATIVE_EXIT === '1' || report.results.length ? 'findings-advisory' : 'passed'; errorCode = null;
+            } catch { errorCode = 'semgrep-report-invalid'; }
+          }
+          const record = {apiVersion: 'cloudopsworks.io/operations/v1', kind: 'ScannerResult', scanner: 'semgrep', profile: scanContext.profile, componentId: scanContext.componentId, sourceSha: scanContext.sourceSha, status, required: false, artifactDigest: scanContext.artifactDigest, correlationId: scanContext.correlationId, errorCode};
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('semgrep-scanner-contract');
+          const validated = JSON.parse(checked.stdout).record;
+          if (!validated || Object.keys(validated).length !== Object.keys(record).length || Object.keys(record).some(key => validated[key] !== record[key])) throw new Error('semgrep-scanner-roundtrip');
+          const output = path.join(directory, 'scanner-result.json');
+          await fs.writeFile(output, JSON.stringify(record), {mode: 0o600, flag: 'wx'});
+          core.setOutput('result', output);
+          core.setOutput('status', status);

@@ -1,3 +1,4 @@
+{{- if not .Values.monorepo.enabled }}
 {{- if not .Values.cronjob.enabled }}
 {{- if not .Values.job.enabled }}
 {{- if not .Values.statefulset.enabled }}
@@ -190,6 +191,7 @@ spec:
         {{- if .Values.injectedVolumes }}
           {{- toYaml .Values.injectedVolumes | nindent 8 }}
         {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

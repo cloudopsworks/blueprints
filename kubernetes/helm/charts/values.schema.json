@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "monorepo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "healthPath": {
+          "type": "string",
+          "pattern": "^/[^?#\\s]*$"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "preview": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "ingressClass": {
+          "type": "string",
+          "maxLength": 63
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "image",
+              "port",
+              "healthPath",
+              "replicas",
+              "preview"
+            ],
+            "properties": {
+              "image": {
+                "type": "string",
+                "pattern": "^[a-z0-9][^\\s]+@sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "preview": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "enabled": {
+                "const": true
+              },
+              "replicas": {
+                "const": 1
+              },
+              "host": {
+                "pattern": "^[a-z0-9][a-z0-9.-]+$"
+              },
+              "ingressClass": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

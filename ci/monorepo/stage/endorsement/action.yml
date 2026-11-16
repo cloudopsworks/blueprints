@@ -1,0 +1,127 @@
+name: Exact stage artifact endorsement
+description: Fixed stage writer binding, distinct from untrusted build artifact data
+inputs:
+  mode: {description: emit or verify, required: true}
+  caller-mode: {description: Independently verified direct or reusable canonical caller context, required: true}
+  artifact-id: {description: Expected exact stage artifact ID, required: true}
+  archive-digest: {description: Expected exact archive digest, required: true}
+  run-id: {description: Independently verified host run ID, required: true}
+  run-attempt: {description: Exact independently verified attempt, required: true}
+  computed-plan: {description: Exact stage BuildPlan output; emit only, default: ''}
+  computed-manifest: {description: Exact computed complete manifest; emit only, default: ''}
+outputs:
+  plan: {description: Retrieved exact endorsed BuildPlan file, value: '${{ steps.data.outputs.directory }}/plan.json'}
+  manifest: {description: Retrieved exact endorsed ReleaseManifest file, value: '${{ steps.data.outputs.record }}'}
+  directory: {description: Verified stage control directory, value: '${{ steps.data.outputs.directory }}'}
+  binding: {description: Exact authenticated existing closed stage binding, value: '${{ steps.verify.outputs.binding }}'}
+runs:
+  using: composite
+  steps:
+    - id: verify
+      uses: actions/github-script@v9
+      env:
+        MODE: ${{ inputs.mode }}
+        CALLER_MODE: ${{ inputs.caller-mode }}
+        ARTIFACT_ID: ${{ inputs.artifact-id }}
+        ARCHIVE_DIGEST: ${{ inputs.archive-digest }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      with:
+        script: |
+          const env = process.env;
+          if (!['emit', 'verify'].includes(env.MODE)) throw new Error('stage-mode');
+          if (env.MODE === 'emit') return;
+          if (![env.ARTIFACT_ID, env.RUN_ID, env.RUN_ATTEMPT, env.GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(env.ARCHIVE_DIGEST || '')) throw new Error('stage-binding-input');
+          const names = {direct: 'stage', reusable: 'Monorepo delivery slice / stage'};
+          const name = names[env.CALLER_MODE];
+          if (!name) throw new Error('stage-caller-mode');
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT})).data;
+          if (String(run.id) !== env.RUN_ID || String(run.run_attempt) !== env.RUN_ATTEMPT || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('stage-run-attempt');
+          const jobs = [];
+          for (let page = 1; page <= 100; page++) {
+            const response = (await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT, per_page: 100, page})).data;
+            if (!Array.isArray(response.jobs) || response.jobs.length > 100) throw new Error('stage-jobs-shape');
+            jobs.push(...response.jobs);
+            if (response.jobs.length < 100) break;
+            if (page === 100) throw new Error('stage-jobs-bound');
+          }
+          const selected = jobs.filter(job => job.name === name);
+          if (selected.length !== 1) throw new Error('stage-job-identity');
+          const job = selected[0];
+          if (!/^[1-9][0-9]*$/.test(String(job.id)) || String(job.run_id) !== env.RUN_ID || String(job.run_attempt) !== env.RUN_ATTEMPT || job.status !== 'completed' || job.conclusion !== 'success') throw new Error('stage-job-status');
+          const redirect = await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs', {...context.repo, job_id: job.id, request: {redirect: 'manual'}});
+          const url = new URL(redirect.headers.location);
+          if (redirect.status !== 302 || url.protocol !== 'https:' || url.username || url.password || url.hash) throw new Error('stage-log-redirect');
+          const response = await fetch(url, {redirect: 'error', credentials: 'omit', signal: AbortSignal.timeout(60000)});
+          if (response.status !== 200 || !response.body || Number(response.headers.get('content-length') || 0) > 8 * 1024 * 1024) throw new Error('stage-log-transfer');
+          const chunks = [];
+          let count = 0;
+          for await (const chunk of response.body) {
+            count += chunk.length;
+            if (count > 8 * 1024 * 1024) throw new Error('stage-log-bound');
+            chunks.push(chunk);
+          }
+          const text = new TextDecoder('utf-8', {fatal: true}).decode(Buffer.concat(chunks));
+          const matching = [];
+          for (const line of text.split(/\r?\n/)) {
+            const marker = line.replace(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z /, '');
+            if (!marker.startsWith('CLOUDOPSWORKS_STAGE_V1 ')) continue;
+            const raw = marker.slice('CLOUDOPSWORKS_STAGE_V1 '.length);
+            const record = JSON.parse(raw);
+            if (JSON.stringify(record) !== raw) throw new Error('stage-marker-canonical');
+            if (record.artifactId !== env.ARTIFACT_ID) continue;
+            const fields = ['repositoryId', 'runId', 'runAttempt', 'artifactId', 'artifactName', 'archiveDigest'];
+            if (Object.keys(record).sort().join() !== fields.sort().join() || record.repositoryId !== env.GITHUB_REPOSITORY_ID || record.runId !== env.RUN_ID || record.runAttempt !== env.RUN_ATTEMPT || record.artifactName !== `monorepo-stage-${env.RUN_ID}-${env.RUN_ATTEMPT}` || record.archiveDigest !== env.ARCHIVE_DIGEST) throw new Error('stage-marker-binding');
+            matching.push(record);
+          }
+          if (matching.length !== 1) throw new Error('stage-marker-count');
+          core.setOutput('binding', JSON.stringify(matching[0]));
+    - id: data
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        artifact-id: ${{ inputs.artifact-id }}
+        run-id: ${{ inputs.run-id }}
+        archive-digest: ${{ inputs.archive-digest }}
+        record-kind: ReleaseManifest
+    - id: emit
+      if: inputs.mode == 'emit'
+      uses: actions/github-script@v9
+      env:
+        COMPUTED_PLAN: ${{ inputs.computed-plan }}
+        RETRIEVED_PLAN: ${{ steps.data.outputs.directory }}/plan.json
+        COMPUTED_MANIFEST: ${{ inputs.computed-manifest }}
+        RETRIEVED_MANIFEST: ${{ steps.data.outputs.record }}
+        ARTIFACT_ID: ${{ inputs.artifact-id }}
+        ARCHIVE_DIGEST: ${{ inputs.archive-digest }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const env = process.env;
+          if (env.RUN_ID !== env.GITHUB_RUN_ID || env.RUN_ATTEMPT !== env.GITHUB_RUN_ATTEMPT || ![env.ARTIFACT_ID, env.RUN_ID, env.RUN_ATTEMPT, env.GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(env.ARCHIVE_DIGEST || '')) throw new Error('stage-writer-context');
+          const path = require('node:path');
+          const digests = [];
+          for (const [planFile, manifestFile] of [[env.COMPUTED_PLAN, env.COMPUTED_MANIFEST], [env.RETRIEVED_PLAN, env.RETRIEVED_MANIFEST]]) {
+            const pair = [];
+            const linked = path.join(path.dirname(manifestFile), 'stage-writer-linked.json');
+            try {
+              for (const [kind, file] of [['BuildPlan', planFile], ['ReleaseManifest', manifestFile]]) {
+                if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('stage-writer-bound');
+                const args = ['components', 'contracts', 'validate', '--kind', kind];
+                if (kind === 'ReleaseManifest') args.push('--linked-context', linked);
+                const output = await exec.getExecOutput('tronador', args, {silent: true, ignoreReturnCode: true, input: await fs.readFile(file)});
+                if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('stage-writer-record');
+                const checked = JSON.parse(output.stdout);
+                if (!/^sha256:[0-9a-f]{64}$/.test(checked.digest || '')) throw new Error('stage-writer-digest');
+                pair.push(checked.digest);
+                if (kind === 'BuildPlan') await fs.writeFile(linked, JSON.stringify({plan: checked.record}), {mode: 0o600, flag: 'wx'});
+              }
+            } finally { await fs.unlink(linked).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
+            digests.push(pair);
+          }
+          if (JSON.stringify(digests[0]) !== JSON.stringify(digests[1])) throw new Error('stage-writer-bytes');
+          const artifact = (await github.rest.actions.getArtifact({...context.repo, artifact_id: env.ARTIFACT_ID})).data;
+          if (String(artifact.id) !== env.ARTIFACT_ID || artifact.name !== `monorepo-stage-${env.RUN_ID}-${env.RUN_ATTEMPT}` || artifact.digest !== env.ARCHIVE_DIGEST || artifact.expired !== false || String(artifact.workflow_run?.id) !== env.RUN_ID) throw new Error('stage-writer-artifact');
+          const binding = {repositoryId: env.GITHUB_REPOSITORY_ID, runId: env.RUN_ID, runAttempt: env.RUN_ATTEMPT, artifactId: env.ARTIFACT_ID, artifactName: artifact.name, archiveDigest: artifact.digest};
+          core.info(`CLOUDOPSWORKS_STAGE_V1 ${JSON.stringify(binding)}`);

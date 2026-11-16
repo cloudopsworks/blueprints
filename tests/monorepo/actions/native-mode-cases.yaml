@@ -1,0 +1,144 @@
+schemaVersion: 1
+purpose: Local acceptance tuples only; never production authorization or activation
+cases:
+  - family: aws-lambda
+    root: aws-lambda
+    case: zip_digest_and_optional_alias
+  - family: aws-lambda
+    root: aws-lambda
+    case: image_exact_private_ecr_digest
+  - family: aws-beanstalk
+    root: aws-beanstalk
+    case: owned_mock_apply
+  - family: aws-beanstalk
+    root: aws-beanstalk
+    case: immutable_dockerrun_zip
+  - family: aws-s3-static
+    root: aws-s3-static
+    case: owned_mock_apply
+  - family: aws-apigateway-rest
+    root: aws-apigateway-rest
+    case: owned_mock_apply
+  - family: aws-apigateway-rest
+    root: aws-apigateway-rest
+    case: existing_owned_id_preserves_verified_name_description
+  - family: aws-apigateway-rest
+    root: aws-apigateway-rest
+    case: native_json_openapi_exact_body
+  - family: gcp-cloudrun
+    root: gcp-cloudrun
+    case: oci
+  - family: gcp-appengine
+    root: gcp-appengine
+    case: standard_native
+  - family: gcp-appengine
+    root: gcp-appengine
+    case: flex_native
+  - family: gcp-appengine
+    root: gcp-appengine
+    case: flex_oci
+  - family: gcp-appengine
+    root: gcp-appengine
+    case: standard_basic
+  - family: gcp-appengine
+    root: gcp-appengine
+    case: standard_automatic
+  - family: gcp-functions-gen2
+    root: gcp-functions-gen2
+    case: http
+  - family: gcp-functions-gen2
+    root: gcp-functions-gen2
+    case: pubsub
+  - family: gcp-functions-gen2
+    root: gcp-functions-gen2
+    case: storage_finalize
+  - family: gcp-storage-static
+    root: gcp-storage-static
+    case: objectset
+  - family: gcp-storage-static
+    root: gcp-storage-static
+    case: static_zip
+  - family: gcp-apigateway
+    root: gcp-apigateway
+    case: openapi
+  - family: gcp-apigateway
+    root: gcp-apigateway
+    case: openapi_json
+  - family: azure-containerapps
+    root: azure-containerapps
+    case: digest_revision
+  - family: azure-appservice
+    root: azure-appservice
+    case: linux_production_zip
+  - family: azure-appservice
+    root: azure-appservice
+    case: linux_production_container
+  - family: azure-appservice
+    root: azure-appservice
+    case: linux_staging_zip
+  - family: azure-appservice
+    root: azure-appservice
+    case: linux_staging_container
+  - family: azure-appservice
+    root: azure-appservice
+    case: windows_production_zip
+  - family: azure-appservice
+    root: azure-appservice
+    case: windows_staging_zip
+  - family: azure-functions
+    root: azure-functions
+    case: linux_production_zip
+  - family: azure-functions
+    root: azure-functions
+    case: linux_production_container
+  - family: azure-functions
+    root: azure-functions
+    case: linux_staging_zip
+  - family: azure-functions
+    root: azure-functions
+    case: linux_staging_container
+  - family: azure-functions
+    root: azure-functions
+    case: windows_production_zip
+  - family: azure-functions
+    root: azure-functions
+    case: windows_staging_zip
+  - family: azure-functions
+    root: azure-functions
+    case: flex_zip
+  - family: azure-functions
+    root: azure-functions
+    case: dedicated_linux_production_zip
+  - family: azure-functions
+    root: azure-functions
+    case: dedicated_linux_production_container
+  - family: azure-functions
+    root: azure-functions
+    case: dedicated_linux_staging_zip
+  - family: azure-functions
+    root: azure-functions
+    case: dedicated_linux_staging_container
+  - family: azure-functions
+    root: azure-functions
+    case: dedicated_windows_production_zip
+  - family: azure-functions
+    root: azure-functions
+    case: dedicated_windows_staging_zip
+  - family: azure-functions
+    root: azure-functions
+    case: native_custom_handler
+  - family: azure-blob-static
+    root: azure-blob-static
+    case: prefix_bound
+  - family: azure-apim
+    root: azure-apim
+    case: api_exact_digest
+  - family: aws-eks
+    root: kubernetes-component
+    case: eks_immutable_release
+  - family: gcp-gke
+    root: kubernetes-component
+    case: gke
+  - family: azure-aks
+    root: kubernetes-component
+    case: aks

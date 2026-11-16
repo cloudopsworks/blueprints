@@ -1,0 +1,51 @@
+name: Resolve finite image scan purposes
+description: Typed main and preview OCI applicability; never a public nonimage scan gate
+inputs:
+  component-result: {description: Verified ComponentResult file, required: true}
+  plan: {description: Independently endorsed BuildPlan file, required: true}
+  component: {description: Exact selected component ID, required: true}
+  source-sha: {description: Independently verified application commit, required: true}
+  configuration: {description: Same-job API-snapshot Go-normalized configuration, required: true}
+outputs:
+  main: {description: Enabled main image scan applicability, value: '${{ steps.targets.outputs.main }}'}
+  preview: {description: Enabled preview image scan applicability, value: '${{ steps.targets.outputs.preview }}'}
+  main-digest: {description: Exact typed main image digest, value: '${{ steps.targets.outputs.main-digest }}'}
+  preview-digest: {description: Exact typed preview image digest, value: '${{ steps.targets.outputs.preview-digest }}'}
+  enabled: {description: Current normalized Trivy enabled policy, value: '${{ steps.targets.outputs.enabled }}'}
+runs:
+  using: composite
+  steps:
+    - id: targets
+      uses: actions/github-script@v9
+      env:
+        COMPONENT_RESULT: ${{ inputs.component-result }}
+        PLAN_PATH: ${{ inputs.plan }}
+        COMPONENT: ${{ inputs.component }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        CONFIGURATION: ${{ inputs.configuration }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          for (const file of [env.PLAN_PATH, env.COMPONENT_RESULT, env.CONFIGURATION]) if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('scan-targets-bound');
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(env.PLAN_PATH)});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('scan-targets-plan');
+          const plan = JSON.parse(checked.stdout).record;
+          const linked = path.join(path.dirname(env.COMPONENT_RESULT), 'scan-targets-linked.json');
+          await fs.writeFile(linked, JSON.stringify({plan}), {mode: 0o600, flag: 'wx'});
+          const output = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {silent: true, ignoreReturnCode: true, input: await fs.readFile(env.COMPONENT_RESULT)});
+          await fs.unlink(linked);
+          if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('scan-targets-result');
+          const result = JSON.parse(output.stdout).record;
+          const enabled = JSON.parse(await fs.readFile(env.CONFIGURATION, 'utf8')).scanners?.trivyEnabled;
+          if (typeof enabled !== 'boolean' || result.componentId !== env.COMPONENT || result.headSha !== env.SOURCE_SHA || plan.headSha !== env.SOURCE_SHA || result.status !== 'succeeded') throw new Error('scan-targets-context');
+          for (const purpose of ['main', 'preview']) {
+            const artifact = result[purpose + 'Artifact'];
+            const applicable = enabled && artifact?.format === 'oci';
+            core.setOutput(purpose, String(applicable));
+            if (applicable) core.setOutput(purpose + '-digest', artifact.digest);
+          }
+          core.setOutput('enabled', String(enabled));
+          core.summary.addRaw('Diagnostic OCI purposes only; nonimage artifacts are not authorized by image evidence and this is not a public main scan gate.');
+          await core.summary.write();

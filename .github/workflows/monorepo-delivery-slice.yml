@@ -1,0 +1,395 @@
+name: Isolated composite-first delivery slice
+on:
+  workflow_call:
+    secrets:
+      CLOUDOPSWORKS_AUTH:
+        required: false
+      DEPLOYMENT_STATE_CONF:
+        required: false
+permissions: {}
+concurrency:
+  group: cloudopsworks-state-${{ github.repository_id }}
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.merged == true
+    name: plan
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      source-sha: ${{ steps.context.outputs.source-sha }}
+      blueprint-sha: ${{ steps.context.outputs.blueprint-sha }}
+      version: ${{ steps.plan.outputs.version }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      noop: ${{ steps.plan.outputs.noop }}
+      closure-eligible: ${{ steps.context.outputs.eligible }}
+      pr-number: ${{ steps.context.outputs.pr-number }}
+      base-sha: ${{ steps.plan.outputs.base-sha }}
+      prior-artifact-id: ${{ steps.baseline.outputs.artifact-id }}
+      prior-archive-digest: ${{ steps.baseline.outputs.archive-digest }}
+      prior-run-id: ${{ steps.baseline.outputs.run-id }}
+      prior-run-attempt: ${{ steps.baseline.outputs.run-attempt }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      archive-digest: ${{ steps.upload.outputs.artifact-digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: v5.11.0
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - uses: ./bp/cd/tasks/repo/context
+        id: context
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.context.outputs.source-sha }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/plan/baseline
+        id: baseline
+        with:
+          head-sha: ${{ steps.context.outputs.source-sha }}
+          blueprint-sha: ${{ steps.context.outputs.blueprint-sha }}
+      - uses: ./bp/ci/monorepo/plan
+        id: plan
+        with:
+          source-path: source
+          head-sha: ${{ steps.context.outputs.source-sha }}
+          base-sha: ${{ steps.baseline.outputs.base-sha }}
+          event: ${{ github.event_name == 'pull_request_target' && 'release' || 'manual' }}
+          pr-number: ${{ steps.context.outputs.pr-number || '0' }}
+      - uses: actions/upload-artifact@v4
+        id: upload
+        with:
+          name: monorepo-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.plan.outputs.plan }}
+          if-no-files-found: error
+          retention-days: 7
+      - uses: ./bp/ci/monorepo/plan/endorsement
+        with:
+          mode: emit
+          caller-mode: ${{ steps.context.outputs.caller-mode }}
+          artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          archive-digest: sha256:${{ steps.upload.outputs.artifact-digest }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+          computed-plan: ${{ steps.plan.outputs.plan }}
+  build:
+    name: build (${{ matrix.componentId }})
+    needs: plan
+    if: needs.plan.outputs.noop != 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ needs.plan.outputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      # Current-run runtime-token transfer is routing only; control jobs independently reverify.
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ needs.plan.outputs.artifact-id }}
+          path: plan-data
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.source-sha }}
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/toolchains
+        with:
+          plan: plan-data/plan.json
+          component: ${{ matrix.componentId }}
+          runtime: ''
+      - uses: ./bp/ci/monorepo/build
+        id: build
+        with:
+          source-path: source
+          plan: plan-data/plan.json
+          component: ${{ matrix.componentId }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: components-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}
+          path: ${{ steps.build.outputs.bundle }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+  frozen-tag:
+    name: frozen-tag
+    needs: [plan, build]
+    if: >-
+      !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.closure-eligible == 'true' &&
+      (needs.build.result == 'success' || (needs.plan.outputs.noop == 'true' && needs.build.result == 'skipped'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ needs.plan.outputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - uses: ./bp/cd/tasks/repo/context
+        id: context
+      - uses: ./bp/ci/monorepo/plan/endorsement
+        id: plan
+        with:
+          mode: verify
+          caller-mode: ${{ steps.context.outputs.caller-mode }}
+          artifact-id: ${{ needs.plan.outputs.artifact-id }}
+          archive-digest: sha256:${{ needs.plan.outputs.archive-digest }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+      - uses: ./bp/cd/tasks/repo/push-tag
+        with:
+          token: ${{ github.token }}
+          bot_user: github-actions[bot]
+          bot_email: 41898282+github-actions[bot]@users.noreply.github.com
+          expected_sha: ${{ steps.context.outputs.source-sha }}
+          expected_version: ${{ steps.plan.outputs.version }}
+  scan:
+    name: scan (${{ matrix.componentId }})
+    needs: [plan, build, frozen-tag]
+    if: >-
+      !cancelled() && needs.plan.result == 'success' && needs.build.result == 'success' &&
+      ((needs.plan.outputs.closure-eligible == 'true' && needs['frozen-tag'].result == 'success') ||
+      (needs.plan.outputs.closure-eligible != 'true' && needs['frozen-tag'].result == 'skipped'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ needs.plan.outputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - uses: ./bp/cd/tasks/repo/context
+        id: context
+      - uses: ./bp/ci/monorepo/plan/endorsement
+        id: plan
+        with:
+          mode: verify
+          caller-mode: ${{ steps.context.outputs.caller-mode }}
+          artifact-id: ${{ needs.plan.outputs.artifact-id }}
+          archive-digest: sha256:${{ needs.plan.outputs.archive-digest }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+      - uses: ./bp/ci/monorepo/artifact
+        id: data
+        with:
+          component: ${{ matrix.componentId }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+          record-kind: ComponentResult
+          plan: ${{ steps.plan.outputs.plan }}
+      - uses: ./bp/ci/monorepo/source
+        id: policy
+        with:
+          source-sha: ${{ steps.context.outputs.source-sha }}
+      - uses: ./bp/ci/scan/trivy/targets
+        id: targets
+        with:
+          component-result: ${{ steps.data.outputs.record }}
+          plan: ${{ steps.plan.outputs.plan }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.context.outputs.source-sha }}
+          configuration: ${{ steps.policy.outputs.configuration }}
+      - uses: ./bp/ci/scan/trivy
+        id: scan-main
+        if: steps.targets.outputs.main == 'true'
+        with:
+          directory: ${{ steps.data.outputs.directory }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.context.outputs.source-sha }}
+          component-result: ${{ steps.data.outputs.record }}
+          plan: ${{ steps.plan.outputs.plan }}
+          artifact-purpose: main
+          profile: diagnostic
+          required: 'true'
+      - uses: actions/upload-artifact@v4
+        id: upload-main
+        if: steps.targets.outputs.main == 'true'
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-main
+          path: ${{ steps.scan-main.outputs.result }}
+          if-no-files-found: error
+          retention-days: 7
+      - uses: ./bp/ci/scan/trivy/endorsement
+        if: steps.targets.outputs.main == 'true'
+        with:
+          computed-result: ${{ steps.scan-main.outputs.result }}
+          artifact-id: ${{ steps.upload-main.outputs.artifact-id }}
+          archive-digest: sha256:${{ steps.upload-main.outputs.artifact-digest }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+          component: ${{ matrix.componentId }}
+          artifact-purpose: main
+      - uses: ./bp/ci/scan/trivy
+        id: scan-preview
+        if: steps.targets.outputs.preview == 'true'
+        with:
+          directory: ${{ steps.data.outputs.directory }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.context.outputs.source-sha }}
+          component-result: ${{ steps.data.outputs.record }}
+          plan: ${{ steps.plan.outputs.plan }}
+          artifact-purpose: preview
+          profile: diagnostic
+          required: 'true'
+      - uses: actions/upload-artifact@v4
+        id: upload-preview
+        if: steps.targets.outputs.preview == 'true'
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-preview
+          path: ${{ steps.scan-preview.outputs.result }}
+          if-no-files-found: error
+          retention-days: 7
+      - uses: ./bp/ci/scan/trivy/endorsement
+        if: steps.targets.outputs.preview == 'true'
+        with:
+          computed-result: ${{ steps.scan-preview.outputs.result }}
+          artifact-id: ${{ steps.upload-preview.outputs.artifact-id }}
+          archive-digest: sha256:${{ steps.upload-preview.outputs.artifact-digest }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+          component: ${{ matrix.componentId }}
+          artifact-purpose: preview
+  stage:
+    name: stage
+    needs: [plan, build, frozen-tag, scan]
+    if: >-
+      !cancelled() && needs.plan.result == 'success' &&
+      (needs.build.result == 'success' || (needs.plan.outputs.noop == 'true' && needs.build.result == 'skipped')) &&
+      (needs.scan.result == 'success' || (needs.plan.outputs.noop == 'true' && needs.scan.result == 'skipped')) &&
+      ((needs.plan.outputs.closure-eligible == 'true' && needs['frozen-tag'].result == 'success') ||
+      (needs.plan.outputs.closure-eligible != 'true' && needs['frozen-tag'].result == 'skipped'))
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      archive-digest: ${{ steps.upload.outputs.artifact-digest }}
+      source-context: ${{ steps.source-context.outputs.source-context }}
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ needs.plan.outputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - uses: ./bp/cd/tasks/repo/context
+        id: context
+      - uses: ./bp/ci/monorepo/plan/endorsement
+        id: plan
+        with:
+          mode: verify
+          caller-mode: ${{ steps.context.outputs.caller-mode }}
+          artifact-id: ${{ needs.plan.outputs.artifact-id }}
+          archive-digest: sha256:${{ needs.plan.outputs.archive-digest }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+      - uses: ./bp/ci/monorepo/plan/baseline
+        id: baseline
+        with:
+          discover: 'false'
+          head-sha: ${{ steps.context.outputs.source-sha }}
+          blueprint-sha: ${{ steps.context.outputs.blueprint-sha }}
+          expected-base: ${{ steps.plan.outputs.base-sha }}
+          artifact-id: ${{ needs.plan.outputs.prior-artifact-id }}
+          archive-digest: ${{ needs.plan.outputs.prior-archive-digest }}
+          run-id: ${{ needs.plan.outputs.prior-run-id }}
+          run-attempt: ${{ needs.plan.outputs.prior-run-attempt }}
+      - uses: ./bp/ci/monorepo/source
+        id: source
+        with:
+          source-sha: ${{ steps.context.outputs.source-sha }}
+      - uses: ./bp/ci/monorepo/stage/source-context
+        id: source-context
+        with:
+          plan: ${{ steps.plan.outputs.plan }}
+          closure: ${{ steps.context.outputs.eligible || 'false' }}
+          host-ref: ${{ steps.context.outputs.host-ref }}
+          base-ref: ${{ steps.context.outputs.base-ref }}
+          source-sha: ${{ steps.context.outputs.source-sha }}
+          pr-number: ${{ steps.context.outputs.pr-number }}
+      - uses: ./bp/ci/monorepo/stage
+        id: stage
+        with:
+          plan: ${{ steps.plan.outputs.plan }}
+          configuration: ${{ steps.source.outputs.configuration }}
+          carry-manifest: ${{ steps.baseline.outputs.manifest }}
+          source-sha: ${{ steps.context.outputs.source-sha }}
+          base-sha: ${{ steps.plan.outputs.base-sha }}
+          version: ${{ needs.plan.outputs.version }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+      - uses: actions/upload-artifact@v4
+        id: upload
+        with:
+          name: monorepo-stage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.stage.outputs.directory }}
+          if-no-files-found: error
+          retention-days: 7
+      - uses: ./bp/ci/monorepo/stage/endorsement
+        with:
+          mode: emit
+          caller-mode: ${{ steps.context.outputs.caller-mode }}
+          artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          archive-digest: sha256:${{ steps.upload.outputs.artifact-digest }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+          computed-plan: ${{ steps.plan.outputs.plan }}
+          computed-manifest: ${{ steps.stage.outputs.manifest }}
+  native-reservation:
+    needs: [plan, scan, stage]
+    if: >-
+      !cancelled() && needs.plan.result == 'success' && needs.stage.result == 'success' &&
+      (needs.scan.result == 'success' || (needs.plan.outputs.noop == 'true' && needs.scan.result == 'skipped'))
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      deployments: write
+      id-token: write
+    uses: cloudopsworks/blueprints/.github/workflows/monorepo-native-reservation.yml@v5.11.0
+    with:
+      stage-artifact-id: ${{ needs.stage.outputs.artifact-id }}
+      stage-archive-digest: ${{ needs.stage.outputs.archive-digest }}
+      blueprint-sha: ${{ needs.plan.outputs.blueprint-sha }}
+      source-sha: ${{ needs.plan.outputs.source-sha }}
+    secrets:
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      DEPLOYMENT_STATE_CONF: ${{ secrets.DEPLOYMENT_STATE_CONF }}

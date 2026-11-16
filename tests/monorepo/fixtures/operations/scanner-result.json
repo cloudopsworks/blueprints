@@ -1,0 +1,13 @@
+{
+  "apiVersion": "cloudopsworks.io/operations/v1",
+  "kind": "ScannerResult",
+  "scanner": "snyk",
+  "profile": "go",
+  "componentId": "api",
+  "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "status": "passed",
+  "required": true,
+  "artifactDigest": null,
+  "correlationId": "scan-api",
+  "errorCode": null
+}

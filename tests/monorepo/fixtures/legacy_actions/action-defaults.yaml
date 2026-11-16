@@ -1,0 +1,44 @@
+cd/checkout/action.yml:
+  inputs:
+    source_ref:
+      required: false
+      default: ${{ github.ref }}
+    blueprint_ref:
+      required: false
+      default: v5.10
+    token:
+      required: false
+      default: ""
+  outputs:
+    source_path: source
+    blueprint_path: bp
+cd/tasks/repo/push-tag/action.yml:
+  inputs:
+    source_path:
+      required: false
+      default: source
+    blueprint_path:
+      required: false
+      default: bp
+    token:
+      required: true
+    bot_user:
+      required: true
+    bot_email:
+      required: true
+  outputs: {}
+cd/tasks/repo/owners/action.yml:
+  inputs:
+    source_path:
+      required: false
+      default: source
+    blueprint_path:
+      required: false
+      default: bp
+    token:
+      required: true
+    bot_user:
+      required: true
+    bot_email:
+      required: true
+  outputs: {}

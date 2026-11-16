@@ -1,0 +1,880 @@
+{
+  "provider": {
+    "aws": {
+      "region": "us-east-1"
+    },
+    "google": {
+      "project": "fixture-project",
+      "region": "us-central1"
+    },
+    "google-beta": {
+      "project": "fixture-project",
+      "region": "us-central1"
+    },
+    "azurerm": {
+      "features": [
+        {
+          "template_deployment": [
+            {
+              "delete_nested_items_during_deletion": false
+            }
+          ]
+        }
+      ],
+      "resource_provider_registrations": "none"
+    },
+    "kubernetes": {},
+    "helm": {}
+  },
+  "resource": {
+    "helm_release": {
+      "component": {
+        "for_each": "${toset([\"aws-eks\", \"gcp-gke\", \"azure-aks\"])}",
+        "name": "fixture",
+        "namespace": "external",
+        "chart": "${abspath(\"../../../kubernetes/helm/charts\")}",
+        "values": [
+          "{\"monorepo\": {\"enabled\": true, \"preview\": false, \"image\": \"fixture.azurecr.io/component@sha256:${var.artifact_digest}\", \"port\": 3000, \"healthPath\": \"/ready\", \"replicas\": 1}}"
+        ]
+      }
+    },
+    "aws_lambda_function": {
+      "zip": {
+        "function_name": "fixture-zip",
+        "role": "${data.aws_iam_role.external.arn}",
+        "package_type": "Zip",
+        "runtime": "provided.al2023",
+        "handler": "bootstrap",
+        "s3_bucket": "${data.aws_s3_bucket.external.id}",
+        "s3_key": "${aws_s3_object.package.key}",
+        "s3_object_version": "${aws_s3_object.package.version_id}",
+        "source_code_hash": "${filebase64sha256(local.package_path)}",
+        "publish": true
+      },
+      "image": {
+        "function_name": "fixture-image",
+        "role": "${data.aws_iam_role.external.arn}",
+        "package_type": "Image",
+        "image_uri": "123456789012.dkr.ecr.us-east-1.amazonaws.com/component@sha256:${var.artifact_digest}",
+        "publish": true
+      }
+    },
+    "aws_elastic_beanstalk_application_version": {
+      "component": {
+        "name": "v-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "application": "${data.aws_elastic_beanstalk_application.external.name}",
+        "bucket": "${data.aws_s3_bucket.external.id}",
+        "key": "${aws_s3_object.package.key}"
+      }
+    },
+    "aws_elastic_beanstalk_environment": {
+      "component": {
+        "name": "fixture",
+        "application": "${data.aws_elastic_beanstalk_application.external.name}",
+        "version_label": "${aws_elastic_beanstalk_application_version.component.name}",
+        "solution_stack_name": "64bit Amazon Linux 2023 v4.5.0 running Docker"
+      }
+    },
+    "aws_s3_object": {
+      "static": {
+        "bucket": "${data.aws_s3_bucket.external.id}",
+        "key": "component/index.html",
+        "content": "fixture",
+        "content_type": "text/html",
+        "source_hash": "${sha256(\"fixture\")}"
+      },
+      "package": {
+        "bucket": "${data.aws_s3_bucket.external.id}",
+        "key": "component/${var.artifact_digest}/main.zip",
+        "source": "${local.package_path}",
+        "source_hash": "${var.artifact_digest}"
+      }
+    },
+    "aws_api_gateway_rest_api": {
+      "component": {
+        "name": "fixture",
+        "body": "{\"openapi\": \"3.0.3\", \"info\": {\"title\": \"fixture\", \"version\": \"1\"}, \"paths\": {}}"
+      }
+    },
+    "aws_api_gateway_deployment": {
+      "component": {
+        "rest_api_id": "${aws_api_gateway_rest_api.component.id}",
+        "triggers": {
+          "artifact": "${var.artifact_digest}"
+        }
+      }
+    },
+    "aws_api_gateway_stage": {
+      "component": {
+        "rest_api_id": "${aws_api_gateway_rest_api.component.id}",
+        "deployment_id": "${aws_api_gateway_deployment.component.id}",
+        "stage_name": "fixture"
+      }
+    },
+    "google_cloud_run_v2_service": {
+      "component": {
+        "name": "fixture",
+        "location": "us-central1",
+        "deletion_protection": false,
+        "template": [
+          {
+            "service_account": "external@fixture-project.iam.gserviceaccount.com",
+            "containers": [
+              {
+                "image": "fixture.azurecr.io/component@sha256:${var.artifact_digest}",
+                "ports": [
+                  {
+                    "container_port": 3000
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "traffic": [
+          {
+            "type": "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+            "percent": 100
+          }
+        ]
+      }
+    },
+    "google_app_engine_standard_app_version": {
+      "native": {
+        "version_id": "v-fixture",
+        "service": "fixture",
+        "runtime": "python312",
+        "deployment": [
+          {
+            "zip": [
+              {
+                "source_url": "https://storage.googleapis.com/external-fixture/component/${var.artifact_digest}/main.zip"
+              }
+            ]
+          }
+        ],
+        "entrypoint": [
+          {
+            "shell": "gunicorn -b :$PORT main:app"
+          }
+        ],
+        "delete_service_on_destroy": false
+      }
+    },
+    "google_app_engine_flexible_app_version": {
+      "container": {
+        "version_id": "v-fixture",
+        "service": "fixture",
+        "runtime": "custom",
+        "deployment": [
+          {
+            "container": [
+              {
+                "image": "fixture.azurecr.io/component@sha256:${var.artifact_digest}"
+              }
+            ]
+          }
+        ],
+        "liveness_check": [
+          {
+            "path": "/ready"
+          }
+        ],
+        "readiness_check": [
+          {
+            "path": "/ready"
+          }
+        ],
+        "manual_scaling": [
+          {
+            "instances": 1
+          }
+        ],
+        "delete_service_on_destroy": false
+      },
+      "native": {
+        "version_id": "v-native",
+        "service": "fixture-native",
+        "runtime": "python",
+        "deployment": [
+          {
+            "zip": [
+              {
+                "source_url": "https://storage.googleapis.com/external-fixture/component/${var.artifact_digest}/main.zip"
+              }
+            ]
+          }
+        ],
+        "liveness_check": [
+          {
+            "path": "/ready"
+          }
+        ],
+        "readiness_check": [
+          {
+            "path": "/ready"
+          }
+        ],
+        "manual_scaling": [
+          {
+            "instances": 1
+          }
+        ],
+        "flexible_runtime_settings": [
+          {
+            "operating_system": "ubuntu22",
+            "runtime_version": "3.12"
+          }
+        ],
+        "delete_service_on_destroy": false
+      }
+    },
+    "google_app_engine_service_split_traffic": {
+      "component": {
+        "service": "fixture",
+        "split": [
+          {
+            "shard_by": "IP",
+            "allocations": {
+              "v-fixture": 1
+            }
+          }
+        ]
+      }
+    },
+    "google_cloudfunctions2_function": {
+      "component": {
+        "name": "fixture",
+        "location": "us-central1",
+        "build_config": [
+          {
+            "runtime": "python312",
+            "entry_point": "handler",
+            "source": [
+              {
+                "storage_source": [
+                  {
+                    "bucket": "external-fixture",
+                    "object": "${google_storage_bucket_object.package.name}",
+                    "generation": "${google_storage_bucket_object.package.generation}"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "service_config": [
+          {
+            "service_account_email": "external@fixture-project.iam.gserviceaccount.com"
+          }
+        ]
+      }
+    },
+    "google_storage_bucket_object": {
+      "static": {
+        "name": "component/index.html",
+        "bucket": "external-fixture",
+        "content": "fixture",
+        "content_type": "text/html"
+      },
+      "package": {
+        "name": "component/${var.artifact_digest}/main.zip",
+        "bucket": "${data.google_storage_bucket.external.name}",
+        "source": "${local.package_path}"
+      }
+    },
+    "google_api_gateway_api": {
+      "component": {
+        "provider": "google-beta",
+        "api_id": "fixture"
+      }
+    },
+    "google_api_gateway_api_config": {
+      "component": {
+        "provider": "google-beta",
+        "api": "${google_api_gateway_api.component.api_id}",
+        "api_config_id": "v-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "openapi_documents": [
+          {
+            "document": [
+              {
+                "path": "openapi.json",
+                "contents": "${base64encode(jsonencode({openapi=\"3.0.3\",info={title=\"fixture\",version=\"1\"},paths={}}))}"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "google_api_gateway_gateway": {
+      "component": {
+        "provider": "google-beta",
+        "gateway_id": "fixture",
+        "region": "us-central1",
+        "api_config": "${google_api_gateway_api_config.component.id}"
+      }
+    },
+    "azurerm_container_app": {
+      "component": {
+        "name": "fixture",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "container_app_environment_id": "${data.azurerm_container_app_environment.external.id}",
+        "revision_mode": "Single",
+        "template": [
+          {
+            "container": [
+              {
+                "name": "component",
+                "image": "fixture.azurecr.io/component@sha256:${var.artifact_digest}",
+                "cpu": 0.5,
+                "memory": "1Gi"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "azurerm_linux_web_app": {
+      "zip": {
+        "name": "fixture-linux",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "location": "eastus",
+        "service_plan_id": "${data.azurerm_service_plan.external.id}",
+        "site_config": [
+          {}
+        ],
+        "zip_deploy_file": "${local.package_path}"
+      },
+      "image": {
+        "name": "fixture-image",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "location": "eastus",
+        "service_plan_id": "${data.azurerm_service_plan.external.id}",
+        "site_config": [
+          {
+            "application_stack": [
+              {
+                "docker_image_name": "fixture.azurecr.io/component@sha256:${var.artifact_digest}",
+                "docker_registry_url": "https://fixture.azurecr.io"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "azurerm_linux_web_app_slot": {
+      "zip": {
+        "name": "fixture",
+        "app_service_id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/external/providers/Microsoft.Web/sites/external",
+        "site_config": [
+          {}
+        ],
+        "zip_deploy_file": "${local.package_path}"
+      },
+      "image": {
+        "name": "fixture-image",
+        "app_service_id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/external/providers/Microsoft.Web/sites/external",
+        "site_config": [
+          {
+            "application_stack": [
+              {
+                "docker_image_name": "fixture.azurecr.io/component@sha256:${var.artifact_digest}",
+                "docker_registry_url": "https://fixture.azurecr.io"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "azurerm_linux_function_app": {
+      "zip": {
+        "name": "fixture-linux",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "location": "eastus",
+        "service_plan_id": "${data.azurerm_service_plan.external.id}",
+        "site_config": [
+          {}
+        ],
+        "storage_account_name": "${data.azurerm_storage_account.external.name}",
+        "storage_uses_managed_identity": true,
+        "zip_deploy_file": "${local.package_path}",
+        "app_settings": {
+          "WEBSITE_RUN_FROM_PACKAGE": "1"
+        }
+      },
+      "image": {
+        "name": "fixture-image",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "location": "eastus",
+        "service_plan_id": "${data.azurerm_service_plan.external.id}",
+        "storage_account_name": "${data.azurerm_storage_account.external.name}",
+        "storage_uses_managed_identity": true,
+        "site_config": [
+          {
+            "application_stack": [
+              {
+                "docker": [
+                  {
+                    "image_name": "component@sha256",
+                    "image_tag": "${var.artifact_digest}",
+                    "registry_url": "https://fixture.azurecr.io"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "azurerm_linux_function_app_slot": {
+      "zip": {
+        "name": "fixture",
+        "function_app_id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/external/providers/Microsoft.Web/sites/external",
+        "storage_account_name": "${data.azurerm_storage_account.external.name}",
+        "storage_uses_managed_identity": true,
+        "site_config": [
+          {}
+        ],
+        "app_settings": {
+          "WEBSITE_RUN_FROM_PACKAGE": "1"
+        }
+      },
+      "image": {
+        "name": "fixture-image",
+        "function_app_id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/external/providers/Microsoft.Web/sites/external",
+        "storage_account_name": "${data.azurerm_storage_account.external.name}",
+        "storage_uses_managed_identity": true,
+        "site_config": [
+          {
+            "application_stack": [
+              {
+                "docker": [
+                  {
+                    "image_name": "component@sha256",
+                    "image_tag": "${var.artifact_digest}",
+                    "registry_url": "https://fixture.azurecr.io"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "azurerm_windows_web_app": {
+      "zip": {
+        "name": "fixture-windows",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "location": "eastus",
+        "service_plan_id": "${data.azurerm_service_plan.external.id}",
+        "site_config": [
+          {}
+        ],
+        "zip_deploy_file": "${local.package_path}"
+      }
+    },
+    "azurerm_windows_web_app_slot": {
+      "zip": {
+        "name": "fixture",
+        "app_service_id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/external/providers/Microsoft.Web/sites/external",
+        "site_config": [
+          {}
+        ],
+        "zip_deploy_file": "${local.package_path}"
+      }
+    },
+    "azurerm_windows_function_app": {
+      "zip": {
+        "name": "fixture-windows",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "location": "eastus",
+        "service_plan_id": "${data.azurerm_service_plan.external.id}",
+        "site_config": [
+          {}
+        ],
+        "storage_account_name": "${data.azurerm_storage_account.external.name}",
+        "storage_uses_managed_identity": true,
+        "zip_deploy_file": "${local.package_path}",
+        "app_settings": {
+          "WEBSITE_RUN_FROM_PACKAGE": "1"
+        }
+      }
+    },
+    "azurerm_windows_function_app_slot": {
+      "zip": {
+        "name": "fixture",
+        "function_app_id": "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/external/providers/Microsoft.Web/sites/external",
+        "storage_account_name": "${data.azurerm_storage_account.external.name}",
+        "storage_uses_managed_identity": true,
+        "site_config": [
+          {}
+        ],
+        "app_settings": {
+          "WEBSITE_RUN_FROM_PACKAGE": "1"
+        }
+      }
+    },
+    "azurerm_function_app_flex_consumption": {
+      "zip": {
+        "name": "fixture-flex",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "location": "eastus",
+        "service_plan_id": "${data.azurerm_service_plan.external.id}",
+        "storage_container_type": "blobContainer",
+        "storage_container_endpoint": "https://externalfixture.blob.core.windows.net/deployment",
+        "storage_authentication_type": "UserAssignedIdentity",
+        "storage_user_assigned_identity_id": "${data.azurerm_user_assigned_identity.external.id}",
+        "runtime_name": "python",
+        "runtime_version": "3.12",
+        "site_config": [
+          {}
+        ]
+      }
+    },
+    "azurerm_resource_group_template_deployment": {
+      "onedeploy": {
+        "name": "fixture-onedeploy",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "deployment_mode": "Incremental",
+        "template_content": "{\"$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#\", \"contentVersion\": \"1.0.0.0\", \"parameters\": {\"packageUri\": {\"type\": \"securestring\"}, \"appName\": {\"type\": \"string\"}}, \"resources\": [{\"type\": \"Microsoft.Web/sites/extensions\", \"apiVersion\": \"2022-09-01\", \"name\": \"[concat(parameters('appName'), '/onedeploy')]\", \"properties\": {\"packageUri\": \"[parameters('packageUri')]\", \"remoteBuild\": false}, \"location\": \"[resourceGroup().location]\"}]}",
+        "parameters_content": "{\"packageUri\": {\"value\": \"${local.package_uri}\"}, \"appName\": {\"value\": \"fixture-flex\"}}",
+        "depends_on": [
+          "azurerm_storage_blob.package",
+          "azurerm_function_app_flex_consumption.zip"
+        ]
+      },
+      "linux_production": {
+        "name": "fixture-linux-production-zipdeploy",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "deployment_mode": "Incremental",
+        "template_content": "{\"$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#\", \"contentVersion\": \"1.0.0.0\", \"parameters\": {\"packageUri\": {\"type\": \"securestring\"}, \"appName\": {\"type\": \"string\"}}, \"resources\": [{\"type\": \"Microsoft.Web/sites/extensions\", \"apiVersion\": \"2021-02-01\", \"name\": \"[concat(parameters('appName'), '/ZipDeploy')]\", \"properties\": {\"packageUri\": \"[parameters('packageUri')]\", \"appOffline\": true}, \"location\": \"[resourceGroup().location]\"}]}",
+        "parameters_content": "{\"packageUri\": {\"value\": \"${local.package_uri}\"}, \"appName\": {\"value\": \"fixture-linux\"}}",
+        "depends_on": [
+          "azurerm_storage_blob.package",
+          "azurerm_linux_function_app.zip"
+        ]
+      },
+      "linux_slot": {
+        "name": "fixture-linux-slot-zipdeploy",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "deployment_mode": "Incremental",
+        "template_content": "{\"$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#\", \"contentVersion\": \"1.0.0.0\", \"parameters\": {\"packageUri\": {\"type\": \"securestring\"}, \"appName\": {\"type\": \"string\"}}, \"resources\": [{\"type\": \"Microsoft.Web/sites/slots/extensions\", \"apiVersion\": \"2021-02-01\", \"name\": \"[concat(parameters('appName'), '/fixture/ZipDeploy')]\", \"properties\": {\"packageUri\": \"[parameters('packageUri')]\", \"appOffline\": true}, \"location\": \"[resourceGroup().location]\"}]}",
+        "parameters_content": "{\"packageUri\": {\"value\": \"${local.package_uri}\"}, \"appName\": {\"value\": \"external\"}}",
+        "depends_on": [
+          "azurerm_storage_blob.package",
+          "azurerm_linux_function_app_slot.zip"
+        ]
+      },
+      "windows_production": {
+        "name": "fixture-windows-production-zipdeploy",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "deployment_mode": "Incremental",
+        "template_content": "{\"$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#\", \"contentVersion\": \"1.0.0.0\", \"parameters\": {\"packageUri\": {\"type\": \"securestring\"}, \"appName\": {\"type\": \"string\"}}, \"resources\": [{\"type\": \"Microsoft.Web/sites/extensions\", \"apiVersion\": \"2021-02-01\", \"name\": \"[concat(parameters('appName'), '/ZipDeploy')]\", \"properties\": {\"packageUri\": \"[parameters('packageUri')]\", \"appOffline\": true}, \"location\": \"[resourceGroup().location]\"}]}",
+        "parameters_content": "{\"packageUri\": {\"value\": \"${local.package_uri}\"}, \"appName\": {\"value\": \"fixture-windows\"}}",
+        "depends_on": [
+          "azurerm_storage_blob.package",
+          "azurerm_windows_function_app.zip"
+        ]
+      },
+      "windows_slot": {
+        "name": "fixture-windows-slot-zipdeploy",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "deployment_mode": "Incremental",
+        "template_content": "{\"$schema\": \"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#\", \"contentVersion\": \"1.0.0.0\", \"parameters\": {\"packageUri\": {\"type\": \"securestring\"}, \"appName\": {\"type\": \"string\"}}, \"resources\": [{\"type\": \"Microsoft.Web/sites/slots/extensions\", \"apiVersion\": \"2021-02-01\", \"name\": \"[concat(parameters('appName'), '/fixture/ZipDeploy')]\", \"properties\": {\"packageUri\": \"[parameters('packageUri')]\", \"appOffline\": true}, \"location\": \"[resourceGroup().location]\"}]}",
+        "parameters_content": "{\"packageUri\": {\"value\": \"${local.package_uri}\"}, \"appName\": {\"value\": \"external\"}}",
+        "depends_on": [
+          "azurerm_storage_blob.package",
+          "azurerm_windows_function_app_slot.zip"
+        ]
+      }
+    },
+    "azurerm_storage_blob": {
+      "static": {
+        "name": "component/index.html",
+        "storage_account_name": "${data.azurerm_storage_account.external.name}",
+        "storage_container_name": "$web",
+        "type": "Block",
+        "source_content": "fixture",
+        "content_type": "text/html",
+        "content_md5": "${md5(\"fixture\")}"
+      },
+      "package": {
+        "name": "component/${var.artifact_digest}/released-package.zip",
+        "storage_account_name": "${data.azurerm_storage_account.external.name}",
+        "storage_container_name": "packages",
+        "type": "Block",
+        "source": "${local.package_path}",
+        "content_md5": "${filemd5(local.package_path)}",
+        "lifecycle": {
+          "precondition": [
+            {
+              "condition": "${filesha256(local.package_path) == var.artifact_digest}",
+              "error_message": "Verified package digest mismatch."
+            }
+          ]
+        }
+      }
+    },
+    "azurerm_api_management_api": {
+      "component": {
+        "name": "fixture",
+        "resource_group_name": "${data.azurerm_resource_group.external.name}",
+        "api_management_name": "${data.azurerm_api_management.external.name}",
+        "revision": "1",
+        "display_name": "fixture",
+        "path": "fixture",
+        "protocols": [
+          "https"
+        ],
+        "import": [
+          {
+            "content_format": "openapi+json",
+            "content_value": "{\"openapi\": \"3.0.3\", \"info\": {\"title\": \"fixture\", \"version\": \"1\"}, \"paths\": {}}"
+          }
+        ]
+      }
+    },
+    "kubernetes_namespace_v1": {
+      "preview": {
+        "metadata": [
+          {
+            "name": "fixture-preview",
+            "labels": {
+              "cloudopsworks.io/managed-by": "monorepo-preview",
+              "pod-security.kubernetes.io/enforce": "restricted"
+            }
+          }
+        ]
+      }
+    },
+    "kubernetes_network_policy_v1": {
+      "preview": {
+        "metadata": [
+          {
+            "name": "fixture-preview",
+            "namespace": "${kubernetes_namespace_v1.preview.metadata[0].name}"
+          }
+        ],
+        "spec": [
+          {
+            "pod_selector": [
+              {}
+            ],
+            "policy_types": [
+              "Ingress",
+              "Egress"
+            ]
+          }
+        ]
+      }
+    },
+    "kubernetes_pod_v1": {
+      "canary": {
+        "metadata": [
+          {
+            "name": "fixture-canary",
+            "namespace": "${kubernetes_namespace_v1.preview.metadata[0].name}",
+            "labels": {
+              "cloudopsworks.io/managed-by": "monorepo-preview"
+            }
+          }
+        ],
+        "spec": [
+          {
+            "automount_service_account_token": false,
+            "container": [
+              {
+                "name": "probe",
+                "image": "fixture.azurecr.io/component@sha256:${var.artifact_digest}",
+                "command": [
+                  "python",
+                  "-c",
+                  "print(\"capability fixture only\")"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "control": {
+        "metadata": [
+          {
+            "name": "fixture-control",
+            "namespace": "external-control",
+            "labels": {
+              "cloudopsworks.io/managed-by": "monorepo-preview"
+            }
+          }
+        ],
+        "spec": [
+          {
+            "automount_service_account_token": false,
+            "container": [
+              {
+                "name": "probe",
+                "image": "fixture.azurecr.io/component@sha256:${var.artifact_digest}",
+                "command": [
+                  "python",
+                  "-c",
+                  "print(\"capability fixture only\")"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "ingress": {
+        "metadata": [
+          {
+            "name": "fixture-ingress",
+            "namespace": "external-ingress",
+            "labels": {
+              "cloudopsworks.io/managed-by": "monorepo-preview"
+            }
+          }
+        ],
+        "spec": [
+          {
+            "automount_service_account_token": false,
+            "container": [
+              {
+                "name": "probe",
+                "image": "fixture.azurecr.io/component@sha256:${var.artifact_digest}",
+                "command": [
+                  "python",
+                  "-c",
+                  "print(\"capability fixture only\")"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "aws_lambda_alias": {
+      "component": {
+        "name": "fixture",
+        "function_name": "${aws_lambda_function.zip.function_name}",
+        "function_version": "${aws_lambda_function.zip.version}"
+      }
+    }
+  },
+  "variable": {
+    "artifact_digest": {
+      "type": "string",
+      "default": "fb18cf100ef842b1459a8de8cf9fde56f740c04b057579c69de82c35d90539d5",
+      "validation": [
+        {
+          "condition": "${can(regex(\"^[0-9a-f]{64}$\", var.artifact_digest))}",
+          "error_message": "Fixture digest must be a lowercase SHA256 value."
+        }
+      ]
+    },
+    "package_read_sas": {
+      "type": "string",
+      "sensitive": true,
+      "default": "sv=2023-11-03&spr=https&sp=r&sr=c&se=2099-01-01T00%3A00%3A00Z&sig=Zml4dHVyZS1zZW50aW5lbC1ub3QtYS1zZWNyZXQuLi4u"
+    }
+  },
+  "data": {
+    "aws_caller_identity": {
+      "external": {}
+    },
+    "aws_eks_cluster": {
+      "external": {
+        "name": "external"
+      }
+    },
+    "aws_elastic_beanstalk_application": {
+      "external": {
+        "name": "external"
+      }
+    },
+    "aws_iam_role": {
+      "external": {
+        "name": "external"
+      }
+    },
+    "aws_s3_bucket": {
+      "external": {
+        "bucket": "external-fixture"
+      }
+    },
+    "aws_ecr_repository": {
+      "external": {
+        "name": "component"
+      }
+    },
+    "google_project": {
+      "external": {
+        "project_id": "fixture-project"
+      }
+    },
+    "google_container_cluster": {
+      "external": {
+        "name": "external",
+        "location": "us-central1",
+        "project": "fixture-project"
+      }
+    },
+    "google_storage_bucket": {
+      "external": {
+        "name": "external-fixture"
+      }
+    },
+    "google_service_account": {
+      "external": {
+        "account_id": "external",
+        "project": "fixture-project"
+      }
+    },
+    "azurerm_client_config": {
+      "external": {}
+    },
+    "azurerm_resource_group": {
+      "external": {
+        "name": "external"
+      }
+    },
+    "azurerm_service_plan": {
+      "external": {
+        "name": "external",
+        "resource_group_name": "external"
+      }
+    },
+    "azurerm_storage_account": {
+      "external": {
+        "name": "externalfixture",
+        "resource_group_name": "external"
+      }
+    },
+    "azurerm_user_assigned_identity": {
+      "external": {
+        "name": "external",
+        "resource_group_name": "external"
+      }
+    },
+    "azurerm_kubernetes_cluster": {
+      "external": {
+        "name": "external",
+        "resource_group_name": "external"
+      }
+    },
+    "azurerm_container_app_environment": {
+      "external": {
+        "name": "external",
+        "resource_group_name": "external"
+      }
+    },
+    "azurerm_api_management": {
+      "external": {
+        "name": "external",
+        "resource_group_name": "external"
+      }
+    }
+  },
+  "locals": {
+    "package_path": "${abspath(\"../../../tests/monorepo/fixtures/iac_capabilities/artifacts/${var.artifact_digest}/released-package.zip\")}",
+    "package_uri": "https://externalfixture.blob.core.windows.net/packages/component/${var.artifact_digest}/released-package.zip?${var.package_read_sas}"
+  }
+}

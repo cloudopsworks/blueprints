@@ -1,0 +1,51 @@
+name: Trusted deployment tools
+description: Explicit versioned deployment tools; no application source or runner-default CLI dependency
+inputs:
+  provider: {description: Optional closed provider enum, default: ''}
+  kubectl-version: {description: Protected client version; must satisfy server +/-1 minor skew, default: v1.37.2}
+runs:
+  using: composite
+  steps:
+    - uses: google-github-actions/setup-gcloud@v2
+      if: inputs.provider == 'gcp'
+      with:
+        version: '553.0.0'
+        install_components: gke-gcloud-auth-plugin
+    - uses: azure/use-kubelogin@v1
+      if: inputs.provider == 'azure'
+      with: {kubelogin-version: v0.1.6}
+    - uses: azure/setup-helm@v4.3.1
+      with: {version: v4.3.1}
+    - uses: azure/setup-kubectl@v4
+      with: {version: '${{ inputs.kubectl-version }}'}
+    - shell: bash
+      env:
+        PROVIDER: ${{ inputs.provider }}
+      run: |
+        set -euo pipefail
+        case "$PROVIDER" in ''|aws|gcp|azure) ;; *) exit 1;; esac
+        test "$(. /etc/os-release; echo "$VERSION_CODENAME")" = noble
+        sudo apt-get update -qq
+        sudo apt-get install --yes --no-install-recommends 'skopeo=1.13.3+ds1-2ubuntu0.24.04.3'
+        if [ "$PROVIDER" = aws ]; then
+          dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXX")
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.40.1.zip -o "$dir/aws.zip"
+          # AWS CLI Team signature verified: FB5DB77FD5C118B80511ADA8A6310ACC4672475C.
+          printf '%s  %s\n' fddb097a8ea197dc9beed9e4426ef99aded612a52df64581e079b6e8817e1d24 "$dir/aws.zip" | sha256sum --check --strict
+          unzip -q "$dir/aws.zip" -d "$dir"
+          "$dir/aws/install" --install-dir "$dir/install" --bin-dir "$dir/bin"
+          echo "$dir/bin" >> "$GITHUB_PATH"
+          "$dir/bin/aws" --version | grep -F 'aws-cli/2.40.1 '
+        elif [ "$PROVIDER" = azure ]; then
+          dir=$(mktemp -d "$RUNNER_TEMP/azure-cli.XXXXXX")
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://packages.microsoft.com/keys/microsoft.asc -o "$dir/microsoft.asc"
+          gpg --batch --yes --dearmor -o "$dir/microsoft.gpg" "$dir/microsoft.asc"
+          sudo install -m 644 "$dir/microsoft.gpg" /usr/share/keyrings/cloudopsworks-microsoft.gpg
+          echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/cloudopsworks-microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ noble main' | sudo tee /etc/apt/sources.list.d/cloudopsworks-azure-cli.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install --yes --allow-downgrades --no-install-recommends 'azure-cli=2.90.0-1~noble'
+          test "$(az version --query '"azure-cli"' --output tsv)" = 2.90.0
+        fi
+        skopeo --version | grep -F '1.13.3'
+        helm version --short | grep -F 'v4.3.1+'
+        kubectl version --client --output=json

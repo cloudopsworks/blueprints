@@ -1,0 +1,1 @@
+{"name":"composite-first-node-function","version":"1.0.0","private":true,"scripts":{"build":"node --check index.js","test":"node --test"}}

@@ -1,0 +1,27 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "ComponentResult",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "componentId": "api",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "version": "1.2.3",
+  "purpose": "release",
+  "status": "succeeded",
+  "mainArtifact": {
+    "kind": "openapi",
+    "format": "openapi-yaml",
+    "digest": "sha256:5ab339e43dbc3856a634fa0d553493861ebf34883e939bc463c6c5e02a39ab89",
+    "sizeBytes": 152,
+    "location": {
+      "kind": "local",
+      "path": ".cloudopsworks/out/api/1.2.3/main.yaml"
+    },
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "builtVersion": "1.2.3"
+  },
+  "previewArtifact": null,
+  "error": null
+}

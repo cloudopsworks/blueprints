@@ -1,0 +1,25 @@
+{
+  "resource": {
+    "kind": "aws.apigateway-rest",
+    "provider": "aws",
+    "region": "us-east-1",
+    "ownership": "managed",
+    "apiName": "component",
+    "apiVersion": "1.0",
+    "stage": "dev"
+  },
+  "configuration": {
+    "kind": "aws.apigateway-rest"
+  },
+  "workload": {
+    "kind": "api"
+  },
+  "artifact": {
+    "digest": "sha256:fdb91a0a3c5d14cd05b84c9f925c0c9c3c8c84cd7fae070d1ef24e35e1ac89cb",
+    "format": "yaml",
+    "path": "tests/fixtures/openapi.yaml",
+    "imageReference": null,
+    "files": []
+  },
+  "owner_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

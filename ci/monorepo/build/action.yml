@@ -1,0 +1,86 @@
+name: Build one selected component
+description: Execute typed build/test/package only in an unprivileged source job
+inputs:
+  source-path: {description: Exact-source worktree without deployment credentials, required: true}
+  plan: {description: Validated BuildPlan file, required: true}
+  component: {description: Selected matrix component ID, required: true}
+outputs:
+  bundle: {description: Private component result and payload bundle, value: '${{ steps.bundle.outputs.bundle }}'}
+  result: {description: Validated ComponentResult file, value: '${{ steps.bundle.outputs.result }}'}
+runs:
+  using: composite
+  steps:
+    - id: build
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        PLAN_PATH: ${{ inputs.plan }}
+        COMPONENT: ${{ inputs.component }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const {SOURCE_PATH, PLAN_PATH, COMPONENT} = process.env;
+          if (!/^[a-z][a-z0-9-]{0,47}$/.test(COMPONENT || '')) throw new Error('build-component');
+          const root = await fs.realpath(SOURCE_PATH);
+          const planPath = await fs.realpath(PLAN_PATH);
+          const options = {silent: true, ignoreReturnCode: true};
+          let result;
+          for (const operation of ['build', 'test', 'package']) {
+            const output = await exec.getExecOutput('tronador', ['components', operation, COMPONENT, '--workdir', root, '--plan', planPath, '--allow-network', '--no-install-tools', '--json'], options);
+            if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error(`component-${operation}-failed`);
+            if (operation === 'package') result = output.stdout;
+          }
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(process.env.RUNNER_TEMP), 'component-result-'));
+          await fs.chmod(directory, 0o700);
+          const linked = path.join(directory, 'linked.json');
+          await fs.writeFile(linked, JSON.stringify({plan: JSON.parse(await fs.readFile(planPath, 'utf8'))}), {mode: 0o600});
+          const verified = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {...options, input: Buffer.from(result)});
+          if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 4 * 1024 * 1024) throw new Error('build-result-contract');
+          const record = JSON.parse(verified.stdout).record;
+          if (record.componentId !== COMPONENT || record.status !== 'succeeded') throw new Error('build-result-owner');
+          const resultPath = path.join(directory, 'component-result.json');
+          await fs.writeFile(resultPath, JSON.stringify(record), {mode: 0o600});
+          core.setOutput('result', resultPath);
+    - id: bundle
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        RESULT_PATH: ${{ steps.build.outputs.result }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const root = await fs.realpath(process.env.SOURCE_PATH);
+          const record = JSON.parse(await fs.readFile(process.env.RESULT_PATH, 'utf8'));
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(process.env.RUNNER_TEMP), 'component-bundle-'));
+          await fs.chmod(directory, 0o700);
+          await fs.mkdir(path.join(directory, 'results'), {mode: 0o700});
+          const resultPath = path.join(directory, 'results', `${record.componentId}.json`);
+          await fs.copyFile(process.env.RESULT_PATH, resultPath);
+          const seen = new Map();
+          for (const field of ['mainArtifact', 'previewArtifact']) {
+            const artifact = record[field];
+            if (!artifact) continue;
+            const relative = artifact.location.path;
+            const canonical = JSON.stringify(artifact);
+            if (seen.has(relative)) {
+              if (seen.get(relative) !== canonical) throw new Error('bundle-path-conflict');
+              continue;
+            }
+            seen.set(relative, canonical);
+            if (artifact.location.kind !== 'local' || typeof relative !== 'string' || !relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('bundle-payload-path');
+            const source = path.join(root, relative);
+            if (await fs.realpath(source) !== source || !(await fs.lstat(source)).isFile() || (await fs.stat(source)).size > 512 * 1024 * 1024) throw new Error('bundle-payload-file');
+            const target = path.join(directory, relative);
+            await fs.mkdir(path.dirname(target), {recursive: true, mode: 0o700});
+            await fs.copyFile(source, target);
+            await fs.chmod(target, 0o600);
+            const descriptor = path.join(directory, `${field}.json`);
+            await fs.writeFile(descriptor, JSON.stringify(artifact), {mode: 0o600});
+            const checked = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', target], {silent: true, ignoreReturnCode: true});
+            await fs.unlink(descriptor);
+            if (checked.exitCode !== 0 || JSON.parse(checked.stdout).payloadVerified !== true) throw new Error('bundle-payload-validation');
+          }
+          core.setOutput('bundle', directory);
+          core.setOutput('result', resultPath);

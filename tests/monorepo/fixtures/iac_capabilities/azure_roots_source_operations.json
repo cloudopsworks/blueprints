@@ -1,0 +1,442 @@
+{
+  "schemaVersion": 1,
+  "provider": "hashicorp/azurerm",
+  "providerVersion": "4.66.0",
+  "sourceCommit": "63106056a9395332b1f6ef8f1d856359b3528198",
+  "proofLevel": "pinned source/schema and local mock execution only; not cloud execution",
+  "sourceFixture": "azure_source.json",
+  "sources": {
+    "appservice_helpers_fx_strings.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/helpers/fx_strings.go",
+      "sha256": "d91efaee5e4c012bbe58ea8875849e641e15a4984c5c21cc940c3ea71850308f",
+      "functions": [
+        {
+          "signature": "func EncodeFunctionAppLinuxFxVersion(input []ApplicationStackLinuxFunctionApp) *string {",
+          "line": 106
+        },
+        {
+          "signature": "func EncodeDockerFxString(image string, registryUrl string) string {",
+          "line": 325
+        },
+        {
+          "signature": "func EncodeDockerFxStringWindows(image string, registryUrl string) string {",
+          "line": 333
+        }
+      ]
+    },
+    "appservice_helpers_publish_app.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/helpers/publish_app.go",
+      "sha256": "eff2d02f9b9c66c9340f1b18fe0defb318d898324c7bebd9849d0414a6fa0986",
+      "functions": []
+    },
+    "appservice_function_app_flex_consumption_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/function_app_flex_consumption_resource.go",
+      "sha256": "d331f0f33640ba67b9ebb926e42f32cacfb3f8abc00754ff446f4656a96ffbda",
+      "functions": [
+        {
+          "signature": "func (r FunctionAppFlexConsumptionResource) Create() sdk.ResourceFunc {",
+          "line": 365
+        },
+        {
+          "signature": "func (r FunctionAppFlexConsumptionResource) Read() sdk.ResourceFunc {",
+          "line": 601
+        },
+        {
+          "signature": "func (r FunctionAppFlexConsumptionResource) Delete() sdk.ResourceFunc {",
+          "line": 769
+        },
+        {
+          "signature": "func (r FunctionAppFlexConsumptionResource) Update() sdk.ResourceFunc {",
+          "line": 793
+        },
+        {
+          "signature": "func ExpandAlwaysReadyConfiguration(input []FunctionAppAlwaysReady, maximumInstanceCount int64) (*[]webapps.FunctionsAlwaysReadyConfig, error) {",
+          "line": 1102
+        },
+        {
+          "signature": "func FlattenAlwaysReadyConfiguration(alwaysReady *[]webapps.FunctionsAlwaysReadyConfig) []FunctionAppAlwaysReady {",
+          "line": 1123
+        }
+      ]
+    },
+    "appservice_linux_function_app_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/linux_function_app_resource.go",
+      "sha256": "2e81fe113b3cb5d477196272fabfa319c6fcf1c02381378947009181fcca2411",
+      "functions": [
+        {
+          "signature": "func (r LinuxFunctionAppResource) Create() sdk.ResourceFunc {",
+          "line": 391
+        },
+        {
+          "signature": "func (r LinuxFunctionAppResource) Read() sdk.ResourceFunc {",
+          "line": 687
+        },
+        {
+          "signature": "func (r LinuxFunctionAppResource) Delete() sdk.ResourceFunc {",
+          "line": 866
+        },
+        {
+          "signature": "func (r LinuxFunctionAppResource) Update() sdk.ResourceFunc {",
+          "line": 890
+        }
+      ]
+    },
+    "appservice_linux_web_app_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/linux_web_app_resource.go",
+      "sha256": "d27a62d0936b1a3e5f1c41a17133b8acda4051f78d87f54c86494f4b54dfe2d3",
+      "functions": [
+        {
+          "signature": "func (r LinuxWebAppResource) Create() sdk.ResourceFunc {",
+          "line": 282
+        },
+        {
+          "signature": "func (r LinuxWebAppResource) Read() sdk.ResourceFunc {",
+          "line": 524
+        },
+        {
+          "signature": "func (r LinuxWebAppResource) Delete() sdk.ResourceFunc {",
+          "line": 709
+        },
+        {
+          "signature": "func (r LinuxWebAppResource) Update() sdk.ResourceFunc {",
+          "line": 736
+        }
+      ]
+    },
+    "resource_resource_group_template_deployment_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/resource/resource_group_template_deployment_resource.go",
+      "sha256": "381120d9baa2dba3e56288b7bcf68d6063a3890c980edaa3315d5e86e2d8b4a3",
+      "functions": [
+        {
+          "signature": "func resourceGroupTemplateDeploymentResourceCreate(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 140
+        },
+        {
+          "signature": "func resourceGroupTemplateDeploymentResourceUpdate(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 209
+        },
+        {
+          "signature": "func resourceGroupTemplateDeploymentResourceRead(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 302
+        },
+        {
+          "signature": "func resourceGroupTemplateDeploymentResourceDelete(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 366
+        }
+      ]
+    },
+    "appservice_linux_web_app_slot_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/linux_web_app_slot_resource.go",
+      "sha256": "751184ad9817e18a86b524b0bffca8bf58b2f0f875a2a2f28050f3fc17b34237",
+      "functions": [
+        {
+          "signature": "func (r LinuxWebAppSlotResource) Create() sdk.ResourceFunc {",
+          "line": 288
+        },
+        {
+          "signature": "func (r LinuxWebAppSlotResource) Read() sdk.ResourceFunc {",
+          "line": 493
+        },
+        {
+          "signature": "func (r LinuxWebAppSlotResource) Delete() sdk.ResourceFunc {",
+          "line": 680
+        },
+        {
+          "signature": "func (r LinuxWebAppSlotResource) Update() sdk.ResourceFunc {",
+          "line": 705
+        }
+      ]
+    },
+    "appservice_windows_web_app_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/windows_web_app_resource.go",
+      "sha256": "4f44ea31609342264a4beac712a4c877d2ecf9bbc9db9aaa7b6b159ab770cc29",
+      "functions": [
+        {
+          "signature": "func (r WindowsWebAppResource) Create() sdk.ResourceFunc {",
+          "line": 291
+        },
+        {
+          "signature": "func (r WindowsWebAppResource) Read() sdk.ResourceFunc {",
+          "line": 565
+        },
+        {
+          "signature": "func (r WindowsWebAppResource) Delete() sdk.ResourceFunc {",
+          "line": 769
+        },
+        {
+          "signature": "func (r WindowsWebAppResource) Update() sdk.ResourceFunc {",
+          "line": 797
+        }
+      ]
+    },
+    "appservice_windows_web_app_slot_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/windows_web_app_slot_resource.go",
+      "sha256": "89abed6062613db5051945d1fe8465d07a8b40b2f0a4ca7e1c5ef4a805b6baac",
+      "functions": [
+        {
+          "signature": "func (r WindowsWebAppSlotResource) Create() sdk.ResourceFunc {",
+          "line": 294
+        },
+        {
+          "signature": "func (r WindowsWebAppSlotResource) Read() sdk.ResourceFunc {",
+          "line": 536
+        },
+        {
+          "signature": "func (r WindowsWebAppSlotResource) Delete() sdk.ResourceFunc {",
+          "line": 740
+        },
+        {
+          "signature": "func (r WindowsWebAppSlotResource) Update() sdk.ResourceFunc {",
+          "line": 765
+        }
+      ]
+    },
+    "appservice_linux_function_app_slot_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/linux_function_app_slot_resource.go",
+      "sha256": "63a6f70a9f2cb1ce90f913c45d7b4df4cc8aabadd877d65e19d05cdd4308dadb",
+      "functions": [
+        {
+          "signature": "func (r LinuxFunctionAppSlotResource) Create() sdk.ResourceFunc {",
+          "line": 359
+        },
+        {
+          "signature": "func (r LinuxFunctionAppSlotResource) Read() sdk.ResourceFunc {",
+          "line": 653
+        },
+        {
+          "signature": "func (r LinuxFunctionAppSlotResource) Delete() sdk.ResourceFunc {",
+          "line": 824
+        },
+        {
+          "signature": "func (r LinuxFunctionAppSlotResource) Update() sdk.ResourceFunc {",
+          "line": 848
+        }
+      ]
+    },
+    "appservice_windows_function_app_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/windows_function_app_resource.go",
+      "sha256": "8dbd219236abf3218592cc9b0f3b2656af299e6f8194b473e3b20d073792e8ee",
+      "functions": [
+        {
+          "signature": "func (r WindowsFunctionAppResource) Create() sdk.ResourceFunc {",
+          "line": 382
+        },
+        {
+          "signature": "func (r WindowsFunctionAppResource) Read() sdk.ResourceFunc {",
+          "line": 676
+        },
+        {
+          "signature": "func (r WindowsFunctionAppResource) Delete() sdk.ResourceFunc {",
+          "line": 864
+        },
+        {
+          "signature": "func (r WindowsFunctionAppResource) Update() sdk.ResourceFunc {",
+          "line": 888
+        }
+      ]
+    },
+    "appservice_windows_function_app_slot_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/appservice/windows_function_app_slot_resource.go",
+      "sha256": "25ad29137580e5f441a9a652a048336cd20fccfe91e5b7cc353072b9c9930846",
+      "functions": [
+        {
+          "signature": "func (r WindowsFunctionAppSlotResource) Create() sdk.ResourceFunc {",
+          "line": 367
+        },
+        {
+          "signature": "func (r WindowsFunctionAppSlotResource) Read() sdk.ResourceFunc {",
+          "line": 672
+        },
+        {
+          "signature": "func (r WindowsFunctionAppSlotResource) Delete() sdk.ResourceFunc {",
+          "line": 842
+        },
+        {
+          "signature": "func (r WindowsFunctionAppSlotResource) Update() sdk.ResourceFunc {",
+          "line": 867
+        }
+      ]
+    },
+    "containerapps_container_app_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/containerapps/container_app_resource.go",
+      "sha256": "5a1fabfe559f29b443eede3d9ad29e2f008bc7b87e4e40756c68d141ebedf774",
+      "functions": [
+        {
+          "signature": "func (r ContainerAppResource) Create() sdk.ResourceFunc {",
+          "line": 159
+        },
+        {
+          "signature": "func (r ContainerAppResource) Read() sdk.ResourceFunc {",
+          "line": 241
+        },
+        {
+          "signature": "func (r ContainerAppResource) Delete() sdk.ResourceFunc {",
+          "line": 312
+        },
+        {
+          "signature": "func (r ContainerAppResource) Update() sdk.ResourceFunc {",
+          "line": 332
+        }
+      ]
+    },
+    "storage_storage_blob_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/storage/storage_blob_resource.go",
+      "sha256": "8d3816682d8b5684e00ea7b09cd95608245db644cc1e64153012f748ea063ae3",
+      "functions": [
+        {
+          "signature": "func resourceStorageBlobCreate(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 177
+        },
+        {
+          "signature": "func resourceStorageBlobUpdate(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 264
+        },
+        {
+          "signature": "func resourceStorageBlobRead(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 353
+        },
+        {
+          "signature": "func resourceStorageBlobDelete(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 427
+        }
+      ]
+    },
+    "apimanagement_api_management_api_resource.go": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/63106056a9395332b1f6ef8f1d856359b3528198/internal/services/apimanagement/api_management_api_resource.go",
+      "sha256": "9af05583a64d5735028f7bd24ab03fe53bc3888dacb5acf053f0b81914503131",
+      "functions": [
+        {
+          "signature": "func resourceApiManagementApiCreate(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 366
+        },
+        {
+          "signature": "func resourceApiManagementApiUpdate(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 499
+        },
+        {
+          "signature": "func resourceApiManagementApiRead(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 700
+        },
+        {
+          "signature": "func resourceApiManagementApiDelete(d *pluginsdk.ResourceData, meta interface{}) error {",
+          "line": 774
+        },
+        {
+          "signature": "func expandApiManagementApiImport(importVs []interface{}, apiType api.ApiType, soapApiType api.SoapApiType, path, serviceUrl, version, versionSetId string) *api.ApiCreateOrUpdateParameter {",
+          "line": 802
+        }
+      ]
+    }
+  },
+  "rootMechanisms": {
+    "azure-containerapps": {
+      "resource": "azurerm_container_app",
+      "operations": [
+        "CreateOrUpdateThenPoll",
+        "Get",
+        "DeleteThenPoll"
+      ],
+      "ownership": "one app/revisions/traffic; managed environment, identity, registry and role assignments external",
+      "immutable": "full registry/repository@sha256 digest passed unchanged"
+    },
+    "azure-appservice": {
+      "resources": [
+        "azurerm_linux_web_app",
+        "azurerm_windows_web_app",
+        "azurerm_linux_web_app_slot",
+        "azurerm_windows_web_app_slot",
+        "azurerm_storage_blob",
+        "azurerm_resource_group_template_deployment"
+      ],
+      "package": "fixed Microsoft.Web/sites[/slots]/extensions ZipDeploy via ARM CreateOrUpdate; securestring packageUri",
+      "immutable": "exact digest-keyed blob and template deployment name; image docker_image_name full relative repository@sha256; selected provider encoder source already recorded in azure_source.json",
+      "ownership": "production app OR slot, never both; no managed service-plan/storage/RG/identity"
+    },
+    "azure-functions": {
+      "resources": [
+        "azurerm_linux_function_app",
+        "azurerm_windows_function_app",
+        "azurerm_linux_function_app_slot",
+        "azurerm_windows_function_app_slot",
+        "azurerm_function_app_flex_consumption",
+        "azurerm_storage_blob",
+        "azurerm_resource_group_template_deployment"
+      ],
+      "package": "Premium/Dedicated fixed ZipDeploy; Flex fixed OneDeploy released-package.zip/remoteBuild=false, no WEBSITE_RUN_FROM_PACKAGE",
+      "immutable": "Functions Docker encoder splits repository@sha256 and digest hex into image_name/image_tag; exact selected encoder yields registry/repository@sha256:hex",
+      "ownership": "production app OR slot, never both; Flex Linux production ZIP only; all landing storage/identity/plan external"
+    },
+    "azure-blob-static": {
+      "resource": "azurerm_storage_blob",
+      "ownership": "exact component prefix objectset only, existing $web/account/hosting external",
+      "immutable": "content_md5 from each exact verified extracted file; trusted executor verifies archive digest and manifest"
+    },
+    "azure-apim": {
+      "resource": "azurerm_api_management_api",
+      "operations": [
+        "CreateOrUpdate",
+        "Get",
+        "Delete"
+      ],
+      "ownership": "one explicit API identity, conservatively all revisions under apiId; revision1 configured, not revision-exclusive ownership; APIM service external",
+      "immutable": "file contents and SHA256 verify exact OpenAPI YAML/JSON"
+    }
+  },
+  "sensitiveBoundary": "package_read_sas is sensitive TF_VAR only. Complete read-scope/expiry/account/container/digest/basename validation is required in protected iac_package.py before injection. Signed URL exists only in protected provider workspace/state/plan and ARM securestring parameter; never output/receipt/public config.",
+  "destroyBoundary": "provider template_deployment.delete_nested_items_during_deletion=false; deleting deployment history does not recursively delete template resources. App/slot deletion owns its package extension lifecycle; storage objects deleted by exact state-owned addresses. No parent resource declaration or import.",
+  "limitations": [
+    "No live Apply/Delete/readiness or managed-identity permission proof performed.",
+    "Mock provider bypasses real API and replacement/custom-diff behavior; local mode plans are not cloud operation success.",
+    "ARM template deployment completion and Blob upload do not alone prove application code readiness; protected executor must verify exact digest/code/slot and readiness.",
+    "Global physical ownership/claim/source authorization and failure recovery remain shared executor gates; all roots activationBlocked.",
+    "No automatic ZIP/container, Linux/Windows, hosting-plan, production/slot conversion. Existing ownership/adoption requires separate reviewed state proof."
+  ],
+  "officialRuntimeConnectionEvidence": {
+    "url": "https://learn.microsoft.com/en-us/azure/azure-functions/manage-connections",
+    "inference": "Explicit user-assigned identity requires AzureWebJobsStorage__credential=managedidentity and AzureWebJobsStorage__clientId; root derives nonsecret client ID from exact external identity data, and host account name from exact external storage data. Existing storage roles/grants remain landing-zone prerequisites, never created."
+  },
+  "additionalSources": {
+    "storage_account_data_source": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/v4.66.0/internal/services/storage/storage_account_data_source.go",
+      "sha256": "50a9f482458ce8ac85093dd9b91adac01d476de123c7444591917a7eca75d61e",
+      "content": "// Copyright IBM Corp. 2014, 2025\n// SPDX-License-Identifier: MPL-2.0\n\npackage storage\n\nimport (\n\t\"fmt\"\n\t\"net/http\"\n\t\"strings\"\n\t\"time\"\n\n\t\"github.com/hashicorp/go-azure-helpers/lang/pointer\"\n\t\"github.com/hashicorp/go-azure-helpers/lang/response\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/identity\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/location\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/tags\"\n\t\"github.com/hashicorp/go-azure-sdk/resource-manager/storage/2023-05-01/storageaccounts\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/clients\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/services/storage/validate\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts\"\n)\n\nfunc dataSourceStorageAccount() *pluginsdk.Resource {\n\tresource := &pluginsdk.Resource{\n\t\tRead: dataSourceStorageAccountRead,\n\n\t\tTimeouts: &pluginsdk.ResourceTimeout{\n\t\t\tRead: pluginsdk.DefaultTimeout(5 * time.Minute),\n\t\t},\n\n\t\tSchema: map[string]*pluginsdk.Schema{\n\t\t\t\"name\": {\n\t\t\t\tType:         pluginsdk.TypeString,\n\t\t\t\tRequired:     true,\n\t\t\t\tValidateFunc: validate.StorageAccountName,\n\t\t\t},\n\n\t\t\t\"resource_group_name\": commonschema.ResourceGroupNameForDataSource(),\n\n\t\t\t\"location\": commonschema.LocationComputed(),\n\n\t\t\t\"identity\": commonschema.SystemAssignedUserAssignedIdentityComputed(),\n\n\t\t\t\"account_kind\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"account_tier\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"account_replication_type\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"access_tier\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"custom_domain\": {\n\t\t\t\tType:     pluginsdk.TypeList,\n\t\t\t\tComputed: true,\n\t\t\t\tElem: &pluginsdk.Resource{\n\t\t\t\t\tSchema: map[string]*pluginsdk.Schema{\n\t\t\t\t\t\t\"name\": {\n\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t},\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\n\t\t\t\"https_traffic_only_enabled\": {\n\t\t\t\tType:     pluginsdk.TypeBool,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"min_tls_version\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tOptional: true,\n\t\t\t},\n\n\t\t\t\"allow_nested_items_to_be_public\": {\n\t\t\t\tType:     pluginsdk.TypeBool,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"is_hns_enabled\": {\n\t\t\t\tType:     pluginsdk.TypeBool,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"nfsv3_enabled\": {\n\t\t\t\tType:     pluginsdk.TypeBool,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_location\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_location\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_blob_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_blob_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_blob_internet_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_blob_internet_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_blob_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_blob_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_blob_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_blob_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_blob_internet_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_blob_internet_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_blob_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_blob_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_queue_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_queue_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_queue_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_queue_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_queue_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_queue_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_queue_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_queue_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_table_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_table_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_table_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_table_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_table_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_table_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_table_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_table_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_web_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_web_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_web_internet_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_web_internet_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_web_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_web_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_web_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_web_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_web_internet_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_web_internet_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_web_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_web_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_dfs_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_dfs_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_dfs_internet_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_dfs_internet_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_dfs_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_dfs_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_dfs_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_dfs_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_dfs_internet_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_dfs_internet_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_dfs_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_dfs_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_file_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_file_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_file_internet_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_file_internet_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_file_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_file_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_file_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_file_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_file_internet_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_file_internet_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_file_microsoft_host\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"secondary_file_microsoft_endpoint\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"primary_access_key\": {\n\t\t\t\tType:      pluginsdk.TypeString,\n\t\t\t\tComputed:  true,\n\t\t\t\tSensitive: true,\n\t\t\t},\n\n\t\t\t\"secondary_access_key\": {\n\t\t\t\tType:      pluginsdk.TypeString,\n\t\t\t\tComputed:  true,\n\t\t\t\tSensitive: true,\n\t\t\t},\n\n\t\t\t\"primary_connection_string\": {\n\t\t\t\tType:      pluginsdk.TypeString,\n\t\t\t\tComputed:  true,\n\t\t\t\tSensitive: true,\n\t\t\t},\n\n\t\t\t\"secondary_connection_string\": {\n\t\t\t\tType:      pluginsdk.TypeString,\n\t\t\t\tComputed:  true,\n\t\t\t\tSensitive: true,\n\t\t\t},\n\n\t\t\t\"primary_blob_connection_string\": {\n\t\t\t\tType:      pluginsdk.TypeString,\n\t\t\t\tComputed:  true,\n\t\t\t\tSensitive: true,\n\t\t\t},\n\n\t\t\t\"secondary_blob_connection_string\": {\n\t\t\t\tType:      pluginsdk.TypeString,\n\t\t\t\tComputed:  true,\n\t\t\t\tSensitive: true,\n\t\t\t},\n\n\t\t\t\"queue_encryption_key_type\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"table_encryption_key_type\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"infrastructure_encryption_enabled\": {\n\t\t\t\tType:     pluginsdk.TypeBool,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"azure_files_authentication\": {\n\t\t\t\tType:     pluginsdk.TypeList,\n\t\t\t\tComputed: true,\n\t\t\t\tElem: &pluginsdk.Resource{\n\t\t\t\t\tSchema: map[string]*pluginsdk.Schema{\n\t\t\t\t\t\t\"directory_type\": {\n\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t},\n\t\t\t\t\t\t\"active_directory\": {\n\t\t\t\t\t\t\tType:     pluginsdk.TypeList,\n\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t\tElem: &pluginsdk.Resource{\n\t\t\t\t\t\t\t\tSchema: map[string]*pluginsdk.Schema{\n\t\t\t\t\t\t\t\t\t\"domain_name\": {\n\t\t\t\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\t\t\t\"netbios_domain_name\": {\n\t\t\t\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\t\t\t\"forest_name\": {\n\t\t\t\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\t\t\t\"domain_guid\": {\n\t\t\t\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\t\t\t\"domain_sid\": {\n\t\t\t\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\t\t\t\"storage_sid\": {\n\t\t\t\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\t\t},\n\t\t\t\t\t\t},\n\t\t\t\t\t\t\"default_share_level_permission\": {\n\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t},\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\n\t\t\t\"dns_endpoint_type\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"tags\": commonschema.TagsDataSource(),\n\t\t},\n\t}\n\n\treturn resource\n}\n\nfunc dataSourceStorageAccountRead(d *pluginsdk.ResourceData, meta interface{}) error {\n\tclient := meta.(*clients.Client).Storage.ResourceManager.StorageAccounts\n\tsubscriptionId := meta.(*clients.Client).Account.SubscriptionId\n\tctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)\n\tdefer cancel()\n\n\tstorageDomainSuffix, ok := meta.(*clients.Client).Account.Environment.Storage.DomainSuffix()\n\tif !ok {\n\t\treturn fmt.Errorf(\"could not determine Storage domain suffix for environment %q\", meta.(*clients.Client).Account.Environment.Name)\n\t}\n\n\tid := commonids.NewStorageAccountID(subscriptionId, d.Get(\"resource_group_name\").(string), d.Get(\"name\").(string))\n\tresp, err := client.GetProperties(ctx, id, storageaccounts.DefaultGetPropertiesOperationOptions())\n\tif err != nil {\n\t\tif response.WasNotFound(resp.HttpResponse) {\n\t\t\treturn fmt.Errorf(\"%s was not found\", id)\n\t\t}\n\n\t\treturn fmt.Errorf(\"retrieving %s: %+v\", id, err)\n\t}\n\n\td.SetId(id.ID())\n\n\tlistKeysOpts := storageaccounts.DefaultListKeysOperationOptions()\n\tlistKeysOpts.Expand = pointer.To(storageaccounts.ListKeyExpandKerb)\n\tkeys, err := client.ListKeys(ctx, id, listKeysOpts)\n\tif err != nil {\n\t\thasWriteLock := response.WasConflict(keys.HttpResponse)\n\t\tdoesntHavePermissions := response.WasForbidden(keys.HttpResponse) || response.WasStatusCode(keys.HttpResponse, http.StatusUnauthorized)\n\t\tif !hasWriteLock && !doesntHavePermissions {\n\t\t\treturn fmt.Errorf(\"listing Keys for %s: %+v\", id, err)\n\t\t}\n\t}\n\n\tif model := resp.Model; model != nil {\n\t\td.Set(\"location\", location.Normalize(model.Location))\n\t\td.Set(\"account_kind\", string(pointer.From(model.Kind)))\n\n\t\t// NOTE: we should expose EdgeZone in the future\n\n\t\tif sku := model.Sku; sku != nil {\n\t\t\td.Set(\"account_tier\", pointer.From(sku.Tier))\n\t\t\td.Set(\"account_replication_type\", strings.Split(string(sku.Name), \"_\")[1])\n\t\t}\n\n\t\tflattenedIdentity, err := identity.FlattenLegacySystemAndUserAssignedMap(model.Identity)\n\t\tif err != nil {\n\t\t\treturn fmt.Errorf(\"flattening `identity`: %+v\", err)\n\t\t}\n\t\tif err := d.Set(\"identity\", flattenedIdentity); err != nil {\n\t\t\treturn fmt.Errorf(\"setting `identity`: %+v\", err)\n\t\t}\n\n\t\tif err := tags.FlattenAndSet(d, model.Tags); err != nil {\n\t\t\treturn err\n\t\t}\n\n\t\tif props := model.Properties; props != nil {\n\t\t\td.Set(\"access_tier\", pointer.From(props.AccessTier))\n\t\t\td.Set(\"allow_nested_items_to_be_public\", pointer.From(props.AllowBlobPublicAccess))\n\t\t\tif err := d.Set(\"custom_domain\", flattenAccountCustomDomain(props.CustomDomain)); err != nil {\n\t\t\t\treturn fmt.Errorf(\"setting `custom_domain`: %+v\", err)\n\t\t\t}\n\t\t\td.Set(\"https_traffic_only_enabled\", pointer.From(props.SupportsHTTPSTrafficOnly))\n\t\t\td.Set(\"is_hns_enabled\", pointer.From(props.IsHnsEnabled))\n\t\t\td.Set(\"nfsv3_enabled\", pointer.From(props.IsNfsV3Enabled))\n\t\t\td.Set(\"primary_location\", location.NormalizeNilable(props.PrimaryLocation))\n\t\t\td.Set(\"secondary_location\", location.NormalizeNilable(props.SecondaryLocation))\n\n\t\t\t// Setting the encryption key type to \"Service\" in PUT. The following GET will not return the queue/table in the service list of its response.\n\t\t\t// So defaults to setting the encryption key type to \"Service\" if it is absent in the GET response. Also, define the default value as \"Service\" in the schema.\n\t\t\tinfrastructureEncryption := false\n\t\t\tqueueEncryptionKeyType := string(storageaccounts.KeyTypeService)\n\t\t\ttableEncryptionKeyType := string(storageaccounts.KeyTypeService)\n\t\t\tif encryption := props.Encryption; encryption != nil {\n\t\t\t\tinfrastructureEncryption = pointer.From(encryption.RequireInfrastructureEncryption)\n\n\t\t\t\tif encryption.Services != nil {\n\t\t\t\t\tif encryption.Services.Queue != nil && encryption.Services.Queue.KeyType != nil {\n\t\t\t\t\t\tqueueEncryptionKeyType = string(*encryption.Services.Queue.KeyType)\n\t\t\t\t\t}\n\t\t\t\t\tif encryption.Services.Table != nil && encryption.Services.Table.KeyType != nil {\n\t\t\t\t\t\ttableEncryptionKeyType = string(*encryption.Services.Table.KeyType)\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\td.Set(\"infrastructure_encryption_enabled\", infrastructureEncryption)\n\t\t\td.Set(\"queue_encryption_key_type\", queueEncryptionKeyType)\n\t\t\td.Set(\"table_encryption_key_type\", tableEncryptionKeyType)\n\n\t\t\t// For storage account created using old API, the response of GET call will not return \"min_tls_version\"\n\t\t\tminTlsVersion := string(storageaccounts.MinimumTlsVersionTLSOneZero)\n\t\t\tif props.MinimumTlsVersion != nil {\n\t\t\t\tminTlsVersion = string(*props.MinimumTlsVersion)\n\t\t\t}\n\t\t\td.Set(\"min_tls_version\", minTlsVersion)\n\n\t\t\t// DNSEndpointType is null when unconfigured - therefore default this to Standard\n\t\t\tdnsEndpointType := storageaccounts.DnsEndpointTypeStandard\n\t\t\tif props.DnsEndpointType != nil {\n\t\t\t\tdnsEndpointType = *props.DnsEndpointType\n\t\t\t}\n\t\t\td.Set(\"dns_endpoint_type\", string(dnsEndpointType))\n\n\t\t\tif err := d.Set(\"azure_files_authentication\", flattenAccountAzureFilesAuthentication(props.AzureFilesIdentityBasedAuthentication)); err != nil {\n\t\t\t\treturn fmt.Errorf(\"setting `azure_files_authentication`: %+v\", err)\n\t\t\t}\n\t\t}\n\t}\n\n\tvar primaryEndpoints *storageaccounts.Endpoints\n\tvar secondaryEndpoints *storageaccounts.Endpoints\n\tvar routingPreference *storageaccounts.RoutingPreference\n\tif model := resp.Model; model != nil && model.Properties != nil {\n\t\tprimaryEndpoints = model.Properties.PrimaryEndpoints\n\t\troutingPreference = model.Properties.RoutingPreference\n\t\tsecondaryEndpoints = model.Properties.SecondaryEndpoints\n\t}\n\tendpoints := flattenAccountEndpoints(primaryEndpoints, secondaryEndpoints, routingPreference)\n\tendpoints.set(d)\n\n\tstorageAccountKeys := make([]storageaccounts.StorageAccountKey, 0)\n\tif keys.Model != nil && keys.Model.Keys != nil {\n\t\tstorageAccountKeys = *keys.Model.Keys\n\t}\n\tkeysAndConnectionStrings := flattenAccountAccessKeysAndConnectionStrings(id.StorageAccountName, *storageDomainSuffix, storageAccountKeys, endpoints)\n\tkeysAndConnectionStrings.set(d)\n\n\treturn nil\n}\n"
+    },
+    "resources_data_source": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/v4.66.0/internal/services/resource/resources_data_source.go",
+      "sha256": "e9a6f61cf7b5dabfa2ebe0eef44b8a8958b993eec9852a56dd3e80c51b6ab47b",
+      "content": "// Copyright IBM Corp. 2014, 2025\n// SPDX-License-Identifier: MPL-2.0\n\npackage resource\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n\t\"log\"\n\t\"strings\"\n\t\"time\"\n\n\t\"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-06-01/resources\" // nolint: staticcheck\n\t\"github.com/google/uuid\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/commonschema\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/location\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/resourceids\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/clients\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/timeouts\"\n)\n\nfunc dataSourceResources() *pluginsdk.Resource {\n\treturn &pluginsdk.Resource{\n\t\tRead: dataSourceResourcesRead,\n\t\tTimeouts: &pluginsdk.ResourceTimeout{\n\t\t\tRead: pluginsdk.DefaultTimeout(5 * time.Minute),\n\t\t},\n\n\t\tSchema: map[string]*pluginsdk.Schema{\n\t\t\t\"name\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tOptional: true,\n\t\t\t\tComputed: true,\n\t\t\t},\n\t\t\t\"resource_group_name\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tOptional: true,\n\t\t\t\tComputed: true,\n\t\t\t},\n\t\t\t\"type\": {\n\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\tOptional: true,\n\t\t\t\tComputed: true,\n\t\t\t},\n\n\t\t\t\"required_tags\": commonschema.Tags(),\n\n\t\t\t\"resources\": {\n\t\t\t\tType:     pluginsdk.TypeList,\n\t\t\t\tComputed: true,\n\t\t\t\tElem: &pluginsdk.Resource{\n\t\t\t\t\tSchema: map[string]*pluginsdk.Schema{\n\t\t\t\t\t\t\"name\": {\n\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t},\n\t\t\t\t\t\t\"id\": {\n\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t},\n\t\t\t\t\t\t\"resource_group_name\": {\n\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t},\n\t\t\t\t\t\t\"type\": {\n\t\t\t\t\t\t\tType:     pluginsdk.TypeString,\n\t\t\t\t\t\t\tComputed: true,\n\t\t\t\t\t\t},\n\t\t\t\t\t\t\"location\": commonschema.LocationComputed(),\n\t\t\t\t\t\t\"tags\":     commonschema.TagsDataSource(),\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\t\t},\n\t}\n}\n\nfunc dataSourceResourcesRead(d *pluginsdk.ResourceData, meta interface{}) error {\n\tclient := meta.(*clients.Client).Resource.LegacyResourcesClient\n\tctx, cancel := timeouts.ForRead(meta.(*clients.Client).StopContext, d)\n\tdefer cancel()\n\n\tresourceGroupName := d.Get(\"resource_group_name\").(string)\n\tresourceName := d.Get(\"name\").(string)\n\tresourceType := d.Get(\"type\").(string)\n\trequiredTags := d.Get(\"required_tags\").(map[string]interface{})\n\n\tif resourceGroupName == \"\" && resourceName == \"\" && resourceType == \"\" {\n\t\treturn errors.New(\"at least one of `name`, `resource_group_name` or `type` must be specified\")\n\t}\n\n\tvar filter string\n\n\tif resourceName != \"\" {\n\t\tif strings.Contains(filter, \"eq\") {\n\t\t\tfilter += \" and \"\n\t\t}\n\t\tv := fmt.Sprintf(\"name eq '%s'\", resourceName)\n\t\tfilter += v\n\t}\n\n\tif resourceType != \"\" {\n\t\tif strings.Contains(filter, \"eq\") {\n\t\t\tfilter += \" and \"\n\t\t}\n\t\tv := fmt.Sprintf(\"resourceType eq '%s'\", resourceType)\n\t\tfilter += v\n\t}\n\n\t// Use List instead of listComplete because of bug in SDK: https://github.com/Azure/azure-sdk-for-go/issues/9510\n\tvar resourcesResp resources.ListResultPage\n\tresources := make([]map[string]interface{}, 0)\n\tif resourceGroupName != \"\" {\n\t\tresp, err := client.ListByResourceGroup(ctx, resourceGroupName, filter, \"\", nil)\n\t\tif err != nil {\n\t\t\treturn fmt.Errorf(\"getting resources by resource group: %+v\", err)\n\t\t}\n\t\tresourcesResp = resp\n\t} else {\n\t\tresp, err := client.List(ctx, filter, \"\", nil)\n\t\tif err != nil {\n\t\t\treturn fmt.Errorf(\"getting resources: %+v\", err)\n\t\t}\n\t\tresourcesResp = resp\n\t}\n\n\tresources = append(resources, filterResource(resourcesResp.Values(), requiredTags)...)\n\tfor resourcesResp.Response().NextLink != nil && *resourcesResp.Response().NextLink != \"\" {\n\t\tif err := resourcesResp.NextWithContext(ctx); err != nil {\n\t\t\treturn fmt.Errorf(\"loading Resource List: %+v\", err)\n\t\t}\n\t\tresources = append(resources, filterResource(resourcesResp.Values(), requiredTags)...)\n\t}\n\n\td.SetId(\"resource-\" + uuid.New().String())\n\tif err := d.Set(\"resources\", resources); err != nil {\n\t\treturn fmt.Errorf(\"setting `resources`: %+v\", err)\n\t}\n\n\treturn nil\n}\n\nfunc filterResource(inputs []resources.GenericResourceExpanded, requiredTags map[string]interface{}) []map[string]interface{} {\n\tvar result []map[string]interface{}\n\tfor _, res := range inputs {\n\t\tif res.ID == nil {\n\t\t\tcontinue\n\t\t}\n\n\t\t// currently its not supported to use tags filter with other filters\n\t\t// therefore we need to filter the resources manually.\n\t\ttagMatches := 0\n\t\tif res.Tags != nil {\n\t\t\tfor requiredTagName, requiredTagVal := range requiredTags {\n\t\t\t\tfor tagName, tagVal := range res.Tags {\n\t\t\t\t\tif requiredTagName == tagName && tagVal != nil && requiredTagVal == *tagVal {\n\t\t\t\t\t\ttagMatches++\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\n\t\tif tagMatches == len(requiredTags) {\n\t\t\tresName := \"\"\n\t\t\tif res.Name != nil {\n\t\t\t\tresName = *res.Name\n\t\t\t}\n\n\t\t\tresID := \"\"\n\t\t\tif res.ID != nil {\n\t\t\t\tresID = *res.ID\n\t\t\t}\n\n\t\t\tresResourceGroupName := \"\"\n\t\t\tif res.ID != nil {\n\t\t\t\tresourceObj, err := resourceids.ParseAzureResourceID(*res.ID)\n\t\t\t\tif err == nil {\n\t\t\t\t\tresResourceGroupName = resourceObj.ResourceGroup\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tresType := \"\"\n\t\t\tif res.Type != nil {\n\t\t\t\tresType = *res.Type\n\t\t\t}\n\n\t\t\tresLocation := \"\"\n\t\t\tif res.Location != nil {\n\t\t\t\tresLocation = location.NormalizeNilable(res.Location)\n\t\t\t}\n\n\t\t\tresTags := make(map[string]interface{})\n\t\t\tif res.Tags != nil {\n\t\t\t\tresTags = make(map[string]interface{}, len(res.Tags))\n\t\t\t\tfor key, value := range res.Tags {\n\t\t\t\t\tif value != nil {\n\t\t\t\t\t\tresTags[key] = *value\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tresult = append(result, map[string]interface{}{\n\t\t\t\t\"name\":                resName,\n\t\t\t\t\"id\":                  resID,\n\t\t\t\t\"resource_group_name\": resResourceGroupName,\n\t\t\t\t\"type\":                resType,\n\t\t\t\t\"location\":            resLocation,\n\t\t\t\t\"tags\":                resTags,\n\t\t\t})\n\t\t} else {\n\t\t\tlog.Printf(\"[DEBUG] azurerm_resources - resources %q (id: %q) skipped as a required tag is not set or has the wrong value.\", *res.Name, *res.ID)\n\t\t}\n\t}\n\treturn result\n}\n"
+    },
+    "storage_client": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/v4.66.0/internal/services/storage/client/client.go",
+      "sha256": "3ec8d58031f62981f0067252ff52b31055060cbabb4de15a063eb0a12d45d213",
+      "content": "// Copyright IBM Corp. 2014, 2025\n// SPDX-License-Identifier: MPL-2.0\n\npackage client\n\nimport (\n\t\"fmt\"\n\n\tstorage_v2023_01_01 \"github.com/hashicorp/go-azure-sdk/resource-manager/storage/2023-05-01\"\n\t\"github.com/hashicorp/go-azure-sdk/resource-manager/storagesync/2020-03-01/cloudendpointresource\"\n\t\"github.com/hashicorp/go-azure-sdk/resource-manager/storagesync/2020-03-01/registeredserverresource\"\n\t\"github.com/hashicorp/go-azure-sdk/resource-manager/storagesync/2020-03-01/serverendpointresource\"\n\t\"github.com/hashicorp/go-azure-sdk/resource-manager/storagesync/2020-03-01/storagesyncservicesresource\"\n\t\"github.com/hashicorp/go-azure-sdk/resource-manager/storagesync/2020-03-01/syncgroupresource\"\n\t\"github.com/hashicorp/go-azure-sdk/sdk/auth\"\n\t\"github.com/hashicorp/go-azure-sdk/sdk/client/resourcemanager\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/common\"\n)\n\n// StorageDomainSuffix is used by validation functions\nvar StorageDomainSuffix *string\n\ntype Client struct {\n\tStorageDomainSuffix string\n\n\tResourceManager *storage_v2023_01_01.Client\n\t// TODO: import the Storage Sync Meta Client and use that\n\tSyncCloudEndpointsClient   *cloudendpointresource.CloudEndpointResourceClient\n\tSyncGroupsClient           *syncgroupresource.SyncGroupResourceClient\n\tSyncRegisteredServerClient *registeredserverresource.RegisteredServerResourceClient\n\tSyncServerEndpointsClient  *serverendpointresource.ServerEndpointResourceClient\n\tSyncServiceClient          *storagesyncservicesresource.StorageSyncServicesResourceClient\n\n\tauthConfigForAzureAD *auth.Credentials\n}\n\nfunc NewClient(o *common.ClientOptions) (*Client, error) {\n\tstorageSuffix, ok := o.Environment.Storage.DomainSuffix()\n\tif !ok {\n\t\treturn nil, fmt.Errorf(\"determining domain suffix for storage in environment: %s\", o.Environment.Name)\n\t}\n\n\t// Set global variable for post-configure validation\n\tStorageDomainSuffix = storageSuffix\n\n\tresourceManager, err := storage_v2023_01_01.NewClientWithBaseURI(o.Environment.ResourceManager, func(c *resourcemanager.Client) {\n\t\to.Configure(c, o.Authorizers.ResourceManager)\n\t})\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building ResourceManager clients: %+v\", err)\n\t}\n\n\tsyncCloudEndpointsClient, err := cloudendpointresource.NewCloudEndpointResourceClientWithBaseURI(o.Environment.ResourceManager)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building CloudEndpoint client: %+v\", err)\n\t}\n\to.Configure(syncCloudEndpointsClient.Client, o.Authorizers.ResourceManager)\n\n\tsyncRegisteredServersClient, err := registeredserverresource.NewRegisteredServerResourceClientWithBaseURI(o.Environment.ResourceManager)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building StorageRegisteredServer client: %+v\", err)\n\t}\n\to.Configure(syncRegisteredServersClient.Client, o.Authorizers.ResourceManager)\n\n\tsyncServerEndpointClient, err := serverendpointresource.NewServerEndpointResourceClientWithBaseURI(o.Environment.ResourceManager)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building StorageSyncServerEndpoint client: %+v\", err)\n\t}\n\to.Configure(syncServerEndpointClient.Client, o.Authorizers.ResourceManager)\n\n\tsyncServiceClient, err := storagesyncservicesresource.NewStorageSyncServicesResourceClientWithBaseURI(o.Environment.ResourceManager)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building StorageSyncService client: %+v\", err)\n\t}\n\to.Configure(syncServiceClient.Client, o.Authorizers.ResourceManager)\n\n\tsyncGroupsClient, err := syncgroupresource.NewSyncGroupResourceClientWithBaseURI(o.Environment.ResourceManager)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building StorageSyncGroups client: %+v\", err)\n\t}\n\to.Configure(syncGroupsClient.Client, o.Authorizers.ResourceManager)\n\n\t// TODO: switch Storage Containers to using the storage.BlobContainersClient\n\t// (which should fix #2977) when the storage clients have been moved in here\n\tclient := Client{\n\t\tResourceManager:            resourceManager,\n\t\tSyncCloudEndpointsClient:   syncCloudEndpointsClient,\n\t\tSyncRegisteredServerClient: syncRegisteredServersClient,\n\t\tSyncServerEndpointsClient:  syncServerEndpointClient,\n\t\tSyncServiceClient:          syncServiceClient,\n\t\tSyncGroupsClient:           syncGroupsClient,\n\n\t\tStorageDomainSuffix: *storageSuffix,\n\t}\n\n\tif o.StorageUseAzureAD {\n\t\tclient.authConfigForAzureAD = o.AuthConfig\n\t}\n\n\treturn &client, nil\n}\n"
+    },
+    "storage_data_plane": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/v4.66.0/internal/services/storage/client/data_plane.go",
+      "sha256": "8805288aaaf27022436bd23550b29efb28920b5a7ebb6b5c4af93af5778ee36a",
+      "content": "// Copyright IBM Corp. 2014, 2025\n// SPDX-License-Identifier: MPL-2.0\n\npackage client\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\n\t\"github.com/hashicorp/go-azure-sdk/sdk/auth\"\n\t\"github.com/hashicorp/go-azure-sdk/sdk/client\"\n\t\"github.com/hashicorp/terraform-provider-azurerm/internal/services/storage/shim\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/blob/accounts\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/blob/blobs\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/blob/containers\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/datalakestore/filesystems\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/datalakestore/paths\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/file/directories\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/file/files\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/file/shares\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/queue/queues\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/table/entities\"\n\t\"github.com/jackofallops/giovanni/storage/2023-11-03/table/tables\"\n)\n\ntype DataPlaneOperation struct {\n\tSupportsAadAuthentication       bool\n\tSupportsSharedKeyAuthentication bool\n\n\tsharedKeyAuthenticationType auth.SharedKeyType\n}\n\nfunc (Client) DataPlaneOperationSupportingAnyAuthMethod() DataPlaneOperation {\n\treturn DataPlaneOperation{\n\t\tSupportsAadAuthentication:       true,\n\t\tSupportsSharedKeyAuthentication: true,\n\t}\n}\n\nfunc (Client) DataPlaneOperationSupportingOnlySharedKeyAuth() DataPlaneOperation {\n\treturn DataPlaneOperation{\n\t\tSupportsAadAuthentication:       false,\n\t\tSupportsSharedKeyAuthentication: true,\n\t}\n}\n\nfunc (c Client) configureDataPlane(ctx context.Context, clientName, resourceIdentifier string, baseClient client.BaseClient, account AccountDetails, operation DataPlaneOperation) error {\n\tif operation.SupportsAadAuthentication && c.authConfigForAzureAD != nil {\n\t\tapi := c.authConfigForAzureAD.Environment.Storage.WithResourceIdentifier(resourceIdentifier)\n\t\tstorageAuth, err := auth.NewAuthorizerFromCredentials(ctx, *c.authConfigForAzureAD, api)\n\t\tif err != nil {\n\t\t\treturn fmt.Errorf(\"unable to build authorizer for Storage API: %+v\", err)\n\t\t}\n\n\t\tbaseClient.SetAuthorizer(storageAuth)\n\t\treturn nil\n\t}\n\n\tif operation.SupportsSharedKeyAuthentication {\n\t\taccountKey, err := account.AccountKey(ctx, c)\n\t\tif err != nil {\n\t\t\treturn fmt.Errorf(\"retrieving Storage Account Key: %s\", err)\n\t\t}\n\n\t\tstorageAuth, err := auth.NewSharedKeyAuthorizer(account.StorageAccountId.StorageAccountName, *accountKey, operation.sharedKeyAuthenticationType)\n\t\tif err != nil {\n\t\t\treturn fmt.Errorf(\"building Shared Key Authorizer for %s client: %+v\", clientName, err)\n\t\t}\n\n\t\tbaseClient.SetAuthorizer(storageAuth)\n\t\treturn nil\n\t}\n\n\treturn fmt.Errorf(\"building %s client: no configured authentication types are supported\", clientName)\n}\n\nfunc (c Client) AccountsDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (*accounts.Client, error) {\n\tconst clientName = \"Blob Storage Accounts\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeBlob)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := accounts.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn apiClient, nil\n}\n\nfunc (c Client) BlobsDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (*blobs.Client, error) {\n\tconst clientName = \"Blob Storage Blobs\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeBlob)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := blobs.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn apiClient, nil\n}\n\nfunc (c Client) ContainersDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (shim.StorageContainerWrapper, error) {\n\tconst clientName = \"Blob Storage Containers\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeBlob)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := containers.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn shim.NewDataPlaneStorageContainerWrapper(apiClient), nil\n}\n\nfunc (c Client) DataLakeFilesystemsDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (*filesystems.Client, error) {\n\tconst clientName = \"Data Lake Gen2 Filesystems\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeDfs)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := filesystems.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn apiClient, nil\n}\n\nfunc (c Client) DataLakePathsDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (*paths.Client, error) {\n\tconst clientName = \"Data Lake Gen2 Paths\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeDfs)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := paths.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn apiClient, nil\n}\n\nfunc (c Client) FileShareDirectoriesDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (*directories.Client, error) {\n\tconst clientName = \"File Storage Share Directories\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeFile)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := directories.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn apiClient, nil\n}\n\nfunc (c Client) FileShareFilesDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (*files.Client, error) {\n\tconst clientName = \"File Storage Share Files\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeFile)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := files.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn apiClient, nil\n}\n\nfunc (c Client) FileSharesDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (shim.StorageShareWrapper, error) {\n\tconst clientName = \"File Storage Shares\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeFile)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := shares.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn shim.NewDataPlaneStorageShareWrapper(apiClient), nil\n}\n\nfunc (c Client) QueuesDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (shim.StorageQueuesWrapper, error) {\n\tconst clientName = \"File Storage Queue Queues\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKey\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeQueue)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := queues.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn shim.NewDataPlaneStorageQueueWrapper(apiClient), nil\n}\n\nfunc (c Client) TableEntityDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (*entities.Client, error) {\n\tconst clientName = \"Table Storage Share Entities\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKeyTable\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeTable)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := entities.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn apiClient, nil\n}\n\nfunc (c Client) TablesDataPlaneClient(ctx context.Context, account AccountDetails, operation DataPlaneOperation) (shim.StorageTableWrapper, error) {\n\tconst clientName = \"Table Storage Share Tables\"\n\toperation.sharedKeyAuthenticationType = auth.SharedKeyTable\n\n\tbaseUri, err := account.DataPlaneEndpoint(EndpointTypeTable)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tapiClient, err := tables.NewWithBaseUri(*baseUri)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"building %s client: %+v\", clientName, err)\n\t}\n\n\terr = c.configureDataPlane(ctx, clientName, *baseUri, apiClient.Client, account, operation)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\treturn shim.NewDataPlaneStorageTableWrapper(apiClient), nil\n}\n"
+    },
+    "storage_helpers": {
+      "url": "https://raw.githubusercontent.com/hashicorp/terraform-provider-azurerm/v4.66.0/internal/services/storage/client/helpers.go",
+      "sha256": "08196539cf22d959c2cd7541cbbf61f7ca0ad54f9865a51569ffddacfcb79459",
+      "content": "// Copyright IBM Corp. 2014, 2025\n// SPDX-License-Identifier: MPL-2.0\n\npackage client\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"log\"\n\t\"strings\"\n\t\"sync\"\n\n\t\"github.com/hashicorp/go-azure-helpers/lang/pointer\"\n\t\"github.com/hashicorp/go-azure-helpers/resourcemanager/commonids\"\n\t\"github.com/hashicorp/go-azure-sdk/resource-manager/storage/2023-05-01/storageaccounts\"\n)\n\nvar (\n\tstorageAccountsCache = map[string]AccountDetails{}\n\n\tcacheAccountsLock    = sync.RWMutex{}\n\tcacheCredentialsLock = sync.RWMutex{}\n)\n\ntype EndpointType string\n\nconst (\n\tEndpointTypeBlob  = \"blob\"\n\tEndpointTypeDfs   = \"dfs\"\n\tEndpointTypeFile  = \"file\"\n\tEndpointTypeQueue = \"queue\"\n\tEndpointTypeTable = \"table\"\n)\n\ntype AccountDetails struct {\n\tKind             storageaccounts.Kind\n\tIsHnsEnabled     bool\n\tStorageAccountId commonids.StorageAccountId\n\n\taccountKey *string\n\n\t// primaryBlobEndpoint is the Primary Blob Endpoint for the Data Plane API for this Storage Account\n\t// e.g. `https://{account}.blob.core.windows.net`\n\tprimaryBlobEndpoint *string\n\n\t// primaryDfsEndpoint is the Primary Dfs Endpoint for the Data Plane API for this Storage Account\n\t// e.g. `https://sale.dfs.core.windows.net`\n\tprimaryDfsEndpoint *string\n\n\t// primaryFileEndpoint is the Primary File Endpoint for the Data Plane API for this Storage Account\n\t// e.g. `https://{account}.file.core.windows.net`\n\tprimaryFileEndpoint *string\n\n\t// primaryQueueEndpoint is the Primary Queue Endpoint for the Data Plane API for this Storage Account\n\t// e.g. `https://{account}.queue.core.windows.net`\n\tprimaryQueueEndpoint *string\n\n\t// primaryTableEndpoint is the Primary Table Endpoint for the Data Plane API for this Storage Account\n\t// e.g. `https://{account}.table.core.windows.net`\n\tprimaryTableEndpoint *string\n}\n\nfunc (ad *AccountDetails) AccountKey(ctx context.Context, client Client) (*string, error) {\n\tcacheCredentialsLock.Lock()\n\tdefer cacheCredentialsLock.Unlock()\n\n\tif ad.accountKey != nil {\n\t\treturn ad.accountKey, nil\n\t}\n\n\tlog.Printf(\"[DEBUG] Cache Miss - looking up the account key for %s..\", ad.StorageAccountId)\n\topts := storageaccounts.DefaultListKeysOperationOptions()\n\topts.Expand = pointer.To(storageaccounts.ListKeyExpandKerb)\n\tlistKeysResp, err := client.ResourceManager.StorageAccounts.ListKeys(ctx, ad.StorageAccountId, opts)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"listing Keys for %s: %+v\", ad.StorageAccountId, err)\n\t}\n\n\tif model := listKeysResp.Model; model != nil && model.Keys != nil {\n\t\tfor _, key := range *model.Keys {\n\t\t\tif key.Permissions == nil || key.Value == nil {\n\t\t\t\tcontinue\n\t\t\t}\n\n\t\t\tif *key.Permissions == storageaccounts.KeyPermissionFull {\n\t\t\t\tad.accountKey = key.Value\n\t\t\t\tbreak\n\t\t\t}\n\t\t}\n\t}\n\n\tif ad.accountKey == nil {\n\t\treturn nil, fmt.Errorf(\"unable to determine the Write Key for %s\", ad.StorageAccountId)\n\t}\n\n\t// force-cache this\n\tcacheAccountsLock.Lock()\n\tstorageAccountsCache[ad.StorageAccountId.StorageAccountName] = *ad\n\tcacheAccountsLock.Unlock()\n\n\treturn ad.accountKey, nil\n}\n\nfunc (ad *AccountDetails) DataPlaneEndpoint(endpointType EndpointType) (*string, error) {\n\tvar baseUri *string\n\tswitch endpointType {\n\tcase EndpointTypeBlob:\n\t\tbaseUri = ad.primaryBlobEndpoint\n\n\tcase EndpointTypeDfs:\n\t\tbaseUri = ad.primaryDfsEndpoint\n\n\tcase EndpointTypeFile:\n\t\tbaseUri = ad.primaryFileEndpoint\n\n\tcase EndpointTypeQueue:\n\t\tbaseUri = ad.primaryQueueEndpoint\n\n\tcase EndpointTypeTable:\n\t\tbaseUri = ad.primaryTableEndpoint\n\n\tdefault:\n\t\treturn nil, fmt.Errorf(\"internal-error: unrecognised endpoint type %q when building storage client\", endpointType)\n\t}\n\n\tif baseUri == nil {\n\t\treturn nil, fmt.Errorf(\"determining %s endpoint for %s: missing primary endpoint\", endpointType, ad.StorageAccountId)\n\t}\n\treturn baseUri, nil\n}\n\nfunc (c Client) AddToCache(accountId commonids.StorageAccountId, account storageaccounts.StorageAccount) error {\n\tcacheAccountsLock.Lock()\n\tdefer cacheAccountsLock.Unlock()\n\n\taccountDetails, err := populateAccountDetails(accountId, account)\n\tif err != nil {\n\t\treturn err\n\t}\n\tstorageAccountsCache[accountId.StorageAccountName] = *accountDetails\n\n\treturn nil\n}\n\nfunc (c Client) RemoveAccountFromCache(accountId commonids.StorageAccountId) {\n\tcacheAccountsLock.Lock()\n\tdelete(storageAccountsCache, accountId.StorageAccountName)\n\tcacheAccountsLock.Unlock()\n}\n\nfunc (c Client) FindAccount(ctx context.Context, subscriptionIdRaw, accountName string) (*AccountDetails, error) {\n\tcacheAccountsLock.Lock()\n\tdefer cacheAccountsLock.Unlock()\n\n\tif existing, ok := storageAccountsCache[accountName]; ok {\n\t\treturn &existing, nil\n\t}\n\n\tsubscriptionId := commonids.NewSubscriptionID(subscriptionIdRaw)\n\tlistResult, err := c.ResourceManager.StorageAccounts.ListComplete(ctx, subscriptionId)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"listing Storage Accounts within %s: %+v\", subscriptionId, err)\n\t}\n\tfor _, item := range listResult.Items {\n\t\tif item.Id == nil || item.Name == nil {\n\t\t\tcontinue\n\t\t}\n\n\t\tstorageAccountId, err := commonids.ParseStorageAccountIDInsensitively(*item.Id)\n\t\tif err != nil {\n\t\t\treturn nil, fmt.Errorf(\"parsing %q: %+v\", *item.Id, err)\n\t\t}\n\n\t\taccount, err := populateAccountDetails(*storageAccountId, item)\n\t\tif err != nil {\n\t\t\treturn nil, fmt.Errorf(\"populating details for %s: %+v\", *storageAccountId, err)\n\t\t}\n\n\t\tstorageAccountsCache[storageAccountId.StorageAccountName] = *account\n\t}\n\n\tif existing, ok := storageAccountsCache[accountName]; ok {\n\t\treturn &existing, nil\n\t}\n\n\treturn nil, nil\n}\n\nfunc (c Client) GetAccount(ctx context.Context, id commonids.StorageAccountId) (*AccountDetails, error) {\n\tcacheAccountsLock.Lock()\n\tdefer cacheAccountsLock.Unlock()\n\n\tif existing, ok := storageAccountsCache[id.StorageAccountName]; ok {\n\t\treturn &existing, nil\n\t}\n\n\tresp, err := c.ResourceManager.StorageAccounts.GetProperties(ctx, id, storageaccounts.DefaultGetPropertiesOperationOptions())\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"retrieving %s: %v\", id, err)\n\t}\n\n\tif resp.Model == nil {\n\t\treturn nil, fmt.Errorf(\"unexpected null model of %s\", id)\n\t}\n\n\taccount, err := populateAccountDetails(id, *resp.Model)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"populating details for %s: %+v\", id, err)\n\t}\n\n\tstorageAccountsCache[id.StorageAccountName] = *account\n\treturn account, nil\n}\n\nfunc populateAccountDetails(accountId commonids.StorageAccountId, account storageaccounts.StorageAccount) (*AccountDetails, error) {\n\tout := AccountDetails{\n\t\tKind:             pointer.From(account.Kind),\n\t\tStorageAccountId: accountId,\n\t}\n\n\tif account.Properties == nil {\n\t\treturn nil, fmt.Errorf(\"populating details for %s: `model.Properties` was nil\", accountId)\n\t}\n\tif account.Properties.PrimaryEndpoints == nil {\n\t\treturn nil, fmt.Errorf(\"populating details for %s: `model.Properties.PrimaryEndpoints` was nil\", accountId)\n\t}\n\n\tprops := *account.Properties\n\tout.IsHnsEnabled = pointer.From(props.IsHnsEnabled)\n\n\tendpoints := *props.PrimaryEndpoints\n\tif endpoints.Blob != nil {\n\t\tendpoint := strings.TrimSuffix(*endpoints.Blob, \"/\")\n\t\tout.primaryBlobEndpoint = pointer.To(endpoint)\n\t}\n\tif endpoints.Dfs != nil {\n\t\tendpoint := strings.TrimSuffix(*endpoints.Dfs, \"/\")\n\t\tout.primaryDfsEndpoint = pointer.To(endpoint)\n\t}\n\tif endpoints.File != nil {\n\t\tendpoint := strings.TrimSuffix(*endpoints.File, \"/\")\n\t\tout.primaryFileEndpoint = pointer.To(endpoint)\n\t}\n\tif endpoints.Queue != nil {\n\t\tendpoint := strings.TrimSuffix(*endpoints.Queue, \"/\")\n\t\tout.primaryQueueEndpoint = pointer.To(endpoint)\n\t}\n\tif endpoints.Table != nil {\n\t\tendpoint := strings.TrimSuffix(*endpoints.Table, \"/\")\n\t\tout.primaryTableEndpoint = pointer.To(endpoint)\n\t}\n\n\treturn &out, nil\n}\n"
+    },
+    "apim_sdk_delete": {
+      "url": "https://raw.githubusercontent.com/hashicorp/go-azure-sdk/resource-manager/v0.20260312.1165223/resource-manager/apimanagement/2022-08-01/api/method_delete.go",
+      "sha256": "9fb6edd6ebf58b6a20f209bbb5f6d2bae735a712554cf61946a9c087a8a0dd64",
+      "content": "package api\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"net/http\"\n\n\t\"github.com/hashicorp/go-azure-sdk/sdk/client\"\n\t\"github.com/hashicorp/go-azure-sdk/sdk/odata\"\n)\n\n// Copyright (c) Microsoft Corporation. All rights reserved.\n// Licensed under the MIT License. See NOTICE.txt in the project root for license information.\n\ntype DeleteOperationResponse struct {\n\tHttpResponse *http.Response\n\tOData        *odata.OData\n}\n\ntype DeleteOperationOptions struct {\n\tDeleteRevisions *bool\n\tIfMatch         *string\n}\n\nfunc DefaultDeleteOperationOptions() DeleteOperationOptions {\n\treturn DeleteOperationOptions{}\n}\n\nfunc (o DeleteOperationOptions) ToHeaders() *client.Headers {\n\tout := client.Headers{}\n\tif o.IfMatch != nil {\n\t\tout.Append(\"If-Match\", fmt.Sprintf(\"%v\", *o.IfMatch))\n\t}\n\treturn &out\n}\n\nfunc (o DeleteOperationOptions) ToOData() *odata.Query {\n\tout := odata.Query{}\n\n\treturn &out\n}\n\nfunc (o DeleteOperationOptions) ToQuery() *client.QueryParams {\n\tout := client.QueryParams{}\n\tif o.DeleteRevisions != nil {\n\t\tout.Append(\"deleteRevisions\", fmt.Sprintf(\"%v\", *o.DeleteRevisions))\n\t}\n\treturn &out\n}\n\n// Delete ...\nfunc (c ApiClient) Delete(ctx context.Context, id ApiId, options DeleteOperationOptions) (result DeleteOperationResponse, err error) {\n\topts := client.RequestOptions{\n\t\tContentType: \"application/json; charset=utf-8\",\n\t\tExpectedStatusCodes: []int{\n\t\t\thttp.StatusNoContent,\n\t\t\thttp.StatusOK,\n\t\t},\n\t\tHttpMethod:    http.MethodDelete,\n\t\tOptionsObject: options,\n\t\tPath:          id.ID(),\n\t}\n\n\treq, err := c.Client.NewRequest(ctx, opts)\n\tif err != nil {\n\t\treturn\n\t}\n\n\tvar resp *client.Response\n\tresp, err = req.Execute(ctx)\n\tif resp != nil {\n\t\tresult.OData = resp.OData\n\t\tresult.HttpResponse = resp.Response\n\t}\n\tif err != nil {\n\t\treturn\n\t}\n\n\treturn\n}\n"
+    }
+  },
+  "noListKeysBoundary": {
+    "rejected": "azurerm_storage_account datasource unconditionally attempts ListKeys after GetProperties (570-572), regardless of provider AzureAD flag. Not used by these roots.",
+    "metadataLookup": "azurerm_resources filtered exact account/type/RG uses ListByResourceGroup; require exactly one canonical frozen account ID. Publiccloud endpoints derived from verified name, no secrets.",
+    "blobAuthentication": "storage/client/client.go96-97 enables AzureAD credentials; data_plane.go47-57 returns after AzureAD authorizer or fails without falling through to SharedKey/ListKeys. Blob resource requests SupportsAadAuthentication via DataPlaneOperationSupportingAnyAuthMethod.",
+    "functionStorage": "All four standard FunctionApp and slot resources set storage_uses_managed_identity=true and no access-key/key-vault-secret-id. Selected Create/Update uses StorageAccountName directly in MSI branch; Read parses AzureWebJobsStorage__accountName into StorageUsesMSI. No ListKeys call in these resource sources. Flex deployment and hoststorage use explicit UserAssignedIdentity settings."
+  },
+  "apimDeleteBoundary": {
+    "provider": "resourceApiManagementApiDelete uses parsed state ID and DefaultDeleteOperationOptions(), not explicit deleteRevisions=true",
+    "sdk": "Pinned provider go.mod uses resource-manager v0.20260312.1165223. Default options empty; DeleteRevisions nil omits deleteRevisions query. No service delete.",
+    "serverDefault": "Not asserted or cloud-verified; reserve whole API identity across revisions conservatively. No cross-owner revisions supported.",
+    "docs": "https://learn.microsoft.com/en-us/rest/api/apimanagement/apis/delete?view=rest-apimanagement-2022-08-01"
+  }
+}

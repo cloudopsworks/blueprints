@@ -27,22 +27,183 @@ inputs:
   sonarqube_token:
     description: 'The Sonarqube token'
     required: true
+  component-mode:
+    description: 'Opt-in correlated gate; caller applies its existing normalized required policy'
+    default: 'false'
+  metadata-directory:
+    description: 'Component mode: exclusive private RUNNER_TEMP/sonar-analysis-* directory containing report-task.txt'
+    default: ''
+  analysis-started-at:
+    description: 'Component mode: producer-captured epoch milliseconds before native analysis; timing check, not provenance'
+    default: ''
+  project-key:
+    description: 'Component mode: exact validated Sonar project key for this component'
+    default: ''
 
 outputs:
   quality_gate_status:
     description: 'The Quality Gate status'
     value: ${{ steps.sonarqube_quality_gate_status.outputs.quality_gate_status }}
+  component-status:
+    description: 'Component mode: passed, gate-failed, gate-warning, no-gate or infrastructure-error; not a ScannerResult policy decision'
+    value: ${{ steps.component-gate.outputs.component-status }}
+  component-quality-gate-status:
+    description: 'Component mode: exact completed analysis quality status, never latest-project status'
+    value: ${{ steps.component-gate.outputs.component-quality-gate-status }}
+  task-id:
+    description: 'Component mode: exact report task ID, only after matching completed analysis and gate response'
+    value: ${{ steps.component-gate.outputs.task-id }}
+  analysis-id:
+    description: 'Component mode: exact completed analysis ID used in the quality request'
+    value: ${{ steps.component-gate.outputs.analysis-id }}
+  error-code:
+    description: 'Component mode: fixed non-secret failure category'
+    value: ${{ steps.component-gate.outputs.error-code }}
 
 runs:
   using: 'composite'
   steps:
+    - name: Validate component mode
+      id: mode
+      uses: actions/github-script@v9
+      env:
+        COMPONENT_MODE: ${{ inputs.component-mode }}
+      with:
+        script: |
+          if (!['true', 'false'].includes(process.env.COMPONENT_MODE)) throw new Error('sonar-component-mode');
 #    - run: ls -lRa .
 #      shell: bash
     - name: Sonar Scan Quality Gate Status
+      if: inputs.component-mode != 'true'
       uses: sonarsource/sonarqube-quality-gate-action@master
       env:
         SONAR_TOKEN: ${{ inputs.sonarqube_token }}
         SONAR_HOST_URL: ${{ inputs.sonarqube_url }}
       with:
         scanMetadataReportFile: ${{ inputs.source_path }}/.scannerwork/report-task.txt
+    - name: Read exact private component analysis metadata
+      id: component-metadata
+      if: inputs.component-mode == 'true'
+      uses: actions/github-script@v9
+      env:
+        METADATA_DIRECTORY: ${{ inputs.metadata-directory }}
+        ANALYSIS_STARTED_AT: ${{ inputs.analysis-started-at }}
+        PROJECT_KEY: ${{ inputs.project-key }}
+        SONAR_URL: ${{ inputs.sonarqube_url }}
+      with:
+        script: |
+          const fs = require('node:fs').promises, path = require('node:path');
+          const env = process.env;
+          try {
+            const server = new URL(env.SONAR_URL), context = server.pathname.replace(/\/$/, '');
+            if (server.protocol !== 'https:' || server.username || server.password || server.search || server.hash ||
+                !['', ...context.split('/').slice(1)].every(part => part === '' || /^[A-Za-z0-9_~-][A-Za-z0-9._~-]*$/.test(part)) ||
+                context.includes('//') || ![server.origin + context, server.origin + context + '/'].includes(env.SONAR_URL)) throw new Error('host');
+            if (!/^[A-Za-z0-9_.:-]{1,400}$/.test(env.PROJECT_KEY || '')) throw new Error('project');
+            const started = Number(env.ANALYSIS_STARTED_AT);
+            if (!/^[1-9][0-9]{0,15}$/.test(env.ANALYSIS_STARTED_AT || '') || !Number.isSafeInteger(started) || started > Date.now()) throw new Error('time');
+            const temporary = await fs.realpath(env.RUNNER_TEMP), directory = env.METADATA_DIRECTORY;
+            if (!path.isAbsolute(directory) || path.resolve(directory) !== directory || path.dirname(directory) !== temporary ||
+                !/^sonar-analysis-[A-Za-z0-9]+$/.test(path.basename(directory)) || await fs.realpath(directory) !== directory) throw new Error('directory');
+            const directoryStat = await fs.lstat(directory);
+            if (!directoryStat.isDirectory() || (directoryStat.mode & 0o777) !== 0o700 || directoryStat.uid !== process.getuid()) throw new Error('private');
+            const filename = path.join(directory, 'report-task.txt'), before = await fs.lstat(filename);
+            if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || before.size < 1 || before.size > 16384 || before.mtimeMs < started) throw new Error('metadata');
+            const file = await fs.open(filename, require('node:fs').constants.O_RDONLY | require('node:fs').constants.O_NOFOLLOW);
+            let bytes;
+            try {
+              const stat = await file.stat(), buffer = Buffer.alloc(16385);
+              if (!stat.isFile() || stat.ino !== before.ino || stat.dev !== before.dev || stat.size !== before.size || stat.mtimeMs !== before.mtimeMs) throw new Error('changed');
+              let length = 0, read;
+              do { read = (await file.read(buffer, length, buffer.length - length, length)).bytesRead; length += read; } while (read && length < buffer.length);
+              const after = await file.stat();
+              if (length !== stat.size || length > 16384 || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs) throw new Error('changed');
+              bytes = buffer.subarray(0, length);
+            } finally { await file.close(); }
+            const text = new TextDecoder('utf-8', {fatal: true}).decode(bytes), fields = new Map();
+            if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(text)) throw new Error('control');
+            for (const line of text.split(/\r?\n/).filter(Boolean)) {
+              const pair = /^([A-Za-z][A-Za-z0-9]*)=(.*)$/.exec(line);
+              if (!pair || fields.has(pair[1]) || fields.size >= 64) throw new Error('fields');
+              fields.set(pair[1], pair[2]);
+            }
+            if (fields.get('projectKey') !== env.PROJECT_KEY || !/^[A-Za-z0-9_-]{1,128}$/.test(fields.get('ceTaskId') || '')) throw new Error('identity');
+            // Report URLs are untrusted metadata. Only the configured host/context is used.
+            core.setOutput('task-id', fields.get('ceTaskId'));
+            core.setOutput('server', server.origin + context);
+          } catch { throw new Error('sonar-component-metadata'); }
+    - name: Await exact component analysis and quality gate
+      id: component-gate
+      if: inputs.component-mode == 'true'
+      uses: actions/github-script@v9
+      env:
+        SERVER: ${{ steps.component-metadata.outputs.server }}
+        TASK_ID: ${{ steps.component-metadata.outputs.task-id }}
+        PROJECT_KEY: ${{ inputs.project-key }}
+        SONAR_TOKEN: ${{ inputs.sonarqube_token }}
+      with:
+        script: |
+          const env = process.env, deadline = performance.now() + 300000;
+          let status = 'infrastructure-error', quality = '', analysis = '', errorCode = 'sonar-analysis-unavailable';
+          try {
+            if (!env.SONAR_TOKEN || env.SONAR_TOKEN.length > 8192 || /[\x00-\x20\x7f]/.test(env.SONAR_TOKEN)) throw new Error('token');
+            core.setSecret(env.SONAR_TOKEN);
+            const request = async route => {
+              const remaining = deadline - performance.now();
+              if (remaining <= 0) throw new Error('deadline');
+              const controller = new AbortController();
+              let reader, onAbort;
+              const aborted = new Promise((_, reject) => { onAbort = () => reject(new Error('deadline')); controller.signal.addEventListener('abort', onAbort, {once: true}); });
+              const timer = setTimeout(() => controller.abort(), Math.min(10000, remaining));
+              try {
+                const response = await Promise.race([fetch(env.SERVER + route, {method: 'GET',
+                  headers: {Authorization: 'Bearer ' + env.SONAR_TOKEN, Accept: 'application/json'},
+                  redirect: 'error', credentials: 'omit', signal: controller.signal}), aborted]);
+                if (!response.body) throw new Error('response');
+                reader = response.body.getReader();
+                if (response.status !== 200 || !/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) throw new Error('response');
+                const advertised = response.headers.get('content-length');
+                if (advertised !== null && (!/^[0-9]+$/.test(advertised) || Number(advertised) > 1048576)) throw new Error('bound');
+                const chunks = []; let length = 0;
+                while (true) {
+                  const chunk = await Promise.race([reader.read(), aborted]);
+                  if (chunk.done) break;
+                  length += chunk.value.byteLength;
+                  if (length > 1048576) throw new Error('bound');
+                  chunks.push(Buffer.from(chunk.value));
+                }
+                const value = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(Buffer.concat(chunks, length)));
+                if (!value || typeof value !== 'object' || Array.isArray(value) || value.errors !== undefined) throw new Error('response');
+                return value;
+              } finally {
+                clearTimeout(timer);
+                controller.signal.removeEventListener('abort', onAbort);
+                if (reader) void reader.cancel().catch(() => {});
+              }
+            };
+            while (performance.now() < deadline) {
+              const {task} = await request('/api/ce/task?id=' + encodeURIComponent(env.TASK_ID));
+              if (!task || task.id !== env.TASK_ID || task.type !== 'REPORT' || task.componentKey !== env.PROJECT_KEY) throw new Error('task');
+              if (task.status === 'SUCCESS') {
+                if (!/^[A-Za-z0-9_-]{1,128}$/.test(task.analysisId || '')) throw new Error('analysis');
+                analysis = task.analysisId; break;
+              }
+              if (!['PENDING', 'IN_PROGRESS'].includes(task.status)) throw new Error('task');
+              const delay = Math.min(5000, deadline - performance.now());
+              if (delay <= 0) throw new Error('deadline');
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+            if (!analysis) throw new Error('deadline');
+            const result = await request('/api/qualitygates/project_status?analysisId=' + encodeURIComponent(analysis));
+            const mapping = {OK: 'passed', ERROR: 'gate-failed', WARN: 'gate-warning', NONE: 'no-gate'};
+            if (!result.projectStatus || Array.isArray(result.projectStatus) || !Object.hasOwn(mapping, result.projectStatus.status)) throw new Error('gate');
+            quality = result.projectStatus.status; status = mapping[quality]; errorCode = '';
+            core.setOutput('task-id', env.TASK_ID);
+            core.setOutput('analysis-id', analysis);
+          } catch { errorCode = 'sonar-analysis-unavailable'; }
+          core.setOutput('component-status', status);
+          core.setOutput('component-quality-gate-status', quality);
+          core.setOutput('error-code', errorCode);
+          // This raw gate result does not replace the caller's normalized required policy.
+          core.info('Sonar component quality gate: ' + status);
 

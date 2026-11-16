@@ -1,0 +1,189 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "BuildPlan",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "version": "1.2.3",
+  "event": "release",
+  "prNumber": null,
+  "components": [
+    {
+      "id": "api",
+      "path": "components/api",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "api"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "archive",
+        "format": "zip",
+        "include": [
+          "**/*"
+        ]
+      },
+      "preview": {
+        "mode": "container",
+        "source": "dockerfile",
+        "port": 8080,
+        "healthPath": "/health",
+        "dockerfile": "Dockerfile",
+        "context": "."
+      },
+      "dependsOn": [],
+      "targetIds": [
+        "prod-run"
+      ],
+      "workload": {
+        "kind": "http",
+        "port": 3000,
+        "healthPath": "/ready"
+      }
+    },
+    {
+      "id": "other",
+      "path": "components/other",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "other"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "archive",
+        "format": "zip",
+        "include": [
+          "**/*"
+        ]
+      },
+      "preview": {
+        "mode": "container",
+        "source": "dockerfile",
+        "port": 8080,
+        "healthPath": "/health",
+        "dockerfile": "Dockerfile",
+        "context": "."
+      },
+      "dependsOn": [],
+      "targetIds": [
+        "other-slot"
+      ],
+      "workload": {
+        "kind": "http",
+        "port": 3000,
+        "healthPath": "/ready"
+      }
+    }
+  ],
+  "targets": [
+    {
+      "id": "prod-run",
+      "environment": "prod",
+      "provider": "azure",
+      "authRef": "azure-prod",
+      "configDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "kind": "azure.appservice",
+      "subscriptionId": "00000000-0000-0000-0000-000000000001",
+      "resourceGroup": "rg",
+      "appName": "app",
+      "slot": "blue",
+      "packageMode": "zip",
+      "readiness": {
+        "deadlineSeconds": 600,
+        "intervalSeconds": 5,
+        "probe": {
+          "kind": "http",
+          "path": "/health",
+          "method": "GET",
+          "requestBody": "",
+          "expectedStatus": 200,
+          "responseContains": "ok",
+          "auth": {
+            "kind": "none"
+          }
+        }
+      }
+    },
+    {
+      "id": "other-slot",
+      "environment": "prod",
+      "provider": "azure",
+      "authRef": "azure-prod",
+      "configDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "kind": "azure.appservice",
+      "subscriptionId": "00000000-0000-0000-0000-000000000001",
+      "resourceGroup": "rg",
+      "appName": "app",
+      "slot": "green",
+      "packageMode": "zip",
+      "readiness": {
+        "deadlineSeconds": 600,
+        "intervalSeconds": 5,
+        "probe": {
+          "kind": "http",
+          "path": "/health",
+          "method": "GET",
+          "requestBody": "",
+          "expectedStatus": 200,
+          "responseContains": "ok",
+          "auth": {
+            "kind": "none"
+          }
+        }
+      }
+    }
+  ],
+  "buildSelection": [
+    {
+      "componentId": "api",
+      "reasons": [
+        "component-path-changed"
+      ]
+    }
+  ],
+  "removedComponents": [],
+  "buildNoop": false,
+  "matrix": {
+    "include": [
+      {
+        "componentId": "api",
+        "closure": [
+          "api"
+        ],
+        "toolchains": [
+          {
+            "tool": "go",
+            "version": "1.26.7",
+            "distribution": "default",
+            "components": [
+              "api"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "previewPolicy": {
+    "enabled": false,
+    "targets": []
+  }
+}

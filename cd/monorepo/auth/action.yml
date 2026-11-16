@@ -1,0 +1,109 @@
+name: Protected target identity
+description: Bind a validated authRef to protected OIDC settings, never to PR metadata
+inputs:
+  provider: {description: Closed provider enum, required: true}
+  auth-ref: {description: Validated protected binding name, required: true}
+  install-tools: {description: Install fixed tools; central pair jobs set false after source-free setup, required: false, default: 'true'}
+  context-name: {description: Fixed workload, backend or read-only root-backend private capture name, required: false, default: ''}
+  bindings: {description: Protected environment CLOUDOPSWORKS_AUTH YAML, required: true}
+outputs:
+  context-path:
+    description: Private process-local credential file; never upload
+    value: ${{ steps.capture.outputs.context-path }}
+runs:
+  using: composite
+  steps:
+    - uses: cloudopsworks/install-tronador-cli@v1
+      if: inputs.install-tools != 'false'
+      with:
+        version: v0.6.0
+    - id: binding
+      shell: bash
+      env:
+        PROVIDER: ${{ inputs.provider }}
+        AUTH_REF: ${{ inputs.auth-ref }}
+        BINDINGS: ${{ inputs.bindings }}
+      run: |
+        python3 - <<'PY'
+        import json, os, re, subprocess
+        provider, ref = os.environ['PROVIDER'], os.environ['AUTH_REF']
+        assert provider in ('aws', 'gcp', 'azure') and re.fullmatch('[a-z][a-z0-9-]{0,47}', ref)
+        try:
+            result = subprocess.run(['tronador','components','settings','--kind','auth','--json'],
+                input=os.environ['BINDINGS'],text=True,capture_output=True,timeout=15,check=False)
+            if result.returncode or len(result.stdout.encode()) > 4*1024*1024:
+                raise ValueError('invalid protected settings')
+            binding = json.loads(result.stdout)[ref]
+        except Exception:
+            raise SystemExit('protected-auth-binding-invalid') from None
+        assert binding['provider'] == provider
+        keys = {'aws': ['roleArn', 'region'], 'gcp': ['workloadIdentityProvider', 'serviceAccount', 'project'], 'azure': ['clientId', 'tenantId', 'subscriptionId']}[provider]
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+            for key in keys:
+                value = binding[key]
+                assert isinstance(value, str) and value and not any(ord(c) < 32 for c in value)
+                stream.write(key + '=' + value + '\n')
+        PY
+    - uses: aws-actions/configure-aws-credentials@v4
+      if: inputs.provider == 'aws'
+      with:
+        role-to-assume: ${{ steps.binding.outputs.roleArn }}
+        aws-region: ${{ steps.binding.outputs.region }}
+        role-session-name: monorepo-${{ github.run_id }}
+    - uses: google-github-actions/auth@v2
+      if: inputs.provider == 'gcp'
+      with:
+        workload_identity_provider: ${{ steps.binding.outputs.workloadIdentityProvider }}
+        service_account: ${{ steps.binding.outputs.serviceAccount }}
+        project_id: ${{ steps.binding.outputs.project }}
+        create_credentials_file: true
+    - uses: google-github-actions/setup-gcloud@v2
+      if: inputs.provider == 'gcp' && inputs.install-tools != 'false'
+      with:
+        version: '553.0.0'
+        install_components: gke-gcloud-auth-plugin
+    - name: Isolate selected Azure CLI cache before login
+      if: inputs.provider == 'azure' && inputs.context-name != ''
+      shell: bash
+      env:
+        CONTEXT_NAME: ${{ inputs.context-name }}
+      run: |
+        python3 - <<'PY'
+        import os
+        from pathlib import Path
+        name=os.environ['CONTEXT_NAME']
+        assert name in ('workload','backend','root-backend')
+        root=Path(os.environ['RUNNER_TEMP']).resolve()/('cloudopsworks-azure-login-'+name)
+        root.mkdir(mode=0o700)
+        with open(os.environ['GITHUB_ENV'],'a') as stream:stream.write('AZURE_CONFIG_DIR='+str(root)+'\n')
+        PY
+    - uses: azure/login@v2
+      if: inputs.provider == 'azure'
+      with:
+        client-id: ${{ steps.binding.outputs.clientId }}
+        tenant-id: ${{ steps.binding.outputs.tenantId }}
+        subscription-id: ${{ steps.binding.outputs.subscriptionId }}
+    - uses: azure/use-kubelogin@v1
+      if: inputs.provider == 'azure' && inputs.install-tools != 'false'
+      with: {kubelogin-version: v0.1.6}
+    - shell: bash
+      env:
+        PROVIDER: ${{ inputs.provider }}
+      run: |
+        set -euo pipefail
+        case "$PROVIDER" in
+          aws) aws --version | grep -F 'aws-cli/2.40.1 ' ;;
+          gcp) gcloud version --format=json | python3 -c 'import json,sys; assert json.load(sys.stdin)["Google Cloud SDK"] == "553.0.0"'  ;;
+          azure) test "$(az version --query '"azure-cli"' --output tsv)" = 2.90.0 ;;
+          *) exit 1 ;;
+        esac
+    - name: Capture exact selected principal independently of later login
+      id: capture
+      if: inputs.context-name != ''
+      shell: bash
+      env:
+        PROVIDER: ${{ inputs.provider }}
+        AUTH_REF: ${{ inputs.auth-ref }}
+        BINDINGS: ${{ inputs.bindings }}
+        CONTEXT_NAME: ${{ inputs.context-name }}
+      run: python3 "$GITHUB_ACTION_PATH/../runtime/credential_context.py"

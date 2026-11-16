@@ -45,6 +45,24 @@ It's 100% Open Source and licensed under the [APACHE2](LICENSE).
 
 ## Introduction
 
+**v5.11 opt-in application model:** mixed-language monorepos and plain Ruby/Rails
+use centralized CI design, one repository release, IaC-owned deployment convergence and
+Kubernetes-only PR previews. Existing single-application templates remain
+compatible and unchanged. Start with the [monorepo guide](docs/monorepo/guide.md),
+[architecture decisions](docs/adr/0001-schema-v2-component-authority.md),
+[rollout runbook](docs/monorepo/rollout.md) and [project wiki](omx_wiki/index.md).
+CLI `v0.6.0` and Blueprint `v5.11.0`/`v5.11` are coordinated future publication
+prerequisites; source implementation is not evidence those releases exist.
+The GitFlow/YAML revision has frozen pinned thin callers; mandatory provider P0
+and hosted activation remain in progress. Caller validation is not full CI/CD proof.
+App Engine requires fresh exclusive nondefault whole-service ownership with
+deliberate recreation downtime, operator single-writer control and reviewed
+timeout-orphan reconciliation; no old-state adoption or cross-standard/flex update.
+Backend auth_ref reuses the same protected AUTH map independently of workload
+authRef; implementation/native/hosted proof remains pending. No new component setup.
+Human configuration stays in cloudopsworks-ci.yaml and vars/inputs-ENV.yaml;
+see [current configuration ADR](docs/adr/0005-yaml-gitflow-iac-revision.md).
+
 The Cloud Ops Works Blueprints works along with GitHub Secrets and Variables,
 they should be declared preferably at organization level, and then used in the
   workflows. This way, the secrets and variables are not exposed in the workflows
@@ -62,7 +80,12 @@ they should be declared preferably at organization level, and then used in the
   }
 </style>
 
-Required GitHub Secrets and Variables, in the below table:
+The table below describes **legacy action settings**. Schema-v2 monorepo
+workflows instead use protected OIDC bindings and the variables/secrets in the
+[v5.11 setup guide](docs/monorepo/rollout.md#protected-github-settings). Build jobs
+do not receive deployment credentials.
+
+Required GitHub Secrets and Variables for legacy actions, in the below table:
 
 | Name                                 |   Type   | Description                                                                                                                                  | Required |
 |--------------------------------------|:--------:|----------------------------------------------------------------------------------------------------------------------------------------------|:--------:|

@@ -10,6 +10,10 @@ name: Git-Ops Approved Command
 author: cloudopsworks
 description: Process Git-Ops Approved Command
 inputs:
+  component_mode:
+    description: Authenticate schema-v2 PR commands with the trusted local runtime
+    default: 'false'
+    required: false
   token:
     description: 'The GitHub token'
     required: true
@@ -17,7 +21,14 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - uses: actions/github-script@v9
+    - name: Authenticated component command
+      if: ${{ inputs.component_mode == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: python3 bp/cd/monorepo/runtime/gitops.py approve
+    - if: ${{ inputs.component_mode != 'true' }}
+      uses: actions/github-script@v9
       env:
         GITHUB_SLASH_PULL_REQUEST: ${{ github.event.client_payload.slash_command.args.named.pull_request }}
         GITHUB_SLASH_PULL_REQUEST_NUMBER: ${{ github.event.client_payload.slash_command.args.named.pull_request_number }}

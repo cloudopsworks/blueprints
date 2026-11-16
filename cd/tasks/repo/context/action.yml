@@ -1,0 +1,283 @@
+name: Verify monorepo caller context
+description: Fixed reviewed diagnostic or normal caller and immutable called-code verification; no application execution
+inputs:
+  mode: {description: Closed diagnostic/normal/delivery caller family; never caller-supplied policy, default: diagnostic}
+  run-id: {description: Optional exact historical host run; must pair with attempt, default: ''}
+  run-attempt: {description: Optional exact historical attempt, default: ''}
+outputs:
+  source-sha: {description: Exact verified application commit, value: '${{ steps.verify.outputs.source-sha || steps.projection.outputs.source-sha }}'}
+  blueprint-sha: {description: Exact released reusable commit, value: '${{ steps.verify.outputs.blueprint-sha || steps.projection.outputs.blueprint-sha }}'}
+  caller-mode: {description: Fixed reusable caller mapping, value: '${{ steps.verify.outputs.caller-mode || steps.projection.outputs.caller-mode }}'}
+  run-id: {description: Actual host run ID, value: '${{ steps.verify.outputs.run-id || steps.projection.outputs.run-id }}'}
+  run-attempt: {description: Actual host run attempt, value: '${{ steps.verify.outputs.run-attempt || steps.projection.outputs.run-attempt }}'}
+  policy-sha: {description: Original captured protected PR-base policy commit, value: '${{ steps.verify.outputs.policy-sha || steps.projection.outputs.policy-sha }}'}
+  host-ref: {description: Captured default host branch ref, value: '${{ steps.verify.outputs.host-ref || steps.projection.outputs.host-ref }}'}
+  base-ref: {description: Independently corroborated protected PR base, value: '${{ steps.verify.outputs.base-ref || steps.projection.outputs.base-ref }}'}
+  pr-number: {description: Actual closed pull request number, value: '${{ steps.verify.outputs.pr-number || steps.projection.outputs.pr-number }}'}
+  closure: {description: Verified merged closure context, value: '${{ steps.verify.outputs.closure || steps.projection.outputs.closure }}'}
+  eligible: {description: Go classified closure eligibility, value: '${{ steps.lifecycle.outputs.eligible }}'}
+  lifecycle: {description: Captured protected-base lifecycle decision, value: '${{ steps.lifecycle.outputs.lifecycle }}'}
+  source-ref: {description: 'Original independently verified source ref', value: '${{ steps.projection.outputs.source-ref }}'}
+  source-repository-id: {description: 'Original source repository identity', value: '${{ steps.projection.outputs.source-repository-id }}'}
+  trusted-source: {description: 'Independent protected source proof; never caller permission', value: '${{ steps.projection.outputs.trusted-source }}'}
+  origin-facts: {description: 'Private corroborated original event data; not authority alone', value: '${{ steps.projection.outputs.origin-facts }}'}
+  delivery-check-id: {description: 'Independently retained exact origin Check binding', value: '${{ steps.projection.outputs.delivery-check-id }}'}
+  delivery-check-name: {description: 'Independently retained exact origin Check binding', value: '${{ steps.projection.outputs.delivery-check-name }}'}
+  plan-artifact-id: {description: 'Verified exact original plan locator', value: '${{ steps.origin.outputs.artifact-id }}'}
+  plan-archive-digest: {description: 'Verified original archive digest', value: '${{ steps.origin.outputs.archive-digest }}'}
+runs:
+  using: composite
+  steps:
+    - id: verify
+      if: inputs.mode != 'normal' && inputs.mode != 'delivery'
+      uses: actions/github-script@v9
+      env:
+        CONTEXT_MODE: ${{ inputs.mode }}
+        CONTEXT_RUN_ID: ${{ inputs.run-id }}
+        CONTEXT_RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      with:
+        script: |
+          const crypto = require('node:crypto');
+          const env = process.env;
+          if (env.CONTEXT_MODE && env.CONTEXT_MODE !== 'diagnostic') throw new Error('context-mode');
+          if (![env.GITHUB_REPOSITORY_ID, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('context-identity');
+          const historical = Boolean(env.CONTEXT_RUN_ID || env.CONTEXT_RUN_ATTEMPT);
+          const runId = historical ? env.CONTEXT_RUN_ID : env.GITHUB_RUN_ID, attempt = historical ? env.CONTEXT_RUN_ATTEMPT : env.GITHUB_RUN_ATTEMPT;
+          if (![runId, attempt].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('context-historical-pair');
+          const repository = (await github.rest.repos.get({...context.repo})).data;
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: runId, attempt_number: attempt})).data;
+          const closure = run.event === 'pull_request_target';
+          const associations = run.pull_requests;
+          if (associations !== undefined && (!Array.isArray(associations) || associations.length > 1)) throw new Error('context-run-pull-association');
+          const association = associations?.[0];
+          if (associations?.length) {
+            if (!closure || !association || typeof association !== 'object' || Array.isArray(association) || !Number.isSafeInteger(association.number) || association.number < 1) throw new Error('context-run-pull-association');
+            for (const side of ['base', 'head']) {
+              const value = association[side];
+              if (!value || typeof value !== 'object' || typeof value.ref !== 'string' || !value.ref || value.ref.length > 256 || typeof value.sha !== 'string' || !/^[0-9a-f]{40}$/.test(value.sha) || !Number.isSafeInteger(value.repo?.id) || value.repo.id < 1 || String(value.repo.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('context-run-pull-association');
+            }
+          }
+          const caller = closure ? '.github/workflows/composite-first-closure.yml' : '.github/workflows/composite-first-slice.yml';
+          if (String(repository.id) !== env.GITHUB_REPOSITORY_ID || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID || String(run.id) !== runId || String(run.run_attempt) !== attempt || !['workflow_dispatch', 'pull_request_target'].includes(run.event) || closure && run.head_branch !== repository.default_branch || run.path?.split('@')[0] !== caller || !/^[0-9a-f]{40}$/.test(run.head_sha || '') || !run.head_branch) throw new Error('context-caller');
+          const branch = (await github.rest.repos.getBranch({...context.repo, branch: run.head_branch})).data;
+          if (branch.protected !== true || !/^[0-9a-f]{40}$/.test(branch.commit?.sha || '')) throw new Error('context-protected-ref');
+          if (branch.commit.sha !== run.head_sha) {
+            const comparison = (await github.rest.repos.compareCommitsWithBasehead({...context.repo, basehead: run.head_sha + '...' + branch.commit.sha})).data;
+            if (comparison.status !== 'ahead' || comparison.base_commit?.sha !== run.head_sha || comparison.merge_base_commit?.sha !== run.head_sha) throw new Error('context-captured-host-ancestry');
+          }
+          const file = (await github.rest.repos.getContent({...context.repo, path: caller, ref: run.head_sha})).data;
+          if (Array.isArray(file) || file.type !== 'file' || file.encoding !== 'base64' || typeof file.content !== 'string' || file.content.length > 16384) throw new Error('context-caller-file');
+          const bytes = Buffer.from(file.content.replace(/\n/g, ''), 'base64');
+          // Reviewed production caller bytes, not a fixture or mutable repository policy.
+          const expectedCaller = closure ? '57cdcbf8fe12f23d000cf706442a4cd6a66df108595f8f416ae5507a0590d8eb' : '4b24816cd72713e359d74542226d168ffec4256278c92714d693862da0442aa8';
+          if (crypto.createHash('sha256').update(bytes).digest('hex') !== expectedCaller || crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== file.sha) throw new Error('context-caller-definition');
+          const ref = (await github.rest.git.getRef({owner: 'cloudopsworks', repo: 'blueprints', ref: 'tags/v5.11.0'})).data;
+          let object = ref.object;
+          if (object?.type === 'tag') object = (await github.rest.git.getTag({owner: 'cloudopsworks', repo: 'blueprints', tag_sha: object.sha})).data.object;
+          if (object?.type !== 'commit' || !/^[0-9a-f]{40}$/.test(object.sha || '')) throw new Error('context-blueprint-ref');
+          const called = (run.referenced_workflows || []).filter(item => item.path === 'cloudopsworks/blueprints/.github/workflows/monorepo-delivery-slice.yml@v5.11.0' && item.sha === object.sha);
+          if (called.length !== 1) throw new Error('context-called-code');
+          let source = run.head_sha, event, pull;
+          if (closure && !historical) {
+            event = context.payload?.pull_request;
+            if (context.payload?.action !== 'closed' || !event || !Number.isSafeInteger(event.number) || event.number < 1) throw new Error('context-closure-event');
+            pull = (await github.rest.pulls.get({...context.repo, pull_number: event.number})).data;
+            if (pull.number !== event.number || pull.state !== 'closed' || pull.merged !== true || event.state !== 'closed' || event.merged !== true || pull.merge_commit_sha !== event.merge_commit_sha || !/^[0-9a-f]{40}$/.test(pull.merge_commit_sha || '') || !/^[0-9a-f]{40}$/.test(event.base?.sha || '') || event.base.ref !== pull.base?.ref || String(pull.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID || String(event.base.repo?.id) !== env.GITHUB_REPOSITORY_ID || String(pull.head?.repo?.id) !== env.GITHUB_REPOSITORY_ID || String(event.head?.repo?.id) !== env.GITHUB_REPOSITORY_ID || event.head.sha !== pull.head.sha) throw new Error('context-closure-pull');
+            const base = (await github.rest.repos.getBranch({...context.repo, branch: pull.base.ref})).data;
+            if (base.protected !== true || !/^[0-9a-f]{40}$/.test(base.commit?.sha || '')) throw new Error('context-closure-base');
+            for (const target of [base.commit.sha, pull.merge_commit_sha]) {
+              const relation = (await github.rest.repos.compareCommitsWithBasehead({...context.repo, basehead: event.base.sha + '...' + target})).data;
+              if (!['ahead', 'identical'].includes(relation.status) || relation.base_commit?.sha !== event.base.sha || relation.merge_base_commit?.sha !== event.base.sha) throw new Error('context-closure-ancestry');
+            }
+            const merged = (await github.rest.repos.compareCommitsWithBasehead({...context.repo, basehead: pull.merge_commit_sha + '...' + base.commit.sha})).data;
+            if (!['ahead', 'identical'].includes(merged.status) || merged.base_commit?.sha !== pull.merge_commit_sha || merged.merge_base_commit?.sha !== pull.merge_commit_sha) throw new Error('context-closure-merge-lineage');
+            source = pull.merge_commit_sha;
+          }
+          if (association) {
+            if (historical) pull = (await github.rest.pulls.get({...context.repo, pull_number: association.number})).data;
+            // Association base SHA is not the original event policy snapshot; it may reflect later base advancement.
+            if (pull.number !== association.number || pull.state !== 'closed' || pull.merged !== true || !/^[0-9a-f]{40}$/.test(pull.merge_commit_sha || '') || association.base.ref !== pull.base?.ref || association.head.ref !== pull.head?.ref || association.head.sha !== pull.head?.sha || String(pull.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID || String(pull.head?.repo?.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('context-run-pull-association');
+          }
+          if (historical && association) core.setOutput('pr-number', String(pull.number));
+          if (closure && !historical) {
+            core.setOutput('policy-sha', event.base.sha);
+            core.setOutput('host-ref', 'refs/heads/' + run.head_branch);
+            core.setOutput('base-ref', pull.base.ref);
+            core.setOutput('pr-number', String(pull.number));
+            core.setOutput('closure', 'true');
+          }
+          if (!closure || !historical) core.setOutput('source-sha', source);
+          core.setOutput('blueprint-sha', object.sha);
+          core.setOutput('caller-mode', 'reusable');
+          core.setOutput('run-id', runId);
+          core.setOutput('run-attempt', attempt);
+    - id: origin
+      if: inputs.mode == 'delivery' || inputs.mode == 'normal' && inputs.run-id != ''
+      uses: ./bp/ci/monorepo/plan/endorsement
+      with:
+        mode: origin-verify
+        caller-mode: ''
+        run-id: ${{ inputs.mode == 'delivery' && github.event.workflow_run.id || inputs.run-id }}
+        run-attempt: ${{ inputs.mode == 'delivery' && github.event.workflow_run.run_attempt || inputs.run-attempt }}
+    - id: normal
+      if: inputs.mode == 'normal' || inputs.mode == 'delivery'
+      uses: actions/github-script@v9
+      env:
+        CONTEXT_MODE: ${{ inputs.mode }}
+        CONTEXT_RUN_ID: ${{ inputs.mode == 'delivery' && github.event.workflow_run.id || inputs.run-id }}
+        CONTEXT_RUN_ATTEMPT: ${{ inputs.mode == 'delivery' && github.event.workflow_run.run_attempt || inputs.run-attempt }}
+        ORIGIN: ${{ steps.origin.outputs.origin }}
+      with:
+        script: |
+          const crypto = require('node:crypto');
+          const env = process.env;
+          if (!['normal', 'delivery'].includes(env.CONTEXT_MODE)) throw new Error('normal-context-mode');
+          const numeric = value => /^[1-9][0-9]*$/.test(value || '');
+          const sha = value => /^[0-9a-f]{40}$/.test(value || '');
+          const runId = env.CONTEXT_RUN_ID || env.GITHUB_RUN_ID, attempt = env.CONTEXT_RUN_ATTEMPT || env.GITHUB_RUN_ATTEMPT;
+          if (![runId, attempt, env.GITHUB_REPOSITORY_ID, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT].every(numeric) || Boolean(env.CONTEXT_RUN_ID) !== Boolean(env.CONTEXT_RUN_ATTEMPT)) throw new Error('normal-context-identity');
+          const historical = runId !== env.GITHUB_RUN_ID || attempt !== env.GITHUB_RUN_ATTEMPT;
+          const origin = env.ORIGIN ? JSON.parse(env.ORIGIN) : null;
+          const native = origin || {ref: env.GITHUB_REF, hostSha: env.GITHUB_SHA, callerSha: env.GITHUB_WORKFLOW_SHA};
+          if (![native.hostSha,native.callerSha].every(sha) || typeof native.ref !== 'string' || native.ref.length > 300) throw new Error('normal-context-native');
+          if (historical && !origin) throw new Error('normal-context-origin-required');
+          const repository = (await github.rest.repos.get({...context.repo})).data;
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: runId, attempt_number: attempt})).data;
+          const callers = {
+            '.github/workflows/main-build.yml': {kind: 'main', events: ['push', 'create', 'workflow_dispatch'], hashes: ['e074799ee515ad55433fe9375346861c1b567d8ae72f6835a8e254484b05dd4d', '04696aa63909be2edd07fce83afc791909d7da13aed89af0bd599f713cad78d5'], called: ['monorepo-main-build.yml', 'monorepo-ci.yml']},
+            '.github/workflows/pr-build.yml': {kind: 'pr', events: ['pull_request'], hashes: ['9621e7768ffac0d11673db6be3368ede4fd84e96b119512bce5f022a0cbcdbb9'], called: ['monorepo-pr-build.yml', 'monorepo-ci.yml']},
+            '.github/workflows/delivery.yml': {kind: 'delivery', events: ['workflow_run'], hashes: ['077c311bab2fa728a332f5156b16df1e1b2e4bed7fa321a9bea3958a91783726'], called: ['monorepo-delivery.yml']},
+            '.github/workflows/pr-close.yaml': {kind: 'closure', events: ['pull_request_target'], hashes: ['0aea4ce7577ef93050cd6c0d51c1988f17518182bc096c73653eaf3e4f600005'], called: ['monorepo-pr-close.yml', 'monorepo-closure.yml', 'monorepo-ci.yml']},
+          };
+          const authenticate = async (run, callerSha) => {
+            const caller = run.path?.split('@')[0], definition = callers[caller];
+            if (!definition || !definition.events.includes(run.event) || String(repository.id) !== env.GITHUB_REPOSITORY_ID || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID || !sha(run.head_sha) || typeof run.head_branch !== 'string' || !run.head_branch || run.head_branch.length > 256) throw new Error('normal-context-caller');
+
+            const ref = (await github.rest.git.getRef({owner: 'cloudopsworks', repo: 'blueprints', ref: 'tags/v5.11.0'})).data;
+            let object = ref.object;
+            if (object?.type === 'tag') object = (await github.rest.git.getTag({owner: 'cloudopsworks', repo: 'blueprints', tag_sha: object.sha})).data.object;
+            if (object?.type !== 'commit' || !sha(object.sha) || !Array.isArray(run.referenced_workflows)) throw new Error('normal-context-blueprint');
+            for (const name of definition.called) {
+              const matches = run.referenced_workflows.filter(item => item.path === `cloudopsworks/blueprints/.github/workflows/${name}@v5.11.0`);
+              if (matches.length !== 1 || matches[0].sha !== object.sha) throw new Error('normal-context-called-code');
+            }
+            const file = (await github.rest.repos.getContent({...context.repo, path: caller, ref: callerSha})).data;
+            if (Array.isArray(file) || file.type !== 'file' || file.encoding !== 'base64' || typeof file.content !== 'string' || file.content.length > 16384) throw new Error('normal-context-caller-file');
+            const bytes = Buffer.from(file.content.replace(/\n/g, ''), 'base64');
+            if (!definition.hashes.includes(crypto.createHash('sha256').update(bytes).digest('hex')) || crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== file.sha) throw new Error('normal-context-caller-definition');
+            return {caller, definition, object};
+          };
+          if (String(run.id) !== runId || String(run.run_attempt) !== attempt || !historical && context.eventName !== run.event) throw new Error('normal-context-host-event');
+          const {caller, definition, object} = await authenticate(run, native.callerSha);
+          let protectionHostRef = '', protectionHostSha = '';
+          if (env.CONTEXT_MODE === 'delivery') {
+            const event = context.payload?.workflow_run;
+            const actual = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: env.GITHUB_RUN_ID, attempt_number: env.GITHUB_RUN_ATTEMPT})).data;
+            if (context.eventName !== 'workflow_run' || String(event?.id) !== runId || String(event?.run_attempt) !== attempt || String(actual.id) !== env.GITHUB_RUN_ID || String(actual.run_attempt) !== env.GITHUB_RUN_ATTEMPT ||
+                actual.path?.split('@')[0] !== '.github/workflows/delivery.yml' || actual.head_branch !== repository.default_branch || run.status !== 'completed' || definition.kind === 'main' && run.conclusion !== 'success' || !['main','closure'].includes(definition.kind)) throw new Error('delivery-context-host');
+            const delivery = await authenticate(actual, env.GITHUB_WORKFLOW_SHA);
+            if (delivery.object.sha !== object.sha) throw new Error('delivery-context-code');
+            if (env.GITHUB_REF !== 'refs/heads/' + repository.default_branch || !sha(env.GITHUB_SHA)) throw new Error('delivery-context-native');
+            protectionHostRef = env.GITHUB_REF;
+            protectionHostSha = env.GITHUB_SHA;
+          }
+          const associations = run.pull_requests;
+          if (associations !== undefined && (!Array.isArray(associations) || associations.length > 1)) throw new Error('normal-context-pull-association');
+          let source = run.head_sha, number = 0, baseRef = '', policy = origin?.policySha || context.payload?.pull_request?.base?.sha || '', hostRef = native.ref, pull;
+          let sourceRef = 'refs/heads/' + run.head_branch, sourceRepositoryId = env.GITHUB_REPOSITORY_ID, trustedSource = definition.kind !== 'pr';
+          if (definition.kind === 'main') {
+            if (associations?.length) throw new Error('normal-context-pull-association');
+            if (/^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/.test(run.head_branch)) {
+              let tag = (await github.rest.git.getRef({...context.repo, ref: 'tags/' + run.head_branch})).data.object;
+              if (tag?.type === 'tag') tag = (await github.rest.git.getTag({...context.repo, tag_sha: tag.sha})).data.object;
+              if (tag?.type !== 'commit' || tag.sha !== source) throw new Error('normal-context-source-tag');
+              sourceRef = 'refs/tags/' + run.head_branch;
+            }
+            if (native.ref !== sourceRef) throw new Error('normal-context-native-ref');
+          } else {
+            const association = associations?.[0];
+            if (definition.kind === 'pr' || historical && !origin) {
+              if (!association || !Number.isSafeInteger(association.number) || association.number < 1) throw new Error('normal-context-pull-association');
+              for (const side of ['base', 'head']) if (!sha(association[side]?.sha) || typeof association[side]?.ref !== 'string' || !association[side].ref || !numeric(String(association[side]?.repo?.id))) throw new Error('normal-context-pull-association');
+              number = association.number;
+            } else if (historical) number = Number(origin.prNumber);
+            else {
+              const event = context.payload?.pull_request;
+              if (context.payload?.action !== 'closed' || event?.state !== 'closed' || event.merged !== true || !Number.isSafeInteger(event.number) || event.number < 1 || !sha(event.base?.sha)) throw new Error('normal-context-closure-event');
+              number = event.number;
+              policy = event.base.sha;
+            }
+            pull = (await github.rest.pulls.get({...context.repo, pull_number: number})).data;
+            if (pull.number !== number || String(pull.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID || !sha(pull.head?.sha) || typeof pull.base?.ref !== 'string') throw new Error('normal-context-pull');
+            if (association && (association.base.ref !== pull.base.ref || association.head.ref !== pull.head?.ref || association.head.sha !== pull.head.sha || String(association.base.repo.id) !== env.GITHUB_REPOSITORY_ID || String(association.head.repo.id) !== String(pull.head?.repo?.id))) throw new Error('normal-context-pull-association');
+            baseRef = pull.base.ref;
+            if (definition.kind === 'closure') {
+              if (!historical && run.head_branch !== repository.default_branch || pull.state !== 'closed' || pull.merged !== true || !sha(pull.merge_commit_sha)) throw new Error('normal-context-closure');
+              if (!historical) {
+                const event = context.payload.pull_request;
+                if (event.merge_commit_sha !== pull.merge_commit_sha || event.base.ref !== baseRef || String(event.base.repo?.id) !== env.GITHUB_REPOSITORY_ID || event.head?.sha !== pull.head.sha || String(event.head?.repo?.id) !== String(pull.head?.repo?.id)) throw new Error('normal-context-closure-source');
+              }
+              if (native.ref !== 'refs/heads/' + run.head_branch) throw new Error('normal-context-native-ref');
+              source = pull.merge_commit_sha;
+            } else {
+              if (native.ref !== `refs/pull/${number}/merge`) throw new Error('normal-context-native-ref');
+              if (run.head_sha !== pull.head.sha) throw new Error('normal-context-pr-source');
+              if (!historical && (!sha(policy) || context.payload?.pull_request?.number !== number || context.payload.pull_request.head?.sha !== source || String(context.payload.pull_request.head?.repo?.id) !== String(pull.head?.repo?.id) || String(context.payload.pull_request.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID)) throw new Error('normal-context-pr-event');
+            }
+          }
+          if (definition.kind !== 'main') {
+            sourceRef = 'refs/heads/' + (definition.kind === 'closure' ? baseRef : pull.head.ref);
+            sourceRepositoryId = definition.kind === 'closure' ? env.GITHUB_REPOSITORY_ID : String(pull.head.repo?.id);
+          }
+          const facts = {event: run.event, ref: hostRef, hostSha: native.hostSha, callerPath: caller, callerSha: native.callerSha, blueprintSha: object.sha,
+            sourceSha: source, sourceRef, sourceRepositoryId, trustedSource, prNumber: String(number), headRepositoryId: pull ? String(pull.head.repo.id) : '',
+            headSha: pull?.head.sha || '', headRef: pull?.head.ref || '', baseRef, policySha: policy, closed: pull?.state === 'closed', merged: pull?.merged === true};
+          core.setOutput('origin-facts', JSON.stringify(facts));
+          core.setOutput('protection-host-ref', protectionHostRef);
+          core.setOutput('protection-host-sha', protectionHostSha);
+          for (const [key, value] of Object.entries({'source-ref': sourceRef, 'source-repository-id': sourceRepositoryId, 'trusted-source': String(trustedSource), 'delivery-check-id': origin?.checkId || '', 'delivery-check-name': origin?.checkName || '', 'source-sha': source, 'blueprint-sha': object.sha, 'caller-mode': 'normal-' + definition.kind, 'run-id': runId, 'run-attempt': attempt, 'host-ref': hostRef, 'base-ref': baseRef, 'pr-number': String(number), 'closure': String(definition.kind === 'closure'), 'policy-sha': policy})) core.setOutput(key, value);
+    - id: protected
+      if: inputs.mode == 'normal' || inputs.mode == 'delivery'
+      uses: ./bp/cd/tasks/repo/context/protected-source
+      with:
+        origin-facts: ${{ steps.normal.outputs.origin-facts }}
+        host-ref: ${{ steps.normal.outputs.protection-host-ref }}
+        host-sha: ${{ steps.normal.outputs.protection-host-sha }}
+    - id: projection
+      if: inputs.mode == 'normal' || inputs.mode == 'delivery'
+      uses: actions/github-script@v9
+      env:
+        IDENTITY: ${{ toJSON(steps.normal.outputs) }}
+        ORIGIN: ${{ steps.origin.outputs.origin }}
+        TRUSTED: ${{ steps.protected.outputs.trusted-source }}
+      with:
+        script: |
+          const identity = JSON.parse(process.env.IDENTITY), facts = JSON.parse(identity['origin-facts']);
+          if (!['true','false'].includes(process.env.TRUSTED)) throw new Error('context-protected-result');
+          facts.trustedSource = process.env.TRUSTED === 'true';
+          if (process.env.ORIGIN) for (const [key,value] of Object.entries(facts)) if (JSON.parse(process.env.ORIGIN)[key] !== value) throw new Error('normal-context-origin-binding');
+          identity['trusted-source'] = process.env.TRUSTED;
+          identity['origin-facts'] = JSON.stringify(facts);
+          for (const [key,value] of Object.entries(identity)) core.setOutput(key,value);
+    - id: policy
+      if: steps.verify.outputs.closure == 'true'
+      uses: ./bp/ci/monorepo/source
+      with:
+        source-sha: ${{ steps.verify.outputs.policy-sha }}
+    - id: lifecycle
+      if: steps.verify.outputs.closure == 'true'
+      uses: actions/github-script@v9
+      env:
+        DIRECTORY: ${{ steps.policy.outputs.directory }}
+        HOST_REF: ${{ steps.verify.outputs.host-ref }}
+        BASE_REF: ${{ steps.verify.outputs.base-ref }}
+      with:
+        script: |
+          const env = process.env;
+          const output = await exec.getExecOutput('tronador', ['components', 'lifecycle', '--config-only', '--workdir', env.DIRECTORY, '--event', 'pull_request_closed', '--ref', env.HOST_REF, '--base-ref', env.BASE_REF, '--json'], {silent: true, ignoreReturnCode: true});
+          if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 65536) throw new Error('context-lifecycle');
+          const result = JSON.parse(output.stdout);
+          const fields = ['eligible', 'reason', 'refClass', 'environment', 'deploymentEnabled', 'isRelease', 'isPreRelease', 'hasQualifier', 'targetName', 'deploymentName', 'protectedEnvironment'];
+          if (Object.keys(result).sort().join() !== fields.sort().join() || typeof result.eligible !== 'boolean') throw new Error('context-lifecycle-output');
+          core.setOutput('eligible', String(result.eligible));
+          core.setOutput('lifecycle', JSON.stringify(result));

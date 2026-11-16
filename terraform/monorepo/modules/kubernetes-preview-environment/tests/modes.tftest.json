@@ -1,0 +1,314 @@
+{
+  "mock_provider": {
+    "kubernetes": {}
+  },
+  "variables": {
+    "resource": {
+      "kind": "aws.eks",
+      "namespace": "pr-17-app-abc123"
+    },
+    "configuration": {
+      "kind": "aws.eks"
+    },
+    "workload": {
+      "kind": "http"
+    },
+    "artifact": {
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "format": "oci",
+      "imageReference": "registry.example.com/app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "owner_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "namespace": "pr-17-app-abc123",
+    "repository_id": "12345",
+    "pr_number": 17,
+    "target_id": "app",
+    "kubeconfig_path": "/unused-mocked-kubeconfig",
+    "isolation": {
+      "probeImage": "registry.example.com/probe@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "controlNamespace": "control",
+      "ingressNamespace": "ingress",
+      "ingressNamespaceSelector": {
+        "role": "ingress"
+      },
+      "ingressPodSelector": {
+        "app": "ingress"
+      },
+      "dnsNamespaceSelector": {
+        "kubernetes.io/metadata.name": "kube-system"
+      },
+      "dnsPodSelector": {
+        "k8s-app": "kube-dns"
+      }
+    }
+  },
+  "override_data": [
+    {
+      "target": "data.kubernetes_resources.ingress",
+      "values": {
+        "objects": [
+          {
+            "metadata": {
+              "name": "ingress",
+              "labels": {
+                "role": "ingress"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "target": "data.kubernetes_resources.control",
+      "values": {
+        "objects": [
+          {
+            "metadata": {
+              "name": "control",
+              "labels": {
+                "role": "control"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "run": {
+    "owned_mock_apply": {
+      "command": "apply",
+      "assert": [
+        {
+          "condition": "${output.owned.namespace == var.namespace && length(output.owned.uid)>0 && length(output.owned.ownedIds.probes)==3 && length(output.owned.ownedIds.policies)==4}",
+          "error_message": "Environment must return exact namespace UID and all owned children."
+        },
+        {
+          "condition": "${kubernetes_namespace_v1.environment.metadata[0].labels[\"pod-security.kubernetes.io/enforce\"] == \"restricted\" && kubernetes_pod_v1.probe[\"control\"].metadata[0].annotations[\"cloudopsworks.io/environment-uid\"] == output.owned.uid}",
+          "error_message": "Namespace admission and all cross-namespace probes bind exact generation."
+        }
+      ]
+    },
+    "policies_and_probe_hardening": {
+      "command": "plan",
+      "assert": [
+        {
+          "condition": "${length(kubernetes_network_policy_v1.default_deny.spec[0].ingress)==0 && length(kubernetes_network_policy_v1.default_deny.spec[0].egress)==0 && toset(kubernetes_network_policy_v1.default_deny.spec[0].policy_types)==toset([\"Ingress\",\"Egress\"])}",
+          "error_message": "Default deny must provide no blanket ingress/egress exceptions."
+        },
+        {
+          "condition": "${kubernetes_network_policy_v1.dns.spec[0].egress[0].to[0].namespace_selector[0].match_labels == tomap(var.isolation.dnsNamespaceSelector) && kubernetes_network_policy_v1.dns.spec[0].egress[0].to[0].pod_selector[0].match_labels == tomap(var.isolation.dnsPodSelector) && length(kubernetes_network_policy_v1.dns.spec[0].egress[0].ports)==2}",
+          "error_message": "DNS allows only protected DNS namespace AND pods, TCP/UDP53."
+        },
+        {
+          "condition": "${alltrue([for pod in kubernetes_pod_v1.probe : !pod.spec[0].automount_service_account_token && pod.spec[0].security_context[0].run_as_non_root && pod.spec[0].security_context[0].run_as_user==\"65532\" && pod.spec[0].container[0].security_context[0].read_only_root_filesystem && !pod.spec[0].container[0].security_context[0].allow_privilege_escalation && pod.spec[0].container[0].command == tolist([\"python3\",\"-c\",local.server])])}",
+          "error_message": "Every probe uses fixed repository code and restricted identity without source command injection."
+        },
+        {
+          "condition": "${kubernetes_pod_v1.probe[\"canary\"].metadata[0].namespace == var.namespace && kubernetes_pod_v1.probe[\"control\"].metadata[0].namespace == \"control\" && kubernetes_pod_v1.probe[\"ingress\"].metadata[0].namespace == \"ingress\"}",
+          "error_message": "Only explicit bounded probe children exist outside the preview namespace."
+        }
+      ]
+    },
+    "gke": {
+      "command": "plan",
+      "variables": {
+        "resource": {
+          "kind": "gcp.gke",
+          "namespace": "pr-17-app-abc123"
+        },
+        "configuration": {
+          "kind": "gcp.gke"
+        }
+      }
+    },
+    "aks": {
+      "command": "plan",
+      "variables": {
+        "resource": {
+          "kind": "azure.aks",
+          "namespace": "pr-17-app-abc123"
+        },
+        "configuration": {
+          "kind": "azure.aks"
+        }
+      }
+    },
+    "wrong_frozen_namespace_rejected": {
+      "command": "plan",
+      "variables": {
+        "namespace": "pr-18-app-other"
+      },
+      "expect_failures": [
+        "kubernetes_namespace_v1.environment"
+      ]
+    },
+    "wrong_family_rejected": {
+      "command": "plan",
+      "variables": {
+        "configuration": {
+          "kind": "aws.lambda"
+        }
+      },
+      "expect_failures": [
+        "kubernetes_namespace_v1.environment"
+      ]
+    },
+    "mutable_probe_image_rejected": {
+      "command": "plan",
+      "variables": {
+        "isolation": {
+          "probeImage": "registry.example.com/probe:latest",
+          "controlNamespace": "control",
+          "ingressNamespace": "ingress",
+          "ingressNamespaceSelector": {
+            "role": "ingress"
+          },
+          "ingressPodSelector": {
+            "app": "ingress"
+          },
+          "dnsNamespaceSelector": {
+            "kubernetes.io/metadata.name": "kube-system"
+          },
+          "dnsPodSelector": {
+            "k8s-app": "kube-dns"
+          }
+        }
+      },
+      "expect_failures": [
+        "var.isolation"
+      ]
+    },
+    "empty_dns_selector_rejected": {
+      "command": "plan",
+      "variables": {
+        "isolation": {
+          "probeImage": "registry.example.com/probe@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "controlNamespace": "control",
+          "ingressNamespace": "ingress",
+          "ingressNamespaceSelector": {
+            "role": "ingress"
+          },
+          "ingressPodSelector": {
+            "app": "ingress"
+          },
+          "dnsNamespaceSelector": {},
+          "dnsPodSelector": {
+            "k8s-app": "kube-dns"
+          }
+        }
+      },
+      "expect_failures": [
+        "var.isolation"
+      ]
+    },
+    "fractional_pr_rejected": {
+      "command": "plan",
+      "variables": {
+        "pr_number": 1.5
+      },
+      "expect_failures": [
+        "var.pr_number"
+      ]
+    },
+    "wrong_external_ingress_labels_rejected": {
+      "command": "plan",
+      "override_data": [
+        {
+          "target": "data.kubernetes_resources.ingress",
+          "values": {
+            "objects": [
+              {
+                "metadata": {
+                  "name": "ingress",
+                  "labels": {
+                    "role": "unrelated"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expect_failures": [
+        "data.kubernetes_resources.ingress"
+      ]
+    },
+    "ambiguous_external_parent_rejected": {
+      "command": "plan",
+      "override_data": [
+        {
+          "target": "data.kubernetes_resources.ingress",
+          "values": {
+            "objects": [
+              {
+                "metadata": {
+                  "name": "ingress",
+                  "labels": {
+                    "role": "ingress"
+                  }
+                }
+              },
+              {
+                "metadata": {
+                  "name": "duplicate",
+                  "labels": {
+                    "role": "ingress"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expect_failures": [
+        "data.kubernetes_resources.ingress"
+      ]
+    },
+    "control_matching_ingress_selector_rejected": {
+      "command": "plan",
+      "override_data": [
+        {
+          "target": "data.kubernetes_resources.control",
+          "values": {
+            "objects": [
+              {
+                "metadata": {
+                  "name": "control",
+                  "labels": {
+                    "role": "ingress"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expect_failures": [
+        "kubernetes_pod_v1.probe"
+      ]
+    },
+    "missing_external_control_rejected": {
+      "command": "plan",
+      "override_data": [
+        {
+          "target": "data.kubernetes_resources.control",
+          "values": {
+            "objects": []
+          }
+        }
+      ],
+      "expect_failures": [
+        "data.kubernetes_resources.control"
+      ]
+    },
+    "unverified_owner_digest_rejected": {
+      "command": "plan",
+      "variables": {
+        "owner_digest": "mutable-owner"
+      },
+      "expect_failures": [
+        "var.owner_digest"
+      ]
+    }
+  }
+}

@@ -1,0 +1,126 @@
+name: Monorepo source selection
+description: Run the existing Git-backed Tronador planner without executing application code
+inputs:
+  source-path:
+    description: Isolated exact-source Git worktree
+    required: true
+  head-sha:
+    description: Independently resolved exact source commit
+    required: true
+  base-sha:
+    description: Verified baseline commit or empty for explicit materialization
+    default: ""
+  version:
+    description: Frozen repository version
+    required: false
+    default: ""
+  event:
+    description: Existing planner event
+    default: push
+  pr-number:
+    description: Actual pull request number when applicable
+    default: "0"
+  all:
+    description: Explicitly select all components through the existing CLI planner
+    default: 'false'
+  max-parallel:
+    description: Caller concurrency cap, further limited by normalized repository CI settings
+    default: '32'
+outputs:
+  plan:
+    description: Private validated BuildPlan file
+    value: ${{ steps.plan.outputs.plan }}
+  matrix:
+    description: Existing typed component matrix
+    value: ${{ steps.plan.outputs.matrix }}
+  noop:
+    description: No source builds selected
+    value: ${{ steps.plan.outputs.noop }}
+  version:
+    description: Single frozen version
+    value: ${{ steps.plan.outputs.version }}
+  base-sha: {description: Actual typed selector baseline, value: '${{ steps.plan.outputs.base-sha }}'}
+  max-parallel: {description: Validated minimum of repository and caller concurrency, value: '${{ steps.limits.outputs.max-parallel }}'}
+runs:
+  using: composite
+  steps:
+    - id: limits
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        PLAN_ALL: ${{ inputs.all }}
+        MAX_PARALLEL: ${{ inputs.max-parallel }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const env = process.env;
+          if (!['true', 'false'].includes(env.PLAN_ALL) || !/^(?:[1-9]|[12][0-9]|3[0-2])$/.test(env.MAX_PARALLEL || '')) throw new Error('plan-limits');
+          const root = await fs.realpath(env.SOURCE_PATH);
+          const output = await exec.getExecOutput('tronador', ['components', 'validate', '--workdir', root, '--json'], {silent: true, ignoreReturnCode: true});
+          if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('plan-configuration');
+          const configuration = JSON.parse(output.stdout);
+          if (configuration.valid !== true || configuration.schemaVersion !== 2 || !Number.isSafeInteger(configuration.maxParallel) || configuration.maxParallel < 1 || configuration.maxParallel > 32) throw new Error('plan-configuration');
+          core.setOutput('all', env.PLAN_ALL);
+          core.setOutput('max-parallel', String(Math.min(configuration.maxParallel, Number(env.MAX_PARALLEL))));
+    - uses: GitTools/actions/gitversion/setup@b82e662a7199df56ac962118e506d9efb9830f82 # v4.1.0
+      if: inputs.version == ''
+      with:
+        versionSpec: 6.7.0
+    - id: version
+      if: inputs.version == ''
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const root = await fs.realpath(process.env.SOURCE_PATH);
+          if (!process.env.GITVERSION_PATH) throw new Error('gitversion-install-path');
+          const gitversion = await fs.realpath(path.join(process.env.GITVERSION_PATH, 'dotnet-gitversion'));
+          if (await fs.realpath((process.env.PATH || '').split(path.delimiter)[0]) !== await fs.realpath(process.env.GITVERSION_PATH)) throw new Error('gitversion-install-path');
+          const installed = await exec.getExecOutput('dotnet-gitversion', ['/version'], {silent: true, ignoreReturnCode: true});
+          if (installed.exitCode !== 0 || !/^6\.7\.0(?:\+[0-9A-Za-z.-]+)?$/.test(installed.stdout.trim())) throw new Error('gitversion-pin');
+          const output = await exec.getExecOutput('tronador', ['project', 'version', '--workdir', root, '--allow-network', '--no-install-tools', '--tool-path', 'gitversion=' + gitversion, '--dry-run', '--json'], {silent: true, ignoreReturnCode: true});
+          if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 65536) throw new Error('repository-version');
+          const result = JSON.parse(output.stdout);
+          if (typeof result.version === 'string') result.version = result.version.replace(/^v/, '');
+          if (typeof result.version !== 'string' || !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(result.version) || result.tag_created !== false) throw new Error('repository-version-result');
+          core.setOutput('version', result.version);
+    - id: plan
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        BASE_SHA: ${{ inputs.base-sha }}
+        VERSION: ${{ inputs.version || steps.version.outputs.version }}
+        PLAN_EVENT: ${{ inputs.event }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        PLAN_ALL: ${{ steps.limits.outputs.all }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          if (!/^[0-9a-f]{40}$/.test(env.HEAD_SHA || '') || (env.BASE_SHA && !/^[0-9a-f]{40}$/.test(env.BASE_SHA))) throw new Error('plan-source-identity');
+          if (!['pull-request', 'push', 'release', 'manual'].includes(env.PLAN_EVENT) || !/^[0-9]+$/.test(env.PR_NUMBER || '')) throw new Error('plan-event');
+          if (!/^[1-9][0-9]*$/.test(env.GITHUB_REPOSITORY_ID || '') || env.GITHUB_REPOSITORY !== `${context.repo.owner}/${context.repo.repo}`) throw new Error('plan-repository');
+          const root = await fs.realpath(env.SOURCE_PATH);
+          const options = {silent: true, failOnStdErr: false, ignoreReturnCode: true};
+          const args = ['components', 'plan', '--workdir', root, '--head', env.HEAD_SHA, '--base', env.BASE_SHA || '', '--version', env.VERSION, '--event', env.PLAN_EVENT, '--pr-number', env.PR_NUMBER, '--repository-id', env.GITHUB_REPOSITORY_ID, '--repository-name', env.GITHUB_REPOSITORY, '--json'];
+          if (env.PLAN_ALL === 'true') args.push('--all');
+          const result = await exec.getExecOutput('tronador', args, options);
+          if (result.exitCode !== 0 || Buffer.byteLength(result.stdout) > 4 * 1024 * 1024) throw new Error('plan-cli');
+          const verified = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {...options, input: Buffer.from(result.stdout)});
+          if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 4 * 1024 * 1024) throw new Error('plan-contract');
+          const record = JSON.parse(verified.stdout).record;
+          if (record.headSha !== env.HEAD_SHA || record.version !== env.VERSION) throw new Error('plan-link');
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'monorepo-plan-'));
+          await fs.chmod(directory, 0o700);
+          const output = path.join(directory, 'plan.json');
+          await fs.writeFile(output, JSON.stringify(record), {mode: 0o600, flag: 'wx'});
+          core.setOutput('plan', output);
+          core.setOutput('matrix', JSON.stringify(record.matrix));
+          core.setOutput('noop', String(record.buildNoop));
+          core.setOutput('version', record.version);
+          core.setOutput('base-sha', record.baseSha);

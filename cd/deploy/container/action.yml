@@ -66,10 +66,47 @@ inputs:
     required: false
     default: ''
 
+  component-mode:
+    description: 'Opt-in immutable OCI publication; caller independently authorizes artifact/destination and installs pinned tools before credentials'
+    default: 'false'
+  artifact:
+    description: 'Private typed Artifact descriptor, independently endorsed by the caller'
+    default: ''
+  payload:
+    description: 'Verified local OCI archive in RUNNER_TEMP; never application source'
+    default: ''
+  destination:
+    description: 'Independently authorized exact registry/repository, without a tag or digest'
+    default: ''
+  expected-digest:
+    description: 'Expected immutable OCI root sha256 digest'
+    default: ''
+  auth-context:
+    description: 'Private native authfile for the exact destination host; caller verifies provider scope'
+    default: ''
+outputs:
+  reference:
+    description: 'Digest-only immutable publication reference; empty for legacy mode'
+    value: ${{ steps.publish-component.outputs.reference }}
+  digest:
+    description: 'Read-back published OCI root digest; empty for legacy mode'
+    value: ${{ steps.publish-component.outputs.digest }}
+  status:
+    description: 'Published only after exact digest readback; empty for legacy mode'
+    value: ${{ steps.publish-component.outputs.status }}
+
 runs:
   using: 'composite'
   steps:
+    - id: mode
+      uses: actions/github-script@v9
+      env:
+        COMPONENT_MODE: ${{ inputs.component-mode }}
+      with:
+        script: |
+          if (!['true', 'false'].includes(process.env.COMPONENT_MODE)) throw new Error('container-mode');
     - name: Set Crane Binary
+      if: inputs.component-mode != 'true'
       shell: bash
       working-directory: /tmp
       run: |
@@ -83,6 +120,7 @@ runs:
 
     # Recover the docker_registry value from the environment file
     - name: Get Docker Registry value if set into the ENV file
+      if: inputs.component-mode != 'true'
       id: docker_registry
       shell: bash
       env:
@@ -95,7 +133,7 @@ runs:
 
     # Docker Login GitHub Container Registry
     - name: Docker Login GitHub
-      if: ${{ contains(steps.docker_registry.outputs.result, 'ghcr.io') || inputs.cloud == 'GITHUB' }}
+      if: ${{ inputs.component-mode != 'true' && (contains(steps.docker_registry.outputs.result, 'ghcr.io') || inputs.cloud == 'GITHUB') }}
       uses: docker/login-action@v4
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
@@ -106,7 +144,7 @@ runs:
     - name: Docker Login GCP
       env:
         TARGET: ${{ inputs.cloud }}
-      if: ${{ inputs.cloud == 'GCP' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
+      if: ${{ inputs.component-mode != 'true' && (inputs.cloud == 'GCP' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io')) }}
       uses: docker/login-action@v4
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
@@ -117,7 +155,7 @@ runs:
     - name: Docker Login Azure
       env:
         TARGET: ${{ inputs.cloud }}
-      if: ${{ inputs.cloud == 'AZURE' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
+      if: ${{ inputs.component-mode != 'true' && (inputs.cloud == 'AZURE' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io')) }}
       uses: docker/login-action@v4
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
@@ -126,7 +164,7 @@ runs:
     #
     # Docker Build login AWS
     - name: Configure AWS Credentials
-      if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn == '' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
+      if: ${{ inputs.component-mode != 'true' && (inputs.cloud == 'AWS' && inputs.aws_sts_role_arn == '' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io')) }}
       uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
@@ -136,7 +174,7 @@ runs:
     #
     # Docker Build login AWS - w/Assume Role
     - name: Configure AWS Credentials with Assume Role
-      if: ${{ inputs.cloud == 'AWS' && inputs.aws_sts_role_arn != '' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io') }}
+      if: ${{ inputs.component-mode != 'true' && (inputs.cloud == 'AWS' && inputs.aws_sts_role_arn != '' && ! contains(steps.docker_registry.outputs.result, 'ghcr.io')) }}
       uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-access-key-id: ${{ inputs.aws_access_key_id }}
@@ -146,27 +184,33 @@ runs:
         aws-region: ${{ inputs.aws_region }}
 
     - name: Docker Login AWS
-      if: ${{  inputs.cloud == 'AWS' }}
+      if: ${{ inputs.component-mode != 'true' && (inputs.cloud == 'AWS') }}
       uses: docker/login-action@v4
       with:
         registry: ${{ steps.docker_registry.outputs.result }}
         ecr: 'true' # Forces the login to ECR
 
     - name: Check Docker Daemon
+      if: inputs.component-mode != 'true'
       id: docker_daemon
       shell: bash
       run: echo "result=$([ -S /var/run/docker.sock ] && echo 'true' || echo 'false')"
 
     - name: Push Docker image from tar
-      shell: bash
-      if: steps.docker_daemon.outputs.docker_daemon == 'true'
+      id: legacy-docker
+      uses: actions/github-script@v9
+      if: ${{ inputs.component-mode != 'true' && steps.docker_daemon.outputs.docker_daemon == 'true' }}
       env:
         STEPS_DOCKER_REGISTRY_RESULT: ${{ steps.docker_registry.outputs.result }}
         INPUTS_PROJECT_OWNER: ${{ inputs.project_owner }}
         INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
-      run: |
-        docker image load --input docker-image.tar
-        docker image push --all-tags "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}"
+      with:
+        script: |
+          const repository = [process.env.STEPS_DOCKER_REGISTRY_RESULT, process.env.INPUTS_PROJECT_OWNER, process.env.INPUTS_PROJECT_KEY].join('/');
+          const loaded = await exec.getExecOutput('docker', ['image', 'load', '--input', 'docker-image.tar'], {silent: false, ignoreReturnCode: true});
+          if (loaded.exitCode !== 0) throw new Error('container-legacy-load');
+          const pushed = await exec.getExecOutput('docker', ['image', 'push', '--all-tags', repository], {silent: false, ignoreReturnCode: true});
+          if (pushed.exitCode !== 0) throw new Error('container-legacy-push');
 
 #    - name: Get Image Tags
 #      id: tags
@@ -178,28 +222,134 @@ runs:
 #        echo "result=$LIST" >> $GITHUB_OUTPUT
 
     - name: Download Docker Image
+      if: inputs.component-mode != 'true'
       uses: actions/download-artifact@v7
       with:
         name: docker-image
 
     - name: Push Docker image from tar using Crane
-      shell: bash
-      if: steps.docker_daemon.outputs.docker_daemon != 'true'
+      id: legacy-crane
+      uses: actions/github-script@v9
+      if: ${{ inputs.component-mode != 'true' && steps.docker_daemon.outputs.docker_daemon != 'true' }}
       env:
-        STEPS_TAGS_RESULT: ${{ steps.tags.outputs.result }}
         STEPS_DOCKER_REGISTRY_RESULT: ${{ steps.docker_registry.outputs.result }}
         INPUTS_PROJECT_OWNER: ${{ inputs.project_owner }}
         INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
-      run: |
-        echo "::group::Push Docker image from tar using Crane"
-        #skopeo copy --all docker-archive:docker-image.tar "${STEPS_TAGS_RESULT}"
-        TAG=$(head -1 docker-tags.list)
-        crane push docker-image.tar "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG"
-        echo "::notice::Pushed Docker image to ${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG"
-        for atag in $(cat docker-tags.list); do
-          if [ "$atag" != "$TAG" ]; then
-            crane tag "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG" $atag
-            echo "::notice::Tagged Docker image to ${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$atag"
-          fi
-        done
-        echo "::endgroup::"
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const repository = [process.env.STEPS_DOCKER_REGISTRY_RESULT, process.env.INPUTS_PROJECT_OWNER, process.env.INPUTS_PROJECT_KEY].join('/');
+          console.log('::group::Push Docker image from tar using Crane');
+          const text = await fs.readFile(path.join(process.env.GITHUB_WORKSPACE, 'docker-tags.list'), 'utf8');
+          const first = text.split('\n', 1)[0];
+          const target = repository + ':' + first;
+          const pushed = await exec.getExecOutput('crane', ['push', 'docker-image.tar', target], {silent: false, ignoreReturnCode: true});
+          if (pushed.exitCode !== 0) throw new Error('container-legacy-push');
+          console.log('::notice::Pushed Docker image to ' + target);
+          for (const tag of text.split(/[ \t\n]+/).filter(Boolean)) {
+            if (tag === first) continue;
+            const tagged = await exec.getExecOutput('crane', ['tag', target, tag], {silent: false, ignoreReturnCode: true});
+            if (tagged.exitCode !== 0) throw new Error('container-legacy-tag');
+            console.log('::notice::Tagged Docker image to ' + repository + ':' + tag);
+          }
+          console.log('::endgroup::');
+    # Install pinned Skopeo 1.13.3 and coordinated Tronador before credentials in
+    # the caller. This primitive does not acquire credentials or publish tags.
+    - id: publish-component
+      uses: actions/github-script@v9
+      if: inputs.component-mode == 'true'
+      env:
+        COMPONENT_MODE: ${{ inputs.component-mode }}
+        ARTIFACT_PATH: ${{ inputs.artifact }}
+        PAYLOAD_PATH: ${{ inputs.payload }}
+        DESTINATION: ${{ inputs.destination }}
+        EXPECTED_DIGEST: ${{ inputs.expected-digest }}
+        AUTH_CONTEXT: ${{ inputs.auth-context }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const env = process.env;
+          if (env.COMPONENT_MODE !== 'true' || !/^sha256:[0-9a-f]{64}$/.test(env.EXPECTED_DIGEST || '')) {
+            throw new Error('container-immutable-input');
+          }
+          const repository = env.DESTINATION || '';
+          const repositoryPattern = /^[a-z0-9]+(?:[.-][a-z0-9]+)*(?:\.[a-z0-9]+)+\/[a-z0-9]+(?:[._-][a-z0-9]+)*(?:\/[a-z0-9]+(?:[._-][a-z0-9]+)*)*$/;
+          if (repository.length > 255 || !repositoryPattern.test(repository)) throw new Error('container-destination');
+          const temporary = await fs.realpath(env.RUNNER_TEMP);
+          for (const [filename, limit] of [[env.ARTIFACT_PATH, 4 * 1024 * 1024], [env.PAYLOAD_PATH, 512 * 1024 * 1024], [env.AUTH_CONTEXT, 65536]]) {
+            if (typeof filename !== 'string' || !path.isAbsolute(filename) || filename.includes(':') || /[\r\n]/.test(filename) ||
+                !filename.startsWith(temporary + path.sep) || await fs.realpath(filename) !== filename) {
+              throw new Error('container-private-input');
+            }
+            const stat = await fs.lstat(filename);
+            if (!stat.isFile() || stat.size === 0 || stat.size > limit) throw new Error('container-private-bound');
+          }
+          const authStat = await fs.stat(env.AUTH_CONTEXT);
+          if (authStat.mode & 0o077) throw new Error('container-auth-permissions');
+          const host = repository.split('/')[0];
+          let authentication;
+          try { authentication = JSON.parse(await fs.readFile(env.AUTH_CONTEXT, 'utf8')); }
+          catch { throw new Error('container-auth-shape'); }
+          if (!authentication || Array.isArray(authentication) || Object.keys(authentication).join() !== 'auths' ||
+              !authentication.auths || Object.keys(authentication.auths).join() !== host) {
+            throw new Error('container-auth-scope');
+          }
+          const credential = authentication.auths[host];
+          if (!credential || Array.isArray(credential) || !['auth', 'identitytoken'].includes(Object.keys(credential).join()) ||
+              !Object.values(credential).every(value => typeof value === 'string' && value.length > 0 &&
+                value.length <= 32768 && !/[\r\n]/.test(value))) {
+            throw new Error('container-auth-shape');
+          }
+          const version = await exec.getExecOutput('skopeo', ['--version'], {silent: true, ignoreReturnCode: true});
+          if (version.exitCode !== 0 || version.stdout.trim() !== 'skopeo version 1.13.3') throw new Error('container-tool-version');
+          const reference = repository + '@' + env.EXPECTED_DIGEST;
+          const directory = await fs.mkdtemp(path.join(temporary, 'container-publication-'));
+          await fs.chmod(directory, 0o700);
+          try {
+            const descriptor = path.join(directory, 'artifact.json');
+            const payload = path.join(directory, 'image.oci.tar');
+            const authfile = path.join(directory, 'auth.json');
+            await fs.copyFile(env.ARTIFACT_PATH, descriptor);
+            await fs.copyFile(env.PAYLOAD_PATH, payload);
+            for (const filename of [descriptor, payload]) await fs.chmod(filename, 0o600);
+            await fs.writeFile(authfile, JSON.stringify(authentication), {mode: 0o600, flag: 'wx'});
+            const checked = await exec.getExecOutput('tronador',
+              ['components', 'contracts', 'validate', '--kind', 'Artifact'],
+              {silent: true, ignoreReturnCode: true, input: await fs.readFile(descriptor)});
+            if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('container-artifact-contract');
+            const artifact = JSON.parse(checked.stdout).record;
+            if (!artifact || artifact.kind !== 'container' || artifact.format !== 'oci' ||
+                artifact.digest !== env.EXPECTED_DIGEST || artifact.location?.kind !== 'local') {
+              throw new Error('container-artifact-link');
+            }
+            const verified = await exec.getExecOutput('tronador',
+              ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', payload],
+              {silent: true, ignoreReturnCode: true});
+            if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 65536) throw new Error('container-artifact-integrity');
+            const evidence = JSON.parse(verified.stdout);
+            if (evidence.payloadVerified !== true || evidence.digest !== env.EXPECTED_DIGEST) throw new Error('container-artifact-integrity');
+            const nativeEnvironment = {PATH: env.PATH, HOME: directory, XDG_CONFIG_HOME: directory,
+              XDG_RUNTIME_DIR: directory, REGISTRY_AUTH_FILE: authfile};
+            const copied = await exec.getExecOutput('skopeo',
+              ['--command-timeout', '5m', 'copy', '--all', '--preserve-digests', '--dest-tls-verify=true',
+                '--dest-authfile', authfile, 'oci-archive:' + payload, 'docker://' + reference],
+              {silent: true, ignoreReturnCode: true, env: nativeEnvironment});
+            if (copied.exitCode !== 0) throw new Error('container-publication-denied');
+            const readback = await exec.getExecOutput('skopeo',
+              ['--command-timeout', '30s', 'inspect', '--raw', '--tls-verify=true', '--authfile', authfile, 'docker://' + reference],
+              {silent: true, ignoreReturnCode: true, env: nativeEnvironment});
+            if (readback.exitCode !== 0 || Buffer.byteLength(readback.stdout) > 4 * 1024 * 1024 ||
+                'sha256:' + crypto.createHash('sha256').update(readback.stdout).digest('hex') !== env.EXPECTED_DIGEST) {
+              throw new Error('container-digest-readback');
+            }
+          } finally {
+            await fs.rm(directory, {recursive: true, force: true});
+          }
+          await core.summary.addHeading('Container publication')
+            .addRaw('Published and read back the exact OCI digest. No mutable tag was written.').write();
+          core.setOutput('reference', reference);
+          core.setOutput('digest', env.EXPECTED_DIGEST);
+          core.setOutput('status', 'published');

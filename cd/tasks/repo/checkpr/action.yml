@@ -10,6 +10,10 @@ name: Check and label Pull Requests
 author: cloudopsworks
 description: This action checks the Pull Request and labels it
 inputs:
+  component_mode:
+    description: Use trusted typed schema-v2 policy, preserving the existing labeling operations
+    required: false
+    default: 'false'
   source_path:
     description: 'The path to the source code'
     required: false
@@ -25,10 +29,17 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Resolve trusted component PR policy
+      id: component_policy
+      if: ${{ inputs.component_mode == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: python3 bp/cd/monorepo/runtime/owners.py checkpr-policy
     - uses: actions/labeler@v6
       with:
         repo-token: ${{ inputs.token }}
-        configuration-path: '${{ inputs.source_path }}/.cloudopsworks/labeler.yml'
+        configuration-path: ${{ inputs.component_mode == 'true' && steps.component_policy.outputs.labeler_path || format('{0}/.cloudopsworks/labeler.yml', inputs.source_path) }}
 
     - name: test
       shell: bash
@@ -44,6 +55,7 @@ runs:
         echo "BASE_REF=${GITHUB_BASE_REF}"
 
     - name: Get Automatic Environment
+      if: ${{ inputs.component_mode != 'true' }}
       id: check_automatic
       shell: bash
       env:
@@ -56,6 +68,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Reviewers count
+      if: ${{ inputs.component_mode != 'true' }}
       id: reviewers_count
       shell: bash
       env:
@@ -68,6 +81,7 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
     - name: Get Reviewers list
+      if: ${{ inputs.component_mode != 'true' }}
       id: reviewers
       shell: bash
       env:
@@ -124,7 +138,7 @@ runs:
           });
 
     - uses: actions/github-script@v9
-      if: ${{ steps.check_automatic.outputs.result == 'true' || (github.base_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
+      if: ${{ (inputs.component_mode == 'true' && steps.component_policy.outputs.automatic || steps.check_automatic.outputs.result) == 'true' || (github.base_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
       with:
         github-token: ${{ inputs.token }}
         script: |
@@ -137,10 +151,11 @@ runs:
           });
 
     - uses: actions/github-script@v9
-      if: ${{ steps.check_automatic.outputs.result != 'true' && ! (github.base_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
+      if: ${{ (inputs.component_mode == 'true' && steps.component_policy.outputs.automatic || steps.check_automatic.outputs.result) != 'true' && ! (github.base_ref == 'develop' && startsWith(github.head_ref,'release/')) }}
       env:
-        STEPS_REVIEWERS_RESULT: ${{ steps.reviewers.outputs.result }}
-        STEPS_REVIEWERS_COUNT_RESULT: ${{ steps.reviewers_count.outputs.result }}
+        COMPONENT_MODE: ${{ inputs.component_mode }}
+        STEPS_REVIEWERS_RESULT: ${{ (inputs.component_mode == 'true' && steps.component_policy.outputs.reviewers || steps.reviewers.outputs.result) }}
+        STEPS_REVIEWERS_COUNT_RESULT: ${{ (inputs.component_mode == 'true' && steps.component_policy.outputs.requiredReviewers || steps.reviewers_count.outputs.result) }}
         GITHUB_EVENT_PULL_REQUEST_USER_LOGIN: ${{ github.event.pull_request.user.login }}
       with:
         github-token: ${{ inputs.token }}
@@ -150,9 +165,11 @@ runs:
           const actor = '' + (process.env.GITHUB_EVENT_PULL_REQUEST_USER_LOGIN || '') + ''
           
           var reviewers = []
+          var team_reviewers = []
           for ( const rev of reviewers_json ) {
             if ( actor !== rev ) {
-              reviewers.push(rev)
+              if (process.env.COMPONENT_MODE === 'true' && rev.includes('/')) team_reviewers.push(rev.split('/')[1])
+              else reviewers.push(rev)
             }
           }
           
@@ -160,7 +177,8 @@ runs:
             pull_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            reviewers: reviewers
+            reviewers: reviewers,
+            ...(process.env.COMPONENT_MODE === 'true' ? {team_reviewers: team_reviewers} : {})
           })
           
           github.rest.issues.addLabels({

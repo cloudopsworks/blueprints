@@ -1,0 +1,181 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "BuildPlan",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "version": "1.2.3",
+  "event": "release",
+  "prNumber": null,
+  "components": [
+    {
+      "id": "api",
+      "path": "components/api",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "api"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "static",
+        "directory": "dist",
+        "index": "index.html"
+      },
+      "preview": {
+        "mode": "container",
+        "source": "static",
+        "port": 8080,
+        "healthPath": "/"
+      },
+      "dependsOn": [],
+      "targetIds": [
+        "prod-run"
+      ],
+      "workload": {
+        "kind": "static"
+      }
+    },
+    {
+      "id": "worker",
+      "path": "components/worker",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "worker"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "static",
+        "directory": "dist",
+        "index": "index.html"
+      },
+      "preview": {
+        "mode": "container",
+        "source": "static",
+        "port": 8080,
+        "healthPath": "/"
+      },
+      "dependsOn": [],
+      "targetIds": [
+        "prod-alias"
+      ],
+      "workload": {
+        "kind": "static"
+      }
+    }
+  ],
+  "targets": [
+    {
+      "id": "prod-run",
+      "environment": "prod",
+      "provider": "aws",
+      "authRef": "aws-prod",
+      "configDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "kind": "aws.s3-static",
+      "region": "us-east-1",
+      "bucket": "example-apps",
+      "prefix": "apps",
+      "readiness": {
+        "deadlineSeconds": 600,
+        "intervalSeconds": 5,
+        "probe": {
+          "kind": "static-http",
+          "path": "/index.html"
+        }
+      }
+    },
+    {
+      "id": "prod-alias",
+      "environment": "prod",
+      "provider": "aws",
+      "authRef": "aws-prod",
+      "configDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "kind": "aws.s3-static",
+      "region": "us-east-1",
+      "bucket": "example-apps",
+      "prefix": "apps/api",
+      "readiness": {
+        "deadlineSeconds": 600,
+        "intervalSeconds": 5,
+        "probe": {
+          "kind": "static-http",
+          "path": "/index.html"
+        }
+      }
+    }
+  ],
+  "buildSelection": [
+    {
+      "componentId": "api",
+      "reasons": [
+        "component-path-changed"
+      ]
+    },
+    {
+      "componentId": "worker",
+      "reasons": [
+        "component-path-changed"
+      ]
+    }
+  ],
+  "removedComponents": [],
+  "buildNoop": false,
+  "matrix": {
+    "include": [
+      {
+        "componentId": "api",
+        "closure": [
+          "api"
+        ],
+        "toolchains": [
+          {
+            "tool": "go",
+            "version": "1.26.7",
+            "distribution": "default",
+            "components": [
+              "api"
+            ]
+          }
+        ]
+      },
+      {
+        "componentId": "worker",
+        "closure": [
+          "worker"
+        ],
+        "toolchains": [
+          {
+            "tool": "go",
+            "version": "1.26.7",
+            "distribution": "default",
+            "components": [
+              "worker"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "previewPolicy": {
+    "enabled": false,
+    "targets": []
+  }
+}

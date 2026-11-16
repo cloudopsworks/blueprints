@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "moduleId": "azure-blob-static",
+  "variables": {
+    "resource": [
+      "provider",
+      "kind",
+      "subscriptionId",
+      "resourceGroup",
+      "container",
+      "prefix",
+      "ownership",
+      "os",
+      "architecture",
+      "account"
+    ],
+    "configuration": [
+      "kind",
+      "runtime"
+    ],
+    "workload": [
+      "kind"
+    ],
+    "artifact": [
+      "digest",
+      "format",
+      "path",
+      "imageReference",
+      "files"
+    ],
+    "owner_digest": []
+  },
+  "ownedResourceTypes": [
+    "azurerm_storage_blob"
+  ],
+  "ownedResourceAddresses": [
+    "azurerm_storage_blob.static[*]"
+  ],
+  "externalParents": [
+    "resource group",
+    "storage account",
+    "existing $web container/hosting/CDN"
+  ],
+  "activationBlocked": true,
+  "remaining": [
+    "trusted shared executor source/ownership authorization integration",
+    "credentialed cloud lifecycle/readiness proof"
+  ],
+  "replaceResourceAddresses": [
+    "azurerm_storage_blob.static[*]"
+  ],
+  "applyDeleteResourceAddresses": [
+    "azurerm_storage_blob.static[*]"
+  ]
+}

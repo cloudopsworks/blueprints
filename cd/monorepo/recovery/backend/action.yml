@@ -1,0 +1,126 @@
+name: Bind retained Lambda recovery backend
+description: Frozen org settings and separate selected temporary AWS principals; no application backend loader
+inputs:
+  reservation-marker: {description: Private existing marker authenticated by recovery history, required: true}
+  state-handle: {description: Independently authenticated historical handle file, required: true}
+  deployment-state-conf: {description: Protected org or team DEPLOYMENT_STATE_CONF YAML, required: true}
+  auth-bindings: {description: Protected CLOUDOPSWORKS_AUTH YAML, required: true}
+  operation: {description: destroy or unlock, required: true}
+  lock-id: {description: Exact retained native lock ID for unlock only, default: ''}
+outputs:
+  selection: {description: Private validated selection, value: '${{ steps.select.outputs.selection }}'}
+  workload-context: {description: Private selected workload credentials, value: '${{ steps.capture.outputs.workload-context }}'}
+  backend-context: {description: Private selected backend credentials, value: '${{ steps.capture.outputs.backend-context }}'}
+  proof: {description: Private conditional native proof, value: '${{ steps.inspect.outputs.proof }}'}
+runs:
+  using: composite
+  steps:
+    - id: select
+      uses: actions/github-script@v9
+      env:
+        RESERVATION_MARKER: ${{ inputs.reservation-marker }}
+        STATE_HANDLE: ${{ inputs.state-handle }}
+        DEPLOYMENT_STATE_CONF: ${{ inputs.deployment-state-conf }}
+        AUTH_BINDINGS: ${{ inputs.auth-bindings }}
+        OPERATION: ${{ inputs.operation }}
+        LOCK_ID: ${{ inputs.lock-id }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path');
+          const e = process.env;
+          if (!['destroy','unlock'].includes(e.OPERATION) || (e.OPERATION === 'unlock' ? !/^[^\x00-\x20/]{1,256}$/.test(e.LOCK_ID || '') : !!e.LOCK_ID)) throw new Error('recovery-operation');
+          const temp = await fs.realpath(e.RUNNER_TEMP), file = path.resolve(e.STATE_HANDLE || '');
+          const stat = await fs.lstat(file);
+          if (!file.startsWith(temp + path.sep) || await fs.realpath(file) !== file || stat.isSymbolicLink() || !stat.isFile() || (stat.mode & 0o077) || stat.size > 4194304) throw new Error('recovery-private-handle');
+          async function call(args, input) {
+            const result = await exec.getExecOutput('tronador', ['components', ...args], {silent:true, ignoreReturnCode:true, input:Buffer.from(input)});
+            if (result.exitCode || Buffer.byteLength(result.stdout) > 4194304) throw new Error('recovery-contract');
+            return JSON.parse(result.stdout);
+          }
+          const input = await fs.readFile(file,'utf8');
+          const plain = await call(['contracts','validate','--kind','StateHandle'], input);
+          const module = path.join(e.GITHUB_WORKSPACE,'bp/terraform/monorepo/modules/aws-lambda');
+          const checked = await call(['contracts','validate','--kind','StateHandle','--module-root',module], input);
+          if (plain.valid !== true || checked.valid !== true || !/^sha256:[0-9a-f]{64}$/.test(plain.digest || '') ||
+              checked.digest !== plain.digest || JSON.stringify(checked.record) !== JSON.stringify(plain.record) ||
+              checked.module?.activationBlocked !== false || Object.keys(checked.module).sort().join() !== 'activationBlocked,metadata' ||
+              checked.module.metadata?.moduleId !== 'aws-lambda') throw new Error('recovery-module-blocked');
+          const h = checked.record, b = h.backend, r = h.resourceIdentity;
+          if (r.kind !== 'aws.lambda' || r.provider !== 'aws' || r.packageMode !== 'zip' || h.scope !== 'component' || h.ownership !== 'managed' || b.kind !== 's3' || b.workspace !== 'default' || b.useLockfile !== true || b.dynamodbTable != null || h.backendIdentity?.provider !== 'aws' || !b.authRef) throw new Error('recovery-first-slice-only');
+          const markerFile=path.resolve(e.RESERVATION_MARKER || ''),markerStat=await fs.lstat(markerFile);
+          if (!markerFile.startsWith(temp+path.sep) || await fs.realpath(markerFile)!==markerFile || !markerStat.isFile() || markerStat.mode&0o077 || markerStat.size>4194304) throw new Error('recovery-private-marker');
+          const marker=JSON.parse(await fs.readFile(markerFile,'utf8')),origin=h.origin;
+          if (Object.keys(marker).sort().join()!=='receiptId,repositoryId,resourceClaims,runAttempt,runId,sourceContext,sourceStage,stateHandleDigest,workflowRef,workflowSha' || marker.stateHandleDigest!==checked.digest || marker.repositoryId!==origin.repository.id || marker.runId!==origin.runId || marker.runAttempt!==origin.runAttempt || marker.sourceContext?.sourceSha!==origin.sourceSha) throw new Error('recovery-reservation-binding');
+          const lambda='arn:aws:lambda:'+r.region+':'+h.providerIdentity+':function:'+r.functionName;
+          const prefix='object:arn:aws:s3:::'+r.iac.sourceBucket+'/'+(r.iac.sourcePrefix || 'components').replace(/^\/+|\/+$/g,'')+'/';
+          if (!Array.isArray(marker.resourceClaims) || marker.resourceClaims.length!==2 || marker.resourceClaims[0]!==lambda || !marker.resourceClaims[1]?.startsWith(prefix) || !/^[0-9a-f]{64}\/main\.zip$/.test(marker.resourceClaims[1].slice(prefix.length))) throw new Error('recovery-reservation-claims');
+          const configured = await call(['settings','--kind','backend','--json'], e.DEPLOYMENT_STATE_CONF || '');
+          const frozen = {...b}; delete frozen.key; delete frozen.prefix;
+          const canonical = value => JSON.stringify(Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b))));
+          if (canonical(configured) !== canonical(frozen)) throw new Error('recovery-frozen-backend');
+          const bindings = await call(['settings','--kind','auth','--json'], e.AUTH_BINDINGS || '');
+          const refs = h.authRefs.filter(ref => ref !== b.authRef);
+          if (refs.length > 1) throw new Error('recovery-auth-selection');
+          const backendBinding = bindings[b.authRef], workloadBinding = bindings[refs[0] || b.authRef];
+          for (const [binding, account, region] of [[backendBinding,h.backendIdentity.accountId,b.region],[workloadBinding,h.providerIdentity,r.region]]) {
+            if (binding?.provider !== 'aws' || !/^arn:aws:iam::[0-9]{12}:role\/[A-Za-z0-9+=,.@_/-]+$/.test(binding.roleArn || '') || binding.roleArn.split(':')[4] !== account || binding.region !== region || !/^[a-z]{2}(?:-gov)?-[a-z]+-[1-9]$/.test(region)) throw new Error('recovery-protected-binding');
+          }
+          const directory = await fs.mkdtemp(path.join(temp,'recovery-selection-')); await fs.chmod(directory,0o700);
+          const selection = path.join(directory,'selection.json');
+          await fs.writeFile(selection,JSON.stringify({handle:h,digest:checked.digest,resourceClaims:marker.resourceClaims,reservationMarker:marker,backendBinding,workloadBinding,operation:e.OPERATION,lockId:e.LOCK_ID || null}),{mode:0o600,flag:'wx'});
+          core.setOutput('selection',selection);
+          for (const [label,binding] of [['backend',backendBinding],['workload',workloadBinding]]) { core.setOutput(label+'-role',binding.roleArn); core.setOutput(label+'-region',binding.region); }
+    - id: backend-auth
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ steps.select.outputs.backend-role }}
+        aws-region: ${{ steps.select.outputs.backend-region }}
+        role-session-name: monorepo-recovery-backend
+        output-credentials: true
+        output-env-credentials: false
+        unset-current-credentials: true
+    - id: workload-auth
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ steps.select.outputs.workload-role }}
+        aws-region: ${{ steps.select.outputs.workload-region }}
+        role-session-name: monorepo-recovery-workload
+        output-credentials: true
+        output-env-credentials: false
+        unset-current-credentials: true
+    - id: capture
+      uses: actions/github-script@v9
+      env:
+        SELECTION: ${{ steps.select.outputs.selection }}
+        BACKEND_ACCESS_KEY: ${{ steps.backend-auth.outputs.aws-access-key-id }}
+        BACKEND_SECRET_KEY: ${{ steps.backend-auth.outputs.aws-secret-access-key }}
+        BACKEND_SESSION_TOKEN: ${{ steps.backend-auth.outputs.aws-session-token }}
+        WORKLOAD_ACCESS_KEY: ${{ steps.workload-auth.outputs.aws-access-key-id }}
+        WORKLOAD_SECRET_KEY: ${{ steps.workload-auth.outputs.aws-secret-access-key }}
+        WORKLOAD_SESSION_TOKEN: ${{ steps.workload-auth.outputs.aws-session-token }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path');
+          const e = process.env, selection = JSON.parse(await fs.readFile(e.SELECTION,'utf8'));
+          const version=await exec.getExecOutput('aws',['--version'],{env:{PATH:e.PATH},silent:true,ignoreReturnCode:true});
+          if (version.exitCode || !/^aws-cli\/2\.40\.1 /.test(version.stdout)) throw new Error('recovery-aws-version');
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(e.RUNNER_TEMP),'recovery-auth-')); await fs.chmod(directory,0o700);
+          for (const label of ['backend','workload']) {
+            const binding = selection[label+'Binding'], prefix = label.toUpperCase();
+            const home = path.join(directory,label); await fs.mkdir(home,{mode:0o700});
+            const empty = path.join(home,'empty'); await fs.writeFile(empty,'',{mode:0o600,flag:'wx'});
+            const env = {PATH:e.PATH,HOME:home,AWS_CONFIG_FILE:empty,AWS_SHARED_CREDENTIALS_FILE:empty,AWS_EC2_METADATA_DISABLED:'true',AWS_REGION:binding.region,AWS_DEFAULT_REGION:binding.region,AWS_ACCESS_KEY_ID:e[prefix+'_ACCESS_KEY'],AWS_SECRET_ACCESS_KEY:e[prefix+'_SECRET_KEY'],AWS_SESSION_TOKEN:e[prefix+'_SESSION_TOKEN'],AWS_PAGER:''};
+            if (![env.AWS_ACCESS_KEY_ID,env.AWS_SECRET_ACCESS_KEY,env.AWS_SESSION_TOKEN].every(value => typeof value === 'string' && value.length > 0 && value.length < 8192 && !/[\x00-\x20]/.test(value))) throw new Error('recovery-temporary-credentials');
+            const result = await exec.getExecOutput('aws',['sts','get-caller-identity','--region',binding.region,'--no-cli-pager','--output','json'],{env,silent:true,ignoreReturnCode:true});
+            if (result.exitCode || Buffer.byteLength(result.stdout)>65536) throw new Error('recovery-principal');
+            const identity = JSON.parse(result.stdout), account = binding.roleArn.split(':')[4], role = binding.roleArn.split('/').at(-1);
+            if (identity.Account !== account || !identity.Arn?.startsWith(`arn:aws:sts::${account}:assumed-role/${role}/`)) throw new Error('recovery-principal');
+            const output = path.join(home,'context.json'); await fs.writeFile(output,JSON.stringify({binding,identity,env}),{mode:0o600,flag:'wx'});
+            core.setOutput(label+'-context',output);
+          }
+    - id: inspect
+      uses: ./bp/cd/monorepo/recovery/backend/read
+      with:
+        selection: ${{ steps.select.outputs.selection }}
+        workload-context: ${{ steps.capture.outputs.workload-context }}
+        backend-context: ${{ steps.capture.outputs.backend-context }}

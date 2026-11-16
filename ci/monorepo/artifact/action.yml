@@ -1,0 +1,239 @@
+name: Verify monorepo artifact data
+description: Bounded API transport and offline typed payload verification; not uploader attestation
+inputs:
+  artifact-id: {description: "Exact immutable artifact ID", required: false, default: ""}
+  run-id: {description: "Independently verified host run ID", required: true}
+  archive-digest: {description: "Expected REST archive digest", required: false, default: ""}
+  record-kind: {description: "BuildPlan, ComponentResult, ScannerResult or linked ReleaseManifest", required: true}
+  plan: {description: "Validated endorsed plan for component results", default: ""}
+  artifact-set: {description: "Private bounded routing array of exact artifactId/archiveDigest pairs; never authority", default: ""}
+  component: {description: "Optional fixed component routing discovery when no immutable locator supplied", default: ""}
+  run-attempt: {description: "Expected naming attempt for optional discovery; never uploader attestation", default: ""}
+  carry-manifest: {description: "Independently authenticated prior complete ReleaseManifest; never raw build authority", default: ""}
+  artifact-set-file: {description: "Private bounded ScannerResult locator file; mutually exclusive with legacy routes", default: ""}
+outputs:
+  directory: {"description":"Private verified extraction directory","value":"${{ steps.payloads.outputs.directory }}"}
+  record: {"description":"Validated record file","value":"${{ steps.payloads.outputs.record }}"}
+  records: {"description":"Complete verified data set, withheld until every inner payload passes","value":"${{ steps.payloads.outputs.records }}"}
+  records-file: {"description":"Complete bounded private descriptors after every typed and payload check","value":"${{ steps.payloads.outputs.records-file }}"}
+runs:
+  using: composite
+  steps:
+    - id: route
+      uses: actions/github-script@v9
+      env:
+        ARTIFACT_ID: "${{ inputs.artifact-id }}"
+        RUN_ID: "${{ inputs.run-id }}"
+        ARCHIVE_DIGEST: "${{ inputs.archive-digest }}"
+        ARTIFACT_SET: "${{ inputs.artifact-set }}"
+        COMPONENT: "${{ inputs.component }}"
+        RUN_ATTEMPT: "${{ inputs.run-attempt }}"
+        CARRY_MANIFEST: "${{ inputs.carry-manifest }}"
+        PLAN_PATH: "${{ inputs.plan }}"
+        ARTIFACT_SET_FILE: "${{ inputs.artifact-set-file }}"
+        RECORD_KIND: "${{ inputs.record-kind }}"
+      with:
+        script: |
+          const {RECORD_KIND, ARTIFACT_SET_FILE, ARTIFACT_ID, ARTIFACT_SET, COMPONENT, CARRY_MANIFEST} = process.env;
+          if (!['BuildPlan', 'ComponentResult', 'ScannerResult', 'ReleaseManifest'].includes(RECORD_KIND)) throw new Error('artifact-record-kind');
+          if (ARTIFACT_SET_FILE && (RECORD_KIND !== 'ScannerResult' || ARTIFACT_ID || ARTIFACT_SET || COMPONENT || CARRY_MANIFEST)) throw new Error('artifact-file-routing');
+          core.setOutput('mode', ARTIFACT_SET_FILE ? 'scanner-file' : 'legacy');
+          core.setOutput('file-mode', ARTIFACT_SET_FILE ? 'true' : 'false');
+    - id: transport
+      uses: ./bp/ci/monorepo/artifact/transport
+      with:
+        artifact-id: "${{ inputs.artifact-id }}"
+        run-id: "${{ inputs.run-id }}"
+        archive-digest: "${{ inputs.archive-digest }}"
+        artifact-set: "${{ inputs.artifact-set }}"
+        component: "${{ inputs.component }}"
+        run-attempt: "${{ inputs.run-attempt }}"
+        carry-manifest: "${{ inputs.carry-manifest }}"
+        plan: "${{ inputs.plan }}"
+        artifact-set-file: "${{ inputs.artifact-set-file }}"
+        mode: "${{ steps.route.outputs.mode }}"
+    - id: records
+      uses: actions/github-script@v9
+      env:
+        BUNDLES_FILE: "${{ steps.transport.outputs.bundles-file }}"
+        RECORD_KIND: "${{ inputs.record-kind }}"
+        PLAN_PATH: "${{ inputs.plan }}"
+        CARRY_MANIFEST: "${{ inputs.carry-manifest }}"
+        FILE_MODE: "${{ steps.route.outputs.file-mode }}"
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          async function readPrivate(file, limit, decode = true) {
+            const root = await fs.realpath(process.env.RUNNER_TEMP);
+            if (typeof file !== 'string' || !path.isAbsolute(file) || Buffer.byteLength(file) > 4096 || file.includes('\0') || !file.startsWith(root + path.sep)) throw new Error('artifact-file-path');
+            let current = root;
+            for (const part of path.relative(root, file).split(path.sep)) {
+              if (!part || part === '.' || part === '..') throw new Error('artifact-file-path');
+              current = path.join(current, part);
+              const stat = await fs.lstat(current);
+              if (stat.isSymbolicLink() || (current === file ? !stat.isFile() : !stat.isDirectory())) throw new Error('artifact-file-path');
+            }
+            if ((await fs.stat(path.dirname(file))).mode & 0o077) throw new Error('artifact-file-mode');
+            const handle = await fs.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.mode & 0o077) throw new Error('artifact-file-mode');
+              if (stat.size > limit) throw new Error('artifact-file-bound');
+              const buffer = Buffer.alloc(limit + 1), {bytesRead} = await handle.read(buffer, 0, limit + 1, 0);
+              if (bytesRead > limit || bytesRead !== stat.size) throw new Error('artifact-file-bound');
+              try { return decode ? JSON.parse(buffer.subarray(0, bytesRead).toString('utf8')) : buffer.subarray(0, bytesRead); } catch { throw new Error('artifact-file-json'); }
+            } finally { await handle.close(); }
+          }
+          const {RECORD_KIND, PLAN_PATH} = process.env;
+          const bundles = await readPrivate(process.env.BUNDLES_FILE, 16 * 1024 * 1024);
+          if (!Array.isArray(bundles) || !bundles.length || bundles.length > (process.env.FILE_MODE === 'true' ? 1792 : 256) || new Set(bundles.map(item => item?.artifactId)).size !== bundles.length) throw new Error('artifact-set-count');
+          const carryContext = [];
+          if (process.env.CARRY_MANIFEST) for (const [kind, file] of [['BuildPlan', PLAN_PATH], ['ReleaseManifest', process.env.CARRY_MANIFEST]]) {
+            if (RECORD_KIND !== 'ComponentResult' || (await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('artifact-carry-bound');
+            const output = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', kind], {silent: true, ignoreReturnCode: true, input: await fs.readFile(file)});
+            if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('artifact-carry-contract');
+            carryContext.push(JSON.parse(output.stdout).record);
+          }
+          const verified = [];
+          for (const bundle of bundles) {
+          if (Object.keys(bundle).sort().join() !== 'archive,archiveDigest,artifactId,artifactName,directory,extract,files,runId,transport' || ![bundle.runId, bundle.artifactId].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(bundle.archiveDigest || '') || typeof bundle.artifactName !== 'string') throw new Error('artifact-bundle-fields');
+          const parent = path.dirname(bundle.archive), runner = await fs.realpath(process.env.RUNNER_TEMP);
+          if (path.dirname(parent) !== runner || !path.basename(parent).startsWith('artifact-data-') || bundle.archive !== path.join(parent, 'archive.zip') || bundle.transport !== path.join(parent, 'transport.json') || bundle.extract !== path.join(parent, 'extracted') || bundle.directory !== bundle.extract || await fs.realpath(bundle.directory) !== bundle.directory) throw new Error('artifact-descriptor-path');
+          if (!Array.isArray(bundle.files) || bundle.files.length > 100000 || new Set(bundle.files).size !== bundle.files.length || bundle.files.some(file => typeof file !== 'string' || Buffer.byteLength(file) > 4096 || file.includes('\\') || path.posix.normalize(file) !== file || file.startsWith('/') || file.split('/').some(part => ['', '.', '..'].includes(part)))) throw new Error('artifact-bundle-files');
+          const DIRECTORY = bundle.directory;
+          if (!['BuildPlan', 'ComponentResult', 'ScannerResult', 'ReleaseManifest'].includes(RECORD_KIND)) throw new Error('artifact-record-kind');
+          const files = bundle.files;
+          const names = {BuildPlan: 'plan.json', ScannerResult: 'scanner-result.json', ReleaseManifest: 'manifest.json'};
+          const records = files.filter(file => names[RECORD_KIND] ? file === names[RECORD_KIND] : /^results\/[a-z][a-z0-9-]{0,47}\.json$/.test(file));
+          if (records.length !== 1) throw new Error('artifact-record-set');
+          const recordPath = path.join(DIRECTORY, records[0]);
+          const recordData = await readPrivate(recordPath, 4 * 1024 * 1024, false);
+          const args = ['components', 'contracts', 'validate', '--kind', RECORD_KIND];
+          if (!carryContext.length && ['ComponentResult', 'ReleaseManifest'].includes(RECORD_KIND)) {
+            let planFile = PLAN_PATH;
+            if (RECORD_KIND === 'ReleaseManifest') {
+              if (!files.includes('plan.json')) throw new Error('artifact-manifest-plan');
+              planFile = path.join(DIRECTORY, 'plan.json');
+              if ((await fs.stat(planFile)).size > 4 * 1024 * 1024) throw new Error('artifact-plan-bound');
+              const plan = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(planFile)});
+              if (plan.exitCode !== 0 || Buffer.byteLength(plan.stdout) > 4 * 1024 * 1024) throw new Error('artifact-manifest-plan');
+              await fs.writeFile(planFile, JSON.stringify(JSON.parse(plan.stdout).record), {mode: 0o600});
+            }
+            const linked = path.join(path.dirname(DIRECTORY), 'linked.json');
+            await fs.writeFile(linked, JSON.stringify({plan: JSON.parse(await fs.readFile(planFile, 'utf8'))}), {mode: 0o600, flag: 'wx'});
+            args.push('--linked-context', linked);
+          }
+          const checked = await exec.getExecOutput('tronador', args, {silent: true, ignoreReturnCode: true, input: recordData});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('artifact-record-contract');
+          const record = JSON.parse(checked.stdout).record;
+          if (RECORD_KIND === 'ComponentResult' && (record.status !== 'succeeded' || records[0] !== `results/${record.componentId}.json`)) throw new Error('artifact-result-status');
+          if (carryContext.length) {
+            const [current, prior] = carryContext;
+            const entry = prior.components.find(component => component.componentId === record.componentId);
+            if (!entry || !current.components.some(component => component.id === record.componentId) || current.buildSelection.some(component => component.componentId === record.componentId) || JSON.stringify(record.repository) !== JSON.stringify(current.repository) || JSON.stringify(prior.repository) !== JSON.stringify(current.repository)) throw new Error('artifact-carry-membership');
+            for (const key of ['mainArtifact', 'previewArtifact']) {
+              const actual = record[key], expected = entry[key];
+              if (!actual && !expected) continue;
+              const location = expected?.location;
+              if (!actual || !expected || actual.location.kind !== 'local' || location.kind !== 'actions-artifact' || location.runId !== bundle.runId || location.artifactId !== bundle.artifactId || location.artifactName !== bundle.artifactName || location.path !== actual.location.path || JSON.stringify({...actual, location}) !== JSON.stringify(expected)) throw new Error('artifact-carry-binding');
+            }
+          }
+          const descriptors = new Map();
+          for (const key of ['mainArtifact', 'previewArtifact']) {
+            const artifact = record[key];
+            if (!artifact) continue;
+            const relative = artifact.location.path;
+            const canonical = JSON.stringify(artifact);
+            if (relative === records[0] || descriptors.has(relative) && descriptors.get(relative) !== canonical) throw new Error('artifact-path-conflict');
+            descriptors.set(relative, canonical);
+          }
+          const companion = RECORD_KIND === 'BuildPlan' && files.includes('baseline.json');
+          if (companion) await readPrivate(path.join(DIRECTORY, 'baseline.json'), 65536, false);
+          const expected = [records[0], ...(RECORD_KIND === 'ReleaseManifest' ? ['plan.json'] : []), ...(companion ? ['baseline.json'] : []), ...descriptors.keys()];
+          if (JSON.stringify([...files].sort()) !== JSON.stringify(expected.sort())) throw new Error('artifact-file-set');
+          await fs.writeFile(recordPath, JSON.stringify(record), {mode: 0o600});
+          verified.push({...bundle, recordPath});
+          }
+
+          const outputDirectory = await fs.mkdtemp(path.join(await fs.realpath(process.env.RUNNER_TEMP), 'artifact-records-'));
+          await fs.chmod(outputDirectory, 0o700);
+          const outputFile = path.join(outputDirectory, 'records.json');
+          const serialized = JSON.stringify(verified);
+          if (Buffer.byteLength(serialized) > 16 * 1024 * 1024 || Buffer.byteLength(outputFile) > 4096) throw new Error('artifact-file-bound');
+          await fs.writeFile(outputFile, serialized, {mode: 0o600, flag: 'wx'});
+          core.setOutput('verified-records-file', outputFile);
+          if (process.env.FILE_MODE !== 'true' && verified.length === 1) core.setOutput('record', verified[0].recordPath);
+    - id: payloads
+      uses: actions/github-script@v9
+      env:
+        VERIFIED_RECORDS_FILE: "${{ steps.records.outputs.verified-records-file }}"
+        FILE_MODE: "${{ steps.route.outputs.file-mode }}"
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          async function readPrivate(file, limit) {
+            const root = await fs.realpath(process.env.RUNNER_TEMP);
+            if (typeof file !== 'string' || !path.isAbsolute(file) || Buffer.byteLength(file) > 4096 || file.includes('\0') || !file.startsWith(root + path.sep)) throw new Error('artifact-file-path');
+            let current = root;
+            for (const part of path.relative(root, file).split(path.sep)) {
+              if (!part || part === '.' || part === '..') throw new Error('artifact-file-path');
+              current = path.join(current, part);
+              const stat = await fs.lstat(current);
+              if (stat.isSymbolicLink() || (current === file ? !stat.isFile() : !stat.isDirectory())) throw new Error('artifact-file-path');
+            }
+            if ((await fs.stat(path.dirname(file))).mode & 0o077) throw new Error('artifact-file-mode');
+            const handle = await fs.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.mode & 0o077) throw new Error('artifact-file-mode');
+              if (stat.size > limit) throw new Error('artifact-file-bound');
+              const buffer = Buffer.alloc(limit + 1), {bytesRead} = await handle.read(buffer, 0, limit + 1, 0);
+              if (bytesRead > limit || bytesRead !== stat.size) throw new Error('artifact-file-bound');
+              try { return JSON.parse(buffer.subarray(0, bytesRead).toString('utf8')); } catch { throw new Error('artifact-file-json'); }
+            } finally { await handle.close(); }
+          }
+          const verified = await readPrivate(process.env.VERIFIED_RECORDS_FILE, 16 * 1024 * 1024);
+          if (!Array.isArray(verified) || !verified.length || verified.length > (process.env.FILE_MODE === 'true' ? 1792 : 256) || new Set(verified.map(item => item?.artifactId)).size !== verified.length) throw new Error('artifact-set-count');
+          for (const item of verified) {
+          const bundle = item;
+          if (Object.keys(bundle).sort().join() !== 'archive,archiveDigest,artifactId,artifactName,directory,extract,files,recordPath,runId,transport' || ![bundle.runId, bundle.artifactId].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(bundle.archiveDigest || '') || typeof bundle.artifactName !== 'string') throw new Error('artifact-bundle-fields');
+          const parent = path.dirname(bundle.archive), runner = await fs.realpath(process.env.RUNNER_TEMP);
+          if (path.dirname(parent) !== runner || !path.basename(parent).startsWith('artifact-data-') || bundle.archive !== path.join(parent, 'archive.zip') || bundle.transport !== path.join(parent, 'transport.json') || bundle.extract !== path.join(parent, 'extracted') || bundle.directory !== bundle.extract || await fs.realpath(bundle.directory) !== bundle.directory) throw new Error('artifact-descriptor-path');
+          if (!Array.isArray(bundle.files) || bundle.files.length > 100000 || new Set(bundle.files).size !== bundle.files.length || bundle.files.some(file => typeof file !== 'string' || Buffer.byteLength(file) > 4096 || file.includes('\\') || path.posix.normalize(file) !== file || file.startsWith('/') || file.split('/').some(part => ['', '.', '..'].includes(part)))) throw new Error('artifact-bundle-files');
+          if (typeof item.recordPath !== 'string' || !item.files.includes(path.relative(item.directory, item.recordPath)) || !item.recordPath.startsWith(item.directory + path.sep)) throw new Error('artifact-record-path');
+          const record = await readPrivate(item.recordPath, 4 * 1024 * 1024);
+          const seen = new Map();
+          for (const key of ['mainArtifact', 'previewArtifact']) {
+            const artifact = record[key];
+            if (!artifact) continue;
+            const relative = artifact.location.path;
+            const canonical = JSON.stringify(artifact);
+            if (seen.has(relative)) {
+              if (seen.get(relative) !== canonical) throw new Error('artifact-path-conflict');
+              continue;
+            }
+            seen.set(relative, canonical);
+            if (artifact.location.kind !== 'local' || !relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('artifact-payload-path');
+            const descriptor = path.join(path.dirname(item.directory), `${key}.json`);
+            await fs.writeFile(descriptor, JSON.stringify(artifact), {mode: 0o600, flag: 'wx'});
+            const result = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', path.join(item.directory, relative)], {silent: true, ignoreReturnCode: true});
+            await fs.unlink(descriptor);
+            if (result.exitCode !== 0 || JSON.parse(result.stdout).payloadVerified !== true) throw new Error('artifact-inner-payload');
+          }
+          }
+
+          const outputDirectory = await fs.mkdtemp(path.join(await fs.realpath(process.env.RUNNER_TEMP), 'artifact-verified-'));
+          await fs.chmod(outputDirectory, 0o700);
+          const outputFile = path.join(outputDirectory, 'records.json');
+          const serialized = JSON.stringify(verified);
+          if (Buffer.byteLength(serialized) > 16 * 1024 * 1024 || Buffer.byteLength(outputFile) > 4096) throw new Error('artifact-file-bound');
+          await fs.writeFile(outputFile, serialized, {mode: 0o600, flag: 'wx'});
+          core.setOutput('records-file', outputFile);
+          if (process.env.FILE_MODE !== 'true') {
+            core.setOutput('records', JSON.stringify(verified));
+            if (verified.length === 1) { core.setOutput('record', verified[0].recordPath); core.setOutput('directory', verified[0].directory); }
+          }
+          core.summary.addRaw('Artifact bytes and typed payload links verified as application data; this does not attest an uploader job or attempt.');
+          await core.summary.write();

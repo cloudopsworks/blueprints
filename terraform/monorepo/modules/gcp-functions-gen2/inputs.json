@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "moduleId": "gcp-functions-gen2",
+  "variables": {
+    "resource": [
+      "kind",
+      "project",
+      "region",
+      "functionName",
+      "trigger",
+      "iac.sourceBucket"
+    ],
+    "configuration": [
+      "kind",
+      "runtime",
+      "serviceAccount",
+      "iac.sourceBucket",
+      "iac.buildServiceAccount",
+      "iac.entryPoint",
+      "eventSource"
+    ],
+    "workload": [
+      "kind"
+    ],
+    "artifact": [
+      "digest",
+      "format",
+      "path",
+      "imageReference",
+      "files"
+    ],
+    "owner_digest": []
+  },
+  "ownedResourceTypes": [
+    "google_storage_bucket_object",
+    "google_cloudfunctions2_function"
+  ],
+  "ownedResourceAddresses": [
+    "google_storage_bucket_object.package",
+    "google_cloudfunctions2_function.component"
+  ],
+  "externalParents": [
+    "GCP project",
+    "source bucket",
+    "runtime/build service accounts",
+    "Pub/Sub topic or Eventarc source bucket"
+  ],
+  "activationBlocked": true,
+  "remaining": [
+    "global trusted execution and selected source authorization integration",
+    "credentialed readiness and lifecycle proof"
+  ],
+  "replaceResourceAddresses": [
+    "google_storage_bucket_object.package"
+  ],
+  "applyDeleteResourceAddresses": []
+}

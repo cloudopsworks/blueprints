@@ -1,0 +1,231 @@
+name: Endorse exact scanner result
+description: Source-free fixed scanner writer emits only a closed uploaded-result binding
+inputs:
+  mode: {description: Closed writer or diagnostic reader operation, default: emit}
+  plan: {description: Independently endorsed selected diagnostic plan, default: ''}
+  configuration: {description: Current normalized diagnostic policy, default: ''}
+  verified-records: {description: Existing verified selected component data, default: ''}
+  computed-result: {description: Actual computed ScannerResult file, default: ''}
+  artifact-id: {description: Exact uploaded result artifact ID, default: ''}
+  archive-digest: {description: Exact uploaded archive digest, default: ''}
+  run-id: {description: Independently verified host run, required: true}
+  run-attempt: {description: Independently verified current attempt, required: true}
+  component: {description: Exact validated component ID, default: ''}
+  artifact-purpose: {description: Fixed main or preview purpose, default: ''}
+outputs:
+  coverage: {description: Diagnostic OCI-only outcome, value: '${{ steps.coverage.outputs.coverage }}'}
+runs:
+  using: composite
+  steps:
+    - id: mode
+      uses: actions/github-script@v9
+      env:
+        MODE: ${{ inputs.mode }}
+      with:
+        script: |
+          if (!['emit','verify-diagnostic'].includes(process.env.MODE || 'emit')) throw new Error('scanner-endorsement-mode');
+    - id: data
+      if: inputs.mode == 'emit'
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        artifact-id: ${{ inputs.artifact-id }}
+        archive-digest: ${{ inputs.archive-digest }}
+        run-id: ${{ inputs.run-id }}
+        record-kind: ScannerResult
+    - id: emit
+      if: inputs.mode == 'emit'
+      uses: actions/github-script@v9
+      env:
+        MODE: ${{ inputs.mode }}
+        COMPUTED_RESULT: ${{ inputs.computed-result }}
+        RETRIEVED_RESULT: ${{ steps.data.outputs.record }}
+        ARTIFACT_ID: ${{ inputs.artifact-id }}
+        ARCHIVE_DIGEST: ${{ inputs.archive-digest }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        COMPONENT: ${{ inputs.component }}
+        ARTIFACT_PURPOSE: ${{ inputs.artifact-purpose }}
+      with:
+        script: |
+          if ((process.env.MODE || 'emit') !== 'emit') return;
+          const fs = require('node:fs/promises');
+          const env = process.env;
+          if (env.RUN_ID !== env.GITHUB_RUN_ID || env.RUN_ATTEMPT !== env.GITHUB_RUN_ATTEMPT || ![env.RUN_ID, env.RUN_ATTEMPT, env.ARTIFACT_ID, env.GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(env.ARCHIVE_DIGEST || '') || !/^[a-z][a-z0-9-]{0,47}$/.test(env.COMPONENT || '') || !['main', 'preview'].includes(env.ARTIFACT_PURPOSE)) throw new Error('scanner-writer-context');
+          const checked = [];
+          for (const file of [env.COMPUTED_RESULT, env.RETRIEVED_RESULT]) {
+            if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('scanner-writer-bound');
+            const output = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(file)});
+            if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('scanner-writer-record');
+            checked.push(JSON.parse(output.stdout));
+          }
+          if (!/^sha256:[0-9a-f]{64}$/.test(checked[0].digest || '') || checked[0].digest !== checked[1].digest || checked[0].record.componentId !== env.COMPONENT) throw new Error('scanner-writer-bytes');
+          const artifact = (await github.rest.actions.getArtifact({...context.repo, artifact_id: env.ARTIFACT_ID})).data;
+          if (String(artifact.id) !== env.ARTIFACT_ID || artifact.name !== `monorepo-scan-${env.RUN_ID}-${env.RUN_ATTEMPT}-${env.COMPONENT}-${env.ARTIFACT_PURPOSE}` || artifact.digest !== env.ARCHIVE_DIGEST || artifact.expired !== false || String(artifact.workflow_run?.id) !== env.RUN_ID) throw new Error('scanner-writer-artifact');
+          const binding = {repositoryId: env.GITHUB_REPOSITORY_ID, runId: env.RUN_ID, runAttempt: env.RUN_ATTEMPT, artifactId: env.ARTIFACT_ID, artifactName: artifact.name, archiveDigest: artifact.digest};
+          core.info(`CLOUDOPSWORKS_STAGE_V1 ${JSON.stringify(binding)}`);
+    - id: locate
+      if: inputs.mode == 'verify-diagnostic'
+      uses: actions/github-script@v9
+      env:
+        PLAN_PATH: ${{ inputs.plan }}
+        CONFIGURATION: ${{ inputs.configuration }}
+        VERIFIED_RECORDS: ${{ inputs.verified-records }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          if (![env.RUN_ID, env.RUN_ATTEMPT, env.GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || '')) || Buffer.byteLength(env.VERIFIED_RECORDS || '') > 4 * 1024 * 1024) throw new Error('coverage-context');
+          for (const file of [env.PLAN_PATH, env.CONFIGURATION]) if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('coverage-bound');
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(env.PLAN_PATH)});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('coverage-plan');
+          const plan = JSON.parse(checked.stdout).record;
+          const enabled = JSON.parse(await fs.readFile(env.CONFIGURATION, 'utf8')).scanners?.trivyEnabled;
+          const records = JSON.parse(env.VERIFIED_RECORDS || '[]');
+          if (typeof enabled !== 'boolean' || !Array.isArray(records) || records.length > 256) throw new Error('coverage-inputs');
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'scan-coverage-'));
+          await fs.chmod(directory, 0o700);
+          const linked = path.join(directory, 'linked.json');
+          await fs.writeFile(linked, JSON.stringify({plan}), {mode: 0o600, flag: 'wx'});
+          const expected = [];
+          const components = new Set();
+          for (const item of records) {
+            if ((await fs.stat(item.recordPath)).size > 4 * 1024 * 1024) throw new Error('coverage-result-bound');
+            const output = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {silent: true, ignoreReturnCode: true, input: await fs.readFile(item.recordPath)});
+            if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('coverage-component');
+            const result = JSON.parse(output.stdout).record;
+            if (components.has(result.componentId) || result.status !== 'succeeded') throw new Error('coverage-component-set');
+            components.add(result.componentId);
+            for (const purpose of ['main', 'preview']) if (enabled && result[purpose + 'Artifact']?.format === 'oci') expected.push({component: result.componentId, purpose, digest: result[purpose + 'Artifact'].digest, name: `monorepo-scan-${env.RUN_ID}-${env.RUN_ATTEMPT}-${result.componentId}-${purpose}`});
+          }
+          if (components.size !== plan.buildSelection.length || plan.buildSelection.some(item => !components.has(item.componentId))) throw new Error('coverage-selection');
+          const artifacts = [], jobs = [];
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT})).data;
+          if (String(run.id) !== env.RUN_ID || String(run.run_attempt) !== env.RUN_ATTEMPT || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('coverage-attempt');
+          for (const kind of ['jobs', 'artifacts']) for (let page = 1; page <= 100; page++) {
+            const args = {...context.repo, run_id: env.RUN_ID, per_page: 100, page};
+            const response = kind === 'jobs' ? (await github.rest.actions.listJobsForWorkflowRunAttempt({...args, attempt_number: env.RUN_ATTEMPT})).data.jobs : (await github.rest.actions.listWorkflowRunArtifacts(args)).data.artifacts;
+            if (!Array.isArray(response) || response.length > 100) throw new Error('coverage-api-shape');
+            (kind === 'jobs' ? jobs : artifacts).push(...response);
+            if (response.length < 100) break;
+            if (page === 100) throw new Error('coverage-api-bound');
+          }
+          const routes = {main: [], preview: []};
+          for (const component of new Set(expected.map(item => item.component))) {
+            const candidates = jobs.filter(job => job.name === `Monorepo delivery slice / scan (${component})`);
+            if (candidates.length !== 1 || !/^[1-9][0-9]*$/.test(String(candidates[0].id)) || String(candidates[0].run_id) !== env.RUN_ID || String(candidates[0].run_attempt) !== env.RUN_ATTEMPT || candidates[0].status !== 'completed' || candidates[0].conclusion !== 'success') throw new Error('coverage-writer');
+            const redirect = await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs', {...context.repo, job_id: candidates[0].id, request: {redirect: 'manual'}});
+            const url = new URL(redirect.headers.location);
+            if (redirect.status !== 302 || url.protocol !== 'https:' || url.username || url.password || url.hash) throw new Error('coverage-log-redirect');
+            const response = await fetch(url, {redirect: 'error', credentials: 'omit', signal: AbortSignal.timeout(60000)});
+            if (response.status !== 200 || !response.body) throw new Error('coverage-log-transfer');
+            const chunks = []; let count = 0;
+            for await (const chunk of response.body) { count += chunk.length; if (count > 8 * 1024 * 1024) throw new Error('coverage-log-bound'); chunks.push(chunk); }
+            const lines = new TextDecoder('utf-8', {fatal: true}).decode(Buffer.concat(chunks)).split(/\r?\n/);
+            for (const item of expected.filter(item => item.component === component)) {
+              const matches = artifacts.filter(artifact => artifact.name === item.name);
+              if (matches.length !== 1) throw new Error('coverage-artifact-identity');
+              const artifact = matches[0], receipts = [];
+              for (const line of lines) {
+                const marker = line.replace(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z /, '');
+                if (!marker.startsWith('CLOUDOPSWORKS_STAGE_V1 ')) continue;
+                const raw = marker.slice('CLOUDOPSWORKS_STAGE_V1 '.length), binding = JSON.parse(raw);
+                if (JSON.stringify(binding) !== raw) throw new Error('coverage-marker-canonical');
+                if (binding.artifactId !== String(artifact.id)) continue;
+                if (Object.keys(binding).sort().join() !== 'archiveDigest,artifactId,artifactName,repositoryId,runAttempt,runId' || binding.repositoryId !== env.GITHUB_REPOSITORY_ID || binding.runId !== env.RUN_ID || binding.runAttempt !== env.RUN_ATTEMPT || binding.artifactName !== item.name || binding.archiveDigest !== artifact.digest) throw new Error('coverage-marker-binding');
+                receipts.push(binding);
+              }
+              if (receipts.length !== 1) throw new Error('coverage-marker-count');
+              routes[item.purpose].push({artifactId: String(artifact.id), archiveDigest: artifact.digest});
+            }
+          }
+          const outputs = [];
+          for (const [name, value, limit] of [['expected', expected, 16777216], ...Object.entries(routes).filter(([,entries]) => entries.length).map(([purpose,entries]) => [purpose + '-artifacts', entries, 524288])]) {
+            const file = path.join(directory, name + '.json'), bytes = JSON.stringify(value);
+            if (Buffer.byteLength(bytes) > limit || Buffer.byteLength(file) > 4096) throw new Error('scan-file-bound');
+            await fs.writeFile(file, bytes, {mode:0o600, flag:'wx'}); outputs.push([name,file]);
+          }
+          for (const [name,file] of outputs) core.setOutput(name,file);
+    - id: diagnostic-main
+      if: inputs.mode == 'verify-diagnostic' && steps.locate.outputs.main-artifacts
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        artifact-set-file: ${{ steps.locate.outputs.main-artifacts }}
+        run-id: ${{ inputs.run-id }}
+        record-kind: ScannerResult
+    - id: diagnostic-preview
+      if: inputs.mode == 'verify-diagnostic' && steps.locate.outputs.preview-artifacts
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        artifact-set-file: ${{ steps.locate.outputs.preview-artifacts }}
+        run-id: ${{ inputs.run-id }}
+        record-kind: ScannerResult
+    - id: coverage
+      if: inputs.mode == 'verify-diagnostic'
+      uses: actions/github-script@v9
+      env:
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        PLAN_PATH: ${{ inputs.plan }}
+        EXPECTED: ${{ steps.locate.outputs.expected }}
+        VERIFIED_RECORDS_FILE: ${{ steps.diagnostic-main.outputs.records-file }}
+        PREVIEW_RECORDS_FILE: ${{ steps.diagnostic-preview.outputs.records-file }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const env = process.env;
+          const path = require('node:path');
+          async function readPrivate(file, limit, prefix, name) {
+            const root = await fs.realpath(env.RUNNER_TEMP);
+            if (typeof file !== 'string' || !path.isAbsolute(file) || Buffer.byteLength(file) > 4096 || file.includes('\0') || path.normalize(file) !== file || !file.startsWith(root + path.sep)) throw new Error('scan-file-path');
+            if (prefix && (path.dirname(path.dirname(file)) !== root || !path.basename(path.dirname(file)).startsWith(prefix) || path.basename(file) !== name)) throw new Error('scan-file-producer');
+            let current = root;
+            for (const part of path.relative(root, file).split(path.sep)) {
+              current = path.join(current, part);
+              const stat = await fs.lstat(current);
+              if (stat.isSymbolicLink() || (current === file ? !stat.isFile() : !stat.isDirectory()) || stat.mode & 0o077) throw new Error('scan-file-path');
+            }
+            const handle = await fs.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.mode & 0o077 || stat.size > limit) throw new Error('scan-file-bound');
+              const buffer = Buffer.alloc(limit + 1), {bytesRead} = await handle.read(buffer, 0, limit + 1, 0);
+              if (bytesRead > limit || bytesRead !== stat.size) throw new Error('scan-file-bound');
+              return buffer.subarray(0, bytesRead);
+            } finally { await handle.close(); }
+          }
+          if (![env.RUN_ID, env.RUN_ATTEMPT].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('scan-reader-context');
+          const expected = JSON.parse(await readPrivate(env.EXPECTED, 16777216, 'scan-coverage-', 'expected.json')), records = [];
+          const collections = await Promise.all([env.VERIFIED_RECORDS_FILE,env.PREVIEW_RECORDS_FILE].filter(Boolean).map(async file => JSON.parse(await readPrivate(file,16777216,'artifact-verified-','records.json'))));
+          if (collections.some(collection => !Array.isArray(collection) || collection.length > 512)) throw new Error('coverage-record-set');
+          records.push(...collections.flat());
+          const plan = JSON.parse(await fs.readFile(env.PLAN_PATH, 'utf8'));
+          if (!Array.isArray(expected) || expected.length > 512 || !Array.isArray(records) || records.length !== expected.length) throw new Error('coverage-record-set');
+          const expectedNames = new Set();
+          for (const entry of expected) {
+            if (!entry || Object.keys(entry).sort().join() !== 'component,digest,name,purpose' ||
+                (typeof entry.component !== 'string' || !/^[a-z][a-z0-9-]{0,47}$/.test(entry.component)) || !['main','preview'].includes(entry.purpose) ||
+                (typeof entry.digest !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(entry.digest)) || entry.name !== `monorepo-scan-${env.RUN_ID}-${env.RUN_ATTEMPT}-${entry.component}-${entry.purpose}` || expectedNames.has(entry.name)) throw new Error('coverage-expected');
+            expectedNames.add(entry.name);
+          }
+          const artifactIds = new Set(records.map(item => item?.artifactId));
+          if (artifactIds.size !== records.length) throw new Error('coverage-record-identity');
+          const names = new Set();
+          for (const item of records) {
+          if (!item || Object.keys(item).sort().join() !== 'archive,archiveDigest,artifactId,artifactName,directory,extract,files,recordPath,runId,transport' || ![item.runId,item.artifactId].every(value => typeof value === 'string' && /^[1-9][0-9]*$/.test(value)) || (typeof item.archiveDigest !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(item.archiveDigest)) || typeof item.artifactName !== 'string' || !item.artifactName.length || Buffer.byteLength(item.artifactName) > 255 || ['archive','transport','extract','directory','recordPath'].some(key => typeof item[key] !== 'string' || Buffer.byteLength(item[key]) > 4096)) throw new Error('scan-record-fields');
+          if (item.runId !== env.RUN_ID) throw new Error('scan-record-run');
+          const parent = path.dirname(item.archive), root = await fs.realpath(env.RUNNER_TEMP);
+          if (path.dirname(parent) !== root || !path.basename(parent).startsWith('artifact-data-') || item.archive !== path.join(parent,'archive.zip') || item.transport !== path.join(parent,'transport.json') || item.extract !== path.join(parent,'extracted') || item.directory !== item.extract || JSON.stringify(item.files) !== '["scanner-result.json"]' || item.recordPath !== path.join(item.directory,'scanner-result.json')) throw new Error('scan-record-path');
+            const match = expected.find(entry => entry.name === item.artifactName);
+            if (!match || names.has(item.artifactName)) throw new Error('coverage-record-owner');
+            const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: await readPrivate(item.recordPath,4194304)});
+            if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('coverage-record-contract');
+            const result = JSON.parse(checked.stdout).record;
+            if (result.scanner !== 'trivy' || result.profile !== 'diagnostic' || result.required !== true || result.status !== 'passed' || result.sourceSha !== plan.headSha || result.componentId !== match.component || result.artifactDigest !== match.digest) throw new Error('coverage-result-mismatch');
+            names.add(item.artifactName);
+          }
+          core.setOutput('coverage', expected.length ? 'passed-oci-only' : 'unsupported-profile');
+          core.summary.addRaw('Diagnostic OCI coverage only; no nonimage or public main scan gate is authorized.');
+          await core.summary.write();

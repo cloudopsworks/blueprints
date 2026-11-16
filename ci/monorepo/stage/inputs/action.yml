@@ -1,0 +1,265 @@
+name: Authenticate one component pre-stage input
+description: Source-free selected or original carried build data; not stage admission
+inputs:
+  run-id: {description: Current plan owner run, required: true}
+  run-attempt: {description: Current plan owner attempt, required: true}
+  plan-artifact-id: {description: Current endorsed plan artifact, required: true}
+  plan-archive-digest: {description: Current plan archive digest, required: true}
+  component: {description: One current plan component ID, required: true}
+  baseline-run-id: {description: Optional prior attested stage owner, default: ''}
+  baseline-run-attempt: {description: Optional prior stage attempt, default: ''}
+  baseline-artifact-id: {description: Optional prior stage artifact, default: ''}
+  baseline-archive-digest: {description: Optional prior stage archive digest, default: ''}
+outputs:
+  policy-sha: {description: Verified current captured policy SHA, value: '${{ steps.current.outputs.policy-sha }}'}
+  caller-mode: {description: Verified current origin caller mode, value: '${{ steps.current.outputs.caller-mode }}'}
+  plan: {description: Original endorsed build plan, value: '${{ steps.original-plan.outputs.plan || steps.plan.outputs.plan }}'}
+  current-plan: {description: Current endorsed membership and policy, value: '${{ steps.plan.outputs.plan }}'}
+  configuration: {description: Current API-only normalized configuration, value: '${{ steps.configuration.outputs.configuration }}'}
+  records: {description: Original verified transport and payload routing, value: '${{ steps.result.outputs.records }}'}
+  result: {description: Original verified component result, value: '${{ steps.result.outputs.result }}'}
+  directory: {description: Original verified payload directory, value: '${{ steps.result.outputs.directory }}'}
+  source-sha: {description: Original build source unchanged, value: '${{ steps.result.outputs.source-sha }}'}
+  version: {description: Original build version unchanged, value: '${{ steps.result.outputs.version }}'}
+  source-ref: {description: Independently authenticated original owner execution identity, value: '${{ steps.original.outputs.source-ref || steps.current.outputs.source-ref }}'}
+  source-repository-id: {description: Independently authenticated original owner execution identity, value: '${{ steps.original.outputs.source-repository-id || steps.current.outputs.source-repository-id }}'}
+  trusted-source: {description: Independently authenticated original owner execution identity, value: '${{ steps.original.outputs.trusted-source || steps.current.outputs.trusted-source }}'}
+  carried: {description: Private current membership routing, value: '${{ steps.route.outputs.carried }}'}
+runs:
+  using: composite
+  steps:
+    - id: current
+      uses: ./bp/cd/tasks/repo/context
+      with:
+        mode: normal
+        run-id: ${{ inputs.run-id }}
+        run-attempt: ${{ inputs.run-attempt }}
+    - id: plan
+      uses: ./bp/ci/monorepo/plan/endorsement
+      with:
+        mode: verify
+        caller-mode: ${{ steps.current.outputs.caller-mode }}
+        run-id: ${{ steps.current.outputs.run-id }}
+        run-attempt: ${{ steps.current.outputs.run-attempt }}
+        artifact-id: ${{ inputs.plan-artifact-id }}
+        archive-digest: ${{ inputs.plan-archive-digest }}
+    - id: configuration
+      uses: ./bp/ci/monorepo/source
+      with:
+        source-sha: ${{ steps.current.outputs.source-sha }}
+    - id: route
+      uses: actions/github-script@v9
+      env:
+        PLAN: ${{ steps.plan.outputs.plan }}
+        CONFIGURATION: ${{ steps.configuration.outputs.configuration }}
+        SOURCE_SHA: ${{ steps.current.outputs.source-sha }}
+        COMPONENT: ${{ inputs.component }}
+        BASELINE_RUN_ID: ${{ inputs.baseline-run-id }}
+        BASELINE_RUN_ATTEMPT: ${{ inputs.baseline-run-attempt }}
+        BASELINE_ARTIFACT_ID: ${{ inputs.baseline-artifact-id }}
+        BASELINE_ARCHIVE_DIGEST: ${{ inputs.baseline-archive-digest }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), env = process.env;
+          for (const file of [env.PLAN, env.CONFIGURATION]) if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('inputs-bound');
+          const raw = JSON.parse(await fs.readFile(env.PLAN, 'utf8'));
+          const configuration = JSON.parse(await fs.readFile(env.CONFIGURATION, 'utf8'));
+          const validated = [];
+          for (const record of [raw, {...raw, components: configuration.components, targets: configuration.targets, previewPolicy: configuration.previewPolicy}]) {
+            const output = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+            if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('inputs-plan');
+            validated.push(JSON.parse(output.stdout));
+          }
+          const plan = validated[0].record;
+          if (validated[0].digest !== validated[1].digest || plan.headSha !== env.SOURCE_SHA ||
+              plan.repository.id !== env.GITHUB_REPOSITORY_ID ||
+              plan.repository.fullName !== `${context.repo.owner}/${context.repo.repo}` ||
+              !plan.components.some(item => item.id === env.COMPONENT)) throw new Error('inputs-current-membership');
+          const carried = !plan.buildSelection.some(item => item.componentId === env.COMPONENT);
+          const locator = [env.BASELINE_RUN_ID, env.BASELINE_RUN_ATTEMPT, env.BASELINE_ARTIFACT_ID, env.BASELINE_ARCHIVE_DIGEST];
+          if (carried && (!locator.slice(0, 3).every(value => /^[1-9][0-9]*$/.test(value || '')) ||
+              !/^sha256:[0-9a-f]{64}$/.test(locator[3] || ''))) throw new Error('inputs-baseline-required');
+          core.setOutput('carried', String(carried));
+    - id: baseline-context
+      if: steps.route.outputs.carried == 'true'
+      uses: ./bp/cd/tasks/repo/context
+      with:
+        run-id: ${{ inputs.baseline-run-id }}
+        run-attempt: ${{ inputs.baseline-run-attempt }}
+    - id: baseline
+      if: steps.route.outputs.carried == 'true'
+      uses: ./bp/ci/monorepo/stage/endorsement
+      with:
+        mode: verify
+        caller-mode: ${{ steps.baseline-context.outputs.caller-mode }}
+        run-id: ${{ steps.baseline-context.outputs.run-id }}
+        run-attempt: ${{ steps.baseline-context.outputs.run-attempt }}
+        artifact-id: ${{ inputs.baseline-artifact-id }}
+        archive-digest: ${{ inputs.baseline-archive-digest }}
+    - id: origin
+      uses: actions/github-script@v9
+      env:
+        PLAN: ${{ steps.plan.outputs.plan }}
+        COMPONENT: ${{ inputs.component }}
+        CARRIED: ${{ steps.route.outputs.carried }}
+        RUN_ID: ${{ steps.current.outputs.run-id }}
+        RUN_ATTEMPT: ${{ steps.current.outputs.run-attempt }}
+        BASELINE_PLAN: ${{ steps.baseline.outputs.directory }}/plan.json
+        BASELINE_MANIFEST: ${{ steps.baseline.outputs.manifest }}
+        BASELINE_SOURCE: ${{ steps.baseline-context.outputs.source-sha }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path'), env = process.env;
+          if (!['true', 'false'].includes(env.CARRIED)) throw new Error('inputs-routing');
+          const plan = JSON.parse(await fs.readFile(env.PLAN, 'utf8'));
+          let run = env.RUN_ID, attempt = env.RUN_ATTEMPT;
+          if (env.CARRIED === 'true') {
+            for (const file of [env.BASELINE_PLAN, env.BASELINE_MANIFEST]) if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('inputs-baseline-bound');
+            const baseline = JSON.parse(await fs.readFile(env.BASELINE_PLAN, 'utf8'));
+            if (baseline.headSha !== plan.baseSha || baseline.headSha !== env.BASELINE_SOURCE) throw new Error('inputs-baseline-source');
+            const linked = path.join(await fs.realpath(env.RUNNER_TEMP), `inputs-baseline-${require('node:crypto').randomUUID()}.json`);
+            await fs.writeFile(linked, JSON.stringify({plan: baseline}), {mode: 0o600, flag: 'wx'});
+            let checked;
+            try { checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ReleaseManifest', '--linked-context', linked], {silent: true, ignoreReturnCode: true, input: await fs.readFile(env.BASELINE_MANIFEST)}); }
+            finally { await fs.unlink(linked); }
+            if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('inputs-baseline-contract');
+            const manifest = JSON.parse(checked.stdout).record;
+            const entry = manifest.components.find(item => item.componentId === env.COMPONENT);
+            const component = plan.components.find(item => item.id === env.COMPONENT);
+            if (!entry || !component || ['package', 'workload', 'targetIds'].some(
+                key => JSON.stringify(entry[key]) !== JSON.stringify(component[key]))) throw new Error('inputs-carry-membership');
+            const artifacts = [entry.mainArtifact, entry.previewArtifact].filter(Boolean);
+            const location = entry.mainArtifact?.location;
+            if (!location || location.kind !== 'actions-artifact' || location.repositoryId !== plan.repository.id ||
+                artifacts.some(item => item.location.kind !== 'actions-artifact' ||
+                  ['repositoryId', 'runId', 'runAttempt', 'artifactId', 'artifactName'].some(
+                    key => item.location[key] !== location[key]))) throw new Error('inputs-original-locator');
+            run = location.runId; attempt = location.runAttempt;
+          }
+          if (![run, attempt].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('inputs-owner');
+          core.setOutput('run-id', run); core.setOutput('run-attempt', attempt);
+    - id: original
+      if: steps.route.outputs.carried == 'true'
+      uses: ./bp/cd/tasks/repo/context
+      with:
+        mode: normal
+        run-id: ${{ steps.origin.outputs.run-id }}
+        run-attempt: ${{ steps.origin.outputs.run-attempt }}
+    - id: locate
+      uses: actions/github-script@v9
+      env:
+        COMPONENT: ${{ inputs.component }}
+        CARRIED: ${{ steps.route.outputs.carried }}
+        CALLER_MODE: ${{ steps.original.outputs.caller-mode || steps.current.outputs.caller-mode }}
+        RUN_ID: ${{ steps.origin.outputs.run-id }}
+        RUN_ATTEMPT: ${{ steps.origin.outputs.run-attempt }}
+        BASELINE_MANIFEST: ${{ steps.baseline.outputs.manifest }}
+      with:
+        script: |
+          const env = process.env;
+          const prefixes = {'normal-main': 'lifecycle / ci / ', 'normal-pr': 'ci / ci / ', 'normal-closure': 'close / lifecycle / ci / '};
+          if (!prefixes[env.CALLER_MODE] || !/^[a-z][a-z0-9-]{0,47}$/.test(env.COMPONENT || '') ||
+              ![env.RUN_ID, env.RUN_ATTEMPT].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('inputs-build-context');
+          const jobs = [];
+          for (let page = 1; page <= 100; page++) {
+            const data = (await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT, per_page: 100, page})).data;
+            if (!Array.isArray(data.jobs) || data.jobs.length > 100) throw new Error('inputs-jobs');
+            jobs.push(...data.jobs);
+            if (data.jobs.length < 100) break;
+            if (page === 100) throw new Error('inputs-jobs-bound');
+          }
+          const selected = jobs.filter(job => job.name === prefixes[env.CALLER_MODE] + `monorepo-ci-build (${env.COMPONENT})`);
+          if (selected.length !== 1 || !/^[1-9][0-9]*$/.test(String(selected[0].id)) ||
+              String(selected[0].run_id) !== env.RUN_ID || String(selected[0].run_attempt) !== env.RUN_ATTEMPT ||
+              selected[0].status !== 'completed' || selected[0].conclusion !== 'success') throw new Error('inputs-build-job');
+          const names = {component: `components-${env.RUN_ID}-${env.RUN_ATTEMPT}-${env.COMPONENT}`};
+          if (env.CARRIED === 'true') names.plan = `monorepo-plan-${env.RUN_ID}-${env.RUN_ATTEMPT}`;
+          const artifacts = [];
+          for (let page = 1; page <= 100; page++) {
+            const data = (await github.rest.actions.listWorkflowRunArtifacts({...context.repo, run_id: env.RUN_ID, per_page: 100, page})).data;
+            if (!Array.isArray(data.artifacts) || data.artifacts.length > 100) throw new Error('inputs-artifacts');
+            artifacts.push(...data.artifacts);
+            if (data.artifacts.length < 100) break;
+            if (page === 100) throw new Error('inputs-artifacts-bound');
+          }
+          const located = {};
+          for (const [key, name] of Object.entries(names)) {
+            const matches = artifacts.filter(item => item.name === name), item = matches[0];
+            if (matches.length !== 1 || !/^[1-9][0-9]*$/.test(String(item.id)) || item.expired !== false ||
+                String(item.workflow_run?.id) !== env.RUN_ID ||
+                !/^sha256:[0-9a-f]{64}$/.test(item.digest || '')) throw new Error('inputs-artifact-identity');
+            located[key] = item;
+          }
+          if (env.CARRIED === 'true') {
+            const manifest = JSON.parse(await require('node:fs/promises').readFile(env.BASELINE_MANIFEST, 'utf8'));
+            const entry = manifest.components.find(item => item.componentId === env.COMPONENT);
+            if (String(located.component.id) !== entry?.mainArtifact?.location.artifactId || located.component.name !== entry.mainArtifact.location.artifactName) throw new Error('inputs-carry-artifact');
+          }
+          for (const [key, item] of Object.entries(located)) { core.setOutput(key + '-id', String(item.id)); core.setOutput(key + '-digest', item.digest); }
+    - id: original-plan
+      if: steps.route.outputs.carried == 'true'
+      uses: ./bp/ci/monorepo/plan/endorsement
+      with:
+        mode: verify
+        caller-mode: ${{ steps.original.outputs.caller-mode }}
+        run-id: ${{ steps.original.outputs.run-id }}
+        run-attempt: ${{ steps.original.outputs.run-attempt }}
+        artifact-id: ${{ steps.locate.outputs.plan-id }}
+        archive-digest: ${{ steps.locate.outputs.plan-digest }}
+    - id: data
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        record-kind: ComponentResult
+        component: ${{ inputs.component }}
+        run-id: ${{ steps.origin.outputs.run-id }}
+        run-attempt: ${{ steps.origin.outputs.run-attempt }}
+        artifact-id: ${{ steps.locate.outputs.component-id }}
+        archive-digest: ${{ steps.locate.outputs.component-digest }}
+        plan: ${{ steps.original-plan.outputs.plan || steps.plan.outputs.plan }}
+    - id: result
+      uses: actions/github-script@v9
+      env:
+        PLAN: ${{ steps.plan.outputs.plan }}
+        ORIGINAL_PLAN: ${{ steps.original-plan.outputs.plan || steps.plan.outputs.plan }}
+        ORIGINAL_SOURCE: ${{ steps.original.outputs.source-sha || steps.current.outputs.source-sha }}
+        RECORDS: ${{ steps.data.outputs.records }}
+        OWNER_RUN_ID: ${{ steps.origin.outputs.run-id }}
+        OWNER_RUN_ATTEMPT: ${{ steps.origin.outputs.run-attempt }}
+        ARTIFACT_ID: ${{ steps.locate.outputs.component-id }}
+        ARCHIVE_DIGEST: ${{ steps.locate.outputs.component-digest }}
+        COMPONENT: ${{ inputs.component }}
+        CARRIED: ${{ steps.route.outputs.carried }}
+        BASELINE_MANIFEST: ${{ steps.baseline.outputs.manifest }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), env = process.env;
+          if (Buffer.byteLength(env.RECORDS || '') > 4 * 1024 * 1024) throw new Error('inputs-record-bound');
+          const records = JSON.parse(env.RECORDS);
+          const plan = JSON.parse(await fs.readFile(env.PLAN, 'utf8'));
+          const original = JSON.parse(await fs.readFile(env.ORIGINAL_PLAN, 'utf8'));
+          if (!Array.isArray(records) || records.length !== 1 || original.headSha !== env.ORIGINAL_SOURCE) throw new Error('inputs-original-source');
+          const component = plan.components.find(item => item.id === env.COMPONENT);
+          const prior = original.components.find(item => item.id === env.COMPONENT);
+          if (!component || !prior || ['package', 'workload', 'targetIds', 'preview'].some(
+              key => JSON.stringify(component[key]) !== JSON.stringify(prior[key]))) throw new Error('inputs-current-policy');
+          const item = records[0];
+          if (item.runId !== env.OWNER_RUN_ID || item.artifactId !== env.ARTIFACT_ID ||
+              item.archiveDigest !== env.ARCHIVE_DIGEST ||
+              item.artifactName !== `components-${env.OWNER_RUN_ID}-${env.OWNER_RUN_ATTEMPT}-${env.COMPONENT}`) throw new Error('inputs-verified-routing');
+          const result = JSON.parse(await fs.readFile(item.recordPath, 'utf8'));
+          if (result.componentId !== env.COMPONENT || result.status !== 'succeeded' ||
+              result.headSha !== original.headSha || result.version !== original.version) throw new Error('inputs-original-result');
+          if (env.CARRIED === 'true') {
+            const manifest = JSON.parse(await fs.readFile(env.BASELINE_MANIFEST, 'utf8')), entry = manifest.components.find(value => value.componentId === env.COMPONENT);
+            for (const key of ['mainArtifact', 'previewArtifact']) {
+              const artifact = result[key], expected = entry?.[key];
+              if (!artifact && !expected) continue;
+              if (!artifact || !expected || artifact.location.kind !== 'local') throw new Error('inputs-original-descriptor');
+              const linked = {...artifact, location: {...expected.location, path: artifact.location.path}};
+              if (expected.location.artifactId !== item.artifactId || expected.location.artifactName !== item.artifactName ||
+                  JSON.stringify(linked) !== JSON.stringify(expected)) throw new Error('inputs-original-descriptor');
+            }
+          }
+          core.setOutput('records', env.RECORDS);
+          core.setOutput('result', item.recordPath); core.setOutput('directory', item.directory);
+          core.setOutput('source-sha', result.headSha); core.setOutput('version', result.version);

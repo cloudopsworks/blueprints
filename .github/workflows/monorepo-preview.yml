@@ -1,0 +1,86 @@
+name: Monorepo Kubernetes preview
+on:
+  workflow_call:
+    secrets:
+      SONARQUBE_TOKEN: {required: false}
+      SNYK_TOKEN: {required: false}
+      SEMGREP_TOKEN: {required: false}
+      DEPENDENCYTRACK_TOKEN: {required: false}
+      DEPLOYMENT_STATE_CONF: {required: false}
+      CLOUDOPSWORKS_AUTH: {required: false}
+      CLOUDOPSWORKS_PROBE_SECRETS: {required: false}
+      CLOUDOPSWORKS_HOST_KEYS: {required: false}
+permissions: {}
+# No repository-wide/outer concurrency: unrelated PRs/targets cannot replace a
+# pending closure. One call-job holds each exact group throughout its nested DAG.
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      pull-requests: read
+    outputs:
+      matrix: ${{ steps.routes.outputs.matrix }}
+      has-targets: ${{ steps.routes.outputs.has-targets }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: routes
+        name: Prove host and discover current policy or historical targets without artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 bp/cd/monorepo/runtime/preview_entry.py discover
+  target:
+    name: monorepo-preview-${{ matrix.id }}
+    needs: discover
+    if: needs.discover.outputs.has-targets == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    concurrency:
+      group: monorepo-preview-${{ github.repository_id }}-${{ matrix.pr }}-${{ matrix.id }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/monorepo-preview-target.yml
+    with:
+      target: ${{ matrix.id }}
+      pr: ${{ matrix.pr }}
+      environment: ${{ matrix.environment }}
+    secrets:
+      SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SEMGREP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}
+      DEPENDENCYTRACK_TOKEN: ${{ secrets.DEPENDENCYTRACK_TOKEN }}
+      DEPLOYMENT_STATE_CONF: ${{ secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+  required:
+    if: always()
+    needs: [discover, target]
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Require discovery and actual convergence
+        env:
+          DISCOVER: ${{ needs.discover.result }}
+          TARGET: ${{ needs.target.result }}
+          HAS_TARGETS: ${{ needs.discover.outputs.has-targets }}
+        run: |
+          [[ "$DISCOVER" == success ]]
+          if [[ "$HAS_TARGETS" == true ]]; then [[ "$TARGET" == success ]]; else [[ "$TARGET" == skipped ]]; fi

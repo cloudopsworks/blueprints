@@ -1,0 +1,64 @@
+{{- if .Values.monorepo.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels: {app.kubernetes.io/name: {{ .Release.Name | quote }}}
+spec:
+  replicas: {{ .Values.monorepo.replicas }}
+  selector:
+    matchLabels: {app.kubernetes.io/name: {{ .Release.Name | quote }}}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: {{ .Release.Name | quote }}}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: app
+          image: {{ .Values.monorepo.image | quote }}
+          ports: [{name: http, containerPort: {{ .Values.monorepo.port }}}]
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          startupProbe:
+            httpGet: {path: {{ .Values.monorepo.healthPath | quote }}, port: http}
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: {path: {{ .Values.monorepo.healthPath | quote }}, port: http}
+          livenessProbe:
+            httpGet: {path: {{ .Values.monorepo.healthPath | quote }}, port: http}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts: [{name: scratch, mountPath: /tmp}]
+      volumes: [{name: scratch, emptyDir: {sizeLimit: 64Mi}}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  selector: {app.kubernetes.io/name: {{ .Release.Name | quote }}}
+  ports: [{name: http, port: {{ .Values.monorepo.port }}, targetPort: http}]
+
+{{- end }}
+
+{{- if and .Values.monorepo.enabled .Values.monorepo.preview }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  ingressClassName: {{ .Values.monorepo.ingressClass | quote }}
+  rules:
+    - host: {{ .Values.monorepo.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port: {name: http}
+{{- end }}

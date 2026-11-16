@@ -1,0 +1,123 @@
+name: Authenticate exact native reservation history
+description: Immutable canonical writer and attempt logs authorize recovery; no artifacts or application source
+inputs:
+  receipt-id: {description: Exact GitHub deployment reservation ID, required: true}
+outputs:
+  state-handle: {description: Independently authenticated retained StateHandle file, value: '${{ steps.verify.outputs.state-handle }}'}
+  reservation-marker: {description: Private authenticated existing closed marker file, value: '${{ steps.verify.outputs.reservation-marker }}'}
+  marker: {description: Closed authenticated historical reservation marker, value: '${{ steps.verify.outputs.marker }}'}
+runs:
+  using: composite
+  steps:
+    - id: locate
+      uses: actions/github-script@v9
+      env:
+        RECEIPT_ID: ${{ inputs.receipt-id }}
+      with:
+        script: |
+          const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
+          const e=process.env;
+          if (!/^[1-9][0-9]*$/.test(e.RECEIPT_ID || '')) throw new Error('history-receipt-id');
+          const receipt=(await github.rest.repos.getDeployment({...context.repo,deployment_id:e.RECEIPT_ID})).data;
+          const p=receipt.payload;
+          if (String(receipt.id)!==e.RECEIPT_ID || receipt.task!=='cloudopsworks-state' || !/^[1-9][0-9]*$/.test(String(receipt.creator?.id)) || !p || Object.keys(p).sort().join()!=='apiVersion,kind,resourceClaims,stateHandle,stateHandleDigest' || p.apiVersion!=='cloudopsworks.io/operations/v1' || p.kind!=='StateHandleReservation') throw new Error('history-reservation');
+          const result=await exec.getExecOutput('tronador',['components','contracts','validate','--kind','StateHandle'],{silent:true,ignoreReturnCode:true,input:Buffer.from(JSON.stringify(p.stateHandle))});
+          if (result.exitCode || Buffer.byteLength(result.stdout)>4194304) throw new Error('history-handle-contract');
+          const checked=JSON.parse(result.stdout),h=checked.record;
+          const canonical=v=>JSON.stringify(v===null||typeof v!=='object'?v:Array.isArray(v)?v.map(x=>JSON.parse(canonical(x))):Object.fromEntries(Object.keys(v).sort().map(k=>[k,JSON.parse(canonical(v[k]))])));
+          const nativeDigest=crypto.createHash('sha256').update(canonical(h.native)).digest('hex');
+          if (checked.valid!==true || checked.digest!==p.stateHandleDigest || !/^sha256:[0-9a-f]{64}$/.test(checked.digest || '') || h.origin.repository.id!==e.GITHUB_REPOSITORY_ID || h.origin.repository.fullName!==context.repo.owner+'/'+context.repo.repo || receipt.ref!==h.origin.sourceSha || receipt.environment!=='cloudopsworks-state/'+nativeDigest || h.moduleId!=='aws-lambda' || h.ownership!=='managed' || h.scope!=='component' || h.resourceIdentity.kind!=='aws.lambda' || h.resourceIdentity.packageMode!=='zip') throw new Error('history-reservation-binding');
+          const lambda='arn:aws:lambda:'+h.resourceIdentity.region+':'+h.providerIdentity+':function:'+h.resourceIdentity.functionName;
+          const prefix='object:arn:aws:s3:::'+h.resourceIdentity.iac.sourceBucket+'/'+(h.resourceIdentity.iac.sourcePrefix || 'components').replace(/^\/+|\/+$/g,'')+'/';
+          if (!Array.isArray(p.resourceClaims) || p.resourceClaims.length!==2 || p.resourceClaims[0]!==lambda || !p.resourceClaims[1]?.startsWith(prefix) || !/^[0-9a-f]{64}\/main\.zip$/.test(p.resourceClaims[1].slice(prefix.length))) throw new Error('history-claims');
+          const directory=await fs.mkdtemp(path.join(await fs.realpath(e.RUNNER_TEMP),'reservation-history-')); await fs.chmod(directory,0o700);
+          const file=path.join(directory,'receipt.json'); await fs.writeFile(file,JSON.stringify(receipt),{mode:0o600,flag:'wx'});
+          core.setOutput('receipt',file); core.setOutput('run-id',h.origin.runId); core.setOutput('run-attempt',h.origin.runAttempt);
+    - id: host
+      uses: ./bp/cd/tasks/repo/context
+      with:
+        run-id: ${{ steps.locate.outputs.run-id }}
+        run-attempt: ${{ steps.locate.outputs.run-attempt }}
+    - id: verify
+      uses: actions/github-script@v9
+      env:
+        RECEIPT: ${{ steps.locate.outputs.receipt }}
+        BLUEPRINT_SHA: ${{ steps.host.outputs.blueprint-sha }}
+        SOURCE_SHA: ${{ steps.host.outputs.source-sha }}
+      with:
+        script: |
+          const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
+          const e=process.env,temp=await fs.realpath(e.RUNNER_TEMP),file=path.resolve(e.RECEIPT || ''),stat=await fs.lstat(file);
+          if (!file.startsWith(temp+path.sep) || await fs.realpath(file)!==file || !stat.isFile() || stat.mode&0o077 || stat.size>4194304) throw new Error('history-private-receipt');
+          const receipt=JSON.parse(await fs.readFile(file,'utf8')),p=receipt.payload,h=p.stateHandle,o=h.origin;
+          if (e.BLUEPRINT_SHA!==o.blueprintSha) throw new Error('history-platform-origin');
+          const run=(await github.rest.actions.getWorkflowRunAttempt({...context.repo,run_id:o.runId,attempt_number:o.runAttempt})).data;
+          if (String(run.id)!==o.runId || String(run.run_attempt)!==o.runAttempt || String(run.repository?.id)!==e.GITHUB_REPOSITORY_ID || !/^[0-9a-f]{40}$/.test(run.head_sha || '')) throw new Error('history-run');
+          for (const name of ['monorepo-delivery-slice.yml','monorepo-native-reservation.yml']) {
+            const workflow='.github/workflows/'+name;
+            if ((run.referenced_workflows || []).filter(x=>x.path==='cloudopsworks/blueprints/'+workflow+'@v5.11.0' && x.sha===o.blueprintSha).length!==1) throw new Error('history-called-code');
+            const remote=(await github.rest.repos.getContent({owner:'cloudopsworks',repo:'blueprints',path:workflow,ref:o.blueprintSha})).data;
+            if (Array.isArray(remote) || remote.type!=='file' || remote.encoding!=='base64' || typeof remote.content!=='string' || remote.content.length>262144) throw new Error('history-workflow-definition');
+            const bytes=Buffer.from(remote.content.replace(/\n/g,''),'base64'),local=await fs.readFile(path.join(e.GITHUB_WORKSPACE,'bp',workflow));
+            if (!bytes.equals(local) || crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex')!==remote.sha) throw new Error('history-workflow-bytes');
+          }
+          const jobs=[];
+          for (let page=1;page<=100;page++) {
+            const data=(await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo,run_id:o.runId,attempt_number:o.runAttempt,per_page:100,page})).data;
+            if (!Array.isArray(data.jobs) || data.jobs.length>100) throw new Error('history-jobs');
+            jobs.push(...data.jobs); if (data.jobs.length<100) break; if (page===100) throw new Error('history-jobs-bound');
+          }
+          const records={};
+          for (const [key,name,prefix] of [['stage','Monorepo delivery slice / stage','CLOUDOPSWORKS_STAGE_V1 '],['state','Monorepo delivery slice / native-reservation / reserve','CLOUDOPSWORKS_STATE_V1 ']]) {
+            const selected=jobs.filter(j=>j.name===name);
+            if (selected.length!==1) throw new Error('history-writer-identity');
+            const job=selected[0];
+            if (String(job.run_id)!==o.runId || String(job.run_attempt)!==o.runAttempt || !/^[1-9][0-9]*$/.test(String(job.id)) || job.status!=='completed' || key==='stage' && job.conclusion!=='success' || key==='state' && !job.steps?.some(s=>s.name==='Reserve exact native state claims' && s.status==='completed' && s.conclusion==='success')) throw new Error('history-writer-attempt');
+            const redirect=await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs',{...context.repo,job_id:job.id,request:{redirect:'manual'}});
+            const url=new URL(redirect.headers.location);
+            if (redirect.status!==302 || url.protocol!=='https:' || url.username || url.password || url.hash) throw new Error('history-log-redirect');
+            const response=await fetch(url,{redirect:'error',credentials:'omit',signal:AbortSignal.timeout(60000)});
+            if (response.status!==200 || !response.body || Number(response.headers.get('content-length') || 0)>8388608) throw new Error('history-log-transfer');
+            const chunks=[];let count=0;
+            for await (const chunk of response.body) { count+=chunk.length;if (count>8388608) throw new Error('history-log-bound');chunks.push(chunk); }
+            const text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
+            records[key]=[];
+            for (const line of text.split(/\r?\n/)) {
+              const marker=line.replace(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z /,'');
+              if (!marker.startsWith(prefix)) continue;
+              const raw=marker.slice(prefix.length),value=JSON.parse(raw);
+              if (JSON.stringify(value)!==raw) throw new Error('history-marker-canonical');
+              if (key==='stage' || value.receiptId===String(receipt.id)) records[key].push(value);
+            }
+          }
+          if (records.state.length!==1) throw new Error('history-marker-count');
+          records.stage=records.stage.filter(stage=>stage.artifactId===records.state[0].sourceStage?.artifactId);
+          if (records.stage.length!==1) throw new Error('history-marker-count');
+          const stage=records.stage[0],marker=records.state[0];
+          if (Object.keys(stage).sort().join()!=='archiveDigest,artifactId,artifactName,repositoryId,runAttempt,runId' || stage.repositoryId!==e.GITHUB_REPOSITORY_ID || stage.runId!==o.runId || stage.runAttempt!==o.runAttempt || stage.artifactName!==`monorepo-stage-${o.runId}-${o.runAttempt}` || !/^[1-9][0-9]*$/.test(stage.artifactId || '') || !/^sha256:[0-9a-f]{64}$/.test(stage.archiveDigest || '')) throw new Error('history-stage-proof');
+          const expectedStage={runId:o.runId,runAttempt:o.runAttempt,artifactId:stage.artifactId,archiveDigest:stage.archiveDigest};
+          const closure=run.event==='pull_request_target',caller=closure?'composite-first-closure.yml':'composite-first-slice.yml';
+          if (Object.keys(marker).sort().join()!=='receiptId,repositoryId,resourceClaims,runAttempt,runId,sourceContext,sourceStage,stateHandleDigest,workflowRef,workflowSha' || marker.repositoryId!==e.GITHUB_REPOSITORY_ID || marker.runId!==o.runId || marker.runAttempt!==o.runAttempt || marker.stateHandleDigest!==p.stateHandleDigest || JSON.stringify(marker.resourceClaims)!==JSON.stringify(p.resourceClaims) || marker.workflowSha!==run.head_sha || marker.workflowRef!==o.repository.fullName+'/.github/workflows/'+caller+'@refs/heads/'+run.head_branch || JSON.stringify(marker.sourceStage)!==JSON.stringify(expectedStage)) throw new Error('history-state-binding');
+          const source=marker.sourceContext;
+          if (!source || Object.keys(source).sort().join()!=='baseRef,event,prNumber,ref,sourceSha' || source.sourceSha!==o.sourceSha || source.baseRef!=='' || source.event!==(closure?'push':'workflow_dispatch') || (!closure && (source.sourceSha!==e.SOURCE_SHA || source.ref!=='refs/heads/'+run.head_branch || source.prNumber!==null))) throw new Error('history-source-context');
+          if (closure) {
+            if (!Number.isSafeInteger(source.prNumber) || source.prNumber<1 || !/^refs\/tags\/v[0-9][^\x00-\x20/]{0,255}$/.test(source.ref || '')) throw new Error('history-source-pr');
+            const pull=(await github.rest.pulls.get({...context.repo,pull_number:source.prNumber})).data;
+            if (pull.number!==source.prNumber || pull.state!=='closed' || pull.merged!==true || pull.merge_commit_sha!==source.sourceSha || !pull.base?.ref || String(pull.base?.repo?.id)!==e.GITHUB_REPOSITORY_ID || String(pull.head?.repo?.id)!==e.GITHUB_REPOSITORY_ID) throw new Error('history-source-merge');
+            const associations=run.pull_requests;
+            if (associations!==undefined && (!Array.isArray(associations) || associations.length>1)) throw new Error('history-pr-associations');
+            if (Array.isArray(associations) && associations.some(item=>!item || typeof item!=='object' || !Number.isSafeInteger(item.number) || item.number<1 || item.number!==source.prNumber || typeof item.base?.ref!=='string' || !item.base.ref || typeof item.head?.ref!=='string' || !item.head.ref || item.base?.ref!==pull.base.ref || item.head?.ref!==pull.head?.ref || typeof item.base?.sha!=='string' || !/^[0-9a-f]{40}$/.test(item.base.sha) || typeof item.head?.sha!=='string' || !Number.isSafeInteger(item.base?.repo?.id) || item.base.repo.id<1 || !Number.isSafeInteger(item.head?.repo?.id) || item.head.repo.id<1 || String(item.base?.repo?.id)!==e.GITHUB_REPOSITORY_ID || String(item.head?.repo?.id)!==e.GITHUB_REPOSITORY_ID || !/^[0-9a-f]{40}$/.test(item.head?.sha || '') || item.head.sha!==pull.head?.sha)) throw new Error('history-pr-association-binding');
+            const base=(await github.rest.repos.getBranch({...context.repo,branch:pull.base.ref})).data;
+            if (base.protected!==true || !/^[0-9a-f]{40}$/.test(base.commit?.sha || '')) throw new Error('history-source-protected-base');
+            const relation=(await github.rest.repos.compareCommitsWithBasehead({...context.repo,basehead:source.sourceSha+'...'+base.commit.sha})).data;
+            if (!['ahead','identical'].includes(relation.status) || relation.base_commit?.sha!==source.sourceSha || relation.merge_base_commit?.sha!==source.sourceSha) throw new Error('history-source-merge-lineage');
+            let object=(await github.rest.git.getRef({...context.repo,ref:source.ref.slice('refs/'.length)})).data.object;
+            for (let depth=0;object?.type==='tag' && depth<5;depth++) {
+              if (!/^[0-9a-f]{40}$/.test(object.sha || '')) throw new Error('history-source-tag-object');
+              object=(await github.rest.git.getTag({...context.repo,tag_sha:object.sha})).data.object;
+            }
+            if (object?.type!=='commit' || object.sha!==source.sourceSha) throw new Error('history-source-tag');
+          }
+          const output=path.join(path.dirname(file),'handle.json'); await fs.writeFile(output,JSON.stringify(h),{mode:0o600,flag:'wx'});
+          const markerFile=path.join(path.dirname(file),'marker.json');await fs.writeFile(markerFile,JSON.stringify(marker),{mode:0o600,flag:'wx'});
+          core.setOutput('state-handle',output);core.setOutput('marker',JSON.stringify(marker));core.setOutput('reservation-marker',markerFile);

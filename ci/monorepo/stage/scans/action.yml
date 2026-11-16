@@ -1,0 +1,231 @@
+name: Verify current component scanner coverage
+description: Source-free current-policy projection and exact typed worker receipts; diagnostic OCI remains isolated
+inputs:
+  caller-mode: {description: Verified current origin caller mode, default: ''}
+  policy-configuration: {description: Separately authenticated captured protected policy snapshot, default: ''}
+  mode: {description: Closed diagnostic, policy projection or normal verifier, default: diagnostic}
+  origin-run-id: {description: Independently authenticated original CI run, default: ''}
+  origin-run-attempt: {description: Original CI attempt, default: ''}
+  plan-artifact-id: {description: Endorsed original plan artifact ID, default: ''}
+  plan-archive-digest: {description: Endorsed original plan archive digest, default: ''}
+  plan: {description: Independently endorsed current BuildPlan, required: true}
+  configuration: {description: Same-job API-snapshot Go-normalized configuration, required: true}
+  verified-records: {description: Complete verified selected ComponentResult data set, required: true}
+  run-id: {description: Independently verified host run ID, required: true}
+  run-attempt: {description: Independently verified current attempt, required: true}
+outputs:
+  configuration: {description: Fixed effective scanner-policy projection, value: '${{ steps.policy.outputs.configuration }}'}
+  policy-digests: {description: Exact applicable immutable snapshot digests, value: '${{ steps.policy.outputs.policy-digests }}'}
+  policy-digest: {description: Exact effective scanner-policy digest, value: '${{ steps.policy.outputs.policy-digest }}'}
+  coverage: {description: Diagnostic image coverage status, value: '${{ steps.normal-coverage.outputs.coverage || steps.diagnostic.outputs.coverage }}'}
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@v9
+      env:
+        MODE: ${{ inputs.mode }}
+      with:
+        script: |
+          if (!['diagnostic', 'policy', 'normal'].includes(process.env.MODE)) throw new Error('scan-coverage-mode');
+    - id: diagnostic
+      if: inputs.mode == 'diagnostic'
+      uses: ./bp/ci/scan/trivy/endorsement
+      with:
+        mode: verify-diagnostic
+        plan: ${{ inputs.plan }}
+        configuration: ${{ inputs.configuration }}
+        verified-records: ${{ inputs.verified-records }}
+        run-id: ${{ inputs.run-id }}
+        run-attempt: ${{ inputs.run-attempt }}
+    - id: normal-host
+      if: inputs.mode == 'normal'
+      uses: ./bp/cd/tasks/repo/context
+      with:
+        mode: delivery
+    - id: policy
+      if: inputs.mode == 'policy' || inputs.mode == 'normal'
+      uses: actions/github-script@v9
+      env:
+        CONFIGURATION: ${{ inputs.configuration }}
+        POLICY_CONFIGURATION: ${{ inputs.policy-configuration }}
+        CALLER_MODE: ${{ inputs.caller-mode }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path'), crypto = require('node:crypto'), env = process.env;
+          const flags = ['sonarqubeEnabled', 'sonarqubeQualityGateEnabled', 'sonarqubeFailOnQualityGate', 'snykEnabled', 'semgrepEnabled', 'trivyEnabled', 'dependencyTrackEnabled'];
+          const selected = {'normal-main': [env.CONFIGURATION], 'normal-pr': [env.POLICY_CONFIGURATION], 'normal-closure': [env.CONFIGURATION, env.POLICY_CONFIGURATION]}[env.CALLER_MODE];
+          if (!selected) throw new Error('scan-policy-caller');
+          const policies = [], digests = [];
+          for (const file of selected) {
+            if (!file || (await fs.lstat(file)).isSymbolicLink() || (await fs.stat(file)).size > 4194304) throw new Error('scan-policy-bound');
+            const bytes = await fs.readFile(file), configuration = JSON.parse(bytes);
+            if (flags.some(flag => typeof configuration.scanners?.[flag] !== 'boolean')) throw new Error('scan-policy-boolean');
+            policies.push(configuration.scanners); digests.push('sha256:' + crypto.createHash('sha256').update(bytes).digest('hex'));
+          }
+          const scanners = Object.fromEntries(flags.map(flag => [flag, policies.some(policy => policy[flag])]));
+          const required = policies.some(policy => policy.sonarqubeEnabled && policy.sonarqubeQualityGateEnabled && policy.sonarqubeFailOnQualityGate);
+          scanners.sonarqubeQualityGateEnabled = policies.some(policy => policy.sonarqubeEnabled && policy.sonarqubeQualityGateEnabled);
+          scanners.sonarqubeFailOnQualityGate = required;
+          const bytes = Buffer.from(JSON.stringify({scanners}));
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'current-scan-policy-'));
+          const file = path.join(directory, 'configuration.json'); await fs.writeFile(file, bytes, {mode: 0o600, flag: 'wx'});
+          core.setOutput('configuration', file); core.setOutput('policy-digest', 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex')); core.setOutput('policy-digests', JSON.stringify(digests));
+    - id: normal-locate
+      if: inputs.mode == 'normal'
+      uses: actions/github-script@v9
+      env:
+        PLAN_PATH: ${{ inputs.plan }}
+        CONFIGURATION: ${{ inputs.configuration }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        HOST_CALLER_MODE: ${{ steps.normal-host.outputs.caller-mode }}
+        CALLER_MODE: ${{ inputs.caller-mode }}
+        HOST_SOURCE_SHA: ${{ steps.normal-host.outputs.source-sha }}
+        HOST_ORIGIN_RUN_ID: ${{ steps.normal-host.outputs.run-id }}
+        HOST_ORIGIN_RUN_ATTEMPT: ${{ steps.normal-host.outputs.run-attempt }}
+        ORIGIN_RUN_ID: ${{ inputs.origin-run-id }}
+        ORIGIN_RUN_ATTEMPT: ${{ inputs.origin-run-attempt }}
+        EFFECTIVE_CONFIGURATION: ${{ steps.policy.outputs.configuration }}
+        POLICY_DIGEST: ${{ steps.policy.outputs.policy-digest }}
+        POLICY_DIGESTS: ${{ steps.policy.outputs.policy-digests }}
+        PLAN_ARTIFACT_ID: ${{ inputs.plan-artifact-id }}
+        PLAN_ARCHIVE_DIGEST: ${{ inputs.plan-archive-digest }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), env = process.env;
+          if (env.CALLER_MODE !== env.HOST_CALLER_MODE || env.ORIGIN_RUN_ID !== env.HOST_ORIGIN_RUN_ID || env.ORIGIN_RUN_ATTEMPT !== env.HOST_ORIGIN_RUN_ATTEMPT) throw new Error('barrier-host-origin');
+          if (![env.RUN_ID, env.RUN_ATTEMPT, env.ORIGIN_RUN_ID, env.ORIGIN_RUN_ATTEMPT, env.PLAN_ARTIFACT_ID, env.GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || '')) || env.RUN_ID !== env.GITHUB_RUN_ID || env.RUN_ATTEMPT !== env.GITHUB_RUN_ATTEMPT || !/^sha256:[0-9a-f]{64}$/.test(env.PLAN_ARCHIVE_DIGEST || '')) throw new Error('barrier-context');
+          for (const file of [env.PLAN_PATH, env.CONFIGURATION]) if ((await fs.lstat(file)).isSymbolicLink() || (await fs.stat(file)).size > 4194304) throw new Error('barrier-file-bound');
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(env.PLAN_PATH)});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('barrier-plan');
+          const validated = JSON.parse(checked.stdout), plan = validated.record;
+          if (plan.headSha !== env.HOST_SOURCE_SHA) throw new Error('barrier-source-context');
+          const policyDigest = env.POLICY_DIGEST, policyDigests = JSON.parse(env.POLICY_DIGESTS), policy = JSON.parse(await fs.readFile(env.EFFECTIVE_CONFIGURATION, 'utf8')).scanners;
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT})).data;
+          if (String(run.id) !== env.RUN_ID || String(run.run_attempt) !== env.RUN_ATTEMPT || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('barrier-run');
+          // Closed actual caller nesting; manual and preview mappings require their real producers first.
+          if (run.event !== 'workflow_run') throw new Error('barrier-host');
+          const jobs = [];
+          for (let page = 1; page <= 100; page++) {
+            const response = (await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT, per_page: 100, page})).data.jobs;
+            if (!Array.isArray(response) || response.length > 100) throw new Error('barrier-jobs');
+            jobs.push(...response);
+            if (response.length < 100) break;
+            if (page === 100) throw new Error('barrier-jobs-bound');
+          }
+          const routes = [], expected = [], seen = new Set();
+          const workerPrefix = 'delivery / scan / monorepo-scan-component (';
+          const workers = jobs.filter(job => job.name?.startsWith(workerPrefix));
+          if (workers.length !== plan.components.length) throw new Error('barrier-component-set');
+          for (const component of plan.components) {
+            const matches = workers.filter(job => job.name === workerPrefix + component.id + ')'), job = matches[0];
+            if (matches.length !== 1 || !/^[1-9][0-9]*$/.test(String(job.id)) || String(job.run_id) !== env.RUN_ID || String(job.run_attempt) !== env.RUN_ATTEMPT || job.status !== 'completed' || job.conclusion !== 'success') throw new Error('barrier-worker');
+            const redirect = await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs', {...context.repo, job_id: job.id, request: {redirect: 'manual'}});
+            const url = new URL(redirect.headers.location);
+            if (redirect.status !== 302 || url.protocol !== 'https:' || url.username || url.password || url.hash) throw new Error('barrier-log-redirect');
+            const response = await fetch(url, {redirect: 'error', credentials: 'omit', signal: AbortSignal.timeout(60000)});
+            if (response.status !== 200 || !response.body || Number(response.headers.get('content-length') || 0) > 8388608) throw new Error('barrier-log-transfer');
+            const chunks = []; let count = 0;
+            for await (const chunk of response.body) { count += chunk.length; if (count > 8388608) throw new Error('barrier-log-bound'); chunks.push(chunk); }
+            const receipts = [];
+            for (const line of new TextDecoder('utf-8', {fatal: true}).decode(Buffer.concat(chunks)).split(/\r?\n/)) {
+              const marker = line.replace(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z /, '');
+              if (!marker.startsWith('CLOUDOPSWORKS_SCAN_V1 ')) continue;
+              const raw = marker.slice('CLOUDOPSWORKS_SCAN_V1 '.length), receipt = JSON.parse(raw);
+              if (JSON.stringify(receipt) !== raw) throw new Error('barrier-receipt-canonical');
+              receipts.push(receipt);
+            }
+            if (receipts.length !== 1) throw new Error('barrier-receipt-count');
+            const receipt = receipts[0];
+            const bindings = {repositoryId: env.GITHUB_REPOSITORY_ID, runId: env.RUN_ID, runAttempt: env.RUN_ATTEMPT, originRunId: env.ORIGIN_RUN_ID, originRunAttempt: env.ORIGIN_RUN_ATTEMPT, planArtifactId: env.PLAN_ARTIFACT_ID, planArchiveDigest: env.PLAN_ARCHIVE_DIGEST, planDigest: validated.digest, policyDigest, componentId: component.id};
+            if (JSON.stringify(receipt.policyDigests) !== JSON.stringify(policyDigests) || Object.entries(bindings).some(([key, value]) => receipt[key] !== value) || !/^[0-9a-f]{40}$/.test(receipt.sourceSha || '') || ![receipt.originalPlanDigest, receipt.componentDigest, receipt.mainDigest].every(value => /^sha256:[0-9a-f]{64}$/.test(value || ''))) throw new Error('barrier-receipt-binding');
+            const keys = ['snyk', 'semgrep', 'sonarqube', 'dependency-track', 'trivy'];
+            for (const purpose of ['main', 'preview']) if (policy.trivyEnabled && receipt[purpose + 'Format'] === 'oci') keys.push('oci-' + purpose);
+            if (!Array.isArray(receipt.records) || receipt.records.length !== keys.length || new Set(receipt.records.map(item => item.key)).size !== keys.length || keys.some(key => !receipt.records.some(item => item.key === key))) throw new Error('barrier-outcome-set');
+            for (const record of receipt.records) {
+              if (record.artifactName !== 'monorepo-scan-' + env.RUN_ID + '-' + env.RUN_ATTEMPT + '-' + component.id + '-' + record.key || !/^[1-9][0-9]*$/.test(record.artifactId || '') || seen.has(record.artifactId) || ![record.archiveDigest, record.digest].every(value => /^sha256:[0-9a-f]{64}$/.test(value || ''))) throw new Error('barrier-artifact');
+              seen.add(record.artifactId); routes.push({artifactId: record.artifactId, archiveDigest: record.archiveDigest});
+              expected.push({...record, componentId: component.id, sourceSha: receipt.sourceSha, artifactDigest: record.key === 'oci-preview' ? receipt.previewDigest : receipt.mainDigest, profile: component.buildProfile});
+            }
+          }
+          const path = require('node:path'), outputs = [], directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'barrier-expected-'));
+          await fs.chmod(directory,0o700);
+          for (const [name,value,limit] of [['expected',expected,16777216],['artifacts-file',routes,524288]]) {
+            const file = path.join(directory,name + '.json'), bytes = JSON.stringify(value);
+            if (Buffer.byteLength(bytes) > limit || Buffer.byteLength(file) > 4096) throw new Error('scan-file-bound');
+            await fs.writeFile(file,bytes,{mode:0o600,flag:'wx'}); outputs.push([name,file]);
+          }
+          for (const [name,file] of outputs) core.setOutput(name,file);
+    - id: normal-data
+      if: inputs.mode == 'normal'
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        artifact-set-file: ${{ steps.normal-locate.outputs.artifacts-file }}
+        run-id: ${{ inputs.run-id }}
+        record-kind: ScannerResult
+    - id: normal-coverage
+      if: inputs.mode == 'normal'
+      uses: actions/github-script@v9
+      env:
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        CONFIGURATION: ${{ steps.policy.outputs.configuration }}
+        EXPECTED: ${{ steps.normal-locate.outputs.expected }}
+        RECORDS_FILE: ${{ steps.normal-data.outputs.records-file }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), env = process.env;
+          const path = require('node:path');
+          async function readPrivate(file, limit, prefix, name) {
+            const root = await fs.realpath(env.RUNNER_TEMP);
+            if (typeof file !== 'string' || !path.isAbsolute(file) || Buffer.byteLength(file) > 4096 || file.includes('\0') || path.normalize(file) !== file || !file.startsWith(root + path.sep)) throw new Error('scan-file-path');
+            if (prefix && (path.dirname(path.dirname(file)) !== root || !path.basename(path.dirname(file)).startsWith(prefix) || path.basename(file) !== name)) throw new Error('scan-file-producer');
+            let current = root;
+            for (const part of path.relative(root, file).split(path.sep)) {
+              current = path.join(current, part);
+              const stat = await fs.lstat(current);
+              if (stat.isSymbolicLink() || (current === file ? !stat.isFile() : !stat.isDirectory()) || stat.mode & 0o077) throw new Error('scan-file-path');
+            }
+            const handle = await fs.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.mode & 0o077 || stat.size > limit) throw new Error('scan-file-bound');
+              const buffer = Buffer.alloc(limit + 1), {bytesRead} = await handle.read(buffer, 0, limit + 1, 0);
+              if (bytesRead > limit || bytesRead !== stat.size) throw new Error('scan-file-bound');
+              return buffer.subarray(0, bytesRead);
+            } finally { await handle.close(); }
+          }
+          if ((await fs.stat(env.CONFIGURATION)).size > 4194304) throw new Error('barrier-record-bound');
+          const policy = JSON.parse(await fs.readFile(env.CONFIGURATION, 'utf8')).scanners;
+          const flags = {snyk: 'snykEnabled', semgrep: 'semgrepEnabled', sonar: 'sonarqubeEnabled', 'dependency-track': 'dependencyTrackEnabled', trivy: 'trivyEnabled'};
+          for (const flag of [...Object.values(flags), 'sonarqubeQualityGateEnabled', 'sonarqubeFailOnQualityGate']) if (typeof policy?.[flag] !== 'boolean') throw new Error('barrier-policy');
+          if (![env.RUN_ID, env.RUN_ATTEMPT].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('scan-reader-context');
+          const expected = JSON.parse(await readPrivate(env.EXPECTED,16777216,'barrier-expected-','expected.json')), records = JSON.parse(await readPrivate(env.RECORDS_FILE,16777216,'artifact-verified-','records.json')), seen = new Set(), summary = [];
+          if (!Array.isArray(expected) || expected.length > 1792 || !Array.isArray(records) || records.length !== expected.length) throw new Error('barrier-record-count');
+          const expectedIds = new Set(), expectedKeys = new Set();
+          for (const entry of expected) {
+            if (!entry || Object.keys(entry).sort().join() !== 'archiveDigest,artifactDigest,artifactId,artifactName,componentId,digest,key,profile,sourceSha' ||
+                (typeof entry.artifactId !== 'string' || !/^[1-9][0-9]*$/.test(entry.artifactId)) || (typeof entry.componentId !== 'string' || !/^[a-z][a-z0-9-]{0,47}$/.test(entry.componentId)) ||
+                !['snyk','semgrep','sonarqube','dependency-track','trivy','oci-main','oci-preview'].includes(entry.key) ||
+                !['dotnet','go','maven','gradle','npm','pnpm','yarn','python','cargo','bundler','rails'].includes(entry.profile) ||
+                (typeof entry.sourceSha !== 'string' || !/^[0-9a-f]{40}$/.test(entry.sourceSha)) || ![entry.archiveDigest,entry.artifactDigest,entry.digest].every(value => typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value)) ||
+                entry.artifactName !== `monorepo-scan-${env.RUN_ID}-${env.RUN_ATTEMPT}-${entry.componentId}-${entry.key}` || expectedIds.has(entry.artifactId) || expectedKeys.has(entry.componentId + '/' + entry.key)) throw new Error('barrier-expected');
+            expectedIds.add(entry.artifactId);
+            expectedKeys.add(entry.componentId + '/' + entry.key);
+          }
+          for (const item of records) {
+          if (!item || Object.keys(item).sort().join() !== 'archive,archiveDigest,artifactId,artifactName,directory,extract,files,recordPath,runId,transport' || ![item.runId,item.artifactId].every(value => typeof value === 'string' && /^[1-9][0-9]*$/.test(value)) || (typeof item.archiveDigest !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(item.archiveDigest)) || typeof item.artifactName !== 'string' || !item.artifactName.length || Buffer.byteLength(item.artifactName) > 255 || ['archive','transport','extract','directory','recordPath'].some(key => typeof item[key] !== 'string' || Buffer.byteLength(item[key]) > 4096)) throw new Error('scan-record-fields');
+          if (item.runId !== env.RUN_ID) throw new Error('scan-record-run');
+          const parent = path.dirname(item.archive), root = await fs.realpath(env.RUNNER_TEMP);
+          if (path.dirname(parent) !== root || !path.basename(parent).startsWith('artifact-data-') || item.archive !== path.join(parent,'archive.zip') || item.transport !== path.join(parent,'transport.json') || item.extract !== path.join(parent,'extracted') || item.directory !== item.extract || JSON.stringify(item.files) !== '["scanner-result.json"]' || item.recordPath !== path.join(item.directory,'scanner-result.json')) throw new Error('scan-record-path');
+            const match = expected.find(record => record.artifactId === item.artifactId);
+            if (!match || seen.has(item.artifactId) || item.archiveDigest !== match.archiveDigest || item.artifactName !== match.artifactName) throw new Error('barrier-record-owner');
+            const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: await readPrivate(item.recordPath,4194304)});
+            if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('barrier-result-contract');
+            const validated = JSON.parse(checked.stdout), result = validated.record, scanner = match.key.startsWith('oci-') ? 'trivy' : match.key === 'sonarqube' ? 'sonar' : match.key;
+            const enabled = policy[flags[scanner]], required = scanner === 'sonar' && enabled && policy.sonarqubeQualityGateEnabled && policy.sonarqubeFailOnQualityGate;
+            if (validated.digest !== match.digest || result.scanner !== scanner || result.componentId !== match.componentId || result.sourceSha !== match.sourceSha || result.artifactDigest !== match.artifactDigest || result.required !== required || result.profile !== match.profile || !enabled && result.status !== 'disabled' || enabled && result.status === 'disabled' || required && result.status !== 'passed') throw new Error('barrier-result-mismatch');
+            seen.add(item.artifactId); summary.push([result.componentId, match.key, result.status, String(result.required)]);
+          }
+          core.summary.addTable([['Component', 'Scanner / purpose', 'Outcome', 'Required'], ...summary]); await core.summary.write();
+          core.setOutput('coverage', 'passed-current-policy');

@@ -1,0 +1,25 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "PreviewState",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "prNumber": 42,
+  "targetId": "preview-gke",
+  "namespace": "p-12345-42-preview-gke-61d82e",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "runId": "9001",
+  "phase": "ready",
+  "isolation": null,
+  "components": [
+    {
+      "componentId": "api",
+      "status": "ready",
+      "releaseName": "api",
+      "desiredDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "successfulDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "error": null
+    }
+  ]
+}

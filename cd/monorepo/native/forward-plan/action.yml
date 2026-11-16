@@ -1,0 +1,123 @@
+name: Inspect private native forward plan
+description: Data-only saved-plan prerequisite; never execution, ownership or readiness authority
+inputs:
+  operation-plan:
+    description: Private native apply OperationPlan JSON
+    required: true
+  saved-plan:
+    description: Private same-job unencrypted local OpenTofu binary plan
+    required: true
+  plan-json:
+    description: Private exact native show stdout companion
+    required: true
+  prior-state:
+    description: Private native state snapshot, or empty only after independent fresh-state absence proof
+    required: true
+outputs:
+  inspection:
+    description: Private inspection record, not deployment authorization
+    value: ${{ steps.admit.outputs.inspection }}
+runs:
+  using: composite
+  steps:
+    - id: admit
+      name: Bind typed inputs and native saved-plan bytes
+      uses: actions/github-script@v9
+      env:
+        OPERATION_PLAN: ${{ inputs.operation-plan }}
+        SAVED_PLAN: ${{ inputs.saved-plan }}
+        PLAN_JSON: ${{ inputs.plan-json }}
+        PRIOR_STATE: ${{ inputs.prior-state }}
+      with:
+        script: |
+          let failure = 'private native plan admission failed';
+          try {
+            const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
+            const {spawnSync} = require('node:child_process');
+            const {isDeepStrictEqual} = require('node:util');
+            const deny = () => { throw new Error(failure); };
+            const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+            const hash = bytes => 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex');
+            const base = process.env.RUNNER_TEMP;
+            if (!base || !path.isAbsolute(base) || fs.realpathSync(base) !== base) deny();
+            const directory = filename => {
+              if (filename !== base && !filename.startsWith(base + path.sep)) deny();
+              for (let current = filename; ; current = path.dirname(current)) {
+                const stat = fs.lstatSync(current);
+                if (!stat.isDirectory() || stat.isSymbolicLink() || (stat.mode & 0o777) !== 0o700) deny();
+                if (current === base) break;
+              }
+            };
+            directory(base);
+            const read = (filename, limit) => {
+              if (!path.isAbsolute(filename || '') || path.normalize(filename) !== filename) deny();
+              directory(path.dirname(filename));
+              const fd = fs.openSync(filename, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+              try {
+                const stat = fs.fstatSync(fd);
+                if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== process.getuid() || (stat.mode & 0o777) !== 0o600 || stat.size < 1 || stat.size > limit) deny();
+                const bytes = fs.readFileSync(fd);
+                if (bytes.length !== stat.size) deny();
+                return {filename,limit,bytes,digest:hash(bytes),device:stat.dev,inode:stat.ino};
+              } finally { fs.closeSync(fd); }
+            };
+            const json = bytes => JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(bytes));
+            const files = [read(process.env.OPERATION_PLAN,4194304),read(process.env.SAVED_PLAN,16777216),read(process.env.PLAN_JSON,4194304)];
+            if (process.env.PRIOR_STATE !== '') files.push(read(process.env.PRIOR_STATE,4194304));
+            const operation = json(files[0].bytes);
+            if (!object(operation) || operation.operation !== 'apply' || operation.lockId !== null) deny();
+            const home = fs.mkdtempSync(path.join(base,'forward-plan-'));
+            fs.chmodSync(home,0o700);
+            const config = path.join(home,'tofurc');
+            fs.writeFileSync(config,'disable_checkpoint = true\n',{flag:'wx',mode:0o600});
+            const env = {PATH:process.env.PATH,HOME:home,TMPDIR:home,TF_IN_AUTOMATION:'true',CHECKPOINT_DISABLE:'1',TF_CLI_CONFIG_FILE:config};
+            const run = (exe,args,input,cwd = home) => {
+              const result = spawnSync(exe,args,{input,env,cwd,timeout:30000,maxBuffer:4194304});
+              if (result.error || result.status !== 0 || result.signal || result.stdout.length > 4194304) deny();
+              return result.stdout;
+            };
+            const validated = json(run('tronador',['components','contracts','validate','--kind','OperationPlan','--json'],files[0].bytes));
+            if (validated.valid !== true || !isDeepStrictEqual(validated.record,operation) || !/^sha256:[a-f0-9]{64}$/.test(validated.digest)) deny();
+            const handle = validated.record.stateHandle, moduleId = handle.moduleId;
+            const root = path.resolve(process.env.GITHUB_ACTION_PATH,'../../../..');
+            if (!/^(aws|gcp|azure)-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(moduleId)) deny();
+            const moduleName = ['aws-eks','gcp-gke','azure-aks'].includes(moduleId) ? 'kubernetes-component' : moduleId;
+            const module = path.join(root,'terraform/monorepo/modules',moduleName);
+            const bound = json(run('tronador',['components','contracts','validate','--kind','StateHandle','--module-root',module,'--json'],JSON.stringify(handle)));
+            if (bound.valid !== true || !isDeepStrictEqual(bound.record,handle) || bound.digest !== validated.record.stateHandleDigest || !object(bound.module) || typeof bound.module.activationBlocked !== 'boolean') deny();
+            const cwd = path.dirname(files[1].filename), lock = read(path.join(cwd,'.terraform.lock.hcl'),4194304);
+            if (hash(fs.readFileSync(path.join(module,'.terraform.lock.hcl'))) !== handle.origin.providerLockDigest || lock.digest !== handle.origin.providerLockDigest) deny();
+            directory(path.join(cwd,'.terraform'));
+            env.TF_DATA_DIR = path.join(cwd,'.terraform');
+            if (json(run('tofu',['version','-json'])).terraform_version !== '1.11.4') deny();
+            if (!files[1].bytes.subarray(0,4).equals(Buffer.from([0x50,0x4b,0x03,0x04]))) deny();
+            // Show loads trusted provider schema plugins; a clean environment is not a sandbox or universal offline proof.
+            const shown = run('tofu',['show','-json','-plan='+files[1].filename],undefined,cwd);
+            if (!shown.equals(files[2].bytes)) deny();
+            const plan = json(shown);
+            if (!object(plan) || plan.format_version !== '1.2' || plan.terraform_version !== '1.11.4') deny();
+            for (const before of [...files,lock]) {
+              const after = read(before.filename,before.limit);
+              if (after.digest !== before.digest || after.device !== before.device || after.inode !== before.inode) deny();
+            }
+            failure = 'private native plan inspection failed';
+            const contextBytes = Buffer.from(JSON.stringify({forwardPlan:{moduleRoot:module,plan:{path:files[2].filename,digest:files[2].digest},priorState:files.length === 4 ? {path:files[3].filename,digest:files[3].digest} : null}}));
+            const contextPath = path.join(home,'forward-context.json');
+            fs.writeFileSync(contextPath,contextBytes,{flag:'wx',mode:0o600});
+            const context = read(contextPath,65536);
+            if (context.digest !== hash(contextBytes)) deny();
+            const inspected = json(run('tronador',['components','contracts','validate','--kind','OperationPlan','--linked-context',contextPath,'--json'],files[0].bytes));
+            const inspection = inspected.inspection;
+            const closed = (value,keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value,key));
+            if (!closed(inspected,['valid','record','digest','inspection']) || inspected.valid !== true || !isDeepStrictEqual(inspected.record,operation) || inspected.digest !== validated.digest) deny();
+            if (!closed(inspection,['contextDigest','moduleId','activationBlocked','counts']) || inspection.contextDigest !== hash(contextBytes) || inspection.moduleId !== moduleId || inspection.activationBlocked !== bound.module.activationBlocked) deny();
+            if (!closed(inspection.counts,['create','update','delete','unchanged']) || Object.values(inspection.counts).some(value => !Number.isSafeInteger(value) || value < 0)) deny();
+            for (const before of [...files,lock,context]) {
+              const after = read(before.filename,before.limit);
+              if (after.digest !== before.digest || after.device !== before.device || after.inode !== before.inode) deny();
+            }
+            const output = path.join(home,'inspection.json');
+            const result = {operationDigest:validated.digest,stateHandleDigest:operation.stateHandleDigest,savedPlanDigest:files[1].digest,planJSONDigest:files[2].digest,priorStateDigest:files.length === 4 ? files[3].digest : null,moduleId,activationBlocked:bound.module.activationBlocked,counts:inspection.counts};
+            fs.writeFileSync(output,JSON.stringify(result),{flag:'wx',mode:0o600});
+            core.setOutput('inspection',output);
+          } catch { core.setFailed(failure); }

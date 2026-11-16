@@ -1,4 +1,6 @@
+{{- if not .Values.monorepo.enabled }}
 {{ range .Values.extraObjects }}
 ---
 {{ toYaml . }}
 {{ end }}
+{{- end }}

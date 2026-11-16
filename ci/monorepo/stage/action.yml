@@ -1,0 +1,220 @@
+name: Assemble isolated complete monorepo stage
+description: API-only endorsed selection and verified data assembly, never a second selector
+inputs:
+  mode: {description: Closed diagnostic or scan-before-stage normal producer, default: diagnostic}
+  caller-mode: {description: Independently verified original CI caller, default: ''}
+  scan-run-id: {description: Actual current scanner/delivery host, default: ''}
+  scan-run-attempt: {description: Actual current scanner/delivery attempt, default: ''}
+  plan-artifact-id: {description: Exact endorsed origin plan artifact ID, default: ''}
+  plan-archive-digest: {description: Exact endorsed origin plan archive digest, default: ''}
+  policy-configuration: {description: Separate captured protected-base policy snapshot, default: ''}
+  plan: {description: Exact independently endorsed BuildPlan file, required: true}
+  configuration: {description: API-snapshot Go-normalized configuration file, required: true}
+  source-sha: {description: Independently verified application commit, required: true}
+  base-sha: {description: Independently verified planner baseline, required: true}
+  version: {description: Frozen version corroborated by planner endorsement, required: true}
+  run-id: {description: Actual source host run, required: true}
+  run-attempt: {description: Exact native attempt, required: true}
+  carry-manifest: {description: Independently authenticated prior complete manifest, default: ''}
+outputs:
+  manifest: {description: Complete typed manifest; no public release implied, value: '${{ steps.manifest.outputs.manifest }}'}
+  directory: {description: Private stage control data directory, value: '${{ steps.manifest.outputs.directory }}'}
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@v9
+      env:
+        MODE: ${{ inputs.mode }}
+      with:
+        script: |
+          if (!['diagnostic', 'normal'].includes(process.env.MODE)) throw new Error('stage-producer-mode');
+    - id: locate
+      uses: actions/github-script@v9
+      env:
+        MODE: ${{ inputs.mode }}
+        CALLER_MODE: ${{ inputs.caller-mode }}
+        PLAN_PATH: ${{ inputs.plan }}
+        CONFIGURATION: ${{ inputs.configuration }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        BASE_SHA: ${{ inputs.base-sha }}
+        VERSION: ${{ inputs.version }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        CARRY_MANIFEST: ${{ inputs.carry-manifest }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const env = process.env;
+          if (!/^[0-9a-f]{40}$/.test(env.SOURCE_SHA || '') || !/^[0-9a-f]{40}$/.test(env.BASE_SHA || '') || ![env.RUN_ID, env.RUN_ATTEMPT, env.GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('stage-context');
+          for (const file of [env.PLAN_PATH, env.CONFIGURATION]) if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('stage-record-bound');
+          const original = JSON.parse(await fs.readFile(env.PLAN_PATH, 'utf8'));
+          const configuration = JSON.parse(await fs.readFile(env.CONFIGURATION, 'utf8'));
+          const candidate = {...original, components: configuration.components, targets: configuration.targets, previewPolicy: configuration.previewPolicy};
+          const validated = [];
+          for (const record of [original, candidate]) {
+            const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+            if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('stage-plan-contract');
+            validated.push(JSON.parse(checked.stdout));
+          }
+          const plan = validated[0].record;
+          if (validated[0].digest !== validated[1].digest || plan.headSha !== env.SOURCE_SHA || plan.baseSha !== env.BASE_SHA || plan.version !== env.VERSION || plan.repository.id !== env.GITHUB_REPOSITORY_ID || plan.repository.fullName !== `${context.repo.owner}/${context.repo.repo}`) throw new Error('stage-plan-config-link');
+          const selected = plan.buildSelection.map(item => item.componentId).sort();
+          const carried = plan.components.filter(component => !selected.includes(component.id));
+          if (carried.length && !env.CARRY_MANIFEST) throw new Error('stage-historical-carry-proof-required');
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT})).data;
+          if (String(run.id) !== env.RUN_ID || String(run.run_attempt) !== env.RUN_ATTEMPT || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('stage-run-attempt');
+          const jobs = [];
+          for (let page = 1; page <= 100; page++) {
+            const response = (await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT, per_page: 100, page})).data;
+            if (!Array.isArray(response.jobs) || response.jobs.length > 100) throw new Error('stage-jobs');
+            jobs.push(...response.jobs);
+            if (response.jobs.length < 100) break;
+            if (page === 100) throw new Error('stage-jobs-bound');
+          }
+          const normalPrefix = {'normal-main': 'lifecycle / ci / ', 'normal-closure': 'close / lifecycle / ci / ', 'normal-pr': 'ci / ci / '}[env.CALLER_MODE];
+          if (env.MODE === 'normal' && !normalPrefix) throw new Error('stage-origin-caller');
+          for (const role of env.MODE === 'normal' ? ['build'] : ['build', 'scan']) {
+            const prefix = env.MODE === 'normal' ? normalPrefix + 'monorepo-ci-' : 'Monorepo delivery slice / ';
+            const expected = new Set(selected.map(id => `${prefix}${role} (${id})`));
+            const actual = jobs.filter(job => job.name?.startsWith(`${prefix}${role} (`));
+            if (actual.length !== expected.size || new Set(actual.map(job => job.name)).size !== actual.length || actual.some(job => !/^[1-9][0-9]*$/.test(String(job.id)) || !expected.has(job.name) || String(job.run_id) !== env.RUN_ID || String(job.run_attempt) !== env.RUN_ATTEMPT || job.status !== 'completed' || job.conclusion !== 'success')) throw new Error('stage-current-ci-jobs');
+          }
+          const names = new Set(selected.map(id => `components-${env.RUN_ID}-${env.RUN_ATTEMPT}-${id}`));
+          const artifacts = [];
+          for (let page = 1; page <= 100; page++) {
+            const response = (await github.rest.actions.listWorkflowRunArtifacts({...context.repo, run_id: env.RUN_ID, per_page: 100, page})).data;
+            if (!Array.isArray(response.artifacts) || response.artifacts.length > 100) throw new Error('stage-artifacts');
+            artifacts.push(...response.artifacts.filter(artifact => names.has(artifact.name)));
+            if (response.artifacts.length < 100) break;
+            if (page === 100) throw new Error('stage-artifacts-bound');
+          }
+          if (artifacts.length !== selected.length || new Set(artifacts.map(artifact => artifact.name)).size !== selected.length) throw new Error('stage-artifact-set');
+          core.setOutput('has-selected', String(selected.length > 0));
+          core.setOutput('has-carried', String(carried.length > 0));
+          core.setOutput('artifacts', JSON.stringify(artifacts.map(artifact => ({artifactId: String(artifact.id), archiveDigest: artifact.digest}))));
+    - id: normal-host
+      if: inputs.mode == 'normal'
+      uses: ./bp/cd/tasks/repo/context
+      with:
+        mode: delivery
+    - id: normal-barrier
+      if: inputs.mode == 'normal'
+      uses: actions/github-script@v9
+      env:
+        HOST_CALLER_MODE: ${{ steps.normal-host.outputs.caller-mode }}
+        CALLER_MODE: ${{ inputs.caller-mode }}
+        HOST_SOURCE_SHA: ${{ steps.normal-host.outputs.source-sha }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        HOST_ORIGIN_RUN_ID: ${{ steps.normal-host.outputs.run-id }}
+        HOST_ORIGIN_RUN_ATTEMPT: ${{ steps.normal-host.outputs.run-attempt }}
+        ORIGIN_RUN_ID: ${{ inputs.run-id }}
+        ORIGIN_RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        SCAN_RUN_ID: ${{ inputs.scan-run-id }}
+        SCAN_RUN_ATTEMPT: ${{ inputs.scan-run-attempt }}
+      with:
+        script: |
+          const env = process.env;
+          if (env.SCAN_RUN_ID !== env.GITHUB_RUN_ID || env.SCAN_RUN_ATTEMPT !== env.GITHUB_RUN_ATTEMPT || ![env.SCAN_RUN_ID, env.SCAN_RUN_ATTEMPT, env.GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('stage-scan-host');
+          if (env.SOURCE_SHA !== env.HOST_SOURCE_SHA || env.CALLER_MODE !== env.HOST_CALLER_MODE || env.ORIGIN_RUN_ID !== env.HOST_ORIGIN_RUN_ID || env.ORIGIN_RUN_ATTEMPT !== env.HOST_ORIGIN_RUN_ATTEMPT) throw new Error('stage-host-origin');
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: env.SCAN_RUN_ID, attempt_number: env.SCAN_RUN_ATTEMPT})).data;
+          if (String(run.id) !== env.SCAN_RUN_ID || String(run.run_attempt) !== env.SCAN_RUN_ATTEMPT || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID || run.event !== 'workflow_run') throw new Error('stage-scan-run');
+          const jobs = [];
+          for (let page = 1; page <= 100; page++) {
+            const response = (await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo, run_id: env.SCAN_RUN_ID, attempt_number: env.SCAN_RUN_ATTEMPT, per_page: 100, page})).data.jobs;
+            if (!Array.isArray(response) || response.length > 100) throw new Error('stage-barrier-jobs');
+            jobs.push(...response); if (response.length < 100) break; if (page === 100) throw new Error('stage-barrier-bound');
+          }
+          const selected = jobs.filter(job => job.name === 'delivery / scan / monorepo-scan-required'), job = selected[0];
+          if (selected.length !== 1 || !/^[1-9][0-9]*$/.test(String(job.id)) || String(job.run_id) !== env.SCAN_RUN_ID || String(job.run_attempt) !== env.SCAN_RUN_ATTEMPT || job.status !== 'completed' || job.conclusion !== 'success') throw new Error('stage-required-barrier');
+    - id: data
+      if: steps.locate.outputs.has-selected == 'true'
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        artifact-set: ${{ steps.locate.outputs.artifacts }}
+        run-id: ${{ inputs.run-id }}
+        record-kind: ComponentResult
+        plan: ${{ inputs.plan }}
+    - id: carry
+      if: steps.locate.outputs.has-carried == 'true'
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        carry-manifest: ${{ inputs.carry-manifest }}
+        run-id: ${{ inputs.run-id }}
+        record-kind: ComponentResult
+        plan: ${{ inputs.plan }}
+    - id: scans
+      uses: ./bp/ci/monorepo/stage/scans
+      with:
+        mode: ${{ inputs.mode }}
+        caller-mode: ${{ inputs.caller-mode }}
+        policy-configuration: ${{ inputs.policy-configuration }}
+        origin-run-id: ${{ inputs.run-id }}
+        origin-run-attempt: ${{ inputs.run-attempt }}
+        plan-artifact-id: ${{ inputs.plan-artifact-id }}
+        plan-archive-digest: ${{ inputs.plan-archive-digest }}
+        plan: ${{ inputs.plan }}
+        configuration: ${{ inputs.configuration }}
+        verified-records: ${{ steps.data.outputs.records }}
+        run-id: ${{ inputs.mode == 'normal' && inputs.scan-run-id || inputs.run-id }}
+        run-attempt: ${{ inputs.mode == 'normal' && inputs.scan-run-attempt || inputs.run-attempt }}
+    - id: manifest
+      uses: actions/github-script@v9
+      env:
+        PLAN_PATH: ${{ inputs.plan }}
+        VERIFIED_RECORDS: ${{ steps.data.outputs.records }}
+        CARRIED_RECORDS: ${{ steps.carry.outputs.records }}
+        CARRY_MANIFEST: ${{ inputs.carry-manifest }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          if (Buffer.byteLength(env.VERIFIED_RECORDS || '') > 4 * 1024 * 1024) throw new Error('stage-result-set-bound');
+          const plan = JSON.parse(await fs.readFile(env.PLAN_PATH, 'utf8'));
+          const verified = JSON.parse(env.VERIFIED_RECORDS || '[]');
+          const selected = new Set(plan.buildSelection.map(item => item.componentId));
+          if (!Array.isArray(verified) || verified.length !== selected.size) throw new Error('stage-result-count');
+          const entries = new Map();
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'monorepo-stage-'));
+          await fs.chmod(directory, 0o700);
+          const linked = path.join(directory, 'linked.json');
+          await fs.writeFile(linked, JSON.stringify({plan}), {mode: 0o600});
+          for (const item of verified) {
+            if ((await fs.stat(item.recordPath)).size > 4 * 1024 * 1024) throw new Error('stage-result-bound');
+            const output = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {silent: true, ignoreReturnCode: true, input: await fs.readFile(item.recordPath)});
+            if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('stage-result-link');
+            const result = JSON.parse(output.stdout).record;
+            if (result.status !== 'succeeded' || !selected.has(result.componentId) || entries.has(result.componentId) || item.artifactName !== `components-${env.RUN_ID}-${env.RUN_ATTEMPT}-${result.componentId}`) throw new Error('stage-result-owner');
+            const component = plan.components.find(component => component.id === result.componentId);
+            const entry = {componentId: component.id, package: component.package, workload: component.workload, targetIds: component.targetIds};
+            for (const key of ['mainArtifact', 'previewArtifact']) {
+              const artifact = result[key];
+              entry[key] = artifact ? {...artifact, location: {kind: 'actions-artifact', repositoryId: plan.repository.id, runId: env.RUN_ID, runAttempt: env.RUN_ATTEMPT, artifactId: item.artifactId, artifactName: item.artifactName, path: artifact.location.path}} : null;
+            }
+            entries.set(result.componentId, entry);
+          }
+          let previousTag = null;
+          if (env.CARRY_MANIFEST) {
+            const prior = JSON.parse(await fs.readFile(env.CARRY_MANIFEST, 'utf8'));
+            previousTag = prior.tag;
+            for (const item of JSON.parse(env.CARRIED_RECORDS || '[]')) {
+              const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(item.recordPath)});
+              if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('stage-carried-result');
+              const result = JSON.parse(checked.stdout).record;
+              const entry = prior.components.find(component => component.componentId === result.componentId);
+              if (!entry || selected.has(result.componentId) || entries.has(result.componentId)) throw new Error('stage-carried-membership');
+              entries.set(result.componentId, entry);
+            }
+          }
+          if (plan.components.some(component => !entries.has(component.id))) throw new Error('stage-complete-manifest');
+          const record = {apiVersion: 'cloudopsworks.io/v1', kind: 'ReleaseManifest', repository: plan.repository, version: plan.version, tag: 'v' + plan.version, headSha: plan.headSha, previousTag, state: 'complete', components: plan.components.map(component => entries.get(component.id)), targets: plan.targets};
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ReleaseManifest', '--linked-context', linked], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('stage-manifest-contract');
+          const manifest = path.join(directory, 'manifest.json');
+          await fs.writeFile(manifest, JSON.stringify(JSON.parse(checked.stdout).record), {mode: 0o600, flag: 'wx'});
+          await fs.copyFile(env.PLAN_PATH, path.join(directory, 'plan.json'));
+          await fs.unlink(linked);
+          core.setOutput('manifest', manifest);
+          core.setOutput('directory', directory);

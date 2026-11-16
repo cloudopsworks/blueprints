@@ -1,0 +1,18 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "DeploymentResult",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "componentId": "api",
+  "targetId": "prod-run",
+  "releaseVersion": "1.2.3",
+  "artifactDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "targetConfigDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "idempotencyKey": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "status": "succeeded",
+  "ready": true,
+  "resourceUrl": "https://api-example.run.app",
+  "error": null
+}

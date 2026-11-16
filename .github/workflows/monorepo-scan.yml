@@ -1,0 +1,525 @@
+name: Monorepo current-policy scans
+on:
+  workflow_call:
+    inputs:
+      run-id: {type: string, required: true}
+      run-attempt: {type: string, required: true}
+      plan-artifact-id: {type: string, required: true}
+      plan-archive-digest: {type: string, required: true}
+      baseline-run-id: {type: string, default: ''}
+      baseline-run-attempt: {type: string, default: ''}
+      baseline-artifact-id: {type: string, default: ''}
+      baseline-archive-digest: {type: string, default: ''}
+      blueprint-sha: {type: string, required: true}
+    secrets:
+      SONARQUBE_TOKEN: {required: false}
+      SNYK_TOKEN: {required: false}
+      SEMGREP_TOKEN: {required: false}
+      DEPENDENCYTRACK_TOKEN: {required: false}
+permissions: {}
+jobs:
+  prepare:
+    name: monorepo-scan-plan
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, pull-requests: read}
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ inputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - id: context
+        uses: ./bp/cd/tasks/repo/context
+        with:
+          mode: delivery
+      - id: plan
+        uses: ./bp/ci/monorepo/plan/endorsement
+        with:
+          mode: verify
+          caller-mode: ${{ steps.context.outputs.caller-mode }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+          artifact-id: ${{ inputs.plan-artifact-id }}
+          archive-digest: ${{ inputs.plan-archive-digest }}
+      - id: matrix
+        uses: actions/github-script@v9
+        env:
+          PLAN: ${{ steps.plan.outputs.plan }}
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            if ((await fs.stat(process.env.PLAN)).size > 4194304) throw new Error('scan-plan-bound');
+            const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(process.env.PLAN)});
+            if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('scan-plan-contract');
+            const plan = JSON.parse(checked.stdout).record;
+            core.setOutput('matrix', JSON.stringify({include: plan.components.map(component => ({componentId: component.id}))}));
+  component:
+    name: monorepo-scan-component (${{ matrix.componentId }})
+    needs: prepare
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, pull-requests: read}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ inputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - id: host
+        uses: ./bp/cd/tasks/repo/context
+        with:
+          mode: delivery
+      - id: inputs
+        uses: ./bp/ci/monorepo/stage/inputs
+        with:
+          run-id: ${{ inputs.run-id }}
+          run-attempt: ${{ inputs.run-attempt }}
+          plan-artifact-id: ${{ inputs.plan-artifact-id }}
+          plan-archive-digest: ${{ inputs.plan-archive-digest }}
+          baseline-run-id: ${{ inputs.baseline-run-id }}
+          baseline-run-attempt: ${{ inputs.baseline-run-attempt }}
+          baseline-artifact-id: ${{ inputs.baseline-artifact-id }}
+          baseline-archive-digest: ${{ inputs.baseline-archive-digest }}
+          component: ${{ matrix.componentId }}
+      - id: policy-snapshot
+        if: steps.inputs.outputs.caller-mode == 'normal-pr' || steps.inputs.outputs.caller-mode == 'normal-closure'
+        uses: ./bp/ci/monorepo/source
+        with:
+          source-sha: ${{ steps.inputs.outputs.policy-sha }}
+      - id: effective-policy
+        uses: ./bp/ci/monorepo/stage/scans
+        with:
+          mode: policy
+          caller-mode: ${{ steps.inputs.outputs.caller-mode }}
+          plan: ${{ steps.inputs.outputs.current-plan }}
+          configuration: ${{ steps.inputs.outputs.configuration }}
+          policy-configuration: ${{ steps.policy-snapshot.outputs.configuration }}
+          verified-records: '[]'
+          run-id: ${{ github.run_id }}
+          run-attempt: ${{ github.run_attempt }}
+      - id: policy
+        uses: actions/github-script@v9
+        env:
+          CURRENT_PLAN: ${{ steps.inputs.outputs.current-plan }}
+          CONFIGURATION: ${{ steps.effective-policy.outputs.configuration }}
+          ORIGINAL_PLAN: ${{ steps.inputs.outputs.plan }}
+          COMPONENT_RESULT: ${{ steps.inputs.outputs.result }}
+          COMPONENT: ${{ matrix.componentId }}
+          TRUSTED_SOURCE: ${{ steps.inputs.outputs.trusted-source }}
+          HOST_ORIGIN_RUN_ID: ${{ steps.host.outputs.run-id }}
+          HOST_ORIGIN_RUN_ATTEMPT: ${{ steps.host.outputs.run-attempt }}
+          ORIGIN_RUN_ID: ${{ inputs.run-id }}
+          ORIGIN_RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        with:
+          script: |
+            const fs = require('node:fs/promises'), env = process.env;
+            if (env.ORIGIN_RUN_ID !== env.HOST_ORIGIN_RUN_ID || env.ORIGIN_RUN_ATTEMPT !== env.HOST_ORIGIN_RUN_ATTEMPT) throw new Error('scan-host-origin');
+            const read = async file => { if ((await fs.stat(file)).size > 4194304) throw new Error('scan-policy-bound'); return JSON.parse(await fs.readFile(file, 'utf8')); };
+            const plan = await read(env.CURRENT_PLAN), original = await read(env.ORIGINAL_PLAN), result = await read(env.COMPONENT_RESULT), configuration = await read(env.CONFIGURATION);
+            const component = plan.components.find(item => item.id === env.COMPONENT), prior = original.components.find(item => item.id === env.COMPONENT);
+            if (!component || !prior || result.componentId !== component.id || result.headSha !== original.headSha || result.version !== original.version || result.status !== 'succeeded' || !['true', 'false'].includes(env.TRUSTED_SOURCE)) throw new Error('scan-policy-owner');
+            const policy = configuration.scanners;
+            for (const field of ['sonarqubeEnabled', 'sonarqubeQualityGateEnabled', 'sonarqubeFailOnQualityGate', 'snykEnabled', 'semgrepEnabled', 'trivyEnabled', 'dependencyTrackEnabled']) if (typeof policy?.[field] !== 'boolean') throw new Error('scan-policy-boolean');
+            for (const [name, field] of Object.entries({sonarqube: 'sonarqubeEnabled', snyk: 'snykEnabled', semgrep: 'semgrepEnabled', trivy: 'trivyEnabled', dtrack: 'dependencyTrackEnabled'})) core.setOutput(name, String(policy[field] && env.TRUSTED_SOURCE === 'true'));
+            core.setOutput('dotnet', String(component.language === 'dotnet'));
+            core.setOutput('profile', prior.buildProfile);
+            core.setOutput('trivy-tools', String(policy.trivyEnabled));
+            core.setOutput('quality-gate', String(policy.sonarqubeQualityGateEnabled));
+            core.setOutput('fail-on-gate', String(policy.sonarqubeFailOnQualityGate));
+            for (const purpose of ['main', 'preview']) core.setOutput('oci-' + purpose, String(policy.trivyEnabled && result[purpose + 'Artifact']?.format === 'oci'));
+      - uses: ./bp/ci/monorepo/toolchains
+        if: steps.inputs.outputs.trusted-source == 'true'
+        with:
+          plan: ${{ steps.inputs.outputs.plan }}
+          component: ${{ matrix.componentId }}
+          scan-component: 'true'
+          runtime: ''
+      - uses: ./bp/ci/monorepo/scanners
+        with:
+          sonarqube: ${{ steps.policy.outputs.sonarqube }}
+          dotnet: ${{ steps.policy.outputs.dotnet }}
+          snyk: ${{ steps.policy.outputs.snyk }}
+          semgrep: ${{ steps.policy.outputs.semgrep }}
+          trivy: ${{ steps.policy.outputs.trivy-tools }}
+      - uses: actions/checkout@v4
+        if: steps.inputs.outputs.trusted-source == 'true'
+        with:
+          ref: ${{ steps.inputs.outputs.source-sha }}
+          path: source
+          persist-credentials: false
+          submodules: false
+          fetch-depth: 1
+      - id: payload
+        if: steps.inputs.outputs.trusted-source == 'true'
+        uses: actions/github-script@v9
+        env:
+          RESULT: ${{ steps.inputs.outputs.result }}
+          DIRECTORY: ${{ steps.inputs.outputs.directory }}
+        with:
+          script: |
+            const fs = require('node:fs/promises'), path = require('node:path'), env = process.env;
+            if ((await fs.stat(env.RESULT)).size > 4194304) throw new Error('scan-payload-record-bound');
+            const result = JSON.parse(await fs.readFile(env.RESULT, 'utf8'));
+            const root = await fs.realpath('source'), origin = await fs.realpath(env.DIRECTORY);
+            const head = await exec.getExecOutput('git', ['-C', root, 'rev-parse', 'HEAD'], {silent: true, ignoreReturnCode: true});
+            if (head.exitCode !== 0 || head.stdout.trim() !== result.headSha) throw new Error('scan-payload-source');
+            for (const descriptor of [result.mainArtifact, result.previewArtifact].filter(Boolean)) {
+              const relative = descriptor.location.path;
+              if (descriptor.location.kind !== 'local' || !relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('scan-payload-path');
+              const source = path.join(origin, relative), destination = path.join(root, relative);
+              const stat = await fs.lstat(source);
+              if (!stat.isFile() || stat.size > 536870912 || await fs.realpath(source) !== source) throw new Error('scan-payload-file');
+              let parent = root;
+              for (const part of relative.split('/').slice(0, -1)) { parent = path.join(parent, part); await fs.mkdir(parent, {mode: 0o700}).catch(error => { if (error.code !== 'EEXIST') throw error; }); if (await fs.realpath(parent) !== parent || !(await fs.lstat(parent)).isDirectory()) throw new Error('scan-payload-parent'); }
+              await fs.copyFile(source, destination, require('node:fs').constants.COPYFILE_EXCL);
+            }
+      - id: snyk
+        uses: ./bp/ci/scan/snyk
+        if: steps.policy.outputs.snyk == 'true'
+        with:
+          source-path: source
+          plan: ${{ steps.inputs.outputs.plan }}
+          component-result: ${{ steps.inputs.outputs.result }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.inputs.outputs.source-sha }}
+          trusted: ${{ steps.inputs.outputs.trusted-source }}
+          token: ${{ secrets.SNYK_TOKEN }}
+      - id: semgrep
+        uses: ./bp/ci/scan/semgrep
+        if: steps.policy.outputs.semgrep == 'true'
+        with:
+          source-path: source
+          plan: ${{ steps.inputs.outputs.plan }}
+          component-result: ${{ steps.inputs.outputs.result }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.inputs.outputs.source-sha }}
+          trusted: ${{ steps.inputs.outputs.trusted-source }}
+          token: ${{ secrets.SEMGREP_TOKEN }}
+          source-ref: ${{ steps.inputs.outputs.source-ref }}
+      - id: sonar
+        uses: ./bp/ci/scan/sonarqube/component
+        if: steps.policy.outputs.sonarqube == 'true' && steps.policy.outputs.dotnet == 'false'
+        with:
+          source-path: source
+          plan: ${{ steps.inputs.outputs.plan }}
+          component-result: ${{ steps.inputs.outputs.result }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.inputs.outputs.source-sha }}
+          trusted: ${{ steps.inputs.outputs.trusted-source }}
+          token: ${{ secrets.SONARQUBE_TOKEN }}
+          server: ${{ vars.SONARQUBE_URL }}
+          project-key: ${{ format('{0}-{1}', github.event.repository.name, matrix.componentId) }}
+          version: ${{ steps.inputs.outputs.version }}
+          quality-gate-enabled: ${{ steps.policy.outputs.quality-gate }}
+          fail-on-quality-gate: ${{ steps.policy.outputs.fail-on-gate }}
+          branch: ${{ steps.inputs.outputs.source-ref }}
+      - id: sonar-dotnet
+        uses: ./bp/ci/dotnet/scan/sonarqube/component
+        if: steps.policy.outputs.sonarqube == 'true' && steps.policy.outputs.dotnet == 'true'
+        with:
+          source-path: source
+          plan: ${{ steps.inputs.outputs.plan }}
+          component-result: ${{ steps.inputs.outputs.result }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.inputs.outputs.source-sha }}
+          trusted: ${{ steps.inputs.outputs.trusted-source }}
+          token: ${{ secrets.SONARQUBE_TOKEN }}
+          server: ${{ vars.SONARQUBE_URL }}
+          project-key: ${{ format('{0}-{1}', github.event.repository.name, matrix.componentId) }}
+          version: ${{ steps.inputs.outputs.version }}
+          quality-gate-enabled: ${{ steps.policy.outputs.quality-gate }}
+          fail-on-quality-gate: ${{ steps.policy.outputs.fail-on-gate }}
+          organization: ${{ github.repository_owner }}
+      - id: trivy-source
+        uses: ./bp/ci/scan/trivy/source
+        if: steps.policy.outputs.trivy == 'true'
+        with:
+          source-path: source
+          plan: ${{ steps.inputs.outputs.plan }}
+          component-result: ${{ steps.inputs.outputs.result }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.inputs.outputs.source-sha }}
+      - id: dtrack
+        uses: ./bp/ci/scan/dependency-track/component
+        if: steps.policy.outputs.dtrack == 'true'
+        with:
+          source-path: source
+          plan: ${{ steps.inputs.outputs.plan }}
+          component-result: ${{ steps.inputs.outputs.result }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.inputs.outputs.source-sha }}
+          trusted: ${{ steps.inputs.outputs.trusted-source }}
+          token: ${{ secrets.DEPENDENCYTRACK_TOKEN }}
+          server: ${{ vars.DEPENDENCYTRACK_URL }}
+          version: ${{ steps.inputs.outputs.version }}
+          project-name: ${{ format('{0}/{1}', github.repository, matrix.componentId) }}
+      - id: trivy-main
+        if: steps.policy.outputs.oci-main == 'true'
+        uses: ./bp/ci/scan/trivy
+        with:
+          directory: ${{ steps.inputs.outputs.directory }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.inputs.outputs.source-sha }}
+          plan: ${{ steps.inputs.outputs.plan }}
+          component-result: ${{ steps.inputs.outputs.result }}
+          artifact-purpose: main
+          profile: ${{ steps.policy.outputs.profile }}
+          required: 'false'
+      - id: trivy-preview
+        if: steps.policy.outputs.oci-preview == 'true'
+        uses: ./bp/ci/scan/trivy
+        with:
+          directory: ${{ steps.inputs.outputs.directory }}
+          component: ${{ matrix.componentId }}
+          source-sha: ${{ steps.inputs.outputs.source-sha }}
+          plan: ${{ steps.inputs.outputs.plan }}
+          component-result: ${{ steps.inputs.outputs.result }}
+          artifact-purpose: preview
+          profile: ${{ steps.policy.outputs.profile }}
+          required: 'false'
+      - id: results
+        uses: actions/github-script@v9
+        env:
+          PLAN: ${{ steps.inputs.outputs.plan }}
+          CONFIGURATION: ${{ steps.effective-policy.outputs.configuration }}
+          RESULT: ${{ steps.inputs.outputs.result }}
+          COMPONENT: ${{ matrix.componentId }}
+          TRUSTED_SOURCE: ${{ steps.inputs.outputs.trusted-source }}
+          SNYK: ${{ steps.snyk.outputs.result }}
+          SEMGREP: ${{ steps.semgrep.outputs.result }}
+          SONARQUBE: ${{ steps.sonar.outputs.result || steps.sonar-dotnet.outputs.result }}
+          DTRACK: ${{ steps.dtrack.outputs.result }}
+          TRIVY: ${{ steps.trivy-source.outputs.result }}
+          OCI_MAIN: ${{ steps.trivy-main.outputs.result }}
+          OCI_PREVIEW: ${{ steps.trivy-preview.outputs.result }}
+        with:
+          script: |
+            const fs = require('node:fs/promises'), path = require('node:path'), env = process.env;
+            const read = async file => { if ((await fs.lstat(file)).isSymbolicLink() || (await fs.stat(file)).size > 4194304) throw new Error('scan-result-bound'); return JSON.parse(await fs.readFile(file, 'utf8')); };
+            const plan = await read(env.PLAN), configuration = await read(env.CONFIGURATION), result = await read(env.RESULT);
+            const component = plan.components.find(item => item.id === env.COMPONENT), policy = configuration.scanners;
+            if (!component || !['true', 'false'].includes(env.TRUSTED_SOURCE)) throw new Error('scan-result-owner');
+            const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'scanner-outcomes-'));
+            const definitions = [['snyk', 'snykEnabled', 'SNYK'], ['semgrep', 'semgrepEnabled', 'SEMGREP'], ['sonar', 'sonarqubeEnabled', 'SONARQUBE'], ['dependency-track', 'dependencyTrackEnabled', 'DTRACK'], ['trivy', 'trivyEnabled', 'TRIVY']];
+            for (const purpose of ['main', 'preview']) if (policy.trivyEnabled && result[purpose + 'Artifact']?.format === 'oci') definitions.push(['trivy', 'trivyEnabled', 'OCI_' + purpose.toUpperCase(), purpose]);
+            for (const [scanner, flag, field, purpose] of definitions) {
+              const required = scanner === 'sonar' && policy.sonarqubeEnabled && policy.sonarqubeQualityGateEnabled && policy.sonarqubeFailOnQualityGate;
+              let record;
+              if (!policy[flag] || env.TRUSTED_SOURCE !== 'true' && !purpose) {
+                if (env[field]) throw new Error('scan-unexpected-execution');
+                record = {apiVersion: 'cloudopsworks.io/operations/v1', kind: 'ScannerResult', scanner, profile: component.buildProfile, componentId: component.id, sourceSha: plan.headSha, status: !policy[flag] ? 'disabled' : 'unavailable-untrusted-context', required, artifactDigest: result.mainArtifact.digest, correlationId: 'scan-' + component.id, errorCode: null};
+              } else {
+                if (!env[field]) throw new Error('scan-missing-outcome');
+                record = await read(env[field]);
+              }
+              if (record.scanner !== scanner || record.componentId !== component.id || record.sourceSha !== plan.headSha || record.required !== required || record.artifactDigest !== result[(purpose || 'main') + 'Artifact'].digest) throw new Error('scan-outcome-binding');
+              const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+              if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('scan-outcome-contract');
+              const key = purpose ? 'oci-' + purpose : scanner === 'sonar' ? 'sonarqube' : scanner;
+              const target = path.join(directory, key); await fs.mkdir(target, {mode: 0o700});
+              await fs.writeFile(path.join(target, 'scanner-result.json'), JSON.stringify(JSON.parse(checked.stdout).record), {mode: 0o600, flag: 'wx'});
+              core.setOutput(key, path.join(target, 'scanner-result.json'));
+            }
+      - id: upload-snyk
+        uses: actions/upload-artifact@v4
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-snyk
+          path: ${{ steps.results.outputs.snyk }}
+          if-no-files-found: error
+          overwrite: false
+      - id: upload-semgrep
+        uses: actions/upload-artifact@v4
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-semgrep
+          path: ${{ steps.results.outputs.semgrep }}
+          if-no-files-found: error
+          overwrite: false
+      - id: upload-sonarqube
+        uses: actions/upload-artifact@v4
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-sonarqube
+          path: ${{ steps.results.outputs.sonarqube }}
+          if-no-files-found: error
+          overwrite: false
+      - id: upload-dependency-track
+        uses: actions/upload-artifact@v4
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-dependency-track
+          path: ${{ steps.results.outputs.dependency-track }}
+          if-no-files-found: error
+          overwrite: false
+      - id: upload-trivy
+        uses: actions/upload-artifact@v4
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-trivy
+          path: ${{ steps.results.outputs.trivy }}
+          if-no-files-found: error
+          overwrite: false
+      - id: upload-oci-main
+        uses: actions/upload-artifact@v4
+        if: steps.results.outputs.oci-main != ''
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-oci-main
+          path: ${{ steps.results.outputs.oci-main }}
+          if-no-files-found: error
+          overwrite: false
+      - id: upload-oci-preview
+        uses: actions/upload-artifact@v4
+        if: steps.results.outputs.oci-preview != ''
+        with:
+          name: monorepo-scan-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}-oci-preview
+          path: ${{ steps.results.outputs.oci-preview }}
+          if-no-files-found: error
+          overwrite: false
+      - id: locators
+        uses: actions/github-script@v9
+        env:
+          SNYK_ID: ${{ steps.upload-snyk.outputs.artifact-id }}
+          SNYK_DIGEST: ${{ steps.upload-snyk.outputs.artifact-digest }}
+          SEMGREP_ID: ${{ steps.upload-semgrep.outputs.artifact-id }}
+          SEMGREP_DIGEST: ${{ steps.upload-semgrep.outputs.artifact-digest }}
+          SONARQUBE_ID: ${{ steps.upload-sonarqube.outputs.artifact-id }}
+          SONARQUBE_DIGEST: ${{ steps.upload-sonarqube.outputs.artifact-digest }}
+          DEPENDENCY_TRACK_ID: ${{ steps.upload-dependency-track.outputs.artifact-id }}
+          DEPENDENCY_TRACK_DIGEST: ${{ steps.upload-dependency-track.outputs.artifact-digest }}
+          TRIVY_ID: ${{ steps.upload-trivy.outputs.artifact-id }}
+          TRIVY_DIGEST: ${{ steps.upload-trivy.outputs.artifact-digest }}
+          OCI_MAIN_ID: ${{ steps.upload-oci-main.outputs.artifact-id }}
+          OCI_MAIN_DIGEST: ${{ steps.upload-oci-main.outputs.artifact-digest }}
+          OCI_PREVIEW_ID: ${{ steps.upload-oci-preview.outputs.artifact-id }}
+          OCI_PREVIEW_DIGEST: ${{ steps.upload-oci-preview.outputs.artifact-digest }}
+        with:
+          script: |
+            const routes = [];
+            for (const name of ['SNYK', 'SEMGREP', 'SONARQUBE', 'DEPENDENCY_TRACK', 'TRIVY', 'OCI_MAIN', 'OCI_PREVIEW']) {
+              const id = process.env[name + '_ID'], digest = process.env[name + '_DIGEST'];
+              if (!id && name.startsWith('OCI_')) continue;
+              if (!/^[1-9][0-9]*$/.test(id || '') || !/^[0-9a-f]{64}$/.test(digest || '')) throw new Error('scan-upload-locator');
+              routes.push({artifactId: id, archiveDigest: 'sha256:' + digest});
+            }
+            core.setOutput('artifacts', JSON.stringify(routes));
+      - id: readback
+        uses: ./bp/ci/monorepo/artifact
+        with:
+          artifact-set: ${{ steps.locators.outputs.artifacts }}
+          run-id: ${{ github.run_id }}
+          record-kind: ScannerResult
+      - id: receipt
+        uses: actions/github-script@v9
+        env:
+          CURRENT_PLAN: ${{ steps.inputs.outputs.current-plan }}
+          ORIGINAL_PLAN: ${{ steps.inputs.outputs.plan }}
+          COMPONENT_RESULT: ${{ steps.inputs.outputs.result }}
+          CONFIGURATION: ${{ steps.effective-policy.outputs.configuration }}
+          POLICY_DIGESTS: ${{ steps.effective-policy.outputs.policy-digests }}
+          COMPONENT: ${{ matrix.componentId }}
+          OWNER_RECORDS: ${{ steps.inputs.outputs.records }}
+          SCAN_RECORDS: ${{ steps.readback.outputs.records }}
+          ORIGIN_RUN_ID: ${{ inputs.run-id }}
+          ORIGIN_RUN_ATTEMPT: ${{ inputs.run-attempt }}
+          PLAN_ARTIFACT_ID: ${{ inputs.plan-artifact-id }}
+          PLAN_ARCHIVE_DIGEST: ${{ inputs.plan-archive-digest }}
+          COMPUTED_SNYK: ${{ steps.results.outputs.snyk }}
+          COMPUTED_SEMGREP: ${{ steps.results.outputs.semgrep }}
+          COMPUTED_SONARQUBE: ${{ steps.results.outputs.sonarqube }}
+          COMPUTED_DEPENDENCY_TRACK: ${{ steps.results.outputs.dependency-track }}
+          COMPUTED_TRIVY: ${{ steps.results.outputs.trivy }}
+          COMPUTED_OCI_MAIN: ${{ steps.results.outputs.oci-main }}
+          COMPUTED_OCI_PREVIEW: ${{ steps.results.outputs.oci-preview }}
+        with:
+          script: |
+            const fs = require('node:fs/promises'), crypto = require('node:crypto'), env = process.env;
+            const validate = async (kind, file) => {
+              if ((await fs.lstat(file)).isSymbolicLink() || (await fs.stat(file)).size > 4194304) throw new Error('scan-receipt-bound');
+              const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', kind], {silent: true, ignoreReturnCode: true, input: await fs.readFile(file)});
+              if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('scan-receipt-contract');
+              return JSON.parse(checked.stdout);
+            };
+            const current = await validate('BuildPlan', env.CURRENT_PLAN), original = await validate('BuildPlan', env.ORIGINAL_PLAN), component = await validate('ComponentResult', env.COMPONENT_RESULT);
+            if ((await fs.stat(env.CONFIGURATION)).size > 4194304 || Buffer.byteLength(env.SCAN_RECORDS || '') > 4194304 || Buffer.byteLength(env.OWNER_RECORDS || '') > 4194304) throw new Error('scan-receipt-input-bound');
+            const policyDigest = 'sha256:' + crypto.createHash('sha256').update(await fs.readFile(env.CONFIGURATION)).digest('hex');
+            const owners = JSON.parse(env.OWNER_RECORDS), scans = JSON.parse(env.SCAN_RECORDS);
+            if (!Array.isArray(owners) || owners.length !== 1 || !Array.isArray(scans) || scans.length < 5 || scans.length > 7 || component.record.componentId !== env.COMPONENT || component.record.headSha !== original.record.headSha || component.record.version !== original.record.version) throw new Error('scan-receipt-owner');
+            const names = new Set(), records = [];
+            for (const item of scans) {
+              const prefix = 'monorepo-scan-' + env.GITHUB_RUN_ID + '-' + env.GITHUB_RUN_ATTEMPT + '-' + env.COMPONENT + '-';
+              if (!item.artifactName?.startsWith(prefix) || names.has(item.artifactName)) throw new Error('scan-receipt-artifact');
+              const key = item.artifactName.slice(prefix.length), file = env['COMPUTED_' + key.replaceAll('-', '_').toUpperCase()];
+              if (!file) throw new Error('scan-receipt-unexpected');
+              const computed = await validate('ScannerResult', file), retrieved = await validate('ScannerResult', item.recordPath);
+              if (computed.digest !== retrieved.digest || computed.record.componentId !== env.COMPONENT || computed.record.sourceSha !== original.record.headSha) throw new Error('scan-receipt-readback');
+              names.add(item.artifactName);
+              records.push({key, artifactId: item.artifactId, artifactName: item.artifactName, archiveDigest: item.archiveDigest, digest: computed.digest});
+            }
+            const owner = owners[0];
+            const binding = {repositoryId: env.GITHUB_REPOSITORY_ID, runId: env.GITHUB_RUN_ID, runAttempt: env.GITHUB_RUN_ATTEMPT, originRunId: env.ORIGIN_RUN_ID, originRunAttempt: env.ORIGIN_RUN_ATTEMPT, planArtifactId: env.PLAN_ARTIFACT_ID, planArchiveDigest: env.PLAN_ARCHIVE_DIGEST, planDigest: current.digest, policyDigest, policyDigests: JSON.parse(env.POLICY_DIGESTS), componentId: env.COMPONENT, originalPlanDigest: original.digest, componentDigest: component.digest, sourceSha: original.record.headSha, mainDigest: component.record.mainArtifact.digest, mainFormat: component.record.mainArtifact.format, previewFormat: component.record.previewArtifact?.format || null, previewDigest: component.record.previewArtifact?.digest || null, owner: {runId: owner.runId, artifactId: owner.artifactId, artifactName: owner.artifactName, archiveDigest: owner.archiveDigest}, records};
+            core.info('CLOUDOPSWORKS_SCAN_V1 ' + JSON.stringify(binding));
+  required:
+    name: monorepo-scan-required
+    needs: [prepare, component]
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, pull-requests: read}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ inputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - uses: actions/github-script@v9
+        env:
+          PREPARE: ${{ needs.prepare.result }}
+          COMPONENT: ${{ needs.component.result }}
+        with:
+          script: |
+            if (process.env.PREPARE !== 'success' || process.env.COMPONENT !== 'success') throw new Error('scan-required-jobs');
+      - id: context
+        uses: ./bp/cd/tasks/repo/context
+        with:
+          mode: delivery
+      - id: plan
+        uses: ./bp/ci/monorepo/plan/endorsement
+        with:
+          mode: verify
+          caller-mode: ${{ steps.context.outputs.caller-mode }}
+          run-id: ${{ steps.context.outputs.run-id }}
+          run-attempt: ${{ steps.context.outputs.run-attempt }}
+          artifact-id: ${{ inputs.plan-artifact-id }}
+          archive-digest: ${{ inputs.plan-archive-digest }}
+      - id: configuration
+        uses: ./bp/ci/monorepo/source
+        with:
+          source-sha: ${{ steps.context.outputs.source-sha }}
+      - id: policy-snapshot
+        if: steps.context.outputs.caller-mode == 'normal-pr' || steps.context.outputs.caller-mode == 'normal-closure'
+        uses: ./bp/ci/monorepo/source
+        with:
+          source-sha: ${{ steps.context.outputs.policy-sha }}
+      - uses: ./bp/ci/monorepo/stage/scans
+        with:
+          mode: normal
+          caller-mode: ${{ steps.context.outputs.caller-mode }}
+          policy-configuration: ${{ steps.policy-snapshot.outputs.configuration }}
+          plan: ${{ steps.plan.outputs.plan }}
+          configuration: ${{ steps.configuration.outputs.configuration }}
+          verified-records: '[]'
+          run-id: ${{ github.run_id }}
+          run-attempt: ${{ github.run_attempt }}
+          origin-run-id: ${{ inputs.run-id }}
+          origin-run-attempt: ${{ inputs.run-attempt }}
+          plan-artifact-id: ${{ inputs.plan-artifact-id }}
+          plan-archive-digest: ${{ inputs.plan-archive-digest }}

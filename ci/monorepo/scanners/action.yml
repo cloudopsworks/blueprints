@@ -1,0 +1,139 @@
+name: Pinned scanner tools
+description: Source-free, token-free installation before protected scanner credentials are resolved
+inputs:
+  sonarqube:
+    description: Validated Sonar enablement
+    default: 'false'
+  dotnet:
+    description: Validated presence of a .NET Sonar component
+    default: 'false'
+  snyk:
+    description: Validated Snyk enablement
+    default: 'false'
+  semgrep:
+    description: Validated Semgrep enablement
+    default: 'false'
+  trivy:
+    description: Validated Trivy enablement
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Prepare private scanner installation paths
+      id: prepare
+      uses: actions/github-script@v9
+      env:
+        SONAR_ENABLED: ${{ inputs.sonarqube }}
+        DOTNET_ENABLED: ${{ inputs.dotnet }}
+        SNYK_ENABLED: ${{ inputs.snyk }}
+        SEMGREP_ENABLED: ${{ inputs.semgrep }}
+        TRIVY_ENABLED: ${{ inputs.trivy }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          for (const field of ['SONAR_ENABLED', 'DOTNET_ENABLED', 'SNYK_ENABLED', 'SEMGREP_ENABLED', 'TRIVY_ENABLED']) {
+            if (!['true', 'false'].includes(process.env[field])) throw new Error('scanner-setup-boolean');
+          }
+          if (process.env.RUNNER_OS !== 'Linux' || process.env.RUNNER_ARCH !== 'X64') throw new Error('scanner-setup-runner');
+          const root = path.join(await fs.realpath(process.env.RUNNER_TEMP), 'cloudopsworks-scanner-tools');
+          await fs.mkdir(root, {mode: 0o700});
+          for (const name of ['home', 'empty-sonar-project', 'bin']) await fs.mkdir(path.join(root, name), {mode: 0o700});
+          const config = '<configuration><packageSources><clear/><add key="nuget" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>';
+          await fs.writeFile(path.join(root, 'NuGet.Config'), config, {mode: 0o600, flag: 'wx'});
+          core.setOutput('root', root);
+          core.setOutput('home', path.join(root, 'home'));
+          core.setOutput('cwd', path.join(root, 'empty-sonar-project'));
+    - name: Install checksum-verified Snyk binary
+      id: snyk
+      if: inputs.snyk == 'true'
+      shell: bash
+      working-directory: ${{ steps.prepare.outputs.cwd }}
+      env:
+        SCANNER_ROOT: ${{ steps.prepare.outputs.root }}
+        SCANNER_HOME: ${{ steps.prepare.outputs.home }}
+      run: |
+        set -euo pipefail
+        umask 077
+        trap 'echo "Pinned Snyk setup failed" >&2' ERR
+        version=$(env -i PATH="$PATH" HOME="$SCANNER_HOME" curl --version)
+        if [[ ! "$version" =~ ^curl\ ([0-9]+)\.([0-9]+)\.[0-9]+\  ]]; then exit 1; fi
+        if (( 10#${BASH_REMATCH[1]} < 8 || (10#${BASH_REMATCH[1]} == 8 && 10#${BASH_REMATCH[2]} < 4) )); then exit 1; fi
+        # curl8.4+ enforces the actual byte cap even without Content-Length.
+        env -i PATH="$PATH" HOME="$SCANNER_HOME" curl --fail --silent --show-error --location \
+          --proto '=https' --proto-redir '=https' --tlsv1.2 --max-redirs 5 --max-time 60 --max-filesize 268435456 \
+          --output "$SCANNER_ROOT/bin/snyk" https://github.com/snyk/cli/releases/download/v1.1308.4/snyk-linux
+        printf '%s  %s\n' 979172ee128903f50e43fff221f22a0689579f22c086dabaa0d1a5416485b9ba "$SCANNER_ROOT/bin/snyk" | env -i PATH="$PATH" HOME="$SCANNER_HOME" sha256sum --check --strict
+        chmod 0755 "$SCANNER_ROOT/bin/snyk"
+        env -i PATH="$SCANNER_ROOT/bin:$PATH" HOME="$SCANNER_HOME" timeout 60 snyk --version | grep -Fx '1.1308.4' > /dev/null
+        echo "$SCANNER_ROOT/bin" >> "$GITHUB_PATH"
+    - name: Install pinned Semgrep in its private package environment
+      id: semgrep
+      if: inputs.semgrep == 'true'
+      shell: bash
+      working-directory: ${{ steps.prepare.outputs.cwd }}
+      env:
+        SCANNER_ROOT: ${{ steps.prepare.outputs.root }}
+        SCANNER_HOME: ${{ steps.prepare.outputs.home }}
+      run: |
+        set -euo pipefail
+        umask 077
+        trap 'echo "Pinned Semgrep setup failed" >&2' ERR
+        # Reuse the runner's native pipx package installer, already used by Blueprints.
+        # It creates an isolated venv; never use ambient site packages or a source helper.
+        # Retain only a bounded printable tail; flatten lines to prevent log commands.
+        if diagnostic=$(env -i PATH="$PATH" HOME="$SCANNER_HOME" PYTHONNOUSERSITE=1 PIP_CONFIG_FILE=/dev/null \
+          PIP_INDEX_URL=https://pypi.org/simple PIPX_HOME="$SCANNER_ROOT/semgrep" PIPX_BIN_DIR="$SCANNER_ROOT/bin" \
+          PIPX_MAN_DIR="$SCANNER_ROOT/man" PIPX_COMPLETION_DIR="$SCANNER_ROOT/completions" \
+          timeout 600 pipx install --backend pip --python python3 --fetch-python never \
+          --index-url https://pypi.org/simple --pip-args='--isolated --disable-pip-version-check --no-cache-dir' \
+          semgrep==1.185.0 2>&1 | LC_ALL=C tr -cd '\11\12\40-\176' | tail -c 4096 | tr '\11\12' '  '); then
+          :
+        else
+          status=$?
+          printf 'Pinned Semgrep setup failed (exit %s; timeout 600s). Native diagnostic tail: %s\n' "$status" "$diagnostic" >&2
+          exit "$status"
+        fi
+        env -i PATH="$SCANNER_ROOT/bin:$PATH" HOME="$SCANNER_HOME" PYTHONNOUSERSITE=1 timeout 60 semgrep --version | grep -Fx '1.185.0' > /dev/null
+        echo "$SCANNER_ROOT/bin" >> "$GITHUB_PATH"
+    - name: Install pinned Sonar scanner for dotnet
+      id: dotnet
+      if: inputs.sonarqube == 'true' && inputs.dotnet == 'true'
+      shell: bash
+      working-directory: ${{ steps.prepare.outputs.cwd }}
+      env:
+        SCANNER_ROOT: ${{ steps.prepare.outputs.root }}
+        SCANNER_HOME: ${{ steps.prepare.outputs.home }}
+      run: |
+        set -euo pipefail
+        umask 077
+        trap 'echo "Pinned dotnet Sonar setup failed" >&2' ERR
+        # Streaming filters bound capture memory without a diagnostic file.
+        if diagnostic=$(env -i PATH="$PATH" HOME="$SCANNER_HOME" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+          timeout 600 dotnet tool install dotnet-sonarscanner --version 12.1.0 \
+          --tool-path "$SCANNER_ROOT/dotnet" --configfile "$SCANNER_ROOT/NuGet.Config" 2>&1 | LC_ALL=C tr -cd '\11\12\40-\176' | tail -c 4096 | tr '\11\12' '  '); then
+          :
+        else
+          status=$?
+          printf 'Pinned dotnet Sonar setup failed (exit %s; timeout 600s). Native diagnostic tail: %s\n' "$status" "$diagnostic" >&2
+          exit "$status"
+        fi
+        echo "$SCANNER_ROOT/dotnet" >> "$GITHUB_PATH"
+    # The official signature-verifying action checks its version in an empty
+    # private project. This is setup, never source analysis or a completed scan.
+    - uses: sonarsource/sonarqube-scan-action@v8
+      if: inputs.sonarqube == 'true'
+      env:
+        SONAR_TOKEN: ''
+        GH_TOKEN: ''
+        GITHUB_TOKEN: ''
+      with:
+        scannerVersion: 8.3.1.16491
+        projectBaseDir: ${{ steps.prepare.outputs.cwd }}
+        args: --version
+        skipSignatureVerification: 'false'
+    - uses: aquasecurity/setup-trivy@v0.3.1
+      if: inputs.trivy == 'true'
+      with:
+        cache: false
+        version: v0.69.3

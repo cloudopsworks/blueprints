@@ -1,3 +1,4 @@
+{{- if not .Values.monorepo.enabled }}
 {{- range $name, $route := .Values.gateway.tlsRoutes }}
 {{- if $route.enabled }}
 ---
@@ -44,4 +45,6 @@ spec:
           port: {{ $.Values.service.externalPort }}
     {{- end }}
 {{- end }}
+{{- end }}
+
 {{- end }}

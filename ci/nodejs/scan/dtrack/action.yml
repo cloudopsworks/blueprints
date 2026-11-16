@@ -33,13 +33,38 @@ inputs:
   token:
     description: 'The Github token'
     required: true
+  component-mode:
+    description: 'Opt-in bounded upload/processing observation; never a vulnerability verdict. dtrack_url must be an HTTPS origin.'
+    default: 'false'
+  bom-path:
+    description: 'Component mode: existing CycloneDX JSON/XML file relative to source_path; no generation or source execution'
+    default: 'bom.json'
+outputs:
+  uploaded:
+    description: 'Component mode only: API accepted the upload and returned a valid processing token'
+    value: ${{ steps.component.outputs.uploaded }}
+  status:
+    description: 'Component mode only: processed means no tasks reported for the returned token, not successful ingestion or a clean verdict'
+    value: ${{ steps.component.outputs.status }}
+  bom-digest:
+    description: 'SHA-256 of the exact uploaded BOM bytes'
+    value: ${{ steps.component.outputs.bom-digest }}
 
 runs:
   # TODO: DUPLICATE CODE with java/dtrack/action.yml
   using: 'composite'
   steps:
+    - name: Validate component mode
+      id: mode
+      uses: actions/github-script@v9
+      env:
+        COMPONENT_MODE: ${{ inputs.component-mode }}
+      with:
+        script: |
+          if (!['true', 'false'].includes(process.env.COMPONENT_MODE)) throw new Error('dtrack-component-mode');
     # SBOM upload
     - name: SBOM Dtrack Upload
+      if: inputs.component-mode != 'true'
       working-directory: ${{ inputs.source_path }}
       shell: bash
       env:
@@ -55,3 +80,108 @@ runs:
              -F "projectName=${INPUTS_DTRACK_PROJECT_KEY}" \
              -F "projectVersion=${INPUTS_SEMVER}" \
              -F "bom=@bom.xml"
+    - name: Upload component BOM and observe exact-token processing
+      id: component
+      if: inputs.component-mode == 'true'
+      uses: actions/github-script@v9
+      env:
+        COMPONENT_MODE: ${{ inputs.component-mode }}
+        SOURCE_PATH: ${{ inputs.source_path }}
+        BOM_PATH: ${{ inputs.bom-path }}
+        DTRACK_URL: ${{ inputs.dtrack_url }}
+        DTRACK_TOKEN: ${{ inputs.dtrack_token }}
+        PROJECT_NAME: ${{ inputs.dtrack_project_key }}
+        PROJECT_VERSION: ${{ inputs.semver }}
+      with:
+        script: |
+          const fs = require('fs').promises, path = require('path'), crypto = require('crypto');
+          const env = process.env, maximumBom = 8 * 1024 * 1024;
+          try {
+            if (env.COMPONENT_MODE !== 'true') throw new Error('input');
+            const server = new URL(env.DTRACK_URL);
+            if (server.protocol !== 'https:' || server.username || server.password || server.search || server.hash || server.pathname !== '/') throw new Error('input');
+            if (!env.DTRACK_TOKEN || env.DTRACK_TOKEN.length > 8192 || /[\x00-\x20\x7f]/.test(env.DTRACK_TOKEN)) throw new Error('input');
+            for (const value of [env.PROJECT_NAME, env.PROJECT_VERSION]) {
+              if (typeof value !== 'string' || !value.trim() || value !== value.trim() || Buffer.byteLength(value) > 512 || /[\x00-\x1f\x7f]/.test(value)) throw new Error('input');
+            }
+            const relative = env.BOM_PATH;
+            if (typeof relative !== 'string' || relative.length > 256 || !/^[A-Za-z0-9._/-]+\.(json|xml)$/.test(relative) || relative.split('/').some(part => ['', '.', '..', '.git'].includes(part))) throw new Error('input');
+            const root = await fs.realpath(env.SOURCE_PATH);
+            let file = root;
+            for (const part of relative.split('/')) {
+              file = path.join(file, part);
+              if ((await fs.lstat(file)).isSymbolicLink()) throw new Error('input');
+            }
+            const handle = await fs.open(file, require('fs').constants.O_RDONLY | require('fs').constants.O_NOFOLLOW);
+            let bytes;
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.size < 1 || stat.size > maximumBom) throw new Error('input');
+              const buffer = Buffer.alloc(maximumBom + 1); let length = 0, read;
+              do { read = (await handle.read(buffer, length, buffer.length - length, length)).bytesRead; length += read; } while (read && length < buffer.length);
+              if (length !== stat.size || length > maximumBom || (await handle.stat()).size !== length) throw new Error('input');
+              bytes = buffer.subarray(0, length);
+            } finally { await handle.close(); }
+            const text = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+            if (relative.endsWith('.json')) {
+              const bom = JSON.parse(text);
+              if (!bom || bom.bomFormat !== 'CycloneDX' || typeof bom.specVersion !== 'string' || !/^1\.[0-9]+$/.test(bom.specVersion)) throw new Error('input');
+            } else if (/<!DOCTYPE|<!ENTITY/i.test(text) || !/<bom\b[^>]*\bxmlns=["']http:\/\/cyclonedx\.org\/schema\/bom\/1\.[0-9]+["']/.test(text) || !/<\/bom>\s*$/.test(text)) throw new Error('input');
+            core.setSecret(env.DTRACK_TOKEN);
+            const request = async (route, body) => {
+              const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
+              let reader, onAbort;
+              try {
+                const response = await fetch(server.origin + route, {method: body ? 'PUT' : 'GET',
+                  headers: {'X-Api-Key': env.DTRACK_TOKEN, Accept: 'application/json', ...(body ? {'Content-Type': 'application/json'} : {})},
+                  ...(body ? {body: JSON.stringify(body)} : {}), redirect: 'error', credentials: 'omit', signal: controller.signal});
+                if (response.status !== 200 || !/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) throw new Error('response');
+                const advertised = response.headers.get('content-length');
+                if (advertised !== null && (!/^[0-9]+$/.test(advertised) || Number(advertised) > 65536)) throw new Error('response');
+                reader = response.body?.getReader();
+                if (!reader) throw new Error('response');
+                const aborted = new Promise((_, reject) => {
+                  onAbort = () => reject(new Error('timeout'));
+                  controller.signal.addEventListener('abort', onAbort, {once: true});
+                  if (controller.signal.aborted) onAbort();
+                });
+                const chunks = []; let count = 0;
+                for (;;) {
+                  const chunk = await Promise.race([reader.read(), aborted]);
+                  if (chunk.done) break;
+                  count += chunk.value.byteLength;
+                  if (count > 65536) throw new Error('response');
+                  chunks.push(Buffer.from(chunk.value));
+                }
+                const value = JSON.parse(Buffer.concat(chunks, count).toString('utf8'));
+                if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('response');
+                return value;
+              } finally {
+                clearTimeout(timer);
+                if (onAbort) controller.signal.removeEventListener('abort', onAbort);
+                if (reader) { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+              }
+            };
+            const version = (await request('/api/version')).version;
+            if (typeof version !== 'string' || !/^4\.(?:11|12|13|14)\.[0-9]+$/.test(version)) throw new Error('api-version');
+            const uploaded = await request('/api/v1/bom', {autoCreate: true, projectName: env.PROJECT_NAME,
+              projectVersion: env.PROJECT_VERSION, bom: bytes.toString('base64')});
+            const token = uploaded.token;
+            if (Object.keys(uploaded).join() !== 'token' || typeof token !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(token)) throw new Error('upload-token');
+            core.setOutput('uploaded', 'true');
+            for (let attempt = 0; attempt < 12; attempt++) {
+              const poll = await request('/api/v1/event/token/' + token);
+              if (Object.keys(poll).join() !== 'processing' || typeof poll.processing !== 'boolean') throw new Error('processing-response');
+              if (!poll.processing) {
+                core.setOutput('status', 'processed');
+                core.setOutput('bom-digest', 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex'));
+                await core.summary.addRaw('DependencyTrack: uploaded BOM; server reports no tasks for the exact returned token. This is not a vulnerability verdict or proof of successful ingestion.\n').write();
+                return;
+              }
+              if (attempt < 11) await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+            throw new Error('processing-timeout');
+          } catch (error) {
+            const reason = ['api-version', 'upload-token', 'processing-response', 'processing-timeout'].includes(error.message) ? error.message : 'request-or-input';
+            throw new Error('dtrack-' + reason);
+          }

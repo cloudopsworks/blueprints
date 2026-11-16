@@ -1,0 +1,52 @@
+schemaVersion: 1
+moduleId: gcp-appengine
+variables:
+  resource:
+    - kind
+    - project
+    - region
+    - service
+    - iac.sourceBucket
+  configuration:
+    - kind
+    - iac.sourceBucket
+    - iac.serviceAccount
+    - appConfig
+  workload:
+    - kind
+    - port
+    - healthPath
+  artifact:
+    - digest
+    - format
+    - path
+    - imageReference
+    - files
+  owner_digest: []
+ownedResourceTypes:
+  - google_storage_bucket_object
+  - google_app_engine_standard_app_version
+  - google_app_engine_flexible_app_version
+  - google_app_engine_service_split_traffic
+ownedResourceAddresses:
+  - google_storage_bucket_object.package[0]
+  - google_app_engine_standard_app_version.component[0]
+  - google_app_engine_flexible_app_version.component[0]
+  - google_app_engine_service_split_traffic.component
+externalParents:
+  - GCP project
+  - App Engine application
+  - source bucket
+  - runtime service account
+  - Artifact Registry image
+activationBlocked: true
+remaining:
+  - trusted semantic saved-plan guard for exclusive nondefault whole-service delete, verified fresh-service history and prior true/noop-false flags
+  - canonical project/application+service claim, supported single-writer activation and full cloud inventory recheck; no arbitrary out-of-band writer exclusion guarantee
+  - same-mode-only replacement and historical-handle failure recovery; unknown pending operations or live survivor absent from state require reviewed reconciliation
+  - credentialed readiness and lifecycle proof; local plans are not cloud execution
+replaceResourceAddresses:
+  - google_app_engine_standard_app_version.component[0]
+  - google_app_engine_flexible_app_version.component[0]
+  - google_storage_bucket_object.package[0]
+applyDeleteResourceAddresses: []

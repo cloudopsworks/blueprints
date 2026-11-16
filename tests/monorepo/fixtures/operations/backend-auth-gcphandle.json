@@ -1,0 +1,57 @@
+{
+  "apiIdentity": null,
+  "apiVersion": "cloudopsworks.io/operations/v1",
+  "authRefs": [
+    "gcp-prod",
+    "gcp-state"
+  ],
+  "backend": {
+    "authRef": "gcp-state",
+    "bucket": "state-example",
+    "kind": "gcs",
+    "prefix": "deployments/release/prod/example/monorepo/prod-run/api/gcp-cloudrun/terraform.tfstate",
+    "workspace": "default"
+  },
+  "backendIdentity": {
+    "projectNumber": "999999999999",
+    "provider": "gcp"
+  },
+  "componentId": "api",
+  "effectiveEnvironment": "release/prod",
+  "environment": "prod",
+  "kind": "StateHandle",
+  "moduleId": "gcp-cloudrun",
+  "native": {
+    "dynamodbLockId": null,
+    "leaseMetadataKey": null,
+    "lockAddress": "gs://state-example/deployments/release/prod/example/monorepo/prod-run/api/gcp-cloudrun/terraform.tfstate/default.tflock",
+    "stateAddress": "gs://state-example/deployments/release/prod/example/monorepo/prod-run/api/gcp-cloudrun/terraform.tfstate/default.tfstate"
+  },
+  "origin": {
+    "blueprintSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "moduleRevision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "providerLockDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "repository": {
+      "fullName": "example/mixed-app",
+      "id": "12345"
+    },
+    "runAttempt": "1",
+    "runId": "100",
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "ownership": "external",
+  "prNumber": null,
+  "protectedEnvironment": "release/prod",
+  "providerIdentity": "123456789012",
+  "qualifier": null,
+  "releaseName": "example",
+  "resourceIdentity": {
+    "kind": "gcp.cloudrun",
+    "project": "example-prod",
+    "provider": "gcp",
+    "region": "us-central1",
+    "service": "api"
+  },
+  "scope": "component",
+  "targetId": "prod-run"
+}

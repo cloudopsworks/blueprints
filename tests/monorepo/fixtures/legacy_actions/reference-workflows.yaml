@@ -1,0 +1,1150 @@
+# Historical workflow contracts captured from six unmodified sibling templates.
+# Revisions and SHA-256 identify original source files; only events, job names, and guards are retained.
+dotnet-app-template:
+  revision: f959ee9d401ea2c980b4564ba866e96dbafd7785
+  workflows:
+    main-build.yml:
+      sha256: d3a5e1e46850beae7c4fa807bfa3f64a67c274130b522021c8b3c6e8e7d79e2e
+      contract:
+        on:
+          create: null
+          push:
+            tags:
+              - v[0-9]+.[0-9]+.[0-9]+
+              - v[0-9]+.[0-9]+.[0-9]+**
+            branches:
+              - develop
+              - support/**
+              - release/**
+            paths:
+              - '**'
+              - .cloudopsworks/vars/**
+              - .cloudopsworks/values/**
+              - '!.github/**'
+              - '!.cloudopsworks/*'
+          workflow_dispatch: null
+        jobs:
+          code-build:
+            if: |
+              github.event_name == 'create' && 
+              (startsWith(github.ref, 'refs/heads/support/') || startsWith(github.ref, 'refs/heads/release/')) ||
+              (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          release:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true')
+          scan:
+            if: |
+              (! cancelled()) && 
+              (needs.code-build.result == 'success')
+          deploy:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled != 'true') && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true')
+          deploy-blue-green:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled == 'true')  && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true')
+    pr-build.yml:
+      sha256: f374337bcea87e31ed1961c19346254e6bc62efcbadd23637839c8789be6d7f1
+      contract:
+        on:
+          pull_request:
+            types:
+              - opened
+              - synchronize
+              - edited
+            branches:
+              - hotfix/**
+              - feature/**
+              - master
+              - release/**
+              - support/**
+              - develop
+        jobs:
+          check-pr: {}
+          code-build:
+            if: |
+              (! startsWith(github.head_ref, 'release/')) &&
+              (! startsWith(github.head_ref,'support/')) &&
+              (! startsWith(github.head_ref,'master'))
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          preview:
+            if: needs.code-build.outputs.has_preview == 'true'
+          scan: {}
+    pr-close.yaml:
+      sha256: 6268a30ef71eaf2bb483d3c11f22c296ca46a06496f2f50eb931269e5a5b367a
+      contract:
+        on:
+          pull_request:
+            types:
+              - closed
+        jobs:
+          preload: {}
+          preview-destroy:
+            if: needs.preload.outputs.has_preview == 'true'
+          branch_deletion:
+            if: ${{ ! cancelled() }}
+    process-owners.yml:
+      sha256: b66eb67181bf0191b43184debeced6c1d069a4c2584b2fffbac9cb4cad147d8c
+      contract:
+        on:
+          push:
+            branches:
+              - master
+              - main
+              - develop
+            paths:
+              - OWNERS
+              - .cloudopsworks/cloudopsworks-ci.yaml
+              - .cloudopsworks/cloudopsworks-cd.yaml
+          workflow_dispatch: null
+        jobs:
+          process-owners: {}
+    environment-destroy.yml:
+      sha256: 6b85d313e88cdd91c2361872b98877037306f0ed8ffa7ac855a42b923ac8a993
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              destroyedDeploymentName:
+                type: environment
+                description: Select Environment to destroy
+                required: true
+              target:
+                type: choice
+                description: What to Destroy? API, Application Deployment or BOTH
+                required: true
+                default: BOTH
+                options:
+                  - app
+                  - api
+                  - BOTH
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          destroy-environment: {}
+    environment-unlock.yml:
+      sha256: 4244a8ffe0757e74557a5c0f5555d676bd1b5923cfe4481c6096fd9c368450e3
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              unlockDeploymentName:
+                type: environment
+                description: Select Environment to Unlock
+                required: true
+              target:
+                type: choice
+                description: What to Unlock? API or Application Deployment
+                required: true
+                default: app
+                options:
+                  - app
+                  - api
+              api_lock:
+                type: string
+                description: 'API to unlock (Format: API_Name/version)'
+                required: false
+                default: ""
+              lockId:
+                type: string
+                description: Lock ID for the environment
+                required: true
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          unlock-environment: {}
+go-app-template:
+  revision: 4b693e20ed0f433b02ebe5fb9564e5741eba996d
+  workflows:
+    main-build.yml:
+      sha256: 657bc0a51d2c09a834f91a892e0e780b2ce52ffc1932713e16148065bcde8ae7
+      contract:
+        on:
+          create: null
+          push:
+            tags:
+              - v[0-9]+.[0-9]+.[0-9]+
+              - v[0-9]+.[0-9]+.[0-9]+**
+            branches:
+              - develop
+              - support/**
+              - release/**
+            paths:
+              - '**'
+              - .cloudopsworks/vars/**
+              - .cloudopsworks/values/**
+              - '!.github/**'
+              - '!.cloudopsworks/*'
+          workflow_dispatch: null
+        jobs:
+          code-build:
+            if: |
+              github.event_name == 'create' && 
+              (startsWith(github.ref, 'refs/heads/support/') || startsWith(github.ref, 'refs/heads/release/')) ||
+              (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          release:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true')
+          goreleaser_mac:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.release.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true') &&
+              (needs.code-build.outputs.golang_goreleaser_macos == 'true')
+          goreleaser_chocolatey:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.release.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true') &&
+              (needs.code-build.outputs.golang_goreleaser_chocolatey == 'true')
+          goreleaser_main:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.release.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true') &&
+              (needs.code-build.outputs.golang_goreleaser == 'true')
+          chocolatey_push:
+            if: |
+              (! cancelled()) &&
+              (needs.goreleaser_chocolatey.result == 'success') &&
+              (needs.goreleaser_main.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true') &&
+              (needs.code-build.outputs.golang_goreleaser_chocolatey == 'true')
+          scan:
+            if: |
+              (! cancelled()) && 
+              (needs.code-build.result == 'success')
+          deploy:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled != 'true') && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true') && 
+              (needs.code-build.outputs.golang_goreleaser != 'true')
+          deploy-blue-green:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled == 'true')  && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true') && 
+              (needs.code-build.outputs.golang_goreleaser != 'true')
+    pr-build.yml:
+      sha256: 80322f6ce65717b93ad95b67b344ca61e3f982474083e52d0f8d783da78e7d09
+      contract:
+        on:
+          pull_request:
+            types:
+              - opened
+              - synchronize
+              - edited
+            branches:
+              - hotfix/**
+              - feature/**
+              - master
+              - release/**
+              - support/**
+              - develop
+        jobs:
+          check-pr: {}
+          code-build:
+            if: |
+              (! startsWith(github.head_ref, 'release/')) &&
+              (! startsWith(github.head_ref,'support/')) &&
+              (! startsWith(github.head_ref,'master'))
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          preview:
+            if: needs.code-build.outputs.has_preview == 'true'
+          scan: {}
+    pr-close.yaml:
+      sha256: 6268a30ef71eaf2bb483d3c11f22c296ca46a06496f2f50eb931269e5a5b367a
+      contract:
+        on:
+          pull_request:
+            types:
+              - closed
+        jobs:
+          preload: {}
+          preview-destroy:
+            if: needs.preload.outputs.has_preview == 'true'
+          branch_deletion:
+            if: ${{ ! cancelled() }}
+    process-owners.yml:
+      sha256: b66eb67181bf0191b43184debeced6c1d069a4c2584b2fffbac9cb4cad147d8c
+      contract:
+        on:
+          push:
+            branches:
+              - master
+              - main
+              - develop
+            paths:
+              - OWNERS
+              - .cloudopsworks/cloudopsworks-ci.yaml
+              - .cloudopsworks/cloudopsworks-cd.yaml
+          workflow_dispatch: null
+        jobs:
+          process-owners: {}
+    environment-destroy.yml:
+      sha256: 6b85d313e88cdd91c2361872b98877037306f0ed8ffa7ac855a42b923ac8a993
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              destroyedDeploymentName:
+                type: environment
+                description: Select Environment to destroy
+                required: true
+              target:
+                type: choice
+                description: What to Destroy? API, Application Deployment or BOTH
+                required: true
+                default: BOTH
+                options:
+                  - app
+                  - api
+                  - BOTH
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          destroy-environment: {}
+    environment-unlock.yml:
+      sha256: 4244a8ffe0757e74557a5c0f5555d676bd1b5923cfe4481c6096fd9c368450e3
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              unlockDeploymentName:
+                type: environment
+                description: Select Environment to Unlock
+                required: true
+              target:
+                type: choice
+                description: What to Unlock? API or Application Deployment
+                required: true
+                default: app
+                options:
+                  - app
+                  - api
+              api_lock:
+                type: string
+                description: 'API to unlock (Format: API_Name/version)'
+                required: false
+                default: ""
+              lockId:
+                type: string
+                description: Lock ID for the environment
+                required: true
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          unlock-environment: {}
+java-app-template:
+  revision: 5137cd66721bccd8eb36c64612d09a5e1e03fa6f
+  workflows:
+    main-build.yml:
+      sha256: 419f29929b0280f61994ad4c9e301010cfc56daa4e7c2cfd6e5ef5baf12ab051
+      contract:
+        on:
+          create: null
+          push:
+            tags:
+              - v[0-9]+.[0-9]+.[0-9]+
+              - v[0-9]+.[0-9]+.[0-9]+**
+            branches:
+              - develop
+              - support/**
+              - release/**
+            paths:
+              - '**'
+              - .cloudopsworks/vars/**
+              - .cloudopsworks/values/**
+              - '!.github/**'
+              - '!.cloudopsworks/*'
+          workflow_dispatch: null
+        jobs:
+          code-build:
+            if: |
+              github.event_name == 'create' && 
+              (startsWith(github.ref, 'refs/heads/support/') || startsWith(github.ref, 'refs/heads/release/')) ||
+              (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          release:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true')
+          scan:
+            if: |
+              (! cancelled()) && 
+              (needs.code-build.result == 'success')
+          deploy:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled != 'true') && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true')
+          deploy-blue-green:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled == 'true')  && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true')
+    pr-build.yml:
+      sha256: cf1dc30a130e0ccb3a7f5d00bc36f5eb2c302a859dac89685f59f4a17d397d4b
+      contract:
+        on:
+          pull_request:
+            types:
+              - opened
+              - synchronize
+              - edited
+            branches:
+              - hotfix/**
+              - feature/**
+              - master
+              - release/**
+              - support/**
+              - develop
+        jobs:
+          check-pr: {}
+          code-build:
+            if: |
+              (! startsWith(github.head_ref, 'release/')) &&
+              (! startsWith(github.head_ref,'support/')) &&
+              (! startsWith(github.head_ref,'master'))
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          preview:
+            if: needs.code-build.outputs.has_preview == 'true'
+          scan: {}
+    pr-close.yaml:
+      sha256: e06992ff700e0d29b511c4870a1c21de3bf0f577b8e00dd08b531a82983c94e0
+      contract:
+        on:
+          pull_request:
+            types:
+              - closed
+        jobs:
+          preload: {}
+          preview-destroy:
+            if: needs.preload.outputs.has_preview == 'true'
+          branch_deletion:
+            if: ${{ ! cancelled() }}
+    process-owners.yml:
+      sha256: 288ad81b3567823862ea7f167cdb403426200aef261b645d63e368aebcd7fb8f
+      contract:
+        on:
+          push:
+            branches:
+              - master
+              - main
+              - develop
+            paths:
+              - OWNERS
+              - .cloudopsworks/cloudopsworks-ci.yaml
+              - .cloudopsworks/cloudopsworks-cd.yaml
+          workflow_dispatch: null
+        jobs:
+          process-owners: {}
+    environment-destroy.yml:
+      sha256: cdef03c58daff4ce7936c3db1c90f0e7f9f66c4a746e67e692547db3ca70d26f
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              destroyedDeploymentName:
+                type: environment
+                description: Select Environment to destroy
+                required: true
+              target:
+                type: choice
+                description: What to Destroy? API, Application Deployment or BOTH
+                required: true
+                default: BOTH
+                options:
+                  - app
+                  - api
+                  - BOTH
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          destroy-environment: {}
+    environment-unlock.yml:
+      sha256: 923fef95553789ab064b8435caaf8cfc1bde68c9472ee32cbe0a533bafc88639
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              unlockDeploymentName:
+                type: environment
+                description: Select Environment to Unlock
+                required: true
+              target:
+                type: choice
+                description: What to Unlock? API or Application Deployment
+                required: true
+                default: app
+                options:
+                  - app
+                  - api
+              api_lock:
+                type: string
+                description: 'API to unlock (Format: API_Name/version)'
+                required: false
+                default: ""
+              lockId:
+                type: string
+                description: Lock ID for the environment
+                required: true
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          unlock-environment: {}
+node-app-template:
+  revision: fe9ae5d710d0cf594a36cebbdd077a125746e411
+  workflows:
+    main-build.yml:
+      sha256: 39e7467d1749b17aeda4a7fdace9a3cadf3b6f08898c53c10fd6be14b878e4e9
+      contract:
+        on:
+          create: null
+          push:
+            tags:
+              - v[0-9]+.[0-9]+.[0-9]+
+              - v[0-9]+.[0-9]+.[0-9]+**
+            branches:
+              - develop
+              - support/**
+              - release/**
+            paths:
+              - '**'
+              - .cloudopsworks/vars/**
+              - .cloudopsworks/values/**
+              - '!.github/**'
+              - '!.cloudopsworks/*'
+          workflow_dispatch: null
+        jobs:
+          code-build:
+            if: |
+              github.event_name == 'create' && 
+              (startsWith(github.ref, 'refs/heads/support/') || startsWith(github.ref, 'refs/heads/release/')) ||
+              (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          release:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true')
+          scan:
+            if: |
+              (! cancelled()) && 
+              (needs.code-build.result == 'success')
+          deploy:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled != 'true') && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true')
+          deploy-blue-green:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled == 'true')  && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true')
+    pr-build.yml:
+      sha256: ae6a9229d5331de66e43bcd3e6fd4351f780ab9cf52b847ebb13e87497f9c1cd
+      contract:
+        on:
+          pull_request:
+            types:
+              - opened
+              - synchronize
+              - edited
+            branches:
+              - hotfix/**
+              - feature/**
+              - master
+              - release/**
+              - support/**
+              - develop
+        jobs:
+          check-pr: {}
+          code-build:
+            if: |
+              (! startsWith(github.head_ref, 'release/')) &&
+              (! startsWith(github.head_ref,'support/')) &&
+              (! startsWith(github.head_ref,'master'))
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          preview:
+            if: needs.code-build.outputs.has_preview == 'true'
+          scan: {}
+    pr-close.yaml:
+      sha256: e06992ff700e0d29b511c4870a1c21de3bf0f577b8e00dd08b531a82983c94e0
+      contract:
+        on:
+          pull_request:
+            types:
+              - closed
+        jobs:
+          preload: {}
+          preview-destroy:
+            if: needs.preload.outputs.has_preview == 'true'
+          branch_deletion:
+            if: ${{ ! cancelled() }}
+    process-owners.yml:
+      sha256: 288ad81b3567823862ea7f167cdb403426200aef261b645d63e368aebcd7fb8f
+      contract:
+        on:
+          push:
+            branches:
+              - master
+              - main
+              - develop
+            paths:
+              - OWNERS
+              - .cloudopsworks/cloudopsworks-ci.yaml
+              - .cloudopsworks/cloudopsworks-cd.yaml
+          workflow_dispatch: null
+        jobs:
+          process-owners: {}
+    environment-destroy.yml:
+      sha256: cdef03c58daff4ce7936c3db1c90f0e7f9f66c4a746e67e692547db3ca70d26f
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              destroyedDeploymentName:
+                type: environment
+                description: Select Environment to destroy
+                required: true
+              target:
+                type: choice
+                description: What to Destroy? API, Application Deployment or BOTH
+                required: true
+                default: BOTH
+                options:
+                  - app
+                  - api
+                  - BOTH
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          destroy-environment: {}
+    environment-unlock.yml:
+      sha256: 923fef95553789ab064b8435caaf8cfc1bde68c9472ee32cbe0a533bafc88639
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              unlockDeploymentName:
+                type: environment
+                description: Select Environment to Unlock
+                required: true
+              target:
+                type: choice
+                description: What to Unlock? API or Application Deployment
+                required: true
+                default: app
+                options:
+                  - app
+                  - api
+              api_lock:
+                type: string
+                description: 'API to unlock (Format: API_Name/version)'
+                required: false
+                default: ""
+              lockId:
+                type: string
+                description: Lock ID for the environment
+                required: true
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          unlock-environment: {}
+python-app-template:
+  revision: b04b5764c11a0d0276354190531bb77b20b94eea
+  workflows:
+    main-build.yml:
+      sha256: ed75b5dc92dd3cfdf1b0cff3382102992951fe8c8b745351707ff87f67a32151
+      contract:
+        on:
+          create: null
+          push:
+            tags:
+              - v[0-9]+.[0-9]+.[0-9]+
+              - v[0-9]+.[0-9]+.[0-9]+**
+            branches:
+              - develop
+              - support/**
+              - release/**
+            paths:
+              - '**'
+              - .cloudopsworks/vars/**
+              - .cloudopsworks/values/**
+              - '!.github/**'
+              - '!.cloudopsworks/*'
+          workflow_dispatch: null
+        jobs:
+          code-build:
+            if: |
+              github.event_name == 'create' && 
+              (startsWith(github.ref, 'refs/heads/support/') || startsWith(github.ref, 'refs/heads/release/')) ||
+              (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          release:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true')
+          scan:
+            if: |
+              (! cancelled()) && 
+              (needs.code-build.result == 'success')
+          deploy:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled != 'true') && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true')
+          deploy-blue-green:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled == 'true')  && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true')
+    pr-build.yml:
+      sha256: 42a87202d54af5b4a6f1d73209c565c2e19e824dc52e4a62ead3db8403094a7c
+      contract:
+        on:
+          pull_request:
+            types:
+              - opened
+              - synchronize
+              - edited
+            branches:
+              - hotfix/**
+              - feature/**
+              - master
+              - release/**
+              - support/**
+              - develop
+        jobs:
+          check-pr: {}
+          code-build:
+            if: |
+              (! startsWith(github.head_ref, 'release/')) &&
+              (! startsWith(github.head_ref,'support/')) &&
+              (! startsWith(github.head_ref,'master'))
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          preview:
+            if: needs.code-build.outputs.has_preview == 'true'
+          scan: {}
+    pr-close.yaml:
+      sha256: 6268a30ef71eaf2bb483d3c11f22c296ca46a06496f2f50eb931269e5a5b367a
+      contract:
+        on:
+          pull_request:
+            types:
+              - closed
+        jobs:
+          preload: {}
+          preview-destroy:
+            if: needs.preload.outputs.has_preview == 'true'
+          branch_deletion:
+            if: ${{ ! cancelled() }}
+    process-owners.yml:
+      sha256: b66eb67181bf0191b43184debeced6c1d069a4c2584b2fffbac9cb4cad147d8c
+      contract:
+        on:
+          push:
+            branches:
+              - master
+              - main
+              - develop
+            paths:
+              - OWNERS
+              - .cloudopsworks/cloudopsworks-ci.yaml
+              - .cloudopsworks/cloudopsworks-cd.yaml
+          workflow_dispatch: null
+        jobs:
+          process-owners: {}
+    environment-destroy.yml:
+      sha256: 6b85d313e88cdd91c2361872b98877037306f0ed8ffa7ac855a42b923ac8a993
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              destroyedDeploymentName:
+                type: environment
+                description: Select Environment to destroy
+                required: true
+              target:
+                type: choice
+                description: What to Destroy? API, Application Deployment or BOTH
+                required: true
+                default: BOTH
+                options:
+                  - app
+                  - api
+                  - BOTH
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          destroy-environment: {}
+    environment-unlock.yml:
+      sha256: 4244a8ffe0757e74557a5c0f5555d676bd1b5923cfe4481c6096fd9c368450e3
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              unlockDeploymentName:
+                type: environment
+                description: Select Environment to Unlock
+                required: true
+              target:
+                type: choice
+                description: What to Unlock? API or Application Deployment
+                required: true
+                default: app
+                options:
+                  - app
+                  - api
+              api_lock:
+                type: string
+                description: 'API to unlock (Format: API_Name/version)'
+                required: false
+                default: ""
+              lockId:
+                type: string
+                description: Lock ID for the environment
+                required: true
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          unlock-environment: {}
+rust-app-template:
+  revision: 7a1349bcc6d83c86a92e62b247a579c0d589aa8a
+  workflows:
+    main-build.yml:
+      sha256: 89e389719072b5e85874d08be73d38d844ec7307a6dc91cc3073c374fd512927
+      contract:
+        on:
+          create: null
+          push:
+            tags:
+              - v[0-9]+.[0-9]+.[0-9]+
+              - v[0-9]+.[0-9]+.[0-9]+**
+            branches:
+              - develop
+              - support/**
+              - release/**
+            paths:
+              - '**'
+              - .cloudopsworks/vars/**
+              - .cloudopsworks/values/**
+              - '!.github/**'
+              - '!.cloudopsworks/*'
+          workflow_dispatch: null
+        jobs:
+          code-build:
+            if: |
+              github.event_name == 'create' && 
+              (startsWith(github.ref, 'refs/heads/support/') || startsWith(github.ref, 'refs/heads/release/')) ||
+              (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          release:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true')
+          goreleaser_mac:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.release.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true') &&
+              (needs.code-build.outputs.rust_goreleaser_macos == 'true')
+          goreleaser_chocolatey:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.release.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true') &&
+              (needs.code-build.outputs.rust_goreleaser_chocolatey == 'true')
+          goreleaser_main:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.release.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true') &&
+              (needs.code-build.outputs.rust_goreleaser == 'true')
+          chocolatey_push:
+            if: |
+              (! cancelled()) &&
+              (needs.goreleaser_chocolatey.result == 'success') &&
+              (needs.goreleaser_main.result == 'success') &&
+              (needs.code-build.outputs.is_release == 'true') &&
+              (needs.code-build.outputs.has_qualifier != 'true') &&
+              (needs.code-build.outputs.rust_goreleaser_chocolatey == 'true')
+          scan:
+            if: |
+              (! cancelled()) && 
+              (needs.code-build.result == 'success')
+          deploy:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled != 'true') && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true') && 
+              (needs.code-build.outputs.rust_goreleaser != 'true')
+          deploy-blue-green:
+            if: |
+              (! cancelled()) &&
+              (needs.code-build.result == 'success') &&
+              (needs.code-build.outputs.blue_green_enabled == 'true')  && 
+              (needs.code-build.outputs.deployment_enabled == 'true') && 
+              (needs.code-build.outputs.is_library != 'true') && 
+              (needs.code-build.outputs.rust_goreleaser != 'true')
+    pr-build.yml:
+      sha256: bb9d77381db0db8f8176be8f0558b3c7fde7faee1817e81183f6e2689e9d9381
+      contract:
+        on:
+          pull_request:
+            types:
+              - opened
+              - synchronize
+              - edited
+            branches:
+              - hotfix/**
+              - feature/**
+              - master
+              - release/**
+              - support/**
+              - develop
+        jobs:
+          check-pr: {}
+          code-build:
+            if: |
+              (! startsWith(github.head_ref, 'release/')) &&
+              (! startsWith(github.head_ref,'support/')) &&
+              (! startsWith(github.head_ref,'master'))
+          deploy-container:
+            if: |
+              (needs.code-build.outputs.container_enabled == 'true') &&
+              (needs.code-build.outputs.deployment_enabled == 'true') &&
+              (needs.code-build.outputs.is_library != 'true')
+          preview:
+            if: needs.code-build.outputs.has_preview == 'true'
+          scan: {}
+    pr-close.yaml:
+      sha256: 6268a30ef71eaf2bb483d3c11f22c296ca46a06496f2f50eb931269e5a5b367a
+      contract:
+        on:
+          pull_request:
+            types:
+              - closed
+        jobs:
+          preload: {}
+          preview-destroy:
+            if: needs.preload.outputs.has_preview == 'true'
+          branch_deletion:
+            if: ${{ ! cancelled() }}
+    process-owners.yml:
+      sha256: b66eb67181bf0191b43184debeced6c1d069a4c2584b2fffbac9cb4cad147d8c
+      contract:
+        on:
+          push:
+            branches:
+              - master
+              - main
+              - develop
+            paths:
+              - OWNERS
+              - .cloudopsworks/cloudopsworks-ci.yaml
+              - .cloudopsworks/cloudopsworks-cd.yaml
+          workflow_dispatch: null
+        jobs:
+          process-owners: {}
+    environment-destroy.yml:
+      sha256: 6b85d313e88cdd91c2361872b98877037306f0ed8ffa7ac855a42b923ac8a993
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              destroyedDeploymentName:
+                type: environment
+                description: Select Environment to destroy
+                required: true
+              target:
+                type: choice
+                description: What to Destroy? API, Application Deployment or BOTH
+                required: true
+                default: BOTH
+                options:
+                  - app
+                  - api
+                  - BOTH
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          destroy-environment: {}
+    environment-unlock.yml:
+      sha256: 4244a8ffe0757e74557a5c0f5555d676bd1b5923cfe4481c6096fd9c368450e3
+      contract:
+        on:
+          workflow_dispatch:
+            inputs:
+              unlockDeploymentName:
+                type: environment
+                description: Select Environment to Unlock
+                required: true
+              target:
+                type: choice
+                description: What to Unlock? API or Application Deployment
+                required: true
+                default: app
+                options:
+                  - app
+                  - api
+              api_lock:
+                type: string
+                description: 'API to unlock (Format: API_Name/version)'
+                required: false
+                default: ""
+              lockId:
+                type: string
+                description: Lock ID for the environment
+                required: true
+              qualifier:
+                type: string
+                description: Qualifier for the lock (green/bluee)
+                required: false
+                default: ""
+        jobs:
+          preload: {}
+          unlock-environment: {}

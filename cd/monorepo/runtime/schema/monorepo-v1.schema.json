@@ -1,0 +1,4233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cloudops.works/contracts/monorepo-v1.schema.json",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/BuildPlan"
+    },
+    {
+      "$ref": "#/$defs/ComponentResult"
+    },
+    {
+      "$ref": "#/$defs/ReleaseManifest"
+    },
+    {
+      "$ref": "#/$defs/DeploymentRequest"
+    },
+    {
+      "$ref": "#/$defs/DeploymentResult"
+    },
+    {
+      "$ref": "#/$defs/DeploymentReceipt"
+    },
+    {
+      "$ref": "#/$defs/PreviewState"
+    }
+  ],
+  "$defs": {
+    "Repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "fullName": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        }
+      },
+      "required": [
+        "id",
+        "fullName"
+      ]
+    },
+    "Toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "enum": [
+            "node",
+            "go",
+            "java",
+            "dotnet",
+            "python",
+            "rust",
+            "ruby",
+            "pnpm",
+            "yarn",
+            "bundler",
+            "npm"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+        },
+        "distribution": {
+          "enum": [
+            "default",
+            "temurin"
+          ]
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,47}$"
+          },
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "tool",
+        "version",
+        "distribution",
+        "components"
+      ]
+    },
+    "Package": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "container"
+            },
+            "dockerfile": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "context": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "platform": {
+              "enum": [
+                "linux/amd64",
+                "linux/arm64"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "dockerfile",
+            "context",
+            "platform"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "archive"
+            },
+            "format": {
+              "enum": [
+                "zip",
+                "tar.gz"
+              ]
+            },
+            "include": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^[^\\u0000-\\u001f]+$"
+              },
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "kind",
+            "format",
+            "include"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "static"
+            },
+            "directory": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "index": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            }
+          },
+          "required": [
+            "kind",
+            "directory",
+            "index"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "function"
+            },
+            "provider": {
+              "enum": [
+                "aws",
+                "gcp",
+                "azure"
+              ]
+            },
+            "mode": {
+              "enum": [
+                "aws-zip",
+                "aws-image",
+                "gcp-gen2",
+                "azure-zip",
+                "azure-container"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "entryPoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "architecture": {
+              "enum": [
+                "amd64",
+                "arm64"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            }
+          },
+          "required": [
+            "kind",
+            "provider",
+            "mode",
+            "runtime",
+            "entryPoint",
+            "architecture",
+            "source"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "openapi"
+            },
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "version": {
+              "enum": [
+                "3.0",
+                "3.1"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "file",
+            "version"
+          ]
+        }
+      ]
+    },
+    "PreviewProjection": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "container"
+            },
+            "source": {
+              "const": "main"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "healthPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "mode",
+            "source",
+            "port",
+            "healthPath"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "container"
+            },
+            "source": {
+              "const": "dockerfile"
+            },
+            "dockerfile": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "context": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "healthPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "mode",
+            "source",
+            "dockerfile",
+            "context",
+            "port",
+            "healthPath"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "container"
+            },
+            "source": {
+              "const": "static"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "healthPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "mode",
+            "source",
+            "port",
+            "healthPath"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "container"
+            },
+            "source": {
+              "const": "function"
+            },
+            "dockerfile": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "context": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "adapter": {
+              "enum": [
+                "aws-lambda-rie",
+                "gcp-functions-framework",
+                "azure-functions-host",
+                "handler-http"
+              ]
+            },
+            "entryPoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "healthPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "invokePath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "invokeTest": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "requestBody": {
+                  "type": "string",
+                  "maxLength": 65536
+                },
+                "expectedStatus": {
+                  "type": "integer",
+                  "minimum": 200,
+                  "maximum": 599
+                },
+                "responseContains": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": [
+                "requestBody",
+                "expectedStatus",
+                "responseContains"
+              ]
+            }
+          },
+          "required": [
+            "mode",
+            "source",
+            "dockerfile",
+            "context",
+            "adapter",
+            "entryPoint",
+            "port",
+            "healthPath",
+            "invokePath",
+            "invokeTest"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "artifact-only"
+            },
+            "reason": {
+              "const": "openapi"
+            }
+          },
+          "required": [
+            "mode",
+            "reason"
+          ]
+        }
+      ]
+    },
+    "Component": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\u0000-\\u001f]+$"
+        },
+        "language": {
+          "enum": [
+            "dotnet",
+            "go",
+            "java",
+            "node",
+            "python",
+            "rust",
+            "ruby"
+          ]
+        },
+        "framework": {
+          "enum": [
+            "plain",
+            "rails"
+          ]
+        },
+        "buildProfile": {
+          "enum": [
+            "dotnet",
+            "go",
+            "maven",
+            "gradle",
+            "npm",
+            "pnpm",
+            "yarn",
+            "python",
+            "cargo",
+            "bundler",
+            "rails"
+          ]
+        },
+        "toolchains": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Toolchain"
+          },
+          "maxItems": 10
+        },
+        "package": {
+          "$ref": "#/$defs/Package"
+        },
+        "preview": {
+          "$ref": "#/$defs/PreviewProjection"
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,47}$"
+          },
+          "maxItems": 256
+        },
+        "targetIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,47}$"
+          },
+          "maxItems": 256
+        },
+        "workload": {
+          "$ref": "#/$defs/NormalWorkload"
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "language",
+        "framework",
+        "buildProfile",
+        "toolchains",
+        "package",
+        "preview",
+        "dependsOn",
+        "targetIds",
+        "workload"
+      ]
+    },
+    "Target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "aws"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "aws.eks"
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "cluster": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "namespace": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "region",
+            "cluster",
+            "namespace",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "aws"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "aws.beanstalk"
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "application": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "environmentName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "bucket": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "prefix": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "iac": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "solutionStackName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "serviceRoleArn": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "instanceProfileName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "vpcId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "subnetIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                },
+                "securityGroupIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 32,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048
+                  }
+                }
+              },
+              "required": []
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "region",
+            "application",
+            "environmentName",
+            "bucket",
+            "prefix",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "aws"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "aws.lambda"
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "functionName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "packageMode": {
+              "enum": [
+                "zip",
+                "image"
+              ]
+            },
+            "alias": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "iac": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "roleArn": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "sourceBucket": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "sourcePrefix": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": []
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "region",
+            "functionName",
+            "packageMode",
+            "alias",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "aws"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "aws.s3-static"
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "bucket": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "prefix": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "region",
+            "bucket",
+            "prefix",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "aws"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "aws.apigateway-rest"
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "restApiId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "stage": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "apiVersion": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "maxLength": 128
+            },
+            "apiName": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "region",
+            "restApiId",
+            "stage",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "gcp"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "gcp.gke"
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "cluster": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "location": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "namespace": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "project",
+            "region",
+            "cluster",
+            "location",
+            "namespace",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "gcp"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "gcp.cloudrun"
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "serviceAccount": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "project",
+            "region",
+            "service",
+            "serviceAccount",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "gcp"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "gcp.appengine"
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "service": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "appConfig": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "appEnvironment": {
+              "enum": [
+                "standard",
+                "flexible"
+              ]
+            },
+            "iac": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "sourceBucket": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "serviceAccount": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "entrypoint": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": []
+            },
+            "appConfigResolved": {
+              "$ref": "#/$defs/AppEngineConfiguration"
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "project",
+            "region",
+            "service",
+            "appConfig",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "gcp"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "gcp.functions-gen2"
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "functionName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "serviceAccount": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "trigger": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "http",
+                    "eventarc"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ]
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "iac": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "sourceBucket": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "buildServiceAccount": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "entryPoint": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": []
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "project",
+            "region",
+            "functionName",
+            "serviceAccount",
+            "trigger",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "gcp"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "gcp.storage-static"
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "bucket": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "prefix": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "project",
+            "region",
+            "bucket",
+            "prefix",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "gcp"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "gcp.apigateway"
+            },
+            "project": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "api": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "gateway": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "backendServiceAccount": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "apiVersion": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "maxLength": 128
+            },
+            "apiName": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "project",
+            "region",
+            "api",
+            "gateway",
+            "backendServiceAccount",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "azure"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "azure.aks"
+            },
+            "subscriptionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "resourceGroup": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "cluster": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "namespace": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "subscriptionId",
+            "resourceGroup",
+            "cluster",
+            "namespace",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "azure"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "azure.containerapps"
+            },
+            "subscriptionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "resourceGroup": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "appName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "containerName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "iac": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "managedEnvironmentId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "identityId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "cpu": {
+                  "type": "number",
+                  "minimum": 0.25,
+                  "maximum": 32
+                },
+                "memory": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": []
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "subscriptionId",
+            "resourceGroup",
+            "appName",
+            "containerName",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "azure"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "azure.appservice"
+            },
+            "subscriptionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "resourceGroup": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "appName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "slot": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "packageMode": {
+              "enum": [
+                "zip",
+                "container"
+              ]
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "iac": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "servicePlanId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "identityId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "packageStorage": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "container": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "prefix": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "accountId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    }
+                  },
+                  "required": [
+                    "accountId",
+                    "container",
+                    "prefix"
+                  ]
+                }
+              },
+              "required": []
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "subscriptionId",
+            "resourceGroup",
+            "appName",
+            "slot",
+            "packageMode",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "azure"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "azure.functions"
+            },
+            "subscriptionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "resourceGroup": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "appName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "slot": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "packageMode": {
+              "enum": [
+                "zip",
+                "container"
+              ]
+            },
+            "hostingPlan": {
+              "enum": [
+                "flex-consumption",
+                "premium",
+                "dedicated"
+              ]
+            },
+            "workerRuntime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "iac": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "servicePlanId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "identityId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "deploymentContainer": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "packageStorage": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "container": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "prefix": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "accountId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    }
+                  },
+                  "required": [
+                    "accountId",
+                    "container",
+                    "prefix"
+                  ]
+                },
+                "storageAccountId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                }
+              },
+              "required": []
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "subscriptionId",
+            "resourceGroup",
+            "appName",
+            "slot",
+            "packageMode",
+            "hostingPlan",
+            "workerRuntime",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "azure"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "azure.blob-static"
+            },
+            "subscriptionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "resourceGroup": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "container": {
+              "const": "$web"
+            },
+            "prefix": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "account": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "subscriptionId",
+            "resourceGroup",
+            "account",
+            "container",
+            "prefix",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "azure"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "azure.apim"
+            },
+            "subscriptionId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "resourceGroup": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "serviceName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "apiId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "apiPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "enum": [
+                "external",
+                "managed"
+              ]
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "apiVersion": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "maxLength": 128
+            },
+            "apiName": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "subscriptionId",
+            "resourceGroup",
+            "serviceName",
+            "apiId",
+            "apiPath",
+            "readiness"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "environment": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "provider": {
+              "const": "aws"
+            },
+            "authRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "configDigest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "kind": {
+              "const": "aws.apigateway-rest"
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "stage": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "readiness": {
+              "$ref": "#/$defs/Readiness"
+            },
+            "ownership": {
+              "const": "managed"
+            },
+            "os": {
+              "enum": [
+                "linux",
+                "windows"
+              ]
+            },
+            "architecture": {
+              "enum": [
+                "x86_64",
+                "arm64"
+              ]
+            },
+            "runtime": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "apiVersion": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+              "maxLength": 128
+            },
+            "apiName": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            }
+          },
+          "required": [
+            "id",
+            "environment",
+            "provider",
+            "authRef",
+            "configDigest",
+            "kind",
+            "region",
+            "stage",
+            "readiness",
+            "ownership",
+            "apiName",
+            "apiVersion"
+          ]
+        }
+      ]
+    },
+    "Location": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "local"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "pattern": "^[^\\u0000-\\u001f]+$"
+            }
+          },
+          "required": [
+            "kind",
+            "path"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "oci"
+            },
+            "reference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "kind",
+            "reference"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "release-asset"
+            },
+            "repositoryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "kind",
+            "repositoryId",
+            "tag",
+            "name"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "actions-artifact"
+              ]
+            },
+            "repositoryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "runId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "runAttempt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "artifactId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "artifactName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048,
+              "pattern": "^components-[1-9][0-9]*-[1-9][0-9]*-[a-z][a-z0-9-]{0,47}$"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "kind",
+            "repositoryId",
+            "runId",
+            "runAttempt",
+            "artifactId",
+            "artifactName",
+            "path"
+          ]
+        }
+      ]
+    },
+    "Artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "container",
+            "archive",
+            "static",
+            "function",
+            "openapi"
+          ]
+        },
+        "format": {
+          "enum": [
+            "oci",
+            "zip",
+            "tar.gz",
+            "openapi-json",
+            "openapi-yaml"
+          ]
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "location": {
+          "$ref": "#/$defs/Location"
+        },
+        "sourceSha": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "builtVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+        }
+      },
+      "required": [
+        "kind",
+        "format",
+        "digest",
+        "sizeBytes",
+        "location",
+        "sourceSha",
+        "builtVersion"
+      ]
+    },
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ]
+    },
+    "BuildPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "cloudopsworks.io/v1"
+        },
+        "kind": {
+          "const": "BuildPlan"
+        },
+        "repository": {
+          "$ref": "#/$defs/Repository"
+        },
+        "baseSha": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headSha": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+        },
+        "event": {
+          "enum": [
+            "pull-request",
+            "push",
+            "release",
+            "manual"
+          ]
+        },
+        "prNumber": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Component"
+          },
+          "maxItems": 256
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Target"
+          },
+          "maxItems": 256
+        },
+        "buildSelection": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "componentId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,47}$"
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048
+                },
+                "maxItems": 1024
+              }
+            },
+            "required": [
+              "componentId",
+              "reasons"
+            ]
+          },
+          "maxItems": 256
+        },
+        "removedComponents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,47}$"
+          },
+          "maxItems": 256
+        },
+        "buildNoop": {
+          "type": "boolean"
+        },
+        "matrix": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "componentId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,47}$"
+                  },
+                  "closure": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,47}$"
+                    },
+                    "maxItems": 256
+                  },
+                  "toolchains": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Toolchain"
+                    },
+                    "maxItems": 10
+                  }
+                },
+                "required": [
+                  "componentId",
+                  "closure",
+                  "toolchains"
+                ]
+              },
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "include"
+          ]
+        },
+        "previewPolicy": {
+          "$ref": "#/$defs/PreviewPolicy"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "repository",
+        "baseSha",
+        "headSha",
+        "version",
+        "event",
+        "prNumber",
+        "components",
+        "targets",
+        "buildSelection",
+        "removedComponents",
+        "buildNoop",
+        "matrix",
+        "previewPolicy"
+      ]
+    },
+    "ComponentResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "cloudopsworks.io/v1"
+        },
+        "kind": {
+          "const": "ComponentResult"
+        },
+        "repository": {
+          "$ref": "#/$defs/Repository"
+        },
+        "componentId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "headSha": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+        },
+        "purpose": {
+          "enum": [
+            "ci",
+            "release",
+            "preview"
+          ]
+        },
+        "status": {
+          "enum": [
+            "succeeded",
+            "failed"
+          ]
+        },
+        "mainArtifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Artifact"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "previewArtifact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Artifact"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Error"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "repository",
+        "componentId",
+        "headSha",
+        "version",
+        "purpose",
+        "status",
+        "mainArtifact",
+        "previewArtifact",
+        "error"
+      ]
+    },
+    "ReleaseManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "cloudopsworks.io/v1"
+        },
+        "kind": {
+          "const": "ReleaseManifest"
+        },
+        "repository": {
+          "$ref": "#/$defs/Repository"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "headSha": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "previousTag": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "const": "complete"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "componentId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,47}$"
+              },
+              "package": {
+                "$ref": "#/$defs/Package"
+              },
+              "mainArtifact": {
+                "$ref": "#/$defs/Artifact"
+              },
+              "previewArtifact": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Artifact"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "targetIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,47}$"
+                },
+                "maxItems": 256
+              },
+              "workload": {
+                "$ref": "#/$defs/NormalWorkload"
+              }
+            },
+            "required": [
+              "componentId",
+              "package",
+              "mainArtifact",
+              "previewArtifact",
+              "targetIds",
+              "workload"
+            ]
+          },
+          "maxItems": 256
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Target"
+          },
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "repository",
+        "version",
+        "tag",
+        "headSha",
+        "previousTag",
+        "state",
+        "components",
+        "targets"
+      ]
+    },
+    "DeploymentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "cloudopsworks.io/v1"
+        },
+        "kind": {
+          "const": "DeploymentRequest"
+        },
+        "repository": {
+          "$ref": "#/$defs/Repository"
+        },
+        "operation": {
+          "const": "apply"
+        },
+        "componentId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "releaseVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+        },
+        "releaseHeadSha": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "manifestDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        },
+        "package": {
+          "$ref": "#/$defs/Package"
+        },
+        "artifact": {
+          "$ref": "#/$defs/Artifact"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "previousReceiptId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "enum": [
+            "first-deploy",
+            "artifact-changed",
+            "target-changed",
+            "retry-unresolved",
+            "explicit-reconcile"
+          ]
+        },
+        "workload": {
+          "$ref": "#/$defs/NormalWorkload"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "repository",
+        "operation",
+        "componentId",
+        "releaseVersion",
+        "releaseHeadSha",
+        "manifestDigest",
+        "target",
+        "package",
+        "artifact",
+        "idempotencyKey",
+        "previousReceiptId",
+        "reason",
+        "workload"
+      ]
+    },
+    "DeploymentResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "cloudopsworks.io/v1"
+        },
+        "kind": {
+          "const": "DeploymentResult"
+        },
+        "repository": {
+          "$ref": "#/$defs/Repository"
+        },
+        "componentId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "targetId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "releaseVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+        },
+        "artifactDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "targetConfigDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "status": {
+          "enum": [
+            "succeeded",
+            "failed"
+          ]
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "resourceUrl": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Error"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "repository",
+        "componentId",
+        "targetId",
+        "releaseVersion",
+        "artifactDigest",
+        "targetConfigDigest",
+        "idempotencyKey",
+        "status",
+        "ready",
+        "resourceUrl",
+        "error"
+      ]
+    },
+    "DeploymentReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "cloudopsworks.io/v1"
+        },
+        "kind": {
+          "const": "DeploymentReceipt"
+        },
+        "repository": {
+          "$ref": "#/$defs/Repository"
+        },
+        "componentId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "targetId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "releaseVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+        },
+        "artifactDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "targetConfigDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "githubDeploymentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "githubStatusId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "status": {
+          "const": "success"
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "repository",
+        "componentId",
+        "targetId",
+        "releaseVersion",
+        "artifactDigest",
+        "targetConfigDigest",
+        "idempotencyKey",
+        "githubDeploymentId",
+        "githubStatusId",
+        "status",
+        "observedAt"
+      ]
+    },
+    "PreviewState": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "const": "cloudopsworks.io/v1"
+        },
+        "kind": {
+          "const": "PreviewState"
+        },
+        "repository": {
+          "$ref": "#/$defs/Repository"
+        },
+        "prNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,47}$"
+        },
+        "headSha": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "phase": {
+          "enum": [
+            "preparing",
+            "ready",
+            "failed",
+            "closing",
+            "closed"
+          ]
+        },
+        "isolation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "policyDigest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "probeImageDigest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "verifiedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "admissionRestricted": {
+                  "const": true
+                },
+                "ingressDnsAllowed": {
+                  "const": true
+                },
+                "unintendedEgressDenied": {
+                  "const": true
+                },
+                "metadataDenied": {
+                  "const": true
+                }
+              },
+              "required": [
+                "policyDigest",
+                "probeImageDigest",
+                "verifiedAt",
+                "admissionRestricted",
+                "ingressDnsAllowed",
+                "unintendedEgressDenied",
+                "metadataDenied"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "componentId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,47}$"
+              },
+              "status": {
+                "enum": [
+                  "ready",
+                  "failed",
+                  "artifact-only",
+                  "removed"
+                ]
+              },
+              "releaseName": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,47}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "desiredDigest": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "successfulDigest": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Error"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "componentId",
+              "status",
+              "releaseName",
+              "desiredDigest",
+              "successfulDigest",
+              "error"
+            ]
+          },
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "repository",
+        "prNumber",
+        "targetId",
+        "namespace",
+        "headSha",
+        "runId",
+        "phase",
+        "isolation",
+        "components"
+      ]
+    },
+    "PreviewPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "targets": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "targetId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,47}$"
+              },
+              "baseDomain": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "ingressClass": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "isolation": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "cilium",
+                      "calico",
+                      "gke-dataplane-v2",
+                      "aws-vpc-network-policy",
+                      "azure-network-policy"
+                    ]
+                  },
+                  "probeImage": {
+                    "type": "string",
+                    "pattern": "^.+@sha256:[0-9a-f]{64}$"
+                  },
+                  "controlNamespace": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,47}$"
+                  },
+                  "controlEndpoint": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "host": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      "port": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 65535
+                      }
+                    },
+                    "required": [
+                      "host",
+                      "port"
+                    ]
+                  },
+                  "metadataEndpoints": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "host": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2048
+                        },
+                        "port": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        }
+                      },
+                      "required": [
+                        "host",
+                        "port"
+                      ]
+                    }
+                  },
+                  "ingressNamespaceSelector": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 16,
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  },
+                  "ingressPodSelector": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 16,
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  },
+                  "dnsNamespaceSelector": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 16,
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  },
+                  "dnsPodSelector": {
+                    "type": "object",
+                    "minProperties": 1,
+                    "maxProperties": 16,
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  }
+                },
+                "required": [
+                  "mode",
+                  "probeImage",
+                  "controlNamespace",
+                  "controlEndpoint",
+                  "metadataEndpoints",
+                  "ingressNamespaceSelector",
+                  "ingressPodSelector",
+                  "dnsNamespaceSelector",
+                  "dnsPodSelector"
+                ]
+              }
+            },
+            "required": [
+              "targetId",
+              "baseDomain",
+              "ingressClass",
+              "isolation"
+            ]
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "targets"
+      ]
+    },
+    "NormalWorkload": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "http"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535
+            },
+            "healthPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^/[^\\u0000-\\u0020\\\\?#]*$"
+            }
+          },
+          "required": [
+            "kind",
+            "port",
+            "healthPath"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "function"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "static"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "api"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "artifact"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        }
+      ]
+    },
+    "ProbeAuth": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "gcp-id-token"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "secret-header"
+            },
+            "header": {
+              "enum": [
+                "Authorization",
+                "x-api-key",
+                "x-functions-key",
+                "Ocp-Apim-Subscription-Key"
+              ]
+            },
+            "secretRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "prefix": {
+              "enum": [
+                "",
+                "Bearer "
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "header",
+            "secretRef",
+            "prefix"
+          ]
+        }
+      ]
+    },
+    "ServingProbe": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "http"
+            },
+            "path": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024,
+                  "pattern": "^/[^\\u0000-\\u0020\\\\?#]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "method": {
+              "enum": [
+                "GET",
+                "POST"
+              ]
+            },
+            "requestBody": {
+              "type": "string",
+              "maxLength": 65536
+            },
+            "expectedStatus": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 299
+            },
+            "responseContains": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "auth": {
+              "$ref": "#/$defs/ProbeAuth"
+            }
+          },
+          "required": [
+            "kind",
+            "path",
+            "method",
+            "requestBody",
+            "expectedStatus",
+            "responseContains",
+            "auth"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "lambda-invoke"
+            },
+            "requestBody": {
+              "type": "string",
+              "maxLength": 65536
+            },
+            "responseContains": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "kind",
+            "requestBody",
+            "responseContains"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "gcp-eventarc"
+            },
+            "source": {
+              "enum": [
+                "pubsub",
+                "storage-finalize"
+              ]
+            },
+            "resource": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "requestBody": {
+              "type": "string",
+              "maxLength": 65536
+            },
+            "successLogMarker": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "kind",
+            "source",
+            "resource",
+            "requestBody",
+            "successLogMarker"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "azure-function-admin"
+            },
+            "functionName": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,127}$"
+            },
+            "requestBody": {
+              "type": "string",
+              "maxLength": 65536
+            },
+            "hostKeyRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,47}$"
+            },
+            "appInsightsAppId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "successLogMarker": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "kind",
+            "functionName",
+            "requestBody",
+            "hostKeyRef",
+            "appInsightsAppId",
+            "successLogMarker"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "static-http"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^/[^\\u0000-\\u0020\\\\?#]*$"
+            }
+          },
+          "required": [
+            "kind",
+            "path"
+          ]
+        }
+      ]
+    },
+    "Readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deadlineSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 1800
+        },
+        "intervalSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "probe": {
+          "$ref": "#/$defs/ServingProbe"
+        }
+      },
+      "required": [
+        "deadlineSeconds",
+        "intervalSeconds",
+        "probe"
+      ]
+    },
+    "AppEngineConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 63
+        },
+        "runtime": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "environment": {
+          "enum": [
+            "standard",
+            "flexible"
+          ]
+        },
+        "entrypoint": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "instanceClass": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runtimeConfig": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "operatingSystem": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "runtimeVersion": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "required": [
+                "operatingSystem",
+                "runtimeVersion"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scaling": {
+          "oneOf": [
+            {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "manual"
+                    },
+                    "instances": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2147483647
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "instances"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "basic"
+                    },
+                    "maxInstances": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 200
+                    },
+                    "idleTimeout": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[0-9]+(?:\\.[0-9]{1,9})?s$",
+                          "maxLength": 24
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "maxInstances",
+                    "idleTimeout"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "automatic"
+                    },
+                    "minInstances": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 2147483647
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "maxInstances": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 2147483647
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "minIdleInstances": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 2147483647
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "maxIdleInstances": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 2147483647
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "targetCpuUtilization": {
+                      "oneOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "targetThroughputUtilization": {
+                      "oneOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "maxConcurrentRequests": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 2147483647
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "minPendingLatency": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[0-9]+(?:\\.[0-9]{1,9})?s$",
+                          "maxLength": 24
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "maxPendingLatency": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[0-9]+(?:\\.[0-9]{1,9})?s$",
+                          "maxLength": 24
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "minInstances",
+                    "maxInstances",
+                    "minIdleInstances",
+                    "maxIdleInstances",
+                    "targetCpuUtilization",
+                    "targetThroughputUtilization",
+                    "maxConcurrentRequests",
+                    "minPendingLatency",
+                    "maxPendingLatency"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "sourceDigest",
+        "service",
+        "runtime",
+        "environment",
+        "entrypoint",
+        "instanceClass",
+        "runtimeConfig",
+        "scaling"
+      ]
+    }
+  }
+}

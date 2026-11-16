@@ -1,0 +1,154 @@
+{
+  "mock_provider": {
+    "aws": {
+      "mock_data": {
+        "aws_caller_identity": {
+          "defaults": {
+            "account_id": "123456789012"
+          }
+        },
+        "aws_iam_role": {
+          "defaults": {
+            "arn": "arn:aws:iam::123456789012:role/component"
+          }
+        },
+        "aws_s3_bucket": {
+          "defaults": {
+            "id": "fixture-packages"
+          }
+        }
+      }
+    }
+  },
+  "variables": {
+    "resource": {
+      "kind": "aws.lambda",
+      "provider": "aws",
+      "region": "us-east-1",
+      "functionName": "fixture",
+      "packageMode": "zip",
+      "alias": null,
+      "iac": {
+        "sourceBucket": "fixture-packages",
+        "sourcePrefix": "components"
+      }
+    },
+    "configuration": {
+      "kind": "aws.lambda",
+      "runtime": "provided.al2023",
+      "iac": {
+        "roleArn": "arn:aws:iam::123456789012:role/component"
+      }
+    },
+    "artifact": {
+      "digest": "sha256:771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781",
+      "format": "zip",
+      "path": "../../../../tests/monorepo/fixtures/iac_capabilities/artifacts/771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781/released-package.zip",
+      "imageReference": null,
+      "files": []
+    },
+    "package_handler": "bootstrap",
+    "owner_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "run": {
+    "zip_digest_and_optional_alias": {
+      "command": "plan",
+      "variables": {
+        "resource": {
+          "kind": "aws.lambda",
+          "provider": "aws",
+          "region": "us-east-1",
+          "functionName": "fixture",
+          "packageMode": "zip",
+          "alias": "live",
+          "iac": {
+            "sourceBucket": "fixture-packages",
+            "sourcePrefix": "components"
+          }
+        }
+      },
+      "assert": [
+        {
+          "condition": "${aws_lambda_function.component.package_type == \"Zip\" && aws_lambda_function.component.publish && aws_lambda_function.component.source_code_hash == filebase64sha256(var.artifact.path)}",
+          "error_message": "ZIP requires immutable version and exact byte hash."
+        },
+        {
+          "condition": "${aws_s3_object.package[0].key == \"components/771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781/main.zip\" && length(aws_lambda_alias.component) == 1}",
+          "error_message": "ZIP digest key and optional alias must be exact."
+        }
+      ]
+    },
+    "image_exact_private_ecr_digest": {
+      "command": "plan",
+      "variables": {
+        "resource": {
+          "kind": "aws.lambda",
+          "provider": "aws",
+          "region": "us-east-1",
+          "functionName": "fixture",
+          "packageMode": "image",
+          "alias": null,
+          "iac": {
+            "sourceBucket": "fixture-packages",
+            "sourcePrefix": "components"
+          }
+        },
+        "artifact": {
+          "digest": "sha256:771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781",
+          "format": "oci",
+          "path": null,
+          "imageReference": "123456789012.dkr.ecr.us-east-1.amazonaws.com/component@sha256:771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781",
+          "files": []
+        }
+      },
+      "assert": [
+        {
+          "condition": "${aws_lambda_function.component.package_type == \"Image\" && aws_lambda_function.component.image_uri == var.artifact.imageReference && aws_lambda_function.component.runtime == null && length(aws_s3_object.package) == 0}",
+          "error_message": "Image must use exact private ECR digest without ZIP resources."
+        }
+      ]
+    },
+    "image_wrong_account_rejected": {
+      "command": "plan",
+      "variables": {
+        "resource": {
+          "kind": "aws.lambda",
+          "provider": "aws",
+          "region": "us-east-1",
+          "functionName": "fixture",
+          "packageMode": "image",
+          "alias": null,
+          "iac": {
+            "sourceBucket": "fixture-packages",
+            "sourcePrefix": "components"
+          }
+        },
+        "artifact": {
+          "digest": "sha256:771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781",
+          "format": "oci",
+          "path": null,
+          "imageReference": "999999999999.dkr.ecr.us-east-1.amazonaws.com/component@sha256:771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781",
+          "files": []
+        }
+      },
+      "expect_failures": [
+        "aws_lambda_function.component"
+      ]
+    },
+    "zip_changed_at_same_input_path_rejected": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:fb18cf100ef842b1459a8de8cf9fde56f740c04b057579c69de82c35d90539d5",
+          "format": "zip",
+          "path": "../../../../tests/monorepo/fixtures/iac_capabilities/artifacts/771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781/released-package.zip",
+          "imageReference": null,
+          "files": []
+        }
+      },
+      "expect_failures": [
+        "aws_s3_object.package"
+      ]
+    }
+  }
+}

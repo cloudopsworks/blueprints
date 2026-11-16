@@ -1,0 +1,177 @@
+name: Authenticate prior complete stage baseline
+description: Verify diagnostic stage provenance or query normal preview receipts without admitting an unmigrated stage
+inputs:
+  mode: {description: Diagnostic verified stage or pending normal producer baseline, default: diagnostic}
+  configuration: {description: Immutable Go-normalized source configuration for normal metadata query, default: ''}
+  pr-number: {description: Independently verified actual PR number or zero, default: '0'}
+  automation-id: {description: Protected deployment receipt actor identity, default: ''}
+  head-sha: {description: Independently verified current application commit, required: true}
+  blueprint-sha: {description: Independently verified immutable Blueprint commit, required: true}
+  discover: {description: Permit bounded prior-stage discovery before selection only, default: 'true'}
+  artifact-id: {description: Optional exact prior control artifact routing ID, default: ''}
+  archive-digest: {description: Optional exact prior archive routing digest, default: ''}
+  run-id: {description: Optional exact prior owner host run, default: ''}
+  run-attempt: {description: Optional exact prior host attempt, default: ''}
+  expected-base: {description: Endorsed selector base; post-plan verification only, default: ''}
+outputs:
+  baseline: {description: Immutable source-bound normal baseline availability receipt, value: '${{ steps.normal.outputs.baseline }}'}
+  base-sha: {description: Authenticated original application baseline, value: '${{ steps.ancestry.outputs.base-sha }}'}
+  found: {description: Complete prior stage authenticated, value: '${{ steps.ancestry.outputs.found }}'}
+  manifest: {description: Original complete manifest with retained payload provenance, value: '${{ steps.stage.outputs.manifest }}'}
+  plan: {description: Original endorsed plan, value: '${{ steps.stage.outputs.plan }}'}
+  artifact-id: {description: Prior immutable artifact routing ID, value: '${{ steps.discover.outputs.artifact-id }}'}
+  archive-digest: {description: Prior archive routing digest, value: '${{ steps.discover.outputs.archive-digest }}'}
+  run-id: {description: Original owner host run, value: '${{ steps.discover.outputs.run-id }}'}
+  run-attempt: {description: Original owner attempt, value: '${{ steps.discover.outputs.run-attempt }}'}
+runs:
+  using: composite
+  steps:
+    - id: normal
+      if: inputs.mode == 'normal'
+      uses: actions/github-script@v9
+      env:
+        CONFIGURATION: ${{ inputs.configuration }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        AUTOMATION_ID: ${{ inputs.automation-id }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const env = process.env;
+          if (!/^[0-9a-f]{40}$/.test(env.HEAD_SHA || '') || !/^(0|[1-9][0-9]*)$/.test(env.PR_NUMBER || '') || ![env.GITHUB_REPOSITORY_ID, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT].every(value => /^[1-9][0-9]*$/.test(value || '')) || env.GITHUB_REPOSITORY !== `${context.repo.owner}/${context.repo.repo}`) throw new Error('normal-baseline-identity');
+          if ((await fs.stat(env.CONFIGURATION)).size > 4 * 1024 * 1024) throw new Error('normal-baseline-configuration');
+          const configuration = JSON.parse(await fs.readFile(env.CONFIGURATION, 'utf8'));
+          const policy = configuration.previewPolicy;
+          if (typeof policy?.enabled !== 'boolean' || !Array.isArray(policy.targets) || policy.targets.length > 32 || policy.targets.some(item => !/^[a-z][a-z0-9-]{0,47}$/.test(item.targetId || '')) || new Set(policy.targets.map(item => item.targetId)).size !== policy.targets.length) throw new Error('normal-baseline-policy');
+          let reason = 'normal-stage-unavailable';
+          const heads = [];
+          if (Number(env.PR_NUMBER) > 0 && policy.enabled && policy.targets.length) {
+            if (!/^[1-9][0-9]*$/.test(env.AUTOMATION_ID || '')) reason = 'preview-automation-unavailable';
+            else try {
+              for (const target of policy.targets) {
+                const deployments = [];
+                for (let page = 1; page <= 20; page++) {
+                  const items = (await github.rest.repos.listDeployments({...context.repo, environment: `cloudopsworks/preview/${target.targetId}/pr-${env.PR_NUMBER}`, per_page: 100, page})).data;
+                  if (!Array.isArray(items) || items.length > 100) throw new Error('normal-baseline-api-bound');
+                  deployments.push(...items);
+                  if (items.length < 100) break;
+                  if (page === 20) throw new Error('normal-baseline-api-bound');
+                }
+                const receipt = deployments.filter(item => String(item.creator?.id) === env.AUTOMATION_ID && item.payload?.kind === 'PreviewMetadata').sort((a, b) => Number(b.id) - Number(a.id))[0];
+                if (!receipt) { reason = 'preview-receipt-absent'; break; }
+                if (!Number.isSafeInteger(receipt.id) || receipt.id < 1 || Buffer.byteLength(JSON.stringify(receipt.payload)) > 4 * 1024 * 1024) { reason = 'preview-receipt-unusable'; break; }
+                const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'PreviewState'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(receipt.payload.state))});
+                if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) { reason = 'preview-receipt-unusable'; break; }
+                const state = JSON.parse(checked.stdout).record;
+                const namespace = `pr-${env.PR_NUMBER}-${target.targetId.slice(0,20)}-${crypto.createHash('sha256').update(`${env.GITHUB_REPOSITORY_ID}:${env.PR_NUMBER}:${target.targetId}`).digest('hex').slice(0,12)}`;
+                if (state.repository?.id !== env.GITHUB_REPOSITORY_ID || state.repository.fullName !== env.GITHUB_REPOSITORY || state.prNumber !== Number(env.PR_NUMBER) || state.targetId !== target.targetId || state.namespace !== namespace || state.phase !== 'ready' || !/^[0-9a-f]{40}$/.test(state.headSha || '')) { reason = 'preview-receipt-unusable'; break; }
+                const statuses = [];
+                for (let page = 1; page <= 20; page++) {
+                  const items = (await github.rest.repos.listDeploymentStatuses({...context.repo, deployment_id: receipt.id, per_page: 100, page})).data;
+                  if (!Array.isArray(items) || items.length > 100) throw new Error('normal-baseline-api-bound');
+                  statuses.push(...items);
+                  if (items.length < 100) break;
+                  if (page === 20) throw new Error('normal-baseline-api-bound');
+                }
+                const latest = statuses.filter(item => String(item.creator?.id) === env.AUTOMATION_ID).sort((a,b) => Number(b.id)-Number(a.id))[0];
+                if (!latest || !Number.isSafeInteger(latest.id) || latest.id < 1 || latest.state !== 'success') { reason = 'preview-receipt-unusable'; break; }
+                heads.push(state.headSha);
+              }
+              if (heads.length === policy.targets.length && new Set(heads).size !== 1) reason = 'preview-targets-disagree';
+            } catch (error) {
+              if (![403, 404].includes(error.status)) throw error;
+              reason = 'preview-receipt-inaccessible';
+            }
+          }
+          // Receipts alone do not authenticate carried payloads or a source-stage writer.
+          // Do not admit the old Python stage publisher: full scanner barrier migration is pending.
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'normal-baseline-'));
+          await fs.chmod(directory, 0o700);
+          const file = path.join(directory, 'baseline.json');
+          await fs.writeFile(file, JSON.stringify({repositoryId: env.GITHUB_REPOSITORY_ID, runId: env.GITHUB_RUN_ID, runAttempt: env.GITHUB_RUN_ATTEMPT, headSha: env.HEAD_SHA, found: false, baseSha: '', reason, stage: null}), {mode: 0o600, flag: 'wx'});
+          core.warning(`Normal baseline unavailable: ${reason}; materializing selected source through the Go planner`);
+          core.setOutput('baseline', file);
+    - id: discover
+      if: inputs.mode == 'diagnostic'
+      uses: actions/github-script@v9
+      env:
+        DISCOVER: ${{ inputs.discover }}
+        ARTIFACT_ID: ${{ inputs.artifact-id }}
+        ARCHIVE_DIGEST: ${{ inputs.archive-digest }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      with:
+        script: |
+          const env = process.env;
+          if (!['true', 'false'].includes(env.DISCOVER)) throw new Error('baseline-discovery-mode');
+          let route;
+          if ([env.ARTIFACT_ID, env.ARCHIVE_DIGEST, env.RUN_ID, env.RUN_ATTEMPT].some(Boolean)) {
+            if (![env.ARTIFACT_ID, env.RUN_ID, env.RUN_ATTEMPT].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(env.ARCHIVE_DIGEST || '')) throw new Error('baseline-route');
+            route = {artifactId: env.ARTIFACT_ID, archiveDigest: env.ARCHIVE_DIGEST, runId: env.RUN_ID, runAttempt: env.RUN_ATTEMPT};
+          } else if (env.DISCOVER === 'true') {
+            const response = (await github.rest.actions.listWorkflowRunsForRepo({...context.repo, branch: env.GITHUB_REF_NAME, per_page: 100, page: 1})).data;
+            if (!Array.isArray(response.workflow_runs) || response.workflow_runs.length > 100) throw new Error('baseline-runs');
+            for (const run of response.workflow_runs.slice(0, 20)) {
+              if (String(run.id) === env.GITHUB_RUN_ID || run.status !== 'completed' || !['.github/workflows/composite-first-slice.yml', '.github/workflows/composite-first-closure.yml'].includes(run.path?.split('@')[0])) continue;
+              const matches = [];
+              for (let page = 1; page <= 100; page++) {
+                const items = (await github.rest.actions.listWorkflowRunArtifacts({...context.repo, run_id: run.id, per_page: 100, page})).data.artifacts;
+                if (!Array.isArray(items) || items.length > 100) throw new Error('baseline-artifacts');
+                matches.push(...items.filter(item => item.name === `monorepo-stage-${run.id}-${run.run_attempt}`));
+                if (items.length < 100) break;
+                if (page === 100) throw new Error('baseline-artifacts-bound');
+              }
+              if (matches.length > 1) throw new Error('baseline-ambiguous-stage');
+              if (!matches.length) continue;
+              route = {artifactId: String(matches[0].id), archiveDigest: matches[0].digest, runId: String(run.id), runAttempt: String(run.run_attempt)};
+              break;
+            }
+          }
+          core.setOutput('found', String(Boolean(route)));
+          if (route) for (const [key, value] of [['artifact-id', route.artifactId], ['archive-digest', route.archiveDigest], ['run-id', route.runId], ['run-attempt', route.runAttempt]]) core.setOutput(key, value);
+    - id: context
+      if: steps.discover.outputs.found == 'true'
+      uses: ./bp/cd/tasks/repo/context
+      with:
+        run-id: ${{ steps.discover.outputs.run-id }}
+        run-attempt: ${{ steps.discover.outputs.run-attempt }}
+    - id: stage
+      if: steps.discover.outputs.found == 'true'
+      uses: ./bp/ci/monorepo/stage/endorsement
+      with:
+        mode: verify
+        caller-mode: ${{ steps.context.outputs.caller-mode }}
+        artifact-id: ${{ steps.discover.outputs.artifact-id }}
+        archive-digest: ${{ steps.discover.outputs.archive-digest }}
+        run-id: ${{ steps.context.outputs.run-id }}
+        run-attempt: ${{ steps.context.outputs.run-attempt }}
+    - id: ancestry
+      if: inputs.mode == 'diagnostic'
+      uses: actions/github-script@v9
+      env:
+        FOUND: ${{ steps.discover.outputs.found }}
+        PLAN_PATH: ${{ steps.stage.outputs.plan }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        BLUEPRINT_SHA: ${{ inputs.blueprint-sha }}
+        PRIOR_BLUEPRINT_SHA: ${{ steps.context.outputs.blueprint-sha }}
+        PRIOR_SOURCE_SHA: ${{ steps.context.outputs.source-sha }}
+        EXPECTED_BASE: ${{ inputs.expected-base }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const env = process.env;
+          if (env.FOUND !== 'true') {
+            if (env.EXPECTED_BASE && env.EXPECTED_BASE !== env.HEAD_SHA) throw new Error('baseline-missing');
+            core.setOutput('found', 'false');
+            core.setOutput('base-sha', '');
+            return;
+          }
+          if ((await fs.stat(env.PLAN_PATH)).size > 4 * 1024 * 1024) throw new Error('baseline-plan-bound');
+          const plan = JSON.parse(await fs.readFile(env.PLAN_PATH, 'utf8'));
+          if (plan.repository.id !== env.GITHUB_REPOSITORY_ID || plan.repository.fullName !== `${context.repo.owner}/${context.repo.repo}` || env.PRIOR_BLUEPRINT_SHA !== env.BLUEPRINT_SHA || env.PRIOR_SOURCE_SHA && env.PRIOR_SOURCE_SHA !== plan.headSha || env.EXPECTED_BASE && env.EXPECTED_BASE !== plan.headSha) throw new Error('baseline-original-binding');
+          const relation = (await github.rest.repos.compareCommitsWithBasehead({...context.repo, basehead: plan.headSha + '...' + env.HEAD_SHA})).data;
+          if (!['ahead', 'identical'].includes(relation.status) || relation.base_commit?.sha !== plan.headSha || relation.merge_base_commit?.sha !== plan.headSha) throw new Error('baseline-ancestry');
+          core.setOutput('base-sha', plan.headSha);
+          core.setOutput('found', 'true');

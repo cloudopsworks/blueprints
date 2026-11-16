@@ -1,0 +1,10 @@
+{
+  "sourceDigest": "sha256:4571b05cde2522f36300f33a22b71c79cd9bb0785239d6499179d42f8d8bb35a",
+  "service": "default",
+  "runtime": "custom",
+  "environment": "flexible",
+  "entrypoint": null,
+  "instanceClass": null,
+  "runtimeConfig": null,
+  "scaling": null
+}

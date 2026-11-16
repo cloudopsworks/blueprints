@@ -1,0 +1,236 @@
+name: Retrieve bounded artifact archives
+description: Private authenticated archive data only; no typed payload or source authority
+inputs:
+  artifact-id: {description: "Exact immutable artifact ID", required: false, default: ""}
+  run-id: {description: "Independently verified host run ID", required: true}
+  archive-digest: {description: "Expected REST archive digest", required: false, default: ""}
+  artifact-set: {description: "Private bounded routing array of exact artifactId/archiveDigest pairs; never authority", default: ""}
+  component: {description: "Optional fixed component routing discovery when no immutable locator supplied", default: ""}
+  run-attempt: {description: "Expected naming attempt for optional discovery; never uploader attestation", default: ""}
+  carry-manifest: {description: "Independently authenticated prior complete ReleaseManifest; never raw build authority", default: ""}
+  plan: {description: "Validated endorsed plan for component results", default: ""}
+  artifact-set-file: {description: "Private bounded ScannerResult locator file", default: ""}
+  mode: {description: "Closed private legacy or scanner-file route", default: "legacy"}
+outputs:
+  bundles-file: {"description":"Complete private extracted archive descriptors","value":"${{ steps.retrieve.outputs.bundles-file }}"}
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      uses: actions/github-script@v9
+      env:
+        ARTIFACT_ID: "${{ inputs.artifact-id }}"
+        RUN_ID: "${{ inputs.run-id }}"
+        ARCHIVE_DIGEST: "${{ inputs.archive-digest }}"
+        ARTIFACT_SET: "${{ inputs.artifact-set }}"
+        COMPONENT: "${{ inputs.component }}"
+        RUN_ATTEMPT: "${{ inputs.run-attempt }}"
+        CARRY_MANIFEST: "${{ inputs.carry-manifest }}"
+        PLAN_PATH: "${{ inputs.plan }}"
+        ARTIFACT_SET_FILE: "${{ inputs.artifact-set-file }}"
+        MODE: "${{ inputs.mode }}"
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          async function readPrivate(file, limit) {
+            const root = await fs.realpath(process.env.RUNNER_TEMP);
+            if (typeof file !== 'string' || !path.isAbsolute(file) || Buffer.byteLength(file) > 4096 || file.includes('\0') || !file.startsWith(root + path.sep)) throw new Error('artifact-file-path');
+            let current = root;
+            for (const part of path.relative(root, file).split(path.sep)) {
+              if (!part || part === '.' || part === '..') throw new Error('artifact-file-path');
+              current = path.join(current, part);
+              const stat = await fs.lstat(current);
+              if (stat.isSymbolicLink() || (current === file ? !stat.isFile() : !stat.isDirectory())) throw new Error('artifact-file-path');
+            }
+            if ((await fs.stat(path.dirname(file))).mode & 0o077) throw new Error('artifact-file-mode');
+            const handle = await fs.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.mode & 0o077) throw new Error('artifact-file-mode');
+              if (stat.size > limit) throw new Error('artifact-file-bound');
+              const buffer = Buffer.alloc(limit + 1), {bytesRead} = await handle.read(buffer, 0, limit + 1, 0);
+              if (bytesRead > limit || bytesRead !== stat.size) throw new Error('artifact-file-bound');
+              try { return JSON.parse(buffer.subarray(0, bytesRead).toString('utf8')); } catch { throw new Error('artifact-file-json'); }
+            } finally { await handle.close(); }
+          }
+          const {RUN_ID, GITHUB_REPOSITORY_ID, ARTIFACT_SET, ARTIFACT_SET_FILE} = process.env;
+          const mode = process.env.MODE || 'legacy';
+          if (!['legacy', 'scanner-file'].includes(mode)) throw new Error('artifact-mode');
+          if (mode === 'scanner-file' ? !ARTIFACT_SET_FILE || ARTIFACT_SET || process.env.ARTIFACT_ID || process.env.COMPONENT || process.env.CARRY_MANIFEST : !!ARTIFACT_SET_FILE) throw new Error('artifact-file-routing');
+          if (Buffer.byteLength(ARTIFACT_SET || '') > 65536) throw new Error('artifact-set-bound');
+          let candidates = ARTIFACT_SET_FILE ? await readPrivate(ARTIFACT_SET_FILE, 512 * 1024) : ARTIFACT_SET ? JSON.parse(ARTIFACT_SET) : [{artifactId: process.env.ARTIFACT_ID, archiveDigest: process.env.ARCHIVE_DIGEST}];
+          const owners = new Map();
+          let expectedName = '';
+
+          if (process.env.CARRY_MANIFEST) {
+            if (ARTIFACT_SET || process.env.ARTIFACT_SET_FILE || process.env.ARTIFACT_ID || process.env.COMPONENT) throw new Error('artifact-carry-routing');
+            const records = [];
+            for (const [kind, file] of [['BuildPlan', process.env.PLAN_PATH], ['ReleaseManifest', process.env.CARRY_MANIFEST]]) {
+              if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('artifact-carry-bound');
+              const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', kind], {silent: true, ignoreReturnCode: true, input: await fs.readFile(file)});
+              if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('artifact-carry-contract');
+              records.push(JSON.parse(checked.stdout).record);
+            }
+            const [current, prior] = records;
+            if (JSON.stringify(current.repository) !== JSON.stringify(prior.repository) || current.repository.id !== GITHUB_REPOSITORY_ID) throw new Error('artifact-carry-repository');
+            for (const component of prior.components.filter(entry => current.components.some(component => component.id === entry.componentId) && !current.buildSelection.some(item => item.componentId === entry.componentId))) {
+              for (const key of ['mainArtifact', 'previewArtifact']) {
+                if (!component[key]) continue;
+                const location = component[key].location;
+                if (location.kind !== 'actions-artifact') throw new Error('artifact-carry-location');
+                const existing = owners.get(location.artifactId);
+                if (existing && (existing.runId !== location.runId || existing.artifactName !== location.artifactName)) throw new Error('artifact-carry-owner');
+                owners.set(location.artifactId, location);
+              }
+            }
+            if (!owners.size || owners.size > 256) throw new Error('artifact-carry-count');
+            candidates = [];
+            for (const [artifactId, location] of owners) {
+              const artifact = (await github.rest.actions.getArtifact({...context.repo, artifact_id: artifactId})).data;
+              if (String(artifact.id) !== artifactId || String(artifact.workflow_run?.id) !== location.runId || artifact.name !== location.artifactName) throw new Error('artifact-carry-owner');
+              candidates.push({artifactId, archiveDigest: artifact.digest});
+            }
+          }
+          if (!ARTIFACT_SET && !process.env.ARTIFACT_ID && process.env.COMPONENT) {
+            if (!/^[a-z][a-z0-9-]{0,47}$/.test(process.env.COMPONENT) || !/^[1-9][0-9]*$/.test(process.env.RUN_ATTEMPT || '')) throw new Error('artifact-component-route');
+            const name = 'components-' + RUN_ID + '-' + process.env.RUN_ATTEMPT + '-' + process.env.COMPONENT;
+            const matches = [];
+            expectedName = name;
+            for (let page = 1; page <= 100; page++) {
+              const response = (await github.rest.actions.listWorkflowRunArtifacts({...context.repo, run_id: RUN_ID, per_page: 100, page})).data;
+              if (!Array.isArray(response.artifacts) || response.artifacts.length > 100) throw new Error('artifact-route-response');
+              matches.push(...response.artifacts.filter(artifact => artifact.name === name));
+              if (response.artifacts.length < 100) break;
+              if (page === 100) throw new Error('artifact-route-bound');
+            }
+            if (matches.length !== 1) throw new Error('artifact-route-identity');
+            candidates = matches.map(artifact => ({artifactId: String(artifact.id), archiveDigest: artifact.digest}));
+          }
+
+          if (!Array.isArray(candidates) || !candidates.length || candidates.length > (mode === 'scanner-file' ? 1792 : 256) || new Set(candidates.map(item => item?.artifactId)).size !== candidates.length) throw new Error('artifact-set-count');
+          const resolved = [];
+          for (const candidate of candidates) {
+            if (!candidate || Object.keys(candidate).sort().join() !== 'archiveDigest,artifactId') throw new Error('artifact-set-fields');
+            const runId = owners.get(candidate.artifactId)?.runId || RUN_ID;
+            if (![candidate.artifactId, runId, GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(candidate.archiveDigest || '')) throw new Error('artifact-identity');
+            resolved.push({...candidate, runId, artifactName: owners.get(candidate.artifactId)?.artifactName || expectedName});
+          }
+          const outputDirectory = await fs.mkdtemp(path.join(await fs.realpath(process.env.RUNNER_TEMP), 'artifact-route-'));
+          await fs.chmod(outputDirectory, 0o700);
+          const outputFile = path.join(outputDirectory, 'resolved.json');
+          const serialized = JSON.stringify(resolved);
+          if (Buffer.byteLength(serialized) > 16 * 1024 * 1024 || Buffer.byteLength(outputFile) > 4096) throw new Error('artifact-file-bound');
+          await fs.writeFile(outputFile, serialized, {mode: 0o600, flag: 'wx'});
+          core.setOutput('resolved-file', outputFile);
+    - id: retrieve
+      uses: actions/github-script@v9
+      env:
+        ARTIFACT_ID: "${{ inputs.artifact-id }}"
+        RUN_ID: "${{ inputs.run-id }}"
+        ARCHIVE_DIGEST: "${{ inputs.archive-digest }}"
+        ARTIFACT_SET: "${{ inputs.artifact-set }}"
+        COMPONENT: "${{ inputs.component }}"
+        RUN_ATTEMPT: "${{ inputs.run-attempt }}"
+        CARRY_MANIFEST: "${{ inputs.carry-manifest }}"
+        PLAN_PATH: "${{ inputs.plan }}"
+        ARTIFACT_SET_FILE: "${{ inputs.artifact-set-file }}"
+        MODE: "${{ inputs.mode }}"
+        RESOLVED_FILE: "${{ steps.resolve.outputs.resolved-file }}"
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          async function readPrivate(file, limit) {
+            const root = await fs.realpath(process.env.RUNNER_TEMP);
+            if (typeof file !== 'string' || !path.isAbsolute(file) || Buffer.byteLength(file) > 4096 || file.includes('\0') || !file.startsWith(root + path.sep)) throw new Error('artifact-file-path');
+            let current = root;
+            for (const part of path.relative(root, file).split(path.sep)) {
+              if (!part || part === '.' || part === '..') throw new Error('artifact-file-path');
+              current = path.join(current, part);
+              const stat = await fs.lstat(current);
+              if (stat.isSymbolicLink() || (current === file ? !stat.isFile() : !stat.isDirectory())) throw new Error('artifact-file-path');
+            }
+            if ((await fs.stat(path.dirname(file))).mode & 0o077) throw new Error('artifact-file-mode');
+            const handle = await fs.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.mode & 0o077) throw new Error('artifact-file-mode');
+              if (stat.size > limit) throw new Error('artifact-file-bound');
+              const buffer = Buffer.alloc(limit + 1), {bytesRead} = await handle.read(buffer, 0, limit + 1, 0);
+              if (bytesRead > limit || bytesRead !== stat.size) throw new Error('artifact-file-bound');
+              try { return JSON.parse(buffer.subarray(0, bytesRead).toString('utf8')); } catch { throw new Error('artifact-file-json'); }
+            } finally { await handle.close(); }
+          }
+          const {RUN_ID, GITHUB_REPOSITORY_ID, RUNNER_TEMP, ARTIFACT_SET_FILE, ARTIFACT_SET} = process.env;
+          const candidates = await readPrivate(process.env.RESOLVED_FILE, 16 * 1024 * 1024);
+          if (!Array.isArray(candidates) || !candidates.length || candidates.length > (process.env.MODE === 'scanner-file' ? 1792 : 256) || new Set(candidates.map(item => item?.artifactId)).size !== candidates.length) throw new Error('artifact-set-count');
+          const expected = ARTIFACT_SET_FILE ? await readPrivate(ARTIFACT_SET_FILE, 512 * 1024) : ARTIFACT_SET ? JSON.parse(ARTIFACT_SET) : process.env.ARTIFACT_ID ? [{artifactId: process.env.ARTIFACT_ID, archiveDigest: process.env.ARCHIVE_DIGEST}] : null;
+          if (expected && (!Array.isArray(expected) || expected.some(item => !item || Object.keys(item).sort().join() !== 'archiveDigest,artifactId'))) throw new Error('artifact-set-fields');
+          if (expected && (expected.length !== candidates.length || candidates.some((item, index) => item.artifactId !== expected[index].artifactId || item.archiveDigest !== expected[index].archiveDigest || item.runId !== RUN_ID))) throw new Error('artifact-route-binding');
+          if (process.env.CARRY_MANIFEST) {
+            for (const file of [process.env.PLAN_PATH, process.env.CARRY_MANIFEST]) if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('artifact-carry-bound');
+            const current = JSON.parse(await fs.readFile(process.env.PLAN_PATH, 'utf8')), prior = JSON.parse(await fs.readFile(process.env.CARRY_MANIFEST, 'utf8'));
+            const locations = prior.components.filter(entry => current.components.some(component => component.id === entry.componentId) && !current.buildSelection.some(item => item.componentId === entry.componentId)).flatMap(entry => [entry.mainArtifact, entry.previewArtifact].filter(Boolean).map(artifact => artifact.location));
+            if (new Set(locations.map(location => location.artifactId)).size !== candidates.length || candidates.some(item => !locations.some(location => location.kind === 'actions-artifact' && location.artifactId === item.artifactId && location.runId === item.runId && location.artifactName === item.artifactName))) throw new Error('artifact-route-binding');
+          }
+          if (!process.env.ARTIFACT_ID && !ARTIFACT_SET && process.env.COMPONENT && candidates.some(item => item.runId !== RUN_ID || item.artifactName !== 'components-' + RUN_ID + '-' + process.env.RUN_ATTEMPT + '-' + process.env.COMPONENT)) throw new Error('artifact-route-binding');
+          const archives = [];
+          let aggregate = 0;
+          for (const candidate of candidates) {
+          const OWNER_RUN_ID = candidate.runId;
+          if (!candidate || Object.keys(candidate).sort().join() !== 'archiveDigest,artifactId,artifactName,runId' || typeof candidate.artifactName !== 'string' || candidate.artifactName.length > 256) throw new Error('artifact-set-fields');
+          const {artifactId: ARTIFACT_ID, archiveDigest: ARCHIVE_DIGEST} = candidate;
+          if (![ARTIFACT_ID, OWNER_RUN_ID, GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(ARCHIVE_DIGEST || '')) throw new Error('artifact-identity');
+          const parameters = {...context.repo};
+          const repository = (await github.rest.repos.get(parameters)).data;
+          const run = (await github.rest.actions.getWorkflowRun({...parameters, run_id: OWNER_RUN_ID})).data;
+          const artifact = (await github.rest.actions.getArtifact({...parameters, artifact_id: ARTIFACT_ID})).data;
+          const size = artifact.size_in_bytes;
+          aggregate += size;
+          if (!Number.isSafeInteger(aggregate) || aggregate > 512 * 1024 * 1024) throw new Error('artifact-set-size');
+          if (String(repository.id) !== GITHUB_REPOSITORY_ID || String(run.repository?.id) !== GITHUB_REPOSITORY_ID || String(run.id) !== OWNER_RUN_ID || !/^[0-9a-f]{40}$/.test(run.head_sha || '') || String(artifact.id) !== ARTIFACT_ID || String(artifact.workflow_run?.id) !== OWNER_RUN_ID || artifact.expired !== false || artifact.digest !== ARCHIVE_DIGEST || !Number.isSafeInteger(size) || size < 0 || size > 512 * 1024 * 1024) throw new Error('artifact-metadata');
+          if (candidate.artifactName && artifact.name !== candidate.artifactName) throw new Error('artifact-carry-owner');
+          if (artifact.workflow_run.head_sha && artifact.workflow_run.head_sha !== run.head_sha) throw new Error('artifact-host-head');
+          const redirect = await github.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip', {...parameters, artifact_id: ARTIFACT_ID, request: {redirect: 'manual'}});
+          const location = redirect.headers.location;
+          const url = new URL(location);
+          if (redirect.status !== 302 || url.protocol !== 'https:' || url.username || url.password || url.hash) throw new Error('artifact-redirect');
+          const response = await fetch(url, {redirect: 'error', credentials: 'omit', signal: AbortSignal.timeout(120000)});
+          if (response.status !== 200 || !response.body || (response.headers.has('content-length') && Number(response.headers.get('content-length')) !== size)) throw new Error('artifact-transfer');
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(RUNNER_TEMP), 'artifact-data-'));
+          await fs.chmod(directory, 0o700);
+          const archive = path.join(directory, 'archive.zip');
+          const file = await fs.open(archive, 'wx', 0o600);
+          const hash = crypto.createHash('sha256');
+          let count = 0;
+          try {
+            for await (const chunk of response.body) {
+              count += chunk.length;
+              if (count > size || count > 512 * 1024 * 1024) throw new Error('artifact-transfer-bound');
+              hash.update(chunk);
+              await file.write(chunk);
+            }
+          } finally { await file.close(); }
+          if (count !== size || `sha256:${hash.digest('hex')}` !== ARCHIVE_DIGEST) throw new Error('artifact-transfer-digest');
+          const transport = path.join(directory, 'transport.json');
+          await fs.writeFile(transport, JSON.stringify({repositoryId: GITHUB_REPOSITORY_ID, runId: OWNER_RUN_ID, artifactId: ARTIFACT_ID, archiveDigest: ARCHIVE_DIGEST, sizeInBytes: size, hostHeadSha: run.head_sha, expired: false}), {mode: 0o600, flag: 'wx'});
+          archives.push({runId: OWNER_RUN_ID, archive, transport, extract: path.join(directory, 'extracted'), artifactId: ARTIFACT_ID, archiveDigest: ARCHIVE_DIGEST, artifactName: artifact.name || ''});
+          }
+
+          for (const item of archives) {
+          await fs.mkdir(item.extract, {mode: 0o700});
+          const output = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'bundle', '--payload', item.archive, '--transport-context', item.transport, '--extract-to', item.extract], {silent: true, ignoreReturnCode: true});
+          if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 16 * 1024 * 1024) throw new Error('artifact-archive');
+          const result = JSON.parse(output.stdout);
+          if (result.transportVerified !== true || result.payloadVerified !== false || result.extractPath !== item.extract || !Array.isArray(result.files)) throw new Error('artifact-archive-output');
+          Object.assign(item, {directory: result.extractPath, files: result.files});
+          }
+          const outputDirectory = await fs.mkdtemp(path.join(await fs.realpath(process.env.RUNNER_TEMP), 'artifact-bundles-'));
+          await fs.chmod(outputDirectory, 0o700);
+          const outputFile = path.join(outputDirectory, 'bundles.json');
+          const serialized = JSON.stringify(archives);
+          if (Buffer.byteLength(serialized) > 16 * 1024 * 1024 || Buffer.byteLength(outputFile) > 4096) throw new Error('artifact-file-bound');
+          await fs.writeFile(outputFile, serialized, {mode: 0o600, flag: 'wx'});
+          core.setOutput('bundles-file', outputFile);

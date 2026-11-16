@@ -10,6 +10,10 @@ name: Advanced Protection on GitFlow
 author: cloudopsworks
 description: 'This action will process a JSON formatted list of contributors and add them to the repository with the specified permissions. It will also set up branch protection rules and review requirements for pull requests.'
 inputs:
+  component_mode:
+    description: Preserve existing protections; create only missing reviewed policy records
+    required: false
+    default: 'false'
   token:
     description: 'GitHub Token with repo and admin:org permissions'
     required: true
@@ -35,6 +39,7 @@ runs:
     - name: Advanced Protection on GitFlow
       uses: actions/github-script@v9
       env:
+        COMPONENT_MODE: ${{ inputs.component_mode }}
         STEPS_REVIEWERS_LIST_RESULT: ${{ inputs.reviewers_list }}
         STEPS_OWNERS_LIST_RESULT: ${{ inputs.owners_list }}
         STEPS_CONTRIB_LIST_RESULT: ${{ inputs.contrib_list }}
@@ -124,6 +129,12 @@ runs:
           
           const reviewers_ids = [];
           for ( const reviewer_name of reviewers ) {
+            if (process.env.COMPONENT_MODE === 'true' && reviewer_name.includes('/')) {
+              const team = teams_result.organization.teams.nodes.find(t => t.slug === reviewer_name.split('/')[1]);
+              if (!team) throw new Error('Configured reviewer team could not be resolved');
+              reviewers_ids.push(team.id);
+              continue;
+            }
             //console.log("reviewer_name: " + reviewer_name);
             reviewer = members_result.organization.membersWithRole.nodes.find( member => member.login === reviewer_name );
             if ( reviewer != null ) {
@@ -152,8 +163,12 @@ runs:
           // this module must cal GraphQL API instead of rest because of lack of support on wildcards
           // https://github.community/t/graphql-api-for-branch-protection-rules/17230              
           for ( const branch of branchesStrict ) {
-            const rule_exists = repo_result.repository.branchProtectionRules.nodes.find( rule => rule.pattern === branch );
-            const can_delete = ! cannot_delete.includes(branch);
+            const rule_exists = repo_result.repository.branchProtectionRules.nodes.find( rule => rule.pattern === branch || (process.env.COMPONENT_MODE === 'true' && rule.pattern === '*') );
+            if (process.env.COMPONENT_MODE === 'true' && rule_exists) {
+              core.info(`Retaining existing branch protection: ${branch}`);
+              continue;
+            }
+            const can_delete = process.env.COMPONENT_MODE === 'true' ? false : ! cannot_delete.includes(branch);
             var protection_rule = '';
           
             var required_approve = (reviewers_count > 0);
@@ -212,7 +227,7 @@ runs:
               `;
             }
           
-            var run_context = ['Check Pull Request'];
+            var run_context = [process.env.COMPONENT_MODE === 'true' ? 'checkpr / Check Pull Request' : 'Check Pull Request'];
             if ( is_iac ) {
               run_context = ['Plan Infrastructure'];
             }
@@ -222,12 +237,16 @@ runs:
               rule_id: rule_exists ? rule_exists.id : null,
               branch: branch,
               required_approve: default_approved,
-              reviewers_count: default_count,
+              reviewers_count: process.env.COMPONENT_MODE === 'true' ? reviewers_count : default_count,
               admin_ids: owners_ids,
               reviewers_ids: reviewers_ids,
               contexts: run_context,
               can_delete: can_delete
             };
+            if (process.env.COMPONENT_MODE === 'true') protection_rule = protection_rule
+              .replaceAll('isAdminEnforced: false', 'isAdminEnforced: true, dismissesStaleReviews: true')
+              .replaceAll('bypassPullRequestActorIds: $admin_ids', 'bypassPullRequestActorIds: []')
+              .replaceAll('bypassForcePushActorIds: $admin_ids', 'bypassForcePushActorIds: []');
             await github.graphql(protection_rule, vars);
           }
           
@@ -235,8 +254,12 @@ runs:
           // this module must cal GraphQL API instead of rest because of lack of support on wildcards
           // https://github.community/t/graphql-api-for-branch-protection-rules/17230              
           for (const branch of branchesRelax) {
-            const rule_exists = repo_result.repository.branchProtectionRules.nodes.find(rule => rule.pattern === branch);
-            const can_delete = ! cannot_delete.includes(branch);
+            const rule_exists = repo_result.repository.branchProtectionRules.nodes.find(rule => rule.pattern === branch || (process.env.COMPONENT_MODE === 'true' && rule.pattern === '*'));
+            if (process.env.COMPONENT_MODE === 'true' && rule_exists) {
+              core.info(`Retaining existing branch protection: ${branch}`);
+              continue;
+            }
+            const can_delete = process.env.COMPONENT_MODE === 'true' ? false : ! cannot_delete.includes(branch);
             var protection_rule = '';
           
             if (rule_exists == null) {
@@ -296,16 +319,21 @@ runs:
               repo_id: repo_result.repository.id,
               rule_id: rule_exists ? rule_exists.id : null,
               branch: branch,
-              required_approve: false,
-              reviewers_count: 0,
+              required_approve: process.env.COMPONENT_MODE === 'true',
+              reviewers_count: process.env.COMPONENT_MODE === 'true' ? reviewers_count : 0,
               admin_ids: owners_ids,
               reviewers_ids: reviewers_ids,
-              contexts: [],
+              contexts: process.env.COMPONENT_MODE === 'true' ? ['checkpr / Check Pull Request'] : [],
               can_delete: can_delete
             };
+            if (process.env.COMPONENT_MODE === 'true') protection_rule = protection_rule
+              .replaceAll('isAdminEnforced: false', 'isAdminEnforced: true, dismissesStaleReviews: true')
+              .replaceAll('bypassPullRequestActorIds: $admin_ids', 'bypassPullRequestActorIds: []')
+              .replaceAll('bypassForcePushActorIds: $admin_ids', 'bypassForcePushActorIds: []');
             await github.graphql(protection_rule, vars);
           }
           
+          if (process.env.COMPONENT_MODE === 'true') return;
           const rule_exists = repo_result.repository.branchProtectionRules.nodes.find(rule => rule.pattern === '*');
           var protection_rule = '';
           

@@ -1,0 +1,88 @@
+name: Scoped native reservation and recovery provenance
+on:
+  workflow_call:
+    inputs:
+      stage-artifact-id: {type: string, required: true}
+      stage-archive-digest: {type: string, required: true}
+      blueprint-sha: {type: string, required: true}
+      source-sha: {type: string, required: true}
+    secrets:
+      DEPLOYMENT_STATE_CONF: {required: false}
+      CLOUDOPSWORKS_AUTH: {required: false}
+permissions: {}
+# The delivery caller owns the one repository-wide state holder through reservation.
+# No nested concurrency holder: that would cancel or deadlock the same call chain.
+jobs:
+  inspect:
+    name: inspect
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, pull-requests: read}
+    outputs:
+      eligible: ${{ steps.route.outputs.eligible }}
+      protected-environment: ${{ steps.route.outputs.protected-environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ inputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - id: route
+        uses: ./bp/cd/monorepo/native/preflight
+        with:
+          mode: route
+          stage-artifact-id: ${{ inputs.stage-artifact-id }}
+          stage-archive-digest: sha256:${{ inputs.stage-archive-digest }}
+  preflight:
+    name: preflight
+    needs: inspect
+    if: needs.inspect.outputs.eligible == 'true'
+    runs-on: ubuntu-24.04
+    environment: ${{ needs.inspect.outputs.protected-environment }}
+    permissions: {contents: read, actions: read, pull-requests: read, id-token: write}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ inputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - uses: ./bp/cd/monorepo/tools
+        with: {provider: aws}
+      - name: Prove exact native absence
+        uses: ./bp/cd/monorepo/native/preflight
+        with:
+          mode: native
+          stage-artifact-id: ${{ inputs.stage-artifact-id }}
+          stage-archive-digest: sha256:${{ inputs.stage-archive-digest }}
+          deployment-state-conf: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+          auth-bindings: ${{ vars.CLOUDOPSWORKS_AUTH || secrets.CLOUDOPSWORKS_AUTH }}
+          identities: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+  reserve:
+    name: reserve
+    needs: [inspect, preflight]
+    if: needs.inspect.outputs.eligible == 'true' && needs.preflight.result == 'success'
+    runs-on: ubuntu-24.04
+    environment: ${{ needs.inspect.outputs.protected-environment }}
+    permissions: {contents: read, actions: read, pull-requests: read, deployments: write}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudopsworks/blueprints
+          ref: ${{ inputs.blueprint-sha }}
+          path: bp
+          persist-credentials: false
+          submodules: false
+      - uses: ./bp/ci/monorepo/cli
+      - name: Reserve exact native state claims
+        uses: ./bp/cd/monorepo/native/reservation
+        with:
+          stage-artifact-id: ${{ inputs.stage-artifact-id }}
+          stage-archive-digest: sha256:${{ inputs.stage-archive-digest }}
+          deployment-state-conf: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+          auth-bindings: ${{ vars.CLOUDOPSWORKS_AUTH || secrets.CLOUDOPSWORKS_AUTH }}
+          identities: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}

@@ -1,0 +1,669 @@
+{
+  "schemaVersion": 1,
+  "purpose": "trusted central module binding; activationBlocked rows are never executable",
+  "tools": {
+    "opentofu": "1.11.4",
+    "terragrunt": "0.99.4"
+  },
+  "modules": {
+    "aws-eks": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/kubernetes-component",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "providerLockDigest": "sha256:818376e246f03e7949ff90eda9b932ca1b2b0b135e57f2ed314e01b2ded2bb9d",
+      "chartPath": "kubernetes/helm/charts",
+      "chartFiles": [
+        ".helmignore",
+        "Chart.yaml",
+        "Makefile",
+        "README.md",
+        "templates/commons/_helpers.tpl",
+        "templates/configmap.yaml",
+        "templates/cronjob.yaml",
+        "templates/daemonset.yaml",
+        "templates/deployment.yaml",
+        "templates/extraobjects.yaml",
+        "templates/gateway.yaml",
+        "templates/grpcroute.yaml",
+        "templates/hpa.yaml",
+        "templates/httproute.yaml",
+        "templates/ingress.yaml",
+        "templates/job.yaml",
+        "templates/keda-job.yaml",
+        "templates/keda-trigger-auth.yaml",
+        "templates/keda.yaml",
+        "templates/monorepo.yaml",
+        "templates/secret.yaml",
+        "templates/service.yaml",
+        "templates/serviceaccount.yaml",
+        "templates/statefulset.yaml",
+        "templates/tcproute.yaml",
+        "templates/tlsroute.yaml",
+        "templates/udproute.yaml",
+        "values.schema.json",
+        "values.yaml"
+      ],
+      "ownedResourceAddresses": [
+        "helm_release.component"
+      ],
+      "replaceResourceAddresses": [],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "canonical protected host/config authorization and read-only Kubernetes readiness integration",
+        "credentialed cluster activation"
+      ],
+      "revision": "sha256:4e20be13ea93616f09acc3b599e698fcf13a39c973de44e355f3af2a7dcec7f0"
+    },
+    "gcp-gke": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/kubernetes-component",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "providerLockDigest": "sha256:818376e246f03e7949ff90eda9b932ca1b2b0b135e57f2ed314e01b2ded2bb9d",
+      "chartPath": "kubernetes/helm/charts",
+      "chartFiles": [
+        ".helmignore",
+        "Chart.yaml",
+        "Makefile",
+        "README.md",
+        "templates/commons/_helpers.tpl",
+        "templates/configmap.yaml",
+        "templates/cronjob.yaml",
+        "templates/daemonset.yaml",
+        "templates/deployment.yaml",
+        "templates/extraobjects.yaml",
+        "templates/gateway.yaml",
+        "templates/grpcroute.yaml",
+        "templates/hpa.yaml",
+        "templates/httproute.yaml",
+        "templates/ingress.yaml",
+        "templates/job.yaml",
+        "templates/keda-job.yaml",
+        "templates/keda-trigger-auth.yaml",
+        "templates/keda.yaml",
+        "templates/monorepo.yaml",
+        "templates/secret.yaml",
+        "templates/service.yaml",
+        "templates/serviceaccount.yaml",
+        "templates/statefulset.yaml",
+        "templates/tcproute.yaml",
+        "templates/tlsroute.yaml",
+        "templates/udproute.yaml",
+        "values.schema.json",
+        "values.yaml"
+      ],
+      "ownedResourceAddresses": [
+        "helm_release.component"
+      ],
+      "replaceResourceAddresses": [],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "canonical protected host/config authorization and read-only Kubernetes readiness integration",
+        "credentialed cluster activation"
+      ],
+      "revision": "sha256:4e20be13ea93616f09acc3b599e698fcf13a39c973de44e355f3af2a7dcec7f0"
+    },
+    "azure-aks": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/kubernetes-component",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "providerLockDigest": "sha256:818376e246f03e7949ff90eda9b932ca1b2b0b135e57f2ed314e01b2ded2bb9d",
+      "chartPath": "kubernetes/helm/charts",
+      "chartFiles": [
+        ".helmignore",
+        "Chart.yaml",
+        "Makefile",
+        "README.md",
+        "templates/commons/_helpers.tpl",
+        "templates/configmap.yaml",
+        "templates/cronjob.yaml",
+        "templates/daemonset.yaml",
+        "templates/deployment.yaml",
+        "templates/extraobjects.yaml",
+        "templates/gateway.yaml",
+        "templates/grpcroute.yaml",
+        "templates/hpa.yaml",
+        "templates/httproute.yaml",
+        "templates/ingress.yaml",
+        "templates/job.yaml",
+        "templates/keda-job.yaml",
+        "templates/keda-trigger-auth.yaml",
+        "templates/keda.yaml",
+        "templates/monorepo.yaml",
+        "templates/secret.yaml",
+        "templates/service.yaml",
+        "templates/serviceaccount.yaml",
+        "templates/statefulset.yaml",
+        "templates/tcproute.yaml",
+        "templates/tlsroute.yaml",
+        "templates/udproute.yaml",
+        "values.schema.json",
+        "values.yaml"
+      ],
+      "ownedResourceAddresses": [
+        "helm_release.component"
+      ],
+      "replaceResourceAddresses": [],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "canonical protected host/config authorization and read-only Kubernetes readiness integration",
+        "credentialed cluster activation"
+      ],
+      "revision": "sha256:4e20be13ea93616f09acc3b599e698fcf13a39c973de44e355f3af2a7dcec7f0"
+    },
+    "aws-beanstalk": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/aws-beanstalk",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "aws_s3_object.package",
+        "aws_elastic_beanstalk_application_version.component",
+        "aws_elastic_beanstalk_environment.component"
+      ],
+      "revision": "sha256:cc6b7f1a1d67cfb3fddaf93c46dad766080ffd743bb95630f2ead84eb5a6a6ff",
+      "providerLockDigest": "sha256:db1422886ef3d140e50c7508a8dc70d979ec239e9a431d0b0763dad2c4e12189",
+      "replaceResourceAddresses": [
+        "aws_s3_object.package",
+        "aws_elastic_beanstalk_application_version.component"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "global source/host authorization and execution integration",
+        "credentialed readiness proof",
+        "trusted Dockerrun source projection and stack-profile proof"
+      ]
+    },
+    "aws-lambda": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/aws-lambda",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "aws_lambda_function.component",
+        "aws_lambda_alias.component[*]",
+        "aws_s3_object.package[*]"
+      ],
+      "revision": "sha256:5885c43df9b05e701cdebe60db2cfe30ce427ae7cb04c280e021cc6e1d644c7b",
+      "providerLockDigest": "sha256:db1422886ef3d140e50c7508a8dc70d979ec239e9a431d0b0763dad2c4e12189",
+      "replaceResourceAddresses": [
+        "aws_s3_object.package[*]"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "global source/host authorization and execution integration",
+        "credentialed readiness proof"
+      ]
+    },
+    "aws-s3-static": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/aws-s3-static",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "aws_s3_object.files[*]"
+      ],
+      "revision": "sha256:fa2b73c7726f2cbd0d9e39c32b0965da3870a280678e46b64cece484161b0766",
+      "providerLockDigest": "sha256:db1422886ef3d140e50c7508a8dc70d979ec239e9a431d0b0763dad2c4e12189",
+      "replaceResourceAddresses": [],
+      "applyDeleteResourceAddresses": [
+        "aws_s3_object.files[*]"
+      ],
+      "remaining": [
+        "global source/host authorization and execution integration",
+        "credentialed readiness proof"
+      ]
+    },
+    "aws-apigateway-rest": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/aws-apigateway-rest",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "aws_api_gateway_rest_api.component",
+        "aws_api_gateway_deployment.component",
+        "aws_api_gateway_stage.component"
+      ],
+      "revision": "sha256:61fcf0b4f0d5adc532ec0db34a103c18990168301f4c47a5de55b7790df7e8e0",
+      "providerLockDigest": "sha256:db1422886ef3d140e50c7508a8dc70d979ec239e9a431d0b0763dad2c4e12189",
+      "replaceResourceAddresses": [
+        "aws_api_gateway_deployment.component"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "global source/host authorization and execution integration",
+        "credentialed readiness proof",
+        "existing restApiId requires independently verified owned state and frozen StateHandle alias; no import or automatic adoption"
+      ]
+    },
+    "gcp-cloudrun": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/gcp-cloudrun",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "revision": "sha256:fbfd6aa185346b0a6ae77b7a670b9df65d6b0474f008c3ff38cf74c8f7100da1",
+      "providerLockDigest": "sha256:6343ba09c49b97344474110fc4ec1c2de2f55a7397415a25c28fe6664d4e6c11",
+      "ownedResourceAddresses": [
+        "google_cloud_run_v2_service.component"
+      ],
+      "replaceResourceAddresses": [],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "global trusted execution and selected source authorization integration",
+        "credentialed readiness and lifecycle proof"
+      ]
+    },
+    "gcp-appengine": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/gcp-appengine",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "revision": "sha256:b5390842941b1a8bc0783b35e58938d8351a8ef6318fc6ae2ec1460e0f6ded40",
+      "providerLockDigest": "sha256:6343ba09c49b97344474110fc4ec1c2de2f55a7397415a25c28fe6664d4e6c11",
+      "ownedResourceAddresses": [
+        "google_storage_bucket_object.package[0]",
+        "google_app_engine_standard_app_version.component[0]",
+        "google_app_engine_flexible_app_version.component[0]",
+        "google_app_engine_service_split_traffic.component"
+      ],
+      "replaceResourceAddresses": [
+        "google_app_engine_standard_app_version.component[0]",
+        "google_app_engine_flexible_app_version.component[0]",
+        "google_storage_bucket_object.package[0]"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "trusted semantic saved-plan guard for exclusive nondefault whole-service delete, verified fresh-service history and prior true/noop-false flags",
+        "canonical project/application+service claim, supported single-writer activation and full cloud inventory recheck; no arbitrary out-of-band writer exclusion guarantee",
+        "same-mode-only replacement and historical-handle failure recovery; unknown pending operations or live survivor absent from state require reviewed reconciliation",
+        "credentialed readiness and lifecycle proof; local plans are not cloud execution"
+      ]
+    },
+    "gcp-functions-gen2": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/gcp-functions-gen2",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "revision": "sha256:4044a2573447231e05d9fdd0d288d94d7c44e68d4163074ea09c93570556f12d",
+      "providerLockDigest": "sha256:6343ba09c49b97344474110fc4ec1c2de2f55a7397415a25c28fe6664d4e6c11",
+      "ownedResourceAddresses": [
+        "google_storage_bucket_object.package",
+        "google_cloudfunctions2_function.component"
+      ],
+      "replaceResourceAddresses": [
+        "google_storage_bucket_object.package"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "global trusted execution and selected source authorization integration",
+        "credentialed readiness and lifecycle proof"
+      ]
+    },
+    "gcp-storage-static": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/gcp-storage-static",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "revision": "sha256:d0c761135b53ad12de3d78d24581a122ebad62d8678c265df307313ab31e8d1f",
+      "providerLockDigest": "sha256:6343ba09c49b97344474110fc4ec1c2de2f55a7397415a25c28fe6664d4e6c11",
+      "ownedResourceAddresses": [
+        "google_storage_bucket_object.files[*]"
+      ],
+      "replaceResourceAddresses": [
+        "google_storage_bucket_object.files[*]"
+      ],
+      "applyDeleteResourceAddresses": [
+        "google_storage_bucket_object.files[*]"
+      ],
+      "remaining": [
+        "global trusted execution and selected source authorization integration",
+        "credentialed readiness and lifecycle proof"
+      ]
+    },
+    "gcp-apigateway": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/gcp-apigateway",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "revision": "sha256:e145ae063c8f052bf6bf911270605826afdaa75ae8b2d355871e2b50d6242219",
+      "providerLockDigest": "sha256:5c6383c4ae34ff9f6d580379886029ffc649e5bc0bba546823e182ab0977ff67",
+      "ownedResourceAddresses": [
+        "google_api_gateway_api.component",
+        "google_api_gateway_api_config.component",
+        "google_api_gateway_gateway.component"
+      ],
+      "replaceResourceAddresses": [
+        "google_api_gateway_api_config.component"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "global trusted execution and selected source authorization integration",
+        "credentialed readiness and lifecycle proof"
+      ]
+    },
+    "azure-containerapps": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/azure-containerapps",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "azurerm_container_app.component"
+      ],
+      "revision": "sha256:59de21d6a884f4bfe895998020479c2ca5177fcce3cf499a95010819cfa5d61f",
+      "providerLockDigest": "sha256:8085a7c3bcfca229366ab6b02d68919c4e5d7b43ed26a574f284aeb9237f20e9",
+      "replaceResourceAddresses": [],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "trusted shared executor source/ownership authorization integration",
+        "credentialed cloud lifecycle/readiness proof"
+      ]
+    },
+    "azure-appservice": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/azure-appservice",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "azurerm_storage_blob.package[0]",
+        "azurerm_linux_web_app.linux[0]",
+        "azurerm_linux_web_app_slot.linux_slot[0]",
+        "azurerm_windows_web_app.windows[0]",
+        "azurerm_windows_web_app_slot.windows_slot[0]",
+        "azurerm_resource_group_template_deployment.package[0]"
+      ],
+      "revision": "sha256:71888056dfec197c671ed273c7f3a70cf61fceaab057e0a459daff22ea528a48",
+      "providerLockDigest": "sha256:8085a7c3bcfca229366ab6b02d68919c4e5d7b43ed26a574f284aeb9237f20e9",
+      "replaceResourceAddresses": [
+        "azurerm_storage_blob.package[0]",
+        "azurerm_resource_group_template_deployment.package[0]"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "trusted shared executor source/ownership authorization integration",
+        "credentialed cloud lifecycle/readiness proof",
+        "package SAS must pass protected executor full scope/expiry/URI validation before Terraform"
+      ]
+    },
+    "azure-functions": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/azure-functions",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "azurerm_storage_blob.package[0]",
+        "azurerm_linux_function_app.linux[0]",
+        "azurerm_linux_function_app_slot.linux_slot[0]",
+        "azurerm_windows_function_app.windows[0]",
+        "azurerm_windows_function_app_slot.windows_slot[0]",
+        "azurerm_function_app_flex_consumption.flex[0]",
+        "azurerm_resource_group_template_deployment.package[0]"
+      ],
+      "revision": "sha256:633607750475df7b80a4cf8d3d4b7bc1d9c59288a2d4d7d9a5671856ef67529e",
+      "providerLockDigest": "sha256:8085a7c3bcfca229366ab6b02d68919c4e5d7b43ed26a574f284aeb9237f20e9",
+      "replaceResourceAddresses": [
+        "azurerm_storage_blob.package[0]",
+        "azurerm_resource_group_template_deployment.package[0]"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "trusted shared executor source/ownership authorization integration",
+        "credentialed cloud lifecycle/readiness proof",
+        "package SAS must pass protected executor full scope/expiry/URI validation before Terraform"
+      ]
+    },
+    "azure-blob-static": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/azure-blob-static",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "azurerm_storage_blob.static[*]"
+      ],
+      "revision": "sha256:b7080bdfe6afc547fdfc56cf798e996f65ea1a3ffcc131d9d5bb722a8f21ecae",
+      "providerLockDigest": "sha256:8085a7c3bcfca229366ab6b02d68919c4e5d7b43ed26a574f284aeb9237f20e9",
+      "replaceResourceAddresses": [
+        "azurerm_storage_blob.static[*]"
+      ],
+      "applyDeleteResourceAddresses": [
+        "azurerm_storage_blob.static[*]"
+      ],
+      "remaining": [
+        "trusted shared executor source/ownership authorization integration",
+        "credentialed cloud lifecycle/readiness proof"
+      ]
+    },
+    "azure-apim": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-and-mock-plans; execution-integration-pending",
+      "path": "terraform/monorepo/modules/azure-apim",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "ownedResourceAddresses": [
+        "azurerm_api_management_api.component"
+      ],
+      "revision": "sha256:edccb89eb1879255d92a582fee755cb0e109cc0fd2fffb7b95aa2f5729d252bd",
+      "providerLockDigest": "sha256:8085a7c3bcfca229366ab6b02d68919c4e5d7b43ed26a574f284aeb9237f20e9",
+      "replaceResourceAddresses": [],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "trusted shared executor source/ownership authorization integration",
+        "credentialed cloud lifecycle/readiness proof"
+      ]
+    },
+    "aws-preview-environment": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-native-plan-and-probe-root; runtime-authorization-integration-pending",
+      "path": "terraform/monorepo/modules/kubernetes-preview-environment",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "providerLockDigest": "sha256:2b2a6ec19d88d1ff966ebda899a560ba78b3240d29f7d949002b44945ef9830c",
+      "ownedResourceAddresses": [
+        "kubernetes_namespace_v1.environment",
+        "kubernetes_network_policy_v1.default_deny",
+        "kubernetes_network_policy_v1.same_namespace",
+        "kubernetes_network_policy_v1.dns",
+        "kubernetes_network_policy_v1.ingress",
+        "kubernetes_pod_v1.probe[*]"
+      ],
+      "replaceResourceAddresses": [
+        "kubernetes_pod_v1.probe[*]"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "actual host-authorized root/child lifecycle and policy-probe integration",
+        "current-state coalescing and historical UID operational-boundary validation",
+        "credentialed cluster/admission/CNI activation evidence"
+      ],
+      "revision": "sha256:f2636b4212e8ba8fbee17f710d87aca8e410ebcc3e0a59bbc1833bf03a74ae1f"
+    },
+    "gcp-preview-environment": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-native-plan-and-probe-root; runtime-authorization-integration-pending",
+      "path": "terraform/monorepo/modules/kubernetes-preview-environment",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "providerLockDigest": "sha256:2b2a6ec19d88d1ff966ebda899a560ba78b3240d29f7d949002b44945ef9830c",
+      "ownedResourceAddresses": [
+        "kubernetes_namespace_v1.environment",
+        "kubernetes_network_policy_v1.default_deny",
+        "kubernetes_network_policy_v1.same_namespace",
+        "kubernetes_network_policy_v1.dns",
+        "kubernetes_network_policy_v1.ingress",
+        "kubernetes_pod_v1.probe[*]"
+      ],
+      "replaceResourceAddresses": [
+        "kubernetes_pod_v1.probe[*]"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "actual host-authorized root/child lifecycle and policy-probe integration",
+        "current-state coalescing and historical UID operational-boundary validation",
+        "credentialed cluster/admission/CNI activation evidence"
+      ],
+      "revision": "sha256:f2636b4212e8ba8fbee17f710d87aca8e410ebcc3e0a59bbc1833bf03a74ae1f"
+    },
+    "azure-preview-environment": {
+      "activationBlocked": true,
+      "status": "selected-provider-schema-native-plan-and-probe-root; runtime-authorization-integration-pending",
+      "path": "terraform/monorepo/modules/kubernetes-preview-environment",
+      "files": [
+        ".terraform.lock.hcl",
+        "inputs.json",
+        "main.tf",
+        "terragrunt.hcl",
+        "variables.tf",
+        "versions.tf"
+      ],
+      "providerLockDigest": "sha256:2b2a6ec19d88d1ff966ebda899a560ba78b3240d29f7d949002b44945ef9830c",
+      "ownedResourceAddresses": [
+        "kubernetes_namespace_v1.environment",
+        "kubernetes_network_policy_v1.default_deny",
+        "kubernetes_network_policy_v1.same_namespace",
+        "kubernetes_network_policy_v1.dns",
+        "kubernetes_network_policy_v1.ingress",
+        "kubernetes_pod_v1.probe[*]"
+      ],
+      "replaceResourceAddresses": [
+        "kubernetes_pod_v1.probe[*]"
+      ],
+      "applyDeleteResourceAddresses": [],
+      "remaining": [
+        "actual host-authorized root/child lifecycle and policy-probe integration",
+        "current-state coalescing and historical UID operational-boundary validation",
+        "credentialed cluster/admission/CNI activation evidence"
+      ],
+      "revision": "sha256:f2636b4212e8ba8fbee17f710d87aca8e410ebcc3e0a59bbc1833bf03a74ae1f"
+    }
+  }
+}

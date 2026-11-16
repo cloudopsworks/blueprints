@@ -1,0 +1,14 @@
+blueprints_revision: cc04bd2f827d78df0ba98cf7a5890d8066b6157a
+sources:
+  ci/config/action.yml:
+    sha256: fffd948b381f44c3cc2c51958863cbc25b24629f089bbdbecc78d7f98eca5759
+  cd/deploy/app/aws/action.yml:
+    sha256: 9804345690a32350b0b7ece5fe480175e87280b9adfdfc7bfa2dee6c154bfcb5
+  cd/tasks/repo/owners/envs/action.yml:
+    sha256: 96da897ff243d9b43ea304cc28dc51c2a38adf7b9d6de55bf8b210fab89a7950
+  cd/checkout/action.yml:
+    sha256: f3ab64f6135a113d56241c6b220802cdae995cf99307e50a8b835946c523807c
+  cd/tasks/repo/push-tag/action.yml:
+    sha256: e3c3b4975924c032e99fdec4fa2c2f1db21d71210515e75cfac785d8ef4aca58
+  cd/tasks/repo/owners/action.yml:
+    sha256: 79495a035d8189a920d65432555fb73b37a54b1563782c2503a3b80b13899a2f

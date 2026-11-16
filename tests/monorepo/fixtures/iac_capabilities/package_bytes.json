@@ -1,0 +1,13 @@
+{
+  "evidenceScope": "local deterministic ZIP byte binding, not Functions runtime",
+  "artifacts": [
+    {
+      "path": "fb18cf100ef842b1459a8de8cf9fde56f740c04b057579c69de82c35d90539d5/released-package.zip",
+      "sha256": "fb18cf100ef842b1459a8de8cf9fde56f740c04b057579c69de82c35d90539d5"
+    },
+    {
+      "path": "771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781/released-package.zip",
+      "sha256": "771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781"
+    }
+  ]
+}

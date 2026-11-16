@@ -1,0 +1,42 @@
+schemaVersion: 1
+moduleId: azure-apim
+variables:
+  resource:
+    - provider
+    - kind
+    - subscriptionId
+    - resourceGroup
+    - serviceName
+    - apiId
+    - apiPath
+    - ownership
+    - os
+    - architecture
+    - apiVersion
+    - apiName
+  configuration:
+    - kind
+    - runtime
+  workload:
+    - kind
+  artifact:
+    - digest
+    - format
+    - path
+    - imageReference
+    - files
+  owner_digest: []
+ownedResourceTypes:
+  - azurerm_api_management_api
+ownedResourceAddresses:
+  - azurerm_api_management_api.component
+externalParents:
+  - resource group
+  - APIM service/shared policies/domains
+activationBlocked: true
+remaining:
+  - trusted shared executor source/ownership authorization integration
+  - credentialed cloud lifecycle/readiness proof
+replaceResourceAddresses: []
+applyDeleteResourceAddresses: []
+ownershipBoundary: whole explicit apiId including revisions; fixed revision1 is not exclusive revision ownership; APIM service remains external

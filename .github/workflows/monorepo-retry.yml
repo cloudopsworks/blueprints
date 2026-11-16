@@ -1,0 +1,39 @@
+name: Monorepo retry
+on:
+  workflow_call:
+    secrets:
+      BOT_TOKEN:
+        required: true
+permissions: {}
+concurrency:
+  group: monorepo-retry-${{ github.repository }}-${{ github.event.issue.number || github.event.client_payload.number || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  retry:
+    name: Monorepo retry
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: write
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          persist_credentials: 'false'
+          check_module_version: 'false'
+          blueprint_ref: v5.11.0
+      - name: Authenticate original PR retry
+        id: intent
+        env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: python3 bp/cd/monorepo/runtime/gitops.py retry
+      - uses: cloudopsworks/automerge-action@v0.17.0
+        if: ${{ steps.intent.outputs.authorized == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+          MERGE_COMMIT_MESSAGE: pull-request-title
+          MERGE_LABELS: approved,!do-not-merge
+          UPDATE_LABELS: approved
+          PULL_REQUEST: ${{ steps.intent.outputs.pull_request }}

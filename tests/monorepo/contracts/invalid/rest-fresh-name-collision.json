@@ -1,0 +1,145 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "BuildPlan",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "version": "1.2.3",
+  "event": "release",
+  "prNumber": null,
+  "components": [
+    {
+      "id": "api",
+      "path": "components/api",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "api"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "openapi",
+        "file": "openapi.yaml",
+        "version": "3.0"
+      },
+      "preview": {
+        "mode": "artifact-only",
+        "reason": "openapi"
+      },
+      "dependsOn": [],
+      "targetIds": [
+        "prod-run"
+      ],
+      "workload": {
+        "kind": "api"
+      }
+    },
+    {
+      "id": "other",
+      "path": "components/other",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "other"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "openapi",
+        "file": "openapi.yaml",
+        "version": "3.0"
+      },
+      "preview": {
+        "mode": "artifact-only",
+        "reason": "openapi"
+      },
+      "dependsOn": [],
+      "targetIds": [
+        "prod-run"
+      ],
+      "workload": {
+        "kind": "api"
+      }
+    }
+  ],
+  "targets": [
+    {
+      "id": "prod-run",
+      "environment": "prod",
+      "provider": "aws",
+      "authRef": "aws-prod",
+      "configDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "kind": "aws.apigateway-rest",
+      "ownership": "managed",
+      "region": "us-east-1",
+      "stage": "prod",
+      "apiName": "public-api",
+      "apiVersion": "v1",
+      "readiness": {
+        "deadlineSeconds": 600,
+        "intervalSeconds": 5,
+        "probe": {
+          "kind": "http",
+          "path": "/health",
+          "method": "GET",
+          "requestBody": "",
+          "expectedStatus": 200,
+          "responseContains": "ok",
+          "auth": {
+            "kind": "none"
+          }
+        }
+      }
+    }
+  ],
+  "buildSelection": [
+    {
+      "componentId": "api",
+      "reasons": [
+        "component-path-changed"
+      ]
+    }
+  ],
+  "removedComponents": [],
+  "buildNoop": false,
+  "matrix": {
+    "include": [
+      {
+        "componentId": "api",
+        "closure": [
+          "api"
+        ],
+        "toolchains": [
+          {
+            "tool": "go",
+            "version": "1.26.7",
+            "distribution": "default",
+            "components": [
+              "api"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "previewPolicy": {
+    "enabled": false,
+    "targets": []
+  }
+}

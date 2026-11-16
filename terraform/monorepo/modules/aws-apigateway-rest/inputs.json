@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "moduleId": "aws-apigateway-rest",
+  "variables": {
+    "resource": [
+      "kind",
+      "provider",
+      "region",
+      "restApiId",
+      "stage",
+      "ownership",
+      "apiName",
+      "apiVersion"
+    ],
+    "configuration": [
+      "kind"
+    ],
+    "workload": [
+      "kind"
+    ],
+    "artifact": [
+      "digest",
+      "format",
+      "path",
+      "imageReference",
+      "files"
+    ],
+    "owner_digest": [],
+    "resolved_api": [
+      "name",
+      "description"
+    ]
+  },
+  "ownedResourceTypes": [
+    "aws_api_gateway_rest_api",
+    "aws_api_gateway_deployment",
+    "aws_api_gateway_stage"
+  ],
+  "ownedResourceAddresses": [
+    "aws_api_gateway_rest_api.component",
+    "aws_api_gateway_deployment.component",
+    "aws_api_gateway_stage.component"
+  ],
+  "externalParents": [
+    "account settings",
+    "integration roles",
+    "custom domains"
+  ],
+  "replaceResourceAddresses": [
+    "aws_api_gateway_deployment.component"
+  ],
+  "applyDeleteResourceAddresses": [],
+  "activationBlocked": true,
+  "remaining": [
+    "global source/host authorization and execution integration",
+    "credentialed readiness proof",
+    "existing restApiId requires independently verified owned state and frozen StateHandle alias; no import or automatic adoption"
+  ],
+  "derivedInputs": {
+    "resolved_api": "existing-ID only: independently verified exact private-state ID plus provider GET and owner proof, never OpenAPI title or user configuration"
+  }
+}

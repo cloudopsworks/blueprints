@@ -1,42 +1,115 @@
-##
-# (c) 2021-2025
-#     Cloud Ops Works LLC - https://cloudops.works/
-#     Find us on:
-#       GitHub: https://github.com/cloudopsworks
-#       WebSite: https://cloudops.works
-#     Distributed Under Apache v2.0 License
-#
 name: Push TAG
 author: cloudopsworks
 description: Push TAG into repository
 inputs:
   source_path:
-    description: 'The path to the source code'
+    description: The path to the source code
     required: false
-    default: 'source'
+    default: source
   blueprint_path:
-    description: 'The path to the blueprint'
+    description: The path to the blueprint
     required: false
-    default: 'bp'
+    default: bp
   token:
-    description: 'The GitHub token'
+    description: The GitHub token
     required: true
   bot_user:
-    description: 'The bot user'
+    description: The bot user
     required: true
   bot_email:
-    description: 'The bot email'
+    description: The bot email
     required: true
-
+  expected_sha:
+    description: Exact frozen commit; must be paired with expected_version.
+    required: false
+    default: ""
+  expected_version:
+    description: Exact already calculated version; frozen mode never recalculates or syncs.
+    required: false
+    default: ""
+  tronador_version:
+    description: Exact compatible CLI pin for frozen mode only; legacy installer unchanged.
+    required: false
+    default: v0.6.0
+outputs:
+  tag:
+    description: Verified frozen remote tag.
+    value: ${{ steps.frozen.outputs.tag }}
+  version:
+    description: Verified frozen version.
+    value: ${{ steps.frozen.outputs.version }}
+  sha:
+    description: Verified frozen commit.
+    value: ${{ steps.frozen.outputs.sha }}
 runs:
-  using: 'composite'
+  using: composite
   steps:
+    - name: Validate frozen tag input pair before mutation
+      id: frozen-input
+      uses: actions/github-script@v9
+      env:
+        EXPECTED_SHA: ${{ inputs.expected_sha }}
+        EXPECTED_VERSION: ${{ inputs.expected_version }}
+        TRONADOR_VERSION: ${{ inputs.tronador_version }}
+      with:
+        script: |
+          const {EXPECTED_SHA, EXPECTED_VERSION, TRONADOR_VERSION} = process.env;
+          if (!EXPECTED_SHA && !EXPECTED_VERSION) return;
+          if (!/^[0-9a-f]{40}$/.test(EXPECTED_SHA || '') || !/^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(EXPECTED_VERSION || '') || TRONADOR_VERSION !== 'v0.6.0') throw new Error('frozen-tag-pins');
+    - name: Publish exact frozen tag without sync
+      id: frozen
+      if: inputs.expected_sha != '' && inputs.expected_version != ''
+      uses: actions/github-script@v9
+      env:
+        EXPECTED_SHA: ${{ inputs.expected_sha }}
+        EXPECTED_VERSION: ${{ inputs.expected_version }}
+        BOT_USER: ${{ inputs.bot_user }}
+        BOT_EMAIL: ${{ inputs.bot_email }}
+      with:
+        github-token: ${{ github.token }}
+        script: |
+          const sha = process.env.EXPECTED_SHA;
+          const version = process.env.EXPECTED_VERSION.replace(/^v/, '');
+          const tag = 'v' + version;
+          if (!/^[0-9a-f]{40}$/.test(sha || '') || !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('frozen-tag-sha');
+          const commit = (await github.rest.git.getCommit({...context.repo, commit_sha: sha})).data;
+          if (commit.sha !== sha) throw new Error('frozen-tag-commit');
+          let existing;
+          try { existing = (await github.rest.git.getRef({...context.repo, ref: 'tags/' + tag})).data; }
+          catch (error) { if (error.status !== 404) throw error; }
+          if (!existing) {
+            // Deployment qualifiers do not create a second repository version identity.
+            const identity = name => name.split('+deploy-')[0];
+            for (let page = 1; page <= 100; page++) {
+              const tags = (await github.rest.repos.listTags({...context.repo, per_page: 100, page})).data;
+              if (!Array.isArray(tags) || tags.length > 100) throw new Error('frozen-tag-inventory');
+              for (const item of tags) {
+                if (typeof item.name !== 'string' || !/^[0-9a-f]{40}$/.test(item.commit?.sha || '')) throw new Error('frozen-tag-inventory-entry');
+                if (item.commit.sha === sha && /^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(identity(item.name)) && identity(item.name) !== identity(tag)) throw new Error('frozen-tag-other-version-at-head');
+              }
+              if (tags.length < 100) break;
+              if (page === 100) throw new Error('frozen-tag-inventory-bound');
+            }
+            if (!process.env.BOT_USER || process.env.BOT_USER.length > 256 || /[\r\n]/.test(process.env.BOT_USER) || !/^[^\s@]+@[^\s@]+$/.test(process.env.BOT_EMAIL || '')) throw new Error('frozen-tag-tagger');
+            const object = (await github.rest.git.createTag({...context.repo, tag, message: 'chore: Version Tagging: ' + tag, object: sha, type: 'commit', tagger: {name: process.env.BOT_USER, email: process.env.BOT_EMAIL}})).data;
+            if (!/^[0-9a-f]{40}$/.test(object.sha || '')) throw new Error('frozen-tag-object');
+            try { await github.rest.git.createRef({...context.repo, ref: 'refs/tags/' + tag, sha: object.sha}); }
+            catch (error) { if (error.status !== 422) throw error; }
+            existing = (await github.rest.git.getRef({...context.repo, ref: 'tags/' + tag})).data;
+          }
+          let target = existing.object;
+          for (let depth = 0; target?.type === 'tag' && depth < 5; depth++) target = (await github.rest.git.getTag({...context.repo, tag_sha: target.sha})).data.object;
+          if (target?.type !== 'commit' || target.sha !== sha) throw new Error('frozen-tag-conflict');
+          core.setOutput('tag', tag);
+          core.setOutput('version', version);
+          core.setOutput('sha', sha);
     - name: Install Tronador CLI
+      if: inputs.expected_sha == '' && inputs.expected_version == ''
       uses: cloudopsworks/install-tronador-cli@v1
       with:
         token: ${{ inputs.token }}
-
     - name: Push TAG
+      if: inputs.expected_sha == '' && inputs.expected_version == ''
       working-directory: ${{ inputs.source_path }}
       shell: bash
       env:

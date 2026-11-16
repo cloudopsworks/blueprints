@@ -1,0 +1,29 @@
+schemaVersion: 2
+config: {gitFlow: {enabled: false}}
+ci: {sharedPaths: ['shared/**'], maxParallel: 2}
+components:
+  node:
+    path: components/node
+    language: node
+    framework: plain
+    runtime: '24.22.3'
+    build: {profile: npm}
+    package: {kind: function, provider: gcp, mode: gcp-gen2, runtime: nodejs24, architecture: amd64, source: '.', entryPoint: handler}
+    workload: {kind: function}
+    preview: {mode: container, source: function, dockerfile: Dockerfile, context: '.', adapter: gcp-functions-framework, entryPoint: handler, port: 8080, healthPath: /health, invokePath: '/', invokeTest: {requestBody: '{}', expectedStatus: 200, responseContains: ok}}
+    dependsOn: []
+    watch: []
+    targets: []
+  go:
+    path: components/go
+    language: go
+    framework: plain
+    runtime: '1.27.4'
+    build: {profile: go}
+    package: {kind: function, provider: aws, mode: aws-zip, runtime: provided.al2023, architecture: amd64, source: '.', entryPoint: bootstrap}
+    workload: {kind: function}
+    preview: {mode: container, source: function, dockerfile: Dockerfile, context: '.', adapter: aws-lambda-rie, entryPoint: bootstrap, port: 8080, healthPath: /health, invokePath: '/', invokeTest: {requestBody: '{}', expectedStatus: 200, responseContains: ok}}
+    dependsOn: []
+    watch: []
+    targets: []
+cd: {targets: {}, deployments: {}}

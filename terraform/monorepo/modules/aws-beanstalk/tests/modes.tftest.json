@@ -1,0 +1,197 @@
+{
+  "mock_provider": {
+    "aws": {
+      "mock_data": {
+        "aws_s3_bucket": {
+          "defaults": {
+            "id": "existing-packages"
+          }
+        },
+        "aws_iam_role": {
+          "defaults": {
+            "arn": "arn:aws:iam::123456789012:role/service"
+          }
+        },
+        "aws_subnet": {
+          "defaults": {
+            "vpc_id": "vpc-existing"
+          }
+        },
+        "aws_security_group": {
+          "defaults": {
+            "vpc_id": "vpc-existing"
+          }
+        },
+        "aws_elastic_beanstalk_solution_stack": {
+          "defaults": {
+            "name": "64bit Amazon Linux 2023 running Go 1"
+          }
+        }
+      }
+    }
+  },
+  "variables": {
+    "resource": {
+      "kind": "aws.beanstalk",
+      "provider": "aws",
+      "region": "us-east-1",
+      "application": "existing",
+      "environmentName": "component",
+      "bucket": "existing-packages",
+      "prefix": "components/api"
+    },
+    "configuration": {
+      "kind": "aws.beanstalk",
+      "iac": {
+        "solutionStackName": "64bit Amazon Linux 2023 running Go 1",
+        "serviceRoleArn": "arn:aws:iam::123456789012:role/service",
+        "instanceProfileName": "existing-profile",
+        "vpcId": "vpc-existing",
+        "subnetIds": [
+          "subnet-existing"
+        ],
+        "securityGroupIds": [
+          "sg-existing"
+        ]
+      }
+    },
+    "workload": {
+      "kind": "http"
+    },
+    "artifact": {
+      "digest": "sha256:771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781",
+      "format": "zip",
+      "path": "tests/fixtures/native.zip",
+      "imageReference": null,
+      "files": []
+    },
+    "owner_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "run": {
+    "owned_mock_apply": {
+      "command": "apply",
+      "assert": [
+        {
+          "condition": "${aws_elastic_beanstalk_environment.component.version_label == local.digest && aws_s3_object.package.source_hash == local.digest}",
+          "error_message": "Environment must deploy the exact immutable package version."
+        }
+      ]
+    },
+    "immutable_dockerrun_zip": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:a808fd10cfcda0e405a7dda8ca9172b6a23d95b4805596792cbe884b9b1fe184",
+          "format": "zip",
+          "path": "tests/fixtures/docker.zip",
+          "imageReference": "123456789012.dkr.ecr.us-east-1.amazonaws.com/component@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "files": []
+        },
+        "configuration": {
+          "kind": "aws.beanstalk",
+          "iac": {
+            "solutionStackName": "64bit Amazon Linux 2023 running Docker",
+            "serviceRoleArn": "arn:aws:iam::123456789012:role/service",
+            "instanceProfileName": "existing-profile",
+            "vpcId": "vpc-existing",
+            "subnetIds": [
+              "subnet-existing"
+            ],
+            "securityGroupIds": [
+              "sg-existing"
+            ]
+          }
+        }
+      },
+      "override_data": [
+        {
+          "target": "data.aws_elastic_beanstalk_solution_stack.external",
+          "values": {
+            "name": "64bit Amazon Linux 2023 running Docker"
+          }
+        }
+      ]
+    },
+    "mutable_dockerrun_image_rejected": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:a808fd10cfcda0e405a7dda8ca9172b6a23d95b4805596792cbe884b9b1fe184",
+          "format": "zip",
+          "path": "tests/fixtures/docker.zip",
+          "imageReference": "registry/component:latest",
+          "files": []
+        },
+        "configuration": {
+          "kind": "aws.beanstalk",
+          "iac": {
+            "solutionStackName": "64bit Amazon Linux 2023 running Docker",
+            "serviceRoleArn": "arn:aws:iam::123456789012:role/service",
+            "instanceProfileName": "existing-profile",
+            "vpcId": "vpc-existing",
+            "subnetIds": [
+              "subnet-existing"
+            ],
+            "securityGroupIds": [
+              "sg-existing"
+            ]
+          }
+        }
+      },
+      "expect_failures": [
+        "aws_s3_object.package"
+      ],
+      "override_data": [
+        {
+          "target": "data.aws_elastic_beanstalk_solution_stack.external",
+          "values": {
+            "name": "64bit Amazon Linux 2023 running Docker"
+          }
+        }
+      ]
+    },
+    "wrong_external_network_rejected": {
+      "command": "plan",
+      "override_data": [
+        {
+          "target": "data.aws_subnet.external",
+          "values": {
+            "vpc_id": "vpc-other"
+          }
+        }
+      ],
+      "expect_failures": [
+        "aws_elastic_beanstalk_environment.component"
+      ]
+    },
+    "changed_bytes_digest_rejected": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "format": "zip",
+          "path": "tests/fixtures/native.zip",
+          "imageReference": null,
+          "files": []
+        }
+      },
+      "expect_failures": [
+        "aws_s3_object.package"
+      ]
+    },
+    "wrong_external_stack_rejected": {
+      "command": "plan",
+      "override_data": [
+        {
+          "target": "data.aws_elastic_beanstalk_solution_stack.external",
+          "values": {
+            "name": "64bit different platform"
+          }
+        }
+      ],
+      "expect_failures": [
+        "data.aws_elastic_beanstalk_solution_stack.external"
+      ]
+    }
+  }
+}

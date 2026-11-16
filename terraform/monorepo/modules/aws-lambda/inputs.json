@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "moduleId": "aws-lambda",
+  "variables": {
+    "resource": [
+      "kind",
+      "provider",
+      "region",
+      "functionName",
+      "packageMode",
+      "alias",
+      "architecture",
+      "iac"
+    ],
+    "configuration": [
+      "kind",
+      "runtime",
+      "iac.roleArn"
+    ],
+    "artifact": [
+      "digest",
+      "format",
+      "path",
+      "imageReference",
+      "files"
+    ],
+    "package_handler": [],
+    "owner_digest": []
+  },
+  "derivedInputs": {
+    "package_handler": "verified ReleaseManifest component.package.handler, never inferred from runtime"
+  },
+  "ownedResourceTypes": [
+    "aws_lambda_function",
+    "aws_lambda_alias",
+    "aws_s3_object"
+  ],
+  "ownedResourceAddresses": [
+    "aws_lambda_function.component",
+    "aws_lambda_alias.component[*]",
+    "aws_s3_object.package[*]"
+  ],
+  "externalParents": [
+    "IAM execution role",
+    "package bucket",
+    "private ECR repository"
+  ],
+  "activationBlocked": true,
+  "remaining": [
+    "global source/host authorization and execution integration",
+    "credentialed readiness proof"
+  ],
+  "replaceResourceAddresses": [
+    "aws_s3_object.package[*]"
+  ],
+  "applyDeleteResourceAddresses": []
+}

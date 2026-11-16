@@ -1,0 +1,53 @@
+name: Exact protected OCI publication
+on:
+  workflow_call:
+    inputs:
+      component: {type: string, required: true}
+permissions: {}
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, pull-requests: read}
+    outputs:
+      environment: ${{ steps.inspect.outputs.environment }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: inspect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMPONENT: ${{ inputs.component }}
+        run: python3 bp/cd/monorepo/runtime/container_entry.py inspect --component "$COMPONENT"
+  publish:
+    needs: inspect
+    environment: ${{ needs.inspect.outputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, pull-requests: read, packages: write}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - uses: ./bp/cd/monorepo/tools
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          COMPONENT: ${{ inputs.component }}
+        run: python3 bp/cd/monorepo/runtime/container_entry.py publish --component "$COMPONENT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monorepo-container-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .lifecycle-diagnostics/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          overwrite: false

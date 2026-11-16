@@ -10,6 +10,10 @@ name: Process Owners action
 author: cloudopsworks
 description: Process Owners (cloudopsworks-ci.yaml) and configure pipeline/repository
 inputs:
+  component_mode:
+    description: Use typed protected policy and reviewed local helpers
+    required: false
+    default: 'false'
   source_path:
     description: 'The path to the source code'
     required: false
@@ -31,7 +35,61 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Validate trusted component owner policy before mutations
+      id: component_policy
+      if: ${{ inputs.component_mode == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: python3 bp/cd/monorepo/runtime/owners.py preflight
+    - name: Component collaborators and teams
+      if: ${{ inputs.component_mode == 'true' }}
+      uses: ./bp/cd/tasks/repo/owners/contributors
+      with:
+        token: ${{ inputs.token }}
+        contrib_list: ${{ steps.component_policy.outputs.contributors }}
+    - name: Component branch protections
+      if: ${{ inputs.component_mode == 'true' }}
+      uses: ./bp/cd/tasks/repo/owners/protect/gitflow
+      with:
+        component_mode: 'true'
+        token: ${{ inputs.token }}
+        reviewers_list: ${{ steps.component_policy.outputs.reviewers }}
+        owners_list: ${{ steps.component_policy.outputs.owners }}
+        contrib_list: ${{ steps.component_policy.outputs.contributors }}
+        reviewers_count: ${{ steps.component_policy.outputs.requiredReviewers }}
+        repo_type: sourcecode
+    - name: Component commit protection
+      if: ${{ inputs.component_mode == 'true' && steps.component_policy.outputs.conventionalCommitsEnabled == 'true' }}
+      uses: ./bp/cd/tasks/repo/owners/protect/commits
+      with:
+        component_mode: 'true'
+        token: ${{ inputs.token }}
+        reviewers_list: ${{ steps.component_policy.outputs.reviewers }}
+        owners_list: ${{ steps.component_policy.outputs.owners }}
+        contrib_list: ${{ steps.component_policy.outputs.contributors }}
+        reviewers_count: ${{ steps.component_policy.outputs.requiredReviewers }}
+        repo_type: sourcecode
+        enforce_conventional_commits: ${{ steps.component_policy.outputs.enforceConventionalCommits }}
+        custom_commits_pattern: ${{ steps.component_policy.outputs.enforceCustomCommitsPattern }}
+        custom_commits_pattern_regex: ${{ steps.component_policy.outputs.enforceCustomCommitsPatternRegex }}
+    - name: Component source protection
+      if: ${{ inputs.component_mode == 'true' }}
+      uses: ./bp/cd/tasks/repo/owners/protect/sources
+      with:
+        component_mode: 'true'
+        token: ${{ inputs.token }}
+        protected_sources: ${{ steps.component_policy.outputs.protectedSources }}
+        reviewers_list: ${{ steps.component_policy.outputs.reviewers }}
+        owners_list: ${{ steps.component_policy.outputs.owners }}
+    - name: Component canonical protected environments
+      if: ${{ inputs.component_mode == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: python3 bp/cd/monorepo/runtime/owners.py environments
     - name: Retrieve branch protection rule
+      if: ${{ inputs.component_mode != 'true' }}
       id: branch_protection_rules
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -40,6 +98,7 @@ runs:
         echo "result=${RET}" >> ${GITHUB_OUTPUT}
 
     - name: Retrieve Conventional Commits ruleset
+      if: ${{ inputs.component_mode != 'true' }}
       id: conventional_commits
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -48,6 +107,7 @@ runs:
         echo "result=${RET}" >> $GITHUB_OUTPUT
 
     - name: Retrieve Conventional Commits enforcement
+      if: ${{ inputs.component_mode != 'true' }}
       id: enforce_conventional_commits
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -56,6 +116,7 @@ runs:
         echo "result=${RET}" >> $GITHUB_OUTPUT
 
     - name: Retrieve Custom Commits Pattern Enforcement
+      if: ${{ inputs.component_mode != 'true' }}
       id: custom_commits_pattern
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -64,6 +125,7 @@ runs:
         echo "result=${RET}" >> $GITHUB_OUTPUT
 
     - name: Retrieve Custom Commits Enforcement Pattern
+      if: ${{ inputs.component_mode != 'true' }}
       id: custom_commits_pattern_regex
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -72,6 +134,7 @@ runs:
         echo "result=${RET}" >> $GITHUB_OUTPUT
 
     - name: Retrieve protected sources
+      if: ${{ inputs.component_mode != 'true' }}
       id: protected_sources
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -84,6 +147,7 @@ runs:
         } >> $GITHUB_OUTPUT
 
     - name: Check if automatic
+      if: ${{ inputs.component_mode != 'true' }}
       id: check_automatic
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -93,7 +157,7 @@ runs:
 
     - name: Reviewers Count
       id: reviewers_count
-      if: ${{ steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true' }}
+      if: ${{ inputs.component_mode != 'true' && (steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true') }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
@@ -102,7 +166,7 @@ runs:
 
     - name: Reviewers list as JSON
       id: reviewers_list
-      if: ${{ steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true' }}
+      if: ${{ inputs.component_mode != 'true' && (steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true') }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
@@ -115,7 +179,7 @@ runs:
 
     - name: Owners list as JSON
       id: owners_list
-      if: ${{ steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true' }}
+      if: ${{ inputs.component_mode != 'true' && (steps.check_automatic.outputs.result == 'true' || steps.branch_protection_rules.outputs.result == 'true') }}
       shell: bash
       working-directory: ${{ inputs.source_path }}
       run: |
@@ -127,6 +191,7 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
     - name: Contributors list as JSON
+      if: ${{ inputs.component_mode != 'true' }}
       id: contrib_list
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -139,6 +204,7 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
     - name: Deployments JSON
+      if: ${{ inputs.component_mode != 'true' }}
       id: deployments_json
       shell: bash
       working-directory: ${{ inputs.source_path }}
@@ -151,6 +217,7 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
     - name: Get repository type
+      if: ${{ inputs.component_mode != 'true' }}
       id: repo_type
       working-directory: ${{ inputs.source_path }}
       shell: bash
@@ -164,13 +231,14 @@ runs:
         fi
 
     - name: Contributor list form JSON
+      if: ${{ inputs.component_mode != 'true' }}
       uses: cloudopsworks/blueprints/cd/tasks/repo/owners/contributors@v5.10
       with:
         token: ${{ inputs.token }}
         contrib_list: ${{ steps.contrib_list.outputs.result }}
 
     - name: Advanced Protection on GitFlow
-      if: ${{ steps.branch_protection_rules.outputs.result == 'true' }}
+      if: ${{ inputs.component_mode != 'true' && steps.branch_protection_rules.outputs.result == 'true' }}
       uses: cloudopsworks/blueprints/cd/tasks/repo/owners/protect/gitflow@v5.10
       with:
         token: ${{ inputs.token }}
@@ -181,7 +249,7 @@ runs:
         repo_type: ${{ steps.repo_type.outputs.result }}
 
     - name: Rulesets for Conventional commits
-      if: ${{ steps.branch_protection_rules.outputs.result == 'true' && steps.conventional_commits.outputs.result == 'true' }}
+      if: ${{ inputs.component_mode != 'true' && steps.branch_protection_rules.outputs.result == 'true' && steps.conventional_commits.outputs.result == 'true' }}
       uses: cloudopsworks/blueprints/cd/tasks/repo/owners/protect/commits@v5.10
       with:
         token: ${{ inputs.token }}
@@ -199,7 +267,7 @@ runs:
     # the visibility is resolved from the API so it does not depend on the triggering event payload.
     - name: Check repository visibility
       id: repo_visibility
-      if: ${{ steps.branch_protection_rules.outputs.result == 'true' }}
+      if: ${{ inputs.component_mode != 'true' && steps.branch_protection_rules.outputs.result == 'true' }}
       uses: actions/github-script@v9
       with:
         github-token: ${{ inputs.token }}
@@ -212,7 +280,7 @@ runs:
           core.setOutput('is_public', data.private ? 'false' : 'true');
 
     - name: Rulesets for Protected Sources
-      if: ${{ steps.branch_protection_rules.outputs.result == 'true'
+      if: ${{ inputs.component_mode != 'true' && steps.branch_protection_rules.outputs.result == 'true'
         && steps.repo_visibility.outputs.is_public != 'true'
         && steps.protected_sources.outputs.result != ''
         && steps.protected_sources.outputs.result != 'null' }}
@@ -224,6 +292,7 @@ runs:
         owners_list: ${{ steps.owners_list.outputs.result }}
 
     - name: Advanced Deployment Environments Creation
+      if: ${{ inputs.component_mode != 'true' }}
       id: envs
       uses: cloudopsworks/blueprints/cd/tasks/repo/owners/envs@v5.10
       with:

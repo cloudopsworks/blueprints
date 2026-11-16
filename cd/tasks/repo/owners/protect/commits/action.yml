@@ -10,6 +10,10 @@ name: Rulesets for Conventional commits
 author: cloudopsworks
 description: 'This action will create or update a ruleset for Conventional Commits enforcement on the repository'
 inputs:
+  component_mode:
+    description: Preserve existing protections; create only missing reviewed policy records
+    required: false
+    default: 'false'
   token:
     description: 'GitHub Token with repo and admin:org permissions'
     required: true
@@ -43,6 +47,7 @@ runs:
     - name: Rulesets for Conventional commits
       uses: actions/github-script@v9
       env:
+        COMPONENT_MODE: ${{ inputs.component_mode }}
         STEPS_REVIEWERS_LIST_RESULT: ${{ inputs.reviewers_list }}
         STEPS_OWNERS_LIST_RESULT: ${{ inputs.owners_list }}
         STEPS_CONTRIB_LIST_RESULT: ${{ inputs.contrib_list }}
@@ -143,6 +148,7 @@ runs:
           `;
           const rulesetResult = await github.graphql(rulesetQuery, {owner: context.repo.owner, repo: context.repo.repo});
           const rulesetExists = rulesetResult.repository.rulesets.nodes.find((rule) => rule.name === rulesetName);
+          if (process.env.COMPONENT_MODE === 'true' && rulesetExists) { core.info('Retaining existing commit protection'); return; }
           const rulesetEnforcement = conventionalCommitsEnforced ? 'ACTIVE' : 'EVALUATE';
           var commitsRegex = defaultConditionalCommitsRegexHead;
           if (customCommitsPattern) {

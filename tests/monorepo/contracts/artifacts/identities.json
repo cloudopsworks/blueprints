@@ -1,0 +1,18 @@
+{
+  "oci": {
+    "rootDigest": "sha256:a70823a6d17b91f4211df82cb77c78281329675111c3147d990ee9e442bb59dc",
+    "rootSizeBytes": 398,
+    "layerDigest": "sha256:8cba10f4ba48c60a6ebd172e9f9a83dfce3e7a789a4015c58e992c3c34a589f5",
+    "outerTarDigest": "sha256:ac0b08dcf119deb15d0efcc7227add71f98c962be49ea9b29fbe425a3b5e7345",
+    "repackedOuterTarDigest": "sha256:b732a9d264f67984bbf16f0362e27374755cf50d74f4a8ec1a7e02d9788efd60",
+    "sameImageDifferentTransport": true
+  },
+  "zip": {
+    "digest": "sha256:c4a10d117587c3c897029785b5fab9603ad43daad660c54cb18f298a39820c32",
+    "sizeBytes": 121
+  },
+  "openapi": {
+    "digest": "sha256:19e33a648515b0e208e32ae677c81d08d8771bfaa4c02b5cc3768800bc294f2a",
+    "sizeBytes": 76
+  }
+}

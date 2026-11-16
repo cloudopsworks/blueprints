@@ -1,0 +1,37 @@
+{
+  "resource": {
+    "kind": "aws.beanstalk",
+    "provider": "aws",
+    "region": "us-east-1",
+    "application": "existing",
+    "environmentName": "component",
+    "bucket": "existing-packages",
+    "prefix": "components/api"
+  },
+  "configuration": {
+    "kind": "aws.beanstalk",
+    "iac": {
+      "solutionStackName": "64bit Amazon Linux 2023 running Go 1",
+      "serviceRoleArn": "arn:aws:iam::123456789012:role/service",
+      "instanceProfileName": "existing-profile",
+      "vpcId": "vpc-existing",
+      "subnetIds": [
+        "subnet-existing"
+      ],
+      "securityGroupIds": [
+        "sg-existing"
+      ]
+    }
+  },
+  "workload": {
+    "kind": "archive"
+  },
+  "artifact": {
+    "digest": "sha256:771c1eb88686788262e0aa5590b34a63502f0488083fc70888b019f128b0b781",
+    "format": "zip",
+    "path": "tests/fixtures/native.zip",
+    "imageReference": null,
+    "files": []
+  },
+  "owner_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

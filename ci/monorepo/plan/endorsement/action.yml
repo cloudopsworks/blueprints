@@ -1,0 +1,302 @@
+name: Exact planner artifact endorsement
+description: Fixed planner writer binding, distinct from untrusted build artifact data
+inputs:
+  mode: {description: Closed emit/verify/origin-emit/origin-verify proof operation, required: true}
+  caller-mode: {description: Fixed diagnostic or normal mode from independently verified caller context, required: true}
+  artifact-id: {description: Exact plan locator routing; derived from origin proof in origin-verify, default: ''}
+  archive-digest: {description: Exact archive routing; derived from origin proof in origin-verify, default: ''}
+  run-id: {description: Independently verified host run ID, required: true}
+  run-attempt: {description: Exact independently verified attempt, required: true}
+  computed-plan: {description: Actual isolated Git planner output; emit only, default: ''}
+  check-id: {description: Initializer acknowledgement routing; independently verified, default: ''}
+  origin-facts: {description: Private data from preceding fixed source-free context step; never a trust flag, default: ''}
+outputs:
+  plan: {description: Retrieved exact endorsed BuildPlan file, value: '${{ steps.data.outputs.record }}'}
+  version: {description: Independently endorsed version, value: '${{ steps.identity.outputs.version }}'}
+  base-sha: {description: Independently endorsed Git selector baseline, value: '${{ steps.identity.outputs.base-sha }}'}
+  source-sha: {description: Independently endorsed application commit, value: '${{ steps.identity.outputs.source-sha }}'}
+  origin: {description: Private verified original-event binding; not authority alone, value: '${{ steps.identity.outputs.origin }}'}
+  artifact-id: {description: Verified exact plan locator, value: '${{ steps.verify.outputs.artifact-id || inputs.artifact-id }}'}
+  archive-digest: {description: Verified exact archive locator, value: '${{ steps.verify.outputs.archive-digest || inputs.archive-digest }}'}
+runs:
+  using: composite
+  steps:
+    - id: verify
+      uses: actions/github-script@v9
+      env:
+        MODE: ${{ inputs.mode }}
+        CHECK_ID: ${{ inputs.check-id }}
+        CALLER_MODE: ${{ inputs.caller-mode }}
+        ARTIFACT_ID: ${{ inputs.artifact-id }}
+        ARCHIVE_DIGEST: ${{ inputs.archive-digest }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      with:
+        script: |
+          const env = process.env;
+          if (!['emit', 'verify', 'origin-emit', 'origin-verify'].includes(env.MODE)) throw new Error('planner-mode');
+          if (env.MODE === 'emit') return;
+          const originRead = env.MODE === 'origin-verify';
+          const numeric = value => /^[1-9][0-9]*$/.test(value || '');
+          const sha = value => /^[0-9a-f]{40}$/.test(value || '');
+          const digest = value => /^sha256:[0-9a-f]{64}$/.test(value || '');
+          if (![env.RUN_ID, env.RUN_ATTEMPT, env.GITHUB_REPOSITORY_ID].every(numeric) ||
+              !originRead && (!numeric(env.ARTIFACT_ID) || !digest(env.ARCHIVE_DIGEST))) throw new Error('planner-binding-input');
+          const names = {direct: 'plan', reusable: 'Monorepo delivery slice / plan',
+            'normal-main': 'lifecycle / ci / monorepo-ci-plan', 'normal-pr': 'ci / ci / monorepo-ci-plan',
+            'normal-closure': 'close / lifecycle / ci / monorepo-ci-plan'};
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT})).data;
+          if (String(run.id) !== env.RUN_ID || String(run.run_attempt) !== env.RUN_ATTEMPT || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('planner-run-attempt');
+          const producers = {
+            '.github/workflows/main-build.yml': {mode:'normal-main',events:['push','create','workflow_dispatch'],called:['monorepo-main-build.yml','monorepo-ci.yml']},
+            '.github/workflows/pr-build.yml': {mode:'normal-pr',events:['pull_request'],called:['monorepo-pr-build.yml','monorepo-ci.yml']},
+            '.github/workflows/pr-close.yaml': {mode:'normal-closure',events:['pull_request_target'],called:['monorepo-pr-close.yml','monorepo-closure.yml','monorepo-ci.yml']}};
+          const producer = producers[run.path?.split('@')[0]], original = originRead || env.MODE === 'origin-emit';
+          if (original && (!producer || !producer.events.includes(run.event) || env.CALLER_MODE && env.CALLER_MODE !== producer.mode)) throw new Error('origin-producer-api');
+          const mode = original ? producer.mode : env.CALLER_MODE, name = names[mode];
+          if (!name) throw new Error('planner-caller-mode');
+          const jobs = [];
+          for (let page = 1; page <= 100; page++) {
+            const response = (await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT, per_page: 100, page})).data;
+            if (!Array.isArray(response.jobs) || response.jobs.length > 100) throw new Error('planner-jobs-shape');
+            jobs.push(...response.jobs);
+            if (response.jobs.length < 100) break;
+            if (page === 100) throw new Error('planner-jobs-bound');
+          }
+          const selectedJob = expected => {
+            const selected = jobs.filter(job => job.name === expected);
+            if (selected.length !== 1) throw new Error('planner-job-identity');
+            const job = selected[0];
+            if (!numeric(String(job.id)) || String(job.run_id) !== env.RUN_ID || String(job.run_attempt) !== env.RUN_ATTEMPT || job.status !== 'completed' || job.conclusion !== 'success') throw new Error('planner-job-status');
+            return job;
+          };
+          const readLog = async (job, prefix, bound) => {
+            const redirect = await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs', {...context.repo, job_id: job.id, request: {redirect: 'manual'}});
+            const url = new URL(redirect.headers.location);
+            if (redirect.status !== 302 || url.protocol !== 'https:' || url.username || url.password || url.hash) throw new Error('planner-log-redirect');
+            const response = await fetch(url, {redirect: 'error', credentials: 'omit', signal: AbortSignal.timeout(60000)});
+            if (response.status !== 200 || !response.body || Number(response.headers.get('content-length') || 0) > bound) throw new Error('planner-log-transfer');
+            const chunks = [];
+            let count = 0;
+            for await (const chunk of response.body) {
+              count += chunk.length;
+              if (count > bound) throw new Error('planner-log-bound');
+              chunks.push(chunk);
+            }
+            const text = new TextDecoder('utf-8', {fatal: true}).decode(Buffer.concat(chunks));
+            const records = [];
+            for (const line of text.split(/\r?\n/)) {
+              const marker = line.replace(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z /, '');
+              if (!marker.startsWith(prefix)) continue;
+              const raw = marker.slice(prefix.length);
+              if (Buffer.byteLength(raw) > 65536) throw new Error('origin-marker-bound');
+              const record = JSON.parse(raw);
+              if (JSON.stringify(record) !== raw) throw new Error('planner-marker-canonical');
+              records.push(record);
+            }
+            return records;
+          };
+          const job = selectedJob(name);
+          let blueprint;
+          if (original) {
+            if (originRead) selectedJob(name.replace('monorepo-ci-plan', 'monorepo-ci-origin'));
+            let object = (await github.rest.git.getRef({owner:'cloudopsworks',repo:'blueprints',ref:'tags/v5.11.0'})).data.object;
+            if (object?.type === 'tag') object = (await github.rest.git.getTag({owner:'cloudopsworks',repo:'blueprints',tag_sha:object.sha})).data.object;
+            if (object?.type !== 'commit' || !sha(object.sha) || !Array.isArray(run.referenced_workflows)) throw new Error('origin-producer-code');
+            blueprint = object.sha;
+            for (const called of producer.called) {
+              const matches = run.referenced_workflows.filter(item => item.path === `cloudopsworks/blueprints/.github/workflows/${called}@v5.11.0`);
+              if (matches.length !== 1 || matches[0].sha !== blueprint) throw new Error('origin-producer-code');
+            }
+            core.setOutput('blueprint-sha', blueprint);
+          }
+
+          let origin, artifactId = env.ARTIFACT_ID, archiveDigest = env.ARCHIVE_DIGEST;
+          if (originRead) {
+            const records = await readLog(selectedJob(name.replace('monorepo-ci-plan', 'monorepo-ci-origin')), 'CLOUDOPSWORKS_ORIGIN_V1 ', 8 * 1024 * 1024);
+            if (records.length !== 1) throw new Error('origin-marker-count');
+            origin = records[0];
+            selectedJob(name.replace('monorepo-ci-plan', 'monorepo-ci-required'));
+            if (mode !== 'normal-pr') selectedJob(name.replace('ci / monorepo-ci-plan', 'monorepo-ci-origin-init'));
+            const fields = ['repositoryId','runId','runAttempt','event','ref','hostSha','callerPath','callerSha','blueprintSha','sourceSha','sourceRef','sourceRepositoryId','trustedSource','plannerJobId','artifactId','artifactName','archiveDigest','planDigest','checkId','checkName','checkAppId','checkExternalId','prNumber','headRepositoryId','headSha','headRef','baseRef','policySha','closed','merged'];
+            if (Object.keys(origin).sort().join() !== fields.sort().join() || origin.repositoryId !== env.GITHUB_REPOSITORY_ID || origin.runId !== env.RUN_ID || origin.runAttempt !== env.RUN_ATTEMPT ||
+                ![origin.hostSha, origin.callerSha, origin.blueprintSha, origin.sourceSha].every(sha) || !digest(origin.planDigest) || !numeric(origin.artifactId) || !digest(origin.archiveDigest) ||
+                origin.artifactName !== `monorepo-plan-${env.RUN_ID}-${env.RUN_ATTEMPT}` || origin.plannerJobId !== String(job.id) || typeof origin.trustedSource !== 'boolean' ||
+                typeof origin.closed !== 'boolean' || typeof origin.merged !== 'boolean') throw new Error('origin-marker-binding');
+            if (origin.blueprintSha !== blueprint || origin.callerPath !== run.path.split('@')[0] || origin.event !== run.event) throw new Error('origin-producer-binding');
+            artifactId = origin.artifactId;
+            archiveDigest = origin.archiveDigest;
+          }
+          const records = await readLog(job, 'CLOUDOPSWORKS_STAGE_V1 ', 8 * 1024 * 1024);
+          const matching = records.filter(record => record.artifactId === artifactId);
+          if (matching.length !== 1) throw new Error('planner-marker-count');
+          const record = matching[0], fields = ['repositoryId', 'runId', 'runAttempt', 'artifactId', 'artifactName', 'archiveDigest'];
+          if (Object.keys(record).sort().join() !== fields.sort().join() || record.repositoryId !== env.GITHUB_REPOSITORY_ID || record.runId !== env.RUN_ID || record.runAttempt !== env.RUN_ATTEMPT ||
+              record.artifactName !== `monorepo-plan-${env.RUN_ID}-${env.RUN_ATTEMPT}` || record.archiveDigest !== archiveDigest) throw new Error('planner-marker-binding');
+          if (env.MODE === 'origin-emit' && mode !== 'normal-pr') {
+            const initName = name.replace('ci / monorepo-ci-plan', 'monorepo-ci-origin-init');
+            const acknowledgements = await readLog(selectedJob(initName), 'CLOUDOPSWORKS_DELIVERY_CHECK_V1 ', 8 * 1024 * 1024);
+            const ack = acknowledgements[0], fields = ['repositoryId','runId','runAttempt','checkId','checkName','checkAppId','checkExternalId'];
+            if (acknowledgements.length !== 1 || Object.keys(ack).sort().join() !== fields.sort().join() || ack.repositoryId !== env.GITHUB_REPOSITORY_ID || ack.runId !== env.RUN_ID || ack.runAttempt !== env.RUN_ATTEMPT ||
+                ack.checkId !== env.CHECK_ID || !numeric(ack.checkId) || !numeric(ack.checkAppId) || ack.checkName !== `monorepo-delivery/${env.RUN_ID}/${env.RUN_ATTEMPT}` ||
+                ack.checkExternalId !== `cloudopsworks:${env.GITHUB_REPOSITORY_ID}:${env.RUN_ID}:${env.RUN_ATTEMPT}`) throw new Error('origin-initializer-binding');
+            const check = (await github.rest.checks.get({...context.repo, check_run_id: Number(ack.checkId)})).data;
+            if (String(check.id) !== ack.checkId || check.name !== ack.checkName || String(check.app?.id) !== ack.checkAppId || check.app.slug !== 'github-actions' || check.external_id !== ack.checkExternalId ||
+                check.status !== 'queued' || check.conclusion !== null) throw new Error('origin-check-binding');
+            core.setOutput('check', JSON.stringify({checkId: ack.checkId, checkName: ack.checkName, checkAppId: ack.checkAppId, checkExternalId: ack.checkExternalId, sourceSha: check.head_sha}));
+          }
+          core.setOutput('planner-job-id', String(job.id));
+          if (originRead) {
+            const facts = JSON.stringify(jobs.map(({id,name,run_id,run_attempt,status,conclusion}) => ({id,name,run_id,run_attempt,status,conclusion})));
+            if (Buffer.byteLength(facts) > 4 * 1024 * 1024) throw new Error('origin-jobs-bound');
+            core.setOutput('jobs', facts);
+            core.setOutput('origin', JSON.stringify(origin));
+            core.setOutput('artifact-id', artifactId);
+            core.setOutput('archive-digest', archiveDigest);
+          }
+    - id: data
+      uses: ./bp/ci/monorepo/artifact
+      with:
+        artifact-id: ${{ steps.verify.outputs.artifact-id || inputs.artifact-id }}
+        run-id: ${{ inputs.run-id }}
+        archive-digest: ${{ steps.verify.outputs.archive-digest || inputs.archive-digest }}
+        record-kind: BuildPlan
+    - id: identity
+      uses: actions/github-script@v9
+      env:
+        PLAN_PATH: ${{ steps.data.outputs.record }}
+        MODE: ${{ inputs.mode }}
+        ORIGIN: ${{ steps.verify.outputs.origin }}
+        JOBS: ${{ steps.verify.outputs.jobs }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          if ((await fs.stat(process.env.PLAN_PATH)).size > 4 * 1024 * 1024) throw new Error('planner-identity-bound');
+          const plan = JSON.parse(await fs.readFile(process.env.PLAN_PATH, 'utf8'));
+          if (['origin-emit', 'origin-verify'].includes(process.env.MODE)) {
+            const result = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(process.env.PLAN_PATH)});
+            if (result.exitCode !== 0 || Buffer.byteLength(result.stdout) > 4 * 1024 * 1024) throw new Error('origin-typed-plan');
+            const typed = JSON.parse(result.stdout);
+            if (!/^sha256:[0-9a-f]{64}$/.test(typed.digest || '')) throw new Error('origin-plan-digest');
+            if (process.env.MODE === 'origin-verify') {
+              const origin = JSON.parse(process.env.ORIGIN);
+              const numeric = value => /^[1-9][0-9]*$/.test(value || '');
+              const sha = value => /^[0-9a-f]{40}$/.test(value || '');
+              const kind = {pull_request:'pr',pull_request_target:'closure'}[origin.event] || 'main';
+              if (!/^refs\/(heads|tags)\/.{1,256}$/.test(origin.sourceRef) || (kind === 'pr' ? origin.ref !== `refs/pull/${origin.prNumber}/merge` : !/^refs\/(heads|tags)\/.{1,256}$/.test(origin.ref))) throw new Error('origin-source-binding');
+              if (kind === 'main' && (!['push','create','workflow_dispatch'].includes(origin.event) || origin.sourceRepositoryId !== origin.repositoryId || !origin.trustedSource ||
+                  origin.prNumber !== '0' || origin.closed || origin.merged || [origin.headRepositoryId,origin.headSha,origin.headRef,origin.baseRef,origin.policySha].some(Boolean))) throw new Error('origin-main-binding');
+              if (kind !== 'main' && (origin.event !== (kind === 'pr' ? 'pull_request' : 'pull_request_target') || !sha(origin.policySha) || !numeric(origin.prNumber) || !numeric(origin.headRepositoryId) ||
+                  !sha(origin.headSha) || ![origin.headRef,origin.baseRef].every(ref => typeof ref === 'string' && ref.length > 0 && ref.length <= 256) ||
+                  (kind === 'closure' ? !sha(origin.policySha) || !origin.closed || !origin.merged || !origin.trustedSource || origin.sourceRepositoryId !== origin.repositoryId : origin.merged || origin.sourceRepositoryId !== origin.headRepositoryId || origin.sourceSha !== origin.headSha))) throw new Error('origin-pull-binding');
+              if (kind === 'pr' ? [origin.checkId,origin.checkName,origin.checkAppId,origin.checkExternalId].some(Boolean) : !numeric(origin.checkId) || !numeric(origin.checkAppId) ||
+                  origin.checkName !== `monorepo-delivery/${origin.runId}/${origin.runAttempt}` || origin.checkExternalId !== `cloudopsworks:${origin.repositoryId}:${origin.runId}:${origin.runAttempt}`) throw new Error('origin-check-binding');
+
+              if (typed.digest !== origin.planDigest || plan.headSha !== origin.sourceSha) throw new Error('origin-plan-binding');
+              const jobs = JSON.parse(process.env.JOBS), prefix = {push:'lifecycle / ci / ',create:'lifecycle / ci / ',workflow_dispatch:'lifecycle / ci / ',pull_request:'ci / ci / ',pull_request_target:'close / lifecycle / ci / '}[origin.event];
+              for (const {componentId} of plan.buildSelection) {
+                const found = jobs.filter(job => job.name === `${prefix}monorepo-ci-build (${componentId})`);
+                if (found.length !== 1 || String(found[0].run_id) !== origin.runId || String(found[0].run_attempt) !== origin.runAttempt || found[0].status !== 'completed' || found[0].conclusion !== 'success') throw new Error('origin-selected-build-attempt');
+              }
+            }
+            if (process.env.MODE === 'origin-verify') core.setOutput('origin', process.env.ORIGIN);
+            core.setOutput('plan-digest', typed.digest);
+          }
+          core.setOutput('version', plan.version);
+          core.setOutput('base-sha', plan.baseSha);
+          core.setOutput('source-sha', plan.headSha);
+    - id: emit
+      if: inputs.mode == 'emit'
+      uses: actions/github-script@v9
+      env:
+        COMPUTED_PLAN: ${{ inputs.computed-plan }}
+        RETRIEVED_PLAN: ${{ steps.data.outputs.record }}
+        ARTIFACT_ID: ${{ inputs.artifact-id }}
+        ARCHIVE_DIGEST: ${{ inputs.archive-digest }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const env = process.env;
+          if (env.RUN_ID !== env.GITHUB_RUN_ID || env.RUN_ATTEMPT !== env.GITHUB_RUN_ATTEMPT || ![env.ARTIFACT_ID, env.RUN_ID, env.RUN_ATTEMPT, env.GITHUB_REPOSITORY_ID].every(value => /^[1-9][0-9]*$/.test(value || '')) || !/^sha256:[0-9a-f]{64}$/.test(env.ARCHIVE_DIGEST || '')) throw new Error('planner-writer-context');
+          const results = [];
+          for (const file of [env.COMPUTED_PLAN, env.RETRIEVED_PLAN]) {
+            if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('planner-writer-bound');
+            const result = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(file)});
+            if (result.exitCode !== 0 || Buffer.byteLength(result.stdout) > 4 * 1024 * 1024) throw new Error('planner-writer-plan');
+            results.push(JSON.parse(result.stdout));
+          }
+          if (!/^sha256:[0-9a-f]{64}$/.test(results[0].digest || '') || results[0].digest !== results[1].digest) throw new Error('planner-writer-bytes');
+          const artifact = (await github.rest.actions.getArtifact({...context.repo, artifact_id: env.ARTIFACT_ID})).data;
+          if (String(artifact.id) !== env.ARTIFACT_ID || artifact.name !== `monorepo-plan-${env.RUN_ID}-${env.RUN_ATTEMPT}` || artifact.digest !== env.ARCHIVE_DIGEST || artifact.expired !== false || String(artifact.workflow_run?.id) !== env.RUN_ID) throw new Error('planner-writer-artifact');
+          const binding = {repositoryId: env.GITHUB_REPOSITORY_ID, runId: env.RUN_ID, runAttempt: env.RUN_ATTEMPT, artifactId: env.ARTIFACT_ID, artifactName: artifact.name, archiveDigest: artifact.digest};
+          core.info(`CLOUDOPSWORKS_STAGE_V1 ${JSON.stringify(binding)}`);
+    - id: protected
+      if: inputs.mode == 'origin-emit'
+      uses: ./bp/cd/tasks/repo/context/protected-source
+      with:
+        origin-facts: ${{ inputs.origin-facts }}
+    - id: origin
+      if: inputs.mode == 'origin-emit'
+      uses: actions/github-script@v9
+      env:
+        ORIGIN_FACTS: ${{ inputs.origin-facts }}
+        RUN_ID: ${{ inputs.run-id }}
+        RUN_ATTEMPT: ${{ inputs.run-attempt }}
+        PLAN_SOURCE: ${{ steps.identity.outputs.source-sha }}
+        PLAN_DIGEST: ${{ steps.identity.outputs.plan-digest }}
+        PLAN_JOB_ID: ${{ steps.verify.outputs.planner-job-id }}
+        ARTIFACT_ID: ${{ inputs.artifact-id }}
+        ARCHIVE_DIGEST: ${{ inputs.archive-digest }}
+        CHECK: ${{ steps.verify.outputs.check }}
+        BLUEPRINT_SHA: ${{ steps.verify.outputs.blueprint-sha }}
+        SOURCE_TRUSTED: ${{ steps.protected.outputs.trusted-source }}
+      with:
+        script: |
+          const env = process.env;
+          if (env.RUN_ID !== env.GITHUB_RUN_ID || env.RUN_ATTEMPT !== env.GITHUB_RUN_ATTEMPT ||
+              ![env.GITHUB_REPOSITORY_ID, env.RUN_ID, env.RUN_ATTEMPT, env.PLAN_JOB_ID, env.ARTIFACT_ID].every(value => /^[1-9][0-9]*$/.test(value || ''))) throw new Error('origin-writer-context');
+          const facts = JSON.parse(env.ORIGIN_FACTS);
+          if (facts.event !== context.eventName || facts.hostSha !== env.GITHUB_SHA || facts.callerSha !== env.GITHUB_WORKFLOW_SHA || facts.ref !== env.GITHUB_REF || facts.sourceSha !== env.PLAN_SOURCE ||
+              ![facts.hostSha,facts.callerSha].every(value => /^[0-9a-f]{40}$/.test(value || '')) || ![env.PLAN_DIGEST, env.ARCHIVE_DIGEST].every(value => /^sha256:[0-9a-f]{64}$/.test(value || ''))) throw new Error('origin-writer-source');
+          const run = (await github.rest.actions.getWorkflowRunAttempt({...context.repo, run_id: env.RUN_ID, attempt_number: env.RUN_ATTEMPT})).data;
+          if (String(run.id) !== env.RUN_ID || String(run.run_attempt) !== env.RUN_ATTEMPT || String(run.repository?.id) !== env.GITHUB_REPOSITORY_ID ||
+              run.path?.split('@')[0] !== facts.callerPath || run.event !== facts.event || facts.blueprintSha !== env.BLUEPRINT_SHA ||
+              !['true','false'].includes(env.SOURCE_TRUSTED) || facts.trustedSource !== (env.SOURCE_TRUSTED === 'true')) throw new Error('origin-writer-run');
+          if (['push', 'create', 'workflow_dispatch'].includes(facts.event)) {
+            if (run.head_sha !== facts.sourceSha || facts.sourceSha !== env.GITHUB_SHA || facts.sourceRef !== env.GITHUB_REF || facts.ref !== env.GITHUB_REF ||
+                facts.sourceRepositoryId !== env.GITHUB_REPOSITORY_ID || facts.trustedSource !== true || facts.prNumber !== '0' || facts.closed || facts.merged ||
+                [facts.headRepositoryId, facts.headSha, facts.headRef, facts.baseRef, facts.policySha].some(Boolean)) throw new Error('origin-writer-main');
+          } else {
+            const event = context.payload?.pull_request, closure = facts.event === 'pull_request_target';
+            if (!['pull_request', 'pull_request_target'].includes(facts.event) || !Number.isSafeInteger(event?.number) || event.number < 1 ||
+                String(event.number) !== facts.prNumber || !/^[0-9a-f]{40}$/.test(event.head?.sha || '') || !/^[0-9a-f]{40}$/.test(event.base?.sha || '')) throw new Error('origin-writer-pull-event');
+            const pull = (await github.rest.pulls.get({...context.repo, pull_number: event.number})).data;
+            if (pull.number !== event.number || pull.head?.sha !== event.head.sha || pull.head?.ref !== event.head.ref || String(pull.head?.repo?.id) !== String(event.head.repo?.id) ||
+                pull.base?.ref !== event.base.ref || String(pull.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID || String(event.base.repo?.id) !== env.GITHUB_REPOSITORY_ID ||
+                facts.headSha !== event.head.sha || facts.headRef !== event.head.ref || facts.headRepositoryId !== String(event.head.repo?.id) || facts.baseRef !== event.base.ref ||
+                facts.closed !== (event.state === 'closed') || facts.merged !== (event.merged === true) || pull.state !== event.state || pull.merged !== event.merged) throw new Error('origin-writer-pull');
+            if (closure) {
+              if (context.payload.action !== 'closed' || !facts.closed || !facts.merged || pull.merge_commit_sha !== event.merge_commit_sha ||
+                  facts.policySha !== event.base.sha || facts.sourceSha !== event.merge_commit_sha || facts.sourceRef !== 'refs/heads/' + event.base.ref ||
+                  facts.ref !== 'refs/heads/' + run.head_branch || facts.sourceRepositoryId !== env.GITHUB_REPOSITORY_ID || facts.trustedSource !== true) throw new Error('origin-writer-closure');
+              const repository = (await github.rest.repos.get({...context.repo})).data;
+              if (String(repository.id) !== env.GITHUB_REPOSITORY_ID || run.head_branch !== repository.default_branch) throw new Error('origin-writer-closure-host');
+            } else {
+              if (run.head_sha !== event.head.sha || facts.sourceSha !== event.head.sha || facts.sourceRef !== 'refs/heads/' + event.head.ref || facts.sourceRepositoryId !== String(event.head.repo?.id) ||
+                  facts.ref !== `refs/pull/${event.number}/merge` || facts.policySha !== event.base.sha) throw new Error('origin-writer-pr-source');
+            }
+          }
+          const pr = facts.event === 'pull_request';
+          const check = pr ? {checkId: '', checkName: '', checkAppId: '', checkExternalId: ''} : JSON.parse(env.CHECK);
+          if (!pr && check.sourceSha !== facts.sourceSha) throw new Error('origin-check-source');
+          const record = {repositoryId: env.GITHUB_REPOSITORY_ID, runId: env.RUN_ID, runAttempt: env.RUN_ATTEMPT,
+            event: facts.event, ref: facts.ref, hostSha: facts.hostSha, callerPath: facts.callerPath, callerSha: facts.callerSha, blueprintSha: facts.blueprintSha,
+            sourceSha: facts.sourceSha, sourceRef: facts.sourceRef, sourceRepositoryId: facts.sourceRepositoryId, trustedSource: facts.trustedSource,
+            plannerJobId: env.PLAN_JOB_ID, artifactId: env.ARTIFACT_ID, artifactName: `monorepo-plan-${env.RUN_ID}-${env.RUN_ATTEMPT}`,
+            archiveDigest: env.ARCHIVE_DIGEST, planDigest: env.PLAN_DIGEST, checkId: check.checkId, checkName: check.checkName, checkAppId: check.checkAppId, checkExternalId: check.checkExternalId,
+            prNumber: facts.prNumber, headRepositoryId: facts.headRepositoryId, headSha: facts.headSha, headRef: facts.headRef, baseRef: facts.baseRef, policySha: facts.policySha, closed: facts.closed, merged: facts.merged};
+          const raw = JSON.stringify(record);
+          if (Buffer.byteLength(raw) > 65536) throw new Error('origin-writer-bound');
+          core.info(`CLOUDOPSWORKS_ORIGIN_V1 ${raw}`);

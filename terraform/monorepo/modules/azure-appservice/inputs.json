@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "moduleId": "azure-appservice",
+  "variables": {
+    "resource": [
+      "provider",
+      "kind",
+      "subscriptionId",
+      "resourceGroup",
+      "appName",
+      "slot",
+      "packageMode",
+      "ownership",
+      "os",
+      "architecture",
+      "iac"
+    ],
+    "configuration": [
+      "kind",
+      "runtime",
+      "iac"
+    ],
+    "workload": [
+      "kind",
+      "port",
+      "healthPath"
+    ],
+    "artifact": [
+      "digest",
+      "format",
+      "path",
+      "imageReference",
+      "files"
+    ],
+    "owner_digest": []
+  },
+  "ownedResourceTypes": [
+    "azurerm_storage_blob",
+    "azurerm_linux_web_app",
+    "azurerm_linux_web_app_slot",
+    "azurerm_windows_web_app",
+    "azurerm_windows_web_app_slot",
+    "azurerm_resource_group_template_deployment"
+  ],
+  "ownedResourceAddresses": [
+    "azurerm_storage_blob.package[0]",
+    "azurerm_linux_web_app.linux[0]",
+    "azurerm_linux_web_app_slot.linux_slot[0]",
+    "azurerm_windows_web_app.windows[0]",
+    "azurerm_windows_web_app_slot.windows_slot[0]",
+    "azurerm_resource_group_template_deployment.package[0]"
+  ],
+  "externalParents": [
+    "resource group",
+    "service plan",
+    "user assigned identity and existing IAM grants",
+    "existing storage accounts and containers",
+    "parent app when targeting slot"
+  ],
+  "activationBlocked": true,
+  "remaining": [
+    "trusted shared executor source/ownership authorization integration",
+    "credentialed cloud lifecycle/readiness proof",
+    "package SAS must pass protected executor full scope/expiry/URI validation before Terraform"
+  ],
+  "replaceResourceAddresses": [
+    "azurerm_storage_blob.package[0]",
+    "azurerm_resource_group_template_deployment.package[0]"
+  ],
+  "applyDeleteResourceAddresses": [],
+  "sensitiveInputs": [
+    "package_read_sas"
+  ]
+}

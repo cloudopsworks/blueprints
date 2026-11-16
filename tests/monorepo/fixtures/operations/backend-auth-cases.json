@@ -1,0 +1,103 @@
+{
+  "apiVersion": "cloudopsworks.io/operations-conformance/v1",
+  "cases": [
+    {
+      "id": "awscontext",
+      "definition": "OperationContext",
+      "payload": "backend-auth-awscontext.json",
+      "expected": "accept",
+      "validation": "structural"
+    },
+    {
+      "id": "awshandle",
+      "definition": "StateHandle",
+      "payload": "backend-auth-awshandle.json",
+      "expected": "accept",
+      "validation": "semantic"
+    },
+    {
+      "id": "gcpcontext",
+      "definition": "OperationContext",
+      "payload": "backend-auth-gcpcontext.json",
+      "expected": "accept",
+      "validation": "structural"
+    },
+    {
+      "id": "gcphandle",
+      "definition": "StateHandle",
+      "payload": "backend-auth-gcphandle.json",
+      "expected": "accept",
+      "validation": "semantic"
+    },
+    {
+      "id": "azurecontext",
+      "definition": "OperationContext",
+      "payload": "backend-auth-azurecontext.json",
+      "expected": "accept",
+      "validation": "structural"
+    },
+    {
+      "id": "azurehandle",
+      "definition": "StateHandle",
+      "payload": "backend-auth-azurehandle.json",
+      "expected": "accept",
+      "validation": "semantic"
+    },
+    {
+      "id": "missing-identity",
+      "definition": "StateHandle",
+      "payload": "backend-auth-missing-identity.json",
+      "expected": "reject",
+      "validation": "structural"
+    },
+    {
+      "id": "missing-ref",
+      "definition": "StateHandle",
+      "payload": "backend-auth-missing-ref.json",
+      "expected": "reject",
+      "validation": "structural"
+    },
+    {
+      "id": "extra-identity-field",
+      "definition": "StateHandle",
+      "payload": "backend-auth-extra-identity-field.json",
+      "expected": "reject",
+      "validation": "structural"
+    },
+    {
+      "id": "wrong-provider",
+      "definition": "StateHandle",
+      "payload": "backend-auth-wrong-provider.json",
+      "expected": "reject",
+      "validation": "semantic"
+    },
+    {
+      "id": "missing-membership",
+      "definition": "StateHandle",
+      "payload": "backend-auth-missing-membership.json",
+      "expected": "reject",
+      "validation": "semantic"
+    },
+    {
+      "id": "duplicate-ref",
+      "definition": "StateHandle",
+      "payload": "backend-auth-duplicate-ref.json",
+      "expected": "reject",
+      "validation": "semantic"
+    },
+    {
+      "id": "unsorted-ref",
+      "definition": "StateHandle",
+      "payload": "backend-auth-unsorted-ref.json",
+      "expected": "reject",
+      "validation": "semantic"
+    },
+    {
+      "id": "extra-ref",
+      "definition": "StateHandle",
+      "payload": "backend-auth-extra-ref.json",
+      "expected": "reject",
+      "validation": "semantic"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+name: Exact closure toolchains
+description: Install the already validated union of one component dependency closure
+inputs:
+  plan:
+    description: Validated BuildPlan JSON path
+    required: true
+  component:
+    description: Selected matrix owner
+    required: true
+  runtime:
+    description: Compatibility-only input; no custom runtime is loaded
+    required: true
+  typed-plan:
+    description: Compatibility input; all selections now use the installed Go validated typed plan
+    default: "false"
+  scan-component:
+    description: Trusted scanner worker installs its active component dependency closure
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - id: tools
+      uses: actions/github-script@v9
+      env:
+        PLAN_PATH: ${{ inputs.plan }}
+        COMPONENT: ${{ inputs.component }}
+        SCAN_COMPONENT: ${{ inputs.scan-component }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          if (!['true', 'false'].includes(process.env.SCAN_COMPONENT)) throw new Error('toolchain-mode');
+          if ((await fs.stat(process.env.PLAN_PATH)).size > 4 * 1024 * 1024) throw new Error('toolchain-plan-bound');
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(process.env.PLAN_PATH)});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('toolchain-plan-contract');
+          const plan = JSON.parse(checked.stdout).record;
+          let declared;
+          if (process.env.SCAN_COMPONENT === 'true') {
+            const components = new Map(plan.components.map(component => [component.id, component]));
+            const pending = [process.env.COMPONENT], closure = new Set();
+            while (pending.length) {
+              const id = pending.pop();
+              if (closure.has(id)) continue;
+              if (!components.has(id) || closure.size >= 256) throw new Error('toolchain-scan-component');
+              closure.add(id);
+              pending.push(...components.get(id).dependsOn);
+            }
+            declared = [...closure].sort().flatMap(id => components.get(id).toolchains);
+          } else {
+            const rows = plan.matrix.include.filter(row => row.componentId === process.env.COMPONENT);
+            if (rows.length !== 1) throw new Error('toolchain-component');
+            declared = rows[0].toolchains;
+          }
+          const allowed = ['node', 'go', 'java', 'dotnet', 'python', 'rust', 'ruby', 'npm', 'pnpm', 'yarn', 'bundler'];
+          const versions = new Map();
+          for (const tool of declared) {
+            if (!allowed.includes(tool.tool) || typeof tool.version !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9.+_-]{0,63}$/.test(tool.version) || versions.has(tool.tool) && versions.get(tool.tool) !== tool.version) throw new Error('toolchain-version');
+            versions.set(tool.tool, tool.version);
+          }
+          for (const tool of allowed) core.setOutput(tool, versions.get(tool) || '');
+    - uses: actions/setup-node@v4
+      if: steps.tools.outputs.node != ''
+      with:
+        node-version: ${{ steps.tools.outputs.node }}
+    - uses: actions/setup-go@v5
+      if: steps.tools.outputs.go != ''
+      with:
+        go-version: ${{ steps.tools.outputs.go }}
+        cache: false
+    - uses: actions/setup-java@v4
+      if: steps.tools.outputs.java != ''
+      with:
+        java-version: ${{ steps.tools.outputs.java }}
+        distribution: temurin
+    - uses: actions/setup-dotnet@v4
+      if: steps.tools.outputs.dotnet != ''
+      with:
+        dotnet-version: ${{ steps.tools.outputs.dotnet }}
+    - uses: actions/setup-python@v5
+      if: steps.tools.outputs.python != ''
+      with:
+        python-version: ${{ steps.tools.outputs.python }}
+    - uses: ruby/setup-ruby@v1
+      if: steps.tools.outputs.ruby != ''
+      with:
+        ruby-version: ${{ steps.tools.outputs.ruby }}
+        bundler: ${{ steps.tools.outputs.bundler }}
+        bundler-cache: false
+    - name: Exact auxiliary tools
+      shell: bash
+      env:
+        RUST_VERSION: ${{ steps.tools.outputs.rust }}
+        NPM_VERSION: ${{ steps.tools.outputs.npm }}
+        PNPM_VERSION: ${{ steps.tools.outputs.pnpm }}
+        YARN_VERSION: ${{ steps.tools.outputs.yarn }}
+      run: |
+        set -euo pipefail
+        if [[ -n "$RUST_VERSION" ]]; then
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
+        fi
+        if [[ -n "$NPM_VERSION" ]]; then npm install --global "npm@$NPM_VERSION"; fi
+        if [[ -n "$PNPM_VERSION" ]]; then npm install --global "pnpm@$PNPM_VERSION"; fi
+        if [[ -n "$YARN_VERSION" ]]; then corepack enable && corepack prepare "yarn@$YARN_VERSION" --activate; fi

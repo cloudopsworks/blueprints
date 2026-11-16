@@ -1,0 +1,100 @@
+name: Source-bound monorepo delivery visibility
+description: Exact attempt-specific Check ID lifecycle; visibility is never deployment authorization
+inputs:
+  phase: {description: Closed initialize/start/finish/origin-failure phase, required: true}
+  check-id: {description: Initializer acknowledgement routing for origin failure only; independently bound before mutation, default: ''}
+outputs:
+  check-id: {description: Exact API acknowledged Check ID, value: '${{ steps.check.outputs.check-id }}'}
+  check-name: {description: Attempt-specific visibility name, value: '${{ steps.check.outputs.check-name }}'}
+runs:
+  using: composite
+  steps:
+    - id: context
+      uses: ./bp/cd/tasks/repo/context
+      with:
+        mode: ${{ github.event_name == 'workflow_run' && 'delivery' || 'normal' }}
+    - id: check
+      uses: actions/github-script@v9
+      env:
+        PHASE: ${{ inputs.phase }}
+        SOURCE_SHA: ${{ steps.context.outputs.source-sha }}
+        CALLER_MODE: ${{ steps.context.outputs.caller-mode }}
+        ORIGIN_RUN_ID: ${{ steps.context.outputs.run-id }}
+        ORIGIN_RUN_ATTEMPT: ${{ steps.context.outputs.run-attempt }}
+        CHECK_ID: ${{ inputs.phase == 'origin-failure' && inputs.check-id || steps.context.outputs.delivery-check-id }}
+        ENDORSED_CHECK_NAME: ${{ steps.context.outputs.delivery-check-name }}
+      with:
+        retries: 0
+        script: |
+          const env = process.env;
+          const numeric = value => /^[1-9][0-9]*$/.test(value || '');
+          const phases = ['initialize', 'start', 'finish', 'origin-failure'];
+          if (!phases.includes(env.PHASE) || !['normal-main', 'normal-closure'].includes(env.CALLER_MODE) ||
+              ![env.GITHUB_REPOSITORY_ID, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT, env.ORIGIN_RUN_ID, env.ORIGIN_RUN_ATTEMPT].every(numeric) ||
+              !/^[0-9a-f]{40}$/.test(env.SOURCE_SHA || '')) throw new Error('delivery-check-identity');
+          const continuation = ['start', 'finish'].includes(env.PHASE);
+          if (continuation) {
+            const origin = context.payload?.workflow_run;
+            if (context.eventName !== 'workflow_run' || env.GITHUB_RUN_ATTEMPT !== '1' ||
+                String(origin?.id) !== env.ORIGIN_RUN_ID || String(origin?.run_attempt) !== env.ORIGIN_RUN_ATTEMPT) throw new Error('delivery-check-continuation');
+          } else if (context.eventName === 'workflow_run' || env.GITHUB_RUN_ID !== env.ORIGIN_RUN_ID || env.GITHUB_RUN_ATTEMPT !== env.ORIGIN_RUN_ATTEMPT) throw new Error('delivery-check-origin');
+          const name = `monorepo-delivery/${env.ORIGIN_RUN_ID}/${env.ORIGIN_RUN_ATTEMPT}`;
+          const external = `cloudopsworks:${env.GITHUB_REPOSITORY_ID}:${env.ORIGIN_RUN_ID}:${env.ORIGIN_RUN_ATTEMPT}`;
+          if (continuation && env.ENDORSED_CHECK_NAME !== name) throw new Error('delivery-check-endorsement');
+          const server = new URL(env.GITHUB_SERVER_URL);
+          if (server.protocol !== 'https:' || server.username || server.password || server.pathname !== '/' || server.search || server.hash ||
+              env.GITHUB_REPOSITORY !== `${context.repo.owner}/${context.repo.repo}`) throw new Error('delivery-check-server');
+          const originUrl = `${server.origin}/${env.GITHUB_REPOSITORY}/actions/runs/${env.ORIGIN_RUN_ID}/attempts/${env.ORIGIN_RUN_ATTEMPT}`;
+          const deliveryUrl = `${server.origin}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}/attempts/${env.GITHUB_RUN_ATTEMPT}`;
+          let id = env.CHECK_ID, appId;
+          const bind = record => {
+            if (!record || String(record.id) !== id || record.name !== name || record.head_sha !== env.SOURCE_SHA || record.external_id !== external ||
+                !Number.isSafeInteger(record.app?.id) || record.app.id < 1 || record.app.slug !== 'github-actions' || appId !== undefined && record.app.id !== appId) throw new Error('delivery-check-binding');
+            return record;
+          };
+          if (env.PHASE === 'initialize') {
+            const created = (await github.rest.checks.create({...context.repo, name, head_sha: env.SOURCE_SHA,
+              external_id: external, status: 'queued', details_url: originUrl})).data;
+            id = String(created?.id);
+            if (!numeric(id) || !Number.isSafeInteger(Number(id))) throw new Error('delivery-check-create-id');
+            bind(created);
+            appId = created.app.id;
+          } else if (!numeric(id) || !Number.isSafeInteger(Number(id))) throw new Error('delivery-check-id');
+          let record = bind((await github.rest.checks.get({...context.repo, check_run_id: Number(id)})).data);
+          appId = record.app.id;
+          if (env.PHASE === 'initialize') {
+            if (record.status !== 'queued' || record.conclusion !== null || record.details_url !== originUrl) throw new Error('delivery-check-acknowledgement');
+          } else {
+            const finishing = env.PHASE === 'finish';
+            if (record.status !== (finishing ? 'in_progress' : 'queued') || record.conclusion !== null ||
+                record.details_url !== (finishing ? deliveryUrl : originUrl)) throw new Error('delivery-check-state');
+            let status = 'in_progress', conclusion;
+            if (env.PHASE !== 'start') {
+              const runId = finishing ? env.GITHUB_RUN_ID : env.ORIGIN_RUN_ID;
+              const attempt = finishing ? env.GITHUB_RUN_ATTEMPT : env.ORIGIN_RUN_ATTEMPT;
+              const prefix = env.CALLER_MODE === 'normal-closure' ? 'close / lifecycle / ci / ' : 'lifecycle / ci / ';
+              const required = finishing ? 'delivery / monorepo-delivery-required' : prefix + 'monorepo-ci-required';
+              const matches = [];
+              for (let page = 1; page <= 100; page++) {
+                const jobs = (await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo, run_id: runId, attempt_number: attempt, per_page: 100, page})).data.jobs;
+                if (!Array.isArray(jobs) || jobs.length > 100) throw new Error('delivery-check-jobs');
+                matches.push(...jobs.filter(job => job.name === required));
+                if (jobs.length < 100) break;
+                if (page === 100) throw new Error('delivery-check-jobs-bound');
+              }
+              const job = matches[0];
+              if (matches.length !== 1 || !numeric(String(job.id)) || String(job.run_id) !== runId || String(job.run_attempt) !== attempt ||
+                  job.status !== 'completed' || !['success', 'failure', 'cancelled', 'skipped', 'timed_out', 'action_required', 'neutral', 'stale', 'startup_failure'].includes(job.conclusion)) throw new Error('delivery-check-required');
+              if (!finishing && job.conclusion === 'success') throw new Error('delivery-check-origin-success-not-delivery');
+              status = 'completed';
+              conclusion = job.conclusion === 'success' ? 'success' : job.conclusion === 'cancelled' ? 'cancelled' : 'failure';
+            }
+            const expectedUrl = continuation ? deliveryUrl : originUrl;
+            const updated = bind((await github.rest.checks.update({...context.repo, check_run_id: Number(id), status,
+              ...(conclusion ? {conclusion} : {}), details_url: expectedUrl})).data);
+            record = bind((await github.rest.checks.get({...context.repo, check_run_id: Number(id)})).data);
+            for (const value of [updated, record]) if (value.status !== status || value.conclusion !== (conclusion || null) || value.details_url !== expectedUrl) throw new Error('delivery-check-update-readback');
+          }
+          if (env.PHASE === 'initialize') core.info(`CLOUDOPSWORKS_DELIVERY_CHECK_V1 ${JSON.stringify({repositoryId: env.GITHUB_REPOSITORY_ID, runId: env.ORIGIN_RUN_ID, runAttempt: env.ORIGIN_RUN_ATTEMPT, checkId: id, checkName: name, checkAppId: String(appId), checkExternalId: external})}`);
+          core.setOutput('check-id', id);
+          core.setOutput('check-name', name);

@@ -1,0 +1,55 @@
+{
+  "apiVersion": "cloudopsworks.io/operations/v1",
+  "kind": "StateHandle",
+  "origin": {
+    "repository": {
+      "id": "123",
+      "fullName": "example/monorepo"
+    },
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runId": "100",
+    "runAttempt": "1",
+    "blueprintSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "moduleRevision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "providerLockDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "backend": {
+    "kind": "s3",
+    "bucket": "state-example",
+    "key": "deployments/pull_request/preview/example/monorepo/dev-kube/preview/pr-17/environment/terraform.tfstate",
+    "region": "us-east-1",
+    "workspace": "default",
+    "workspaceKeyPrefix": "env:",
+    "useLockfile": true,
+    "dynamodbTable": null
+  },
+  "native": {
+    "stateAddress": "s3://state-example/deployments/pull_request/preview/example/monorepo/dev-kube/preview/pr-17/environment/terraform.tfstate",
+    "lockAddress": "s3://state-example/deployments/pull_request/preview/example/monorepo/dev-kube/preview/pr-17/environment/terraform.tfstate.tflock",
+    "dynamodbLockId": null,
+    "leaseMetadataKey": null
+  },
+  "moduleId": "aws-preview-environment",
+  "scope": "preview-environment",
+  "environment": "preview",
+  "effectiveEnvironment": "pull_request/preview",
+  "qualifier": null,
+  "releaseName": "example",
+  "targetId": "dev-kube",
+  "componentId": null,
+  "apiIdentity": null,
+  "prNumber": 17,
+  "protectedEnvironment": "pull_request/preview",
+  "authRefs": [
+    "aws-dev"
+  ],
+  "ownership": "external",
+  "resourceIdentity": {
+    "kind": "aws.eks",
+    "provider": "aws",
+    "region": "us-east-1",
+    "cluster": "example",
+    "namespace": "pr-17-dev-kube-4d94084465f0"
+  },
+  "providerIdentity": "123456789012"
+}

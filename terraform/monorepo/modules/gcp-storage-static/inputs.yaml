@@ -1,0 +1,36 @@
+schemaVersion: 1
+moduleId: gcp-storage-static
+variables:
+  resource:
+    - kind
+    - project
+    - region
+    - bucket
+    - prefix
+  configuration:
+    - kind
+  workload:
+    - kind
+  artifact:
+    - digest
+    - format
+    - path
+    - imageReference
+    - files
+  owner_digest: []
+ownedResourceTypes:
+  - google_storage_bucket_object
+ownedResourceAddresses:
+  - google_storage_bucket_object.files[*]
+externalParents:
+  - GCP project
+  - website bucket and website configuration
+  - CDN
+activationBlocked: true
+remaining:
+  - global trusted execution and selected source authorization integration
+  - credentialed readiness and lifecycle proof
+replaceResourceAddresses:
+  - google_storage_bucket_object.files[*]
+applyDeleteResourceAddresses:
+  - google_storage_bucket_object.files[*]

@@ -1,0 +1,64 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "DeploymentRequest",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "operation": "apply",
+  "componentId": "api",
+  "releaseVersion": "1.2.3",
+  "releaseHeadSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "manifestDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "target": {
+    "id": "prod-run",
+    "environment": "prod",
+    "provider": "gcp",
+    "authRef": "gcp-prod",
+    "configDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "kind": "gcp.cloudrun",
+    "project": "example-prod",
+    "region": "us-central1",
+    "service": "api",
+    "serviceAccount": "api@example-prod.iam.gserviceaccount.com",
+    "readiness": {
+      "deadlineSeconds": 600,
+      "intervalSeconds": 5,
+      "probe": {
+        "kind": "http",
+        "path": null,
+        "method": "GET",
+        "requestBody": "",
+        "expectedStatus": 200,
+        "responseContains": "ok",
+        "auth": {
+          "kind": "gcp-id-token"
+        }
+      }
+    }
+  },
+  "package": {
+    "kind": "container",
+    "dockerfile": "Dockerfile",
+    "context": ".",
+    "platform": "linux/amd64"
+  },
+  "artifact": {
+    "kind": "container",
+    "format": "oci",
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "sizeBytes": 1000,
+    "location": {
+      "kind": "oci",
+      "reference": "us-central1-docker.pkg.dev/example-prod/apps/api@sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "builtVersion": "1.2.3"
+  },
+  "idempotencyKey": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+  "previousReceiptId": null,
+  "reason": "first-deploy",
+  "workload": {
+    "kind": "function"
+  }
+}

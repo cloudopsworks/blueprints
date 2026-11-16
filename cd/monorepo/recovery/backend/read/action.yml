@@ -1,0 +1,135 @@
+name: Recheck exact retained Lambda native ownership
+description: Conditional bounded S3 state and lock reads plus selected principal and native owner proof before init or mutation
+inputs:
+  selection: {description: Private Go-validated frozen recovery selection, required: true}
+  workload-context: {description: Private isolated workload credential context, required: true}
+  backend-context: {description: Private isolated backend credential context, required: true}
+  previous-proof: {description: Optional exact precondition baseline to recheck, default: ''}
+outputs:
+  proof: {description: Private native state and ownership proof; never upload, value: '${{ steps.inspect.outputs.proof }}'}
+runs:
+  using: composite
+  steps:
+    - id: state
+      uses: actions/github-script@v9
+      env:
+        SELECTION: ${{ inputs.selection }}
+        WORKLOAD_CONTEXT: ${{ inputs.workload-context }}
+        BACKEND_CONTEXT: ${{ inputs.backend-context }}
+        PREVIOUS_PROOF: ${{ inputs.previous-proof }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path'), crypto = require('node:crypto');
+          const e = process.env, temp = await fs.realpath(e.RUNNER_TEMP);
+          const version=await exec.getExecOutput('aws',['--version'],{env:{PATH:e.PATH},silent:true,ignoreReturnCode:true});
+          if (version.exitCode || !/^aws-cli\/2\.40\.1 /.test(version.stdout)) throw new Error('recovery-aws-version');
+          async function privateJSON(file) {
+            const resolved = path.resolve(file || ''), stat = await fs.lstat(resolved);
+            if (!resolved.startsWith(temp+path.sep) || stat.isSymbolicLink() || !stat.isFile() || (stat.mode&0o077) || stat.size>4194304 || await fs.realpath(resolved)!==resolved) throw new Error('recovery-private-record');
+            try { return JSON.parse(await fs.readFile(resolved,'utf8')); } catch { throw new Error('recovery-private-record-json'); }
+          }
+          const s = await privateJSON(e.SELECTION), backend = await privateJSON(e.BACKEND_CONTEXT), workload = await privateJSON(e.WORKLOAD_CONTEXT);
+          const h = s.handle, b = h.backend, r = h.resourceIdentity;
+          if (!['destroy','unlock'].includes(s.operation) || (s.operation==='unlock' ? !/^[^\x00-\x20/]{1,256}$/.test(s.lockId || '') : s.lockId!==null) || h.ownership!=='managed' || h.scope!=='component' || r.kind!=='aws.lambda' || r.packageMode!=='zip' || r.provider!=='aws' || b.kind!=='s3' || b.workspace!=='default' || b.useLockfile!==true || b.dynamodbTable!=null || h.backendIdentity?.provider!=='aws') throw new Error('recovery-first-slice-only');
+          const checked = await exec.getExecOutput('tronador',['components','contracts','validate','--kind','StateHandle'],{input:Buffer.from(JSON.stringify(h)),silent:true,ignoreReturnCode:true});
+          if (checked.exitCode || Buffer.byteLength(checked.stdout)>4194304 || JSON.parse(checked.stdout).digest!==s.digest) throw new Error('recovery-handle-contract');
+          const allowed = ['PATH','HOME','AWS_CONFIG_FILE','AWS_SHARED_CREDENTIALS_FILE','AWS_EC2_METADATA_DISABLED','AWS_REGION','AWS_DEFAULT_REGION','AWS_ACCESS_KEY_ID','AWS_SECRET_ACCESS_KEY','AWS_SESSION_TOKEN','AWS_PAGER'].sort();
+          async function native(args, credential, bound=65536) {
+            if (JSON.stringify(Object.keys(credential.env).sort())!==JSON.stringify(allowed) || credential.env.AWS_EC2_METADATA_DISABLED!=='true' || credential.env.AWS_PAGER!=='' || credential.env.AWS_CONFIG_FILE!==credential.env.AWS_SHARED_CREDENTIALS_FILE) throw new Error('recovery-isolated-environment');
+            for (const key of ['AWS_ACCESS_KEY_ID','AWS_SECRET_ACCESS_KEY','AWS_SESSION_TOKEN']) if (!credential.env[key] || /[\x00-\x20]/.test(credential.env[key])) throw new Error('recovery-temporary-credentials');
+            const result = await exec.getExecOutput('aws',[...args,'--region',credential.binding.region,'--no-cli-pager','--output','json','--cli-connect-timeout','10','--cli-read-timeout','30'],{env:credential.env,silent:true,ignoreReturnCode:true});
+            if (result.exitCode || Buffer.byteLength(result.stdout)>bound) throw new Error('recovery-native-read');
+            return JSON.parse(result.stdout);
+          }
+          for (const [credential,binding,account] of [[backend,s.backendBinding,h.backendIdentity.accountId],[workload,s.workloadBinding,h.providerIdentity]]) {
+            if (JSON.stringify(credential.binding)!==JSON.stringify(binding) || binding.provider!=='aws' || !binding.roleArn.startsWith(`arn:aws:iam::${account}:role/`) || credential.env.AWS_REGION!==binding.region || credential.env.AWS_DEFAULT_REGION!==binding.region) throw new Error('recovery-binding');
+            const identity = await native(['sts','get-caller-identity'],credential), role = binding.roleArn.split('/').at(-1);
+            if (identity.Account!==account || !identity.Arn?.startsWith(`arn:aws:sts::${account}:assumed-role/${role}/`)) throw new Error('recovery-principal');
+          }
+          const directory = await fs.mkdtemp(path.join(temp,'recovery-read-')); await fs.chmod(directory,0o700);
+          async function readObject(key, limit, name) {
+            const head = await native(['s3api','head-object','--bucket',b.bucket,'--key',key,'--expected-bucket-owner',h.backendIdentity.accountId],backend);
+            if (!Number.isSafeInteger(head.ContentLength) || head.ContentLength<1 || head.ContentLength>limit || !/^"[^"\x00-\x20]{1,256}"$/.test(head.ETag || '')) throw new Error('recovery-object-bound');
+            const file = path.join(directory,name); await fs.writeFile(file,'',{mode:0o600,flag:'wx'});
+            const result = await exec.getExecOutput('aws',['s3api','get-object','--bucket',b.bucket,'--key',key,'--if-match',head.ETag,'--expected-bucket-owner',h.backendIdentity.accountId,'--region',b.region,'--no-cli-pager','--output','json','--cli-connect-timeout','10','--cli-read-timeout','30',file],{env:backend.env,silent:true,ignoreReturnCode:true});
+            if (result.exitCode || Buffer.byteLength(result.stdout)>65536) throw new Error('recovery-conditional-read');
+            const meta = JSON.parse(result.stdout), stat = await fs.lstat(file), bytes = await fs.readFile(file);
+            if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode&0o077) || bytes.length!==head.ContentLength || bytes.length>limit || meta.ETag!==head.ETag) throw new Error('recovery-state-changed');
+            let record; try { record=JSON.parse(bytes); } catch { throw new Error('recovery-native-state-json'); }
+            return {file,etag:head.ETag,digest:'sha256:'+crypto.createHash('sha256').update(bytes).digest('hex'),record};
+          }
+          const state = await readObject(b.key,4194304,'state.json');
+          const listing = await native(['s3api','list-objects-v2','--bucket',b.bucket,'--prefix',b.key+'.tflock','--expected-bucket-owner',h.backendIdentity.accountId,'--max-keys','2','--no-paginate'],backend);
+          if (listing.IsTruncated!==false || (listing.Contents!==undefined && !Array.isArray(listing.Contents)) || (listing.Contents || []).length>2) throw new Error('recovery-lock-list');
+          const locks = (listing.Contents || []).filter(item=>item.Key===b.key+'.tflock');
+          if (locks.length>1 || (s.operation==='destroy' && locks.length) || (s.operation==='unlock' && locks.length!==1)) throw new Error('recovery-native-lock');
+          const lock = locks.length ? await readObject(b.key+'.tflock',65536,'lock.json') : null;
+          if (lock && (lock.record.ID!==s.lockId || lock.record.Path!==b.bucket+'/'+b.key)) throw new Error('recovery-native-lock');
+          const proof = {selection:e.SELECTION,workloadContext:e.WORKLOAD_CONTEXT,backendContext:e.BACKEND_CONTEXT,handleDigest:s.digest,resourceClaims:s.resourceClaims,operation:s.operation,lockId:s.lockId,statePath:state.file,stateETag:state.etag,stateDigest:state.digest,lockETag:lock?.etag || null,lockDigest:lock?.digest || null};
+          const output = path.join(directory,'state-proof.json'); await fs.writeFile(output,JSON.stringify(proof),{mode:0o600,flag:'wx'});
+          core.setOutput('state-proof',output);
+    - id: ownership
+      uses: actions/github-script@v9
+      env:
+        STATE_PROOF: ${{ steps.state.outputs.state-proof }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path');
+          const p = JSON.parse(await fs.readFile(process.env.STATE_PROOF,'utf8')), s = JSON.parse(await fs.readFile(p.selection,'utf8'));
+          const h = s.handle, r = h.resourceIdentity, credential = JSON.parse(await fs.readFile(p.workloadContext,'utf8'));
+          const state = JSON.parse(await fs.readFile(p.statePath,'utf8'));
+          if (state.version!==4 || !Array.isArray(state.resources) || !state.resources.length || state.resources.length>6) throw new Error('recovery-state-inventory');
+          const addresses = [], objects = new Map(), identities={};
+          for (const resource of state.resources) {
+            if (resource.mode==='data' && !resource.module && resource.name==='external' && ['aws_caller_identity','aws_iam_role','aws_s3_bucket'].includes(resource.type)) continue;
+            if (resource.module || resource.mode!=='managed' || !['aws_lambda_function','aws_lambda_alias','aws_s3_object'].includes(resource.type) || resource.name!==(resource.type==='aws_s3_object'?'package':'component') || !Array.isArray(resource.instances) || resource.instances.length!==1) throw new Error('recovery-owned-addresses');
+            const instance = resource.instances[0], address = resource.type+'.'+resource.name+(instance.index_key===undefined?'':'['+JSON.stringify(instance.index_key)+']');
+            if ((resource.type==='aws_lambda_function' ? instance.index_key!==undefined : instance.index_key!==0) || instance.deposed || instance.status==='tainted' || objects.has(resource.type) || !instance.attributes) throw new Error('recovery-owned-instance');
+            addresses.push(address); objects.set(resource.type,instance.attributes);
+            const keys={aws_lambda_function:['arn','function_name','s3_bucket','s3_key','s3_object_version'],aws_lambda_alias:['arn','name','function_name','function_version'],aws_s3_object:['bucket','key','version_id']}[resource.type];
+            identities[address]=Object.fromEntries(keys.map(key=>[key,instance.attributes[key] ?? null]));
+            if (resource.type!=='aws_lambda_alias') identities[address].ownerDigest=s.digest;
+          }
+          const fn = objects.get('aws_lambda_function'), arn = `arn:aws:lambda:${r.region}:${h.providerIdentity}:function:${r.functionName}`;
+          if (!fn || fn.arn!==arn || fn.function_name!==r.functionName || fn.tags?.['cloudopsworks-owner']!==s.digest) throw new Error('recovery-state-owner');
+          async function native(args) {
+            const result = await exec.getExecOutput('aws',[...args,'--region',r.region,'--no-cli-pager','--output','json','--cli-connect-timeout','10','--cli-read-timeout','30'],{env:credential.env,silent:true,ignoreReturnCode:true});
+            if (result.exitCode || Buffer.byteLength(result.stdout)>65536) throw new Error('recovery-native-owner'); return JSON.parse(result.stdout);
+          }
+          const actual = await native(['lambda','get-function','--function-name',r.functionName,'--query','{Configuration:Configuration,Tags:Tags}']);
+          if (actual.Configuration?.FunctionArn!==arn || actual.Configuration?.FunctionName!==r.functionName || actual.Tags?.['cloudopsworks-owner']!==s.digest) throw new Error('recovery-native-owner');
+          const alias = objects.get('aws_lambda_alias');
+          if (alias) {
+            if (alias.function_name!==r.functionName || alias.name!==r.alias || !/^[1-9][0-9]*$/.test(alias.function_version || '')) throw new Error('recovery-alias-owner');
+            const actualAlias = await native(['lambda','get-alias','--function-name',r.functionName,'--name',r.alias]);
+            if (actualAlias.AliasArn!==arn+':'+r.alias || actualAlias.Name!==r.alias || actualAlias.FunctionVersion!==alias.function_version) throw new Error('recovery-alias-owner');
+          }
+          const object = objects.get('aws_s3_object');
+          if (object) {
+            if (object.tags?.['cloudopsworks-owner']!==s.digest || !/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(object.bucket || '') || !/^(?:[A-Za-z0-9_-]+\/)*[0-9a-f]{64}\/main\.zip$/.test(object.key || '') || fn.s3_bucket!==object.bucket || fn.s3_key!==object.key || (fn.s3_object_version || null)!==(object.version_id || null)) throw new Error('recovery-package-owner');
+            const prefix=(r.iac?.sourcePrefix || 'components').replace(/^\/+|\/+$/g,'')+'/';
+            const claim='object:arn:aws:s3:::'+object.bucket+'/'+object.key;
+            if (object.bucket!==r.iac?.sourceBucket || !object.key.startsWith(prefix) || !/^[0-9a-f]{64}\/main\.zip$/.test(object.key.slice(prefix.length)) || !Array.isArray(s.resourceClaims) || !s.resourceClaims.includes(claim)) throw new Error('recovery-authenticated-package-scope');
+            const args = ['s3api','get-object-tagging','--bucket',object.bucket,'--key',object.key,'--expected-bucket-owner',h.providerIdentity];
+            if (object.version_id) { if (!/^[A-Za-z0-9._~+/-]{1,1024}$/.test(object.version_id)) throw new Error('recovery-package-version'); args.push('--version-id',object.version_id); }
+            const tags = (await native(args)).TagSet;
+            if (!Array.isArray(tags) || tags.filter(tag=>tag.Key==='cloudopsworks-owner' && tag.Value===s.digest).length!==1) throw new Error('recovery-package-owner');
+          }
+          p.resourceAddresses=addresses.sort();p.resourceIdentities=identities;p.resourceClaims=s.resourceClaims;
+          const output = path.join(path.dirname(process.env.STATE_PROOF),'ownership-proof.json'); await fs.writeFile(output,JSON.stringify(p),{mode:0o600,flag:'wx'}); core.setOutput('ownership-proof',output);
+    - id: inspect
+      uses: actions/github-script@v9
+      env:
+        OWNERSHIP_PROOF: ${{ steps.ownership.outputs.ownership-proof }}
+        PREVIOUS_PROOF: ${{ inputs.previous-proof }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path');
+          const current = JSON.parse(await fs.readFile(process.env.OWNERSHIP_PROOF,'utf8'));
+          if (process.env.PREVIOUS_PROOF) {
+            const file = path.resolve(process.env.PREVIOUS_PROOF), temp = await fs.realpath(process.env.RUNNER_TEMP), stat = await fs.lstat(file);
+            if (!file.startsWith(temp+path.sep) || await fs.realpath(file)!==file || !stat.isFile() || stat.isSymbolicLink() || (stat.mode&0o077) || stat.size>4194304) throw new Error('recovery-private-baseline');
+            const previous = JSON.parse(await fs.readFile(file,'utf8'));
+            for (const key of ['selection','workloadContext','backendContext','handleDigest','operation','lockId','stateETag','stateDigest','lockETag','lockDigest','resourceAddresses','resourceIdentities','resourceClaims']) if (JSON.stringify(current[key])!==JSON.stringify(previous[key])) throw new Error('recovery-precondition-changed');
+          }
+          core.setOutput('proof',process.env.OWNERSHIP_PROOF);

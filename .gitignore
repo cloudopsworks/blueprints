@@ -52,3 +52,9 @@ tronador/
 .gstack/
 .opencode/
 .codex/
+# Monorepo Python runtime/test caches
+__pycache__/
+*.py[cod]
+
+# Bounded local lifecycle diagnostics (uploaded explicitly by Actions)
+.lifecycle-diagnostics/

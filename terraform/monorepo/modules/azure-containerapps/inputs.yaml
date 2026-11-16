@@ -1,0 +1,44 @@
+schemaVersion: 1
+moduleId: azure-containerapps
+variables:
+  resource:
+    - provider
+    - kind
+    - subscriptionId
+    - resourceGroup
+    - appName
+    - containerName
+    - ownership
+    - os
+    - architecture
+    - iac
+  configuration:
+    - kind
+    - runtime
+    - iac
+  workload:
+    - kind
+    - port
+    - healthPath
+  artifact:
+    - digest
+    - format
+    - path
+    - imageReference
+    - files
+  owner_digest: []
+ownedResourceTypes:
+  - azurerm_container_app
+ownedResourceAddresses:
+  - azurerm_container_app.component
+externalParents:
+  - resource group
+  - managed environment
+  - user assigned identity and registry pull grants
+  - container registry
+activationBlocked: true
+remaining:
+  - trusted shared executor source/ownership authorization integration
+  - credentialed cloud lifecycle/readiness proof
+replaceResourceAddresses: []
+applyDeleteResourceAddresses: []

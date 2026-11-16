@@ -1,0 +1,5 @@
+# Operator documentation example for org/team DEPLOYMENT_STATE_CONF; not application-repository configuration.
+# Inactive operator example; backend-gcp uses the SAME protected AUTH map, not a second map.
+gcs:
+  bucket: REPLACE_EXISTING_STATE_BUCKET
+  auth_ref: backend-gcp

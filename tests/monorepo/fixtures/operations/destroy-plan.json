@@ -1,0 +1,74 @@
+{
+  "apiVersion": "cloudopsworks.io/operations/v1",
+  "kind": "OperationPlan",
+  "operation": "destroy",
+  "invocation": {
+    "repository": {
+      "id": "123",
+      "fullName": "example/monorepo"
+    },
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "runId": "200",
+    "runAttempt": "1",
+    "blueprintSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "actor": "operator"
+  },
+  "stateHandle": {
+    "apiVersion": "cloudopsworks.io/operations/v1",
+    "kind": "StateHandle",
+    "origin": {
+      "repository": {
+        "id": "123",
+        "fullName": "example/monorepo"
+      },
+      "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "runId": "100",
+      "runAttempt": "1",
+      "blueprintSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "moduleRevision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "providerLockDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "backend": {
+      "kind": "s3",
+      "bucket": "state-example",
+      "key": "deployments/develop/dev/example/monorepo/dev-kube/api/aws-eks/terraform.tfstate",
+      "region": "us-east-1",
+      "workspace": "default",
+      "workspaceKeyPrefix": "env:",
+      "useLockfile": true,
+      "dynamodbTable": null
+    },
+    "native": {
+      "stateAddress": "s3://state-example/deployments/develop/dev/example/monorepo/dev-kube/api/aws-eks/terraform.tfstate",
+      "lockAddress": "s3://state-example/deployments/develop/dev/example/monorepo/dev-kube/api/aws-eks/terraform.tfstate.tflock",
+      "dynamodbLockId": null,
+      "leaseMetadataKey": null
+    },
+    "moduleId": "aws-eks",
+    "scope": "component",
+    "environment": "dev",
+    "effectiveEnvironment": "develop/dev",
+    "qualifier": null,
+    "releaseName": "example",
+    "targetId": "dev-kube",
+    "componentId": "api",
+    "apiIdentity": null,
+    "prNumber": null,
+    "protectedEnvironment": "develop/dev",
+    "authRefs": [
+      "aws-dev"
+    ],
+    "ownership": "external",
+    "resourceIdentity": {
+      "kind": "aws.eks",
+      "provider": "aws",
+      "region": "us-east-1",
+      "cluster": "example",
+      "namespace": "example"
+    },
+    "providerIdentity": "123456789012"
+  },
+  "stateHandleDigest": "sha256:7ee2fb2fd085bca14f4dabdc90f8ed493ef39e7167834a911df14bc831657bb4",
+  "inputs": null,
+  "lockId": null
+}

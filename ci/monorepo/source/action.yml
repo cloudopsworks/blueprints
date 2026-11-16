@@ -1,0 +1,58 @@
+name: Snapshot monorepo configuration
+description: Read immutable YAML blobs through GitHub API without an application checkout
+inputs:
+  source-sha: {description: Independently verified application source commit, required: true}
+outputs:
+  directory: {description: Private configuration-only snapshot, value: '${{ steps.snapshot.outputs.directory }}'}
+  configuration: {description: Go-normalized configuration file, value: '${{ steps.normalize.outputs.configuration }}'}
+runs:
+  using: composite
+  steps:
+    - id: snapshot
+      uses: actions/github-script@v9
+      env:
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const sha = process.env.SOURCE_SHA;
+          if (!/^[0-9a-f]{40}$/.test(sha || '')) throw new Error('snapshot-source');
+          const commit = (await github.rest.git.getCommit({...context.repo, commit_sha: sha})).data;
+          if (commit.sha !== sha || !/^[0-9a-f]{40}$/.test(commit.tree?.sha || '')) throw new Error('snapshot-commit');
+          const tree = (await github.rest.git.getTree({...context.repo, tree_sha: commit.tree.sha, recursive: '1'})).data;
+          if (tree.truncated !== false || !Array.isArray(tree.tree) || tree.tree.length > 50000) throw new Error('snapshot-tree-bound');
+          const entries = tree.tree.filter(entry => entry.path?.startsWith('.cloudopsworks/') && /\.ya?ml$/.test(entry.path));
+          if (!entries.length || entries.length > 256 || new Set(entries.map(entry => entry.path)).size !== entries.length) throw new Error('snapshot-file-count');
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(process.env.RUNNER_TEMP), 'configuration-'));
+          await fs.chmod(directory, 0o700);
+          let total = 0;
+          for (const entry of entries) {
+            if (entry.type !== 'blob' || entry.mode !== '100644' || !entry.path.endsWith('.yaml') && !entry.path.endsWith('.yml') || entry.path.includes('\\') || entry.path.split('/').some(part => ['', '.', '..'].includes(part)) || !/^[0-9a-f]{40}$/.test(entry.sha || '') || !Number.isSafeInteger(entry.size) || entry.size > 2 * 1024 * 1024) throw new Error('snapshot-entry');
+            const blob = (await github.rest.git.getBlob({...context.repo, file_sha: entry.sha})).data;
+            if (blob.sha !== entry.sha || blob.encoding !== 'base64' || typeof blob.content !== 'string' || blob.content.length > 3 * 1024 * 1024) throw new Error('snapshot-blob');
+            const bytes = Buffer.from(blob.content.replace(/\n/g, ''), 'base64');
+            total += bytes.length;
+            if (bytes.length !== entry.size || total > 16 * 1024 * 1024 || crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== entry.sha) throw new Error('snapshot-blob-integrity');
+            const file = path.join(directory, entry.path);
+            await fs.mkdir(path.dirname(file), {recursive: true, mode: 0o700});
+            await fs.writeFile(file, bytes, {mode: 0o600, flag: 'wx'});
+          }
+          if (!entries.some(entry => entry.path === '.cloudopsworks/cloudopsworks-ci.yaml')) throw new Error('snapshot-root-config');
+          core.setOutput('directory', directory);
+    - id: normalize
+      uses: actions/github-script@v9
+      env:
+        DIRECTORY: ${{ steps.snapshot.outputs.directory }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const output = await exec.getExecOutput('tronador', ['components', 'validate', '--workdir', process.env.DIRECTORY, '--config-only', '--json'], {silent: true, ignoreReturnCode: true});
+          if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 4 * 1024 * 1024) throw new Error('configuration-validation');
+          const result = JSON.parse(output.stdout);
+          if (result.valid !== true || !result.resolved) throw new Error('configuration-normalization');
+          const file = path.join(path.dirname(process.env.DIRECTORY), `${path.basename(process.env.DIRECTORY)}-resolved.json`);
+          await fs.writeFile(file, JSON.stringify(result.resolved), {mode: 0o600, flag: 'wx'});
+          core.setOutput('configuration', file);

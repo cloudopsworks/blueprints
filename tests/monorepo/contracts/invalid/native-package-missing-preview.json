@@ -1,0 +1,85 @@
+{
+  "apiVersion": "cloudopsworks.io/v1",
+  "kind": "BuildPlan",
+  "repository": {
+    "id": "12345",
+    "fullName": "example/mixed-app"
+  },
+  "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "version": "1.2.3",
+  "event": "release",
+  "prNumber": null,
+  "components": [
+    {
+      "id": "api",
+      "path": "components/api",
+      "language": "go",
+      "framework": "plain",
+      "buildProfile": "go",
+      "toolchains": [
+        {
+          "tool": "go",
+          "version": "1.26.7",
+          "distribution": "default",
+          "components": [
+            "api"
+          ]
+        }
+      ],
+      "package": {
+        "kind": "function",
+        "provider": "aws",
+        "mode": "aws-zip",
+        "runtime": "provided.al2023",
+        "entryPoint": "bootstrap",
+        "architecture": "amd64",
+        "source": "."
+      },
+      "preview": {
+        "mode": "artifact-only",
+        "reason": "openapi"
+      },
+      "dependsOn": [],
+      "targetIds": [],
+      "workload": {
+        "kind": "function"
+      }
+    }
+  ],
+  "targets": [],
+  "buildSelection": [
+    {
+      "componentId": "api",
+      "reasons": [
+        "component-path-changed"
+      ]
+    }
+  ],
+  "removedComponents": [],
+  "buildNoop": false,
+  "matrix": {
+    "include": [
+      {
+        "componentId": "api",
+        "closure": [
+          "api"
+        ],
+        "toolchains": [
+          {
+            "tool": "go",
+            "version": "1.26.7",
+            "distribution": "default",
+            "components": [
+              "api"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "previewPolicy": {
+    "enabled": false,
+    "targets": []
+  }
+}

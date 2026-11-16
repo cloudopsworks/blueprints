@@ -1,0 +1,60 @@
+schemaVersion: 1
+moduleId: kubernetes-preview-environment
+acceptedModuleIds:
+  - aws-preview-environment
+  - gcp-preview-environment
+  - azure-preview-environment
+variables:
+  resource:
+    - kind
+    - namespace
+  configuration:
+    - kind
+  workload:
+    - kind
+  owner_digest: []
+  namespace: []
+  repository_id: []
+  pr_number: []
+  target_id: []
+  kubeconfig_path: []
+  isolation:
+    - probeImage
+    - controlNamespace
+    - ingressNamespace
+    - ingressNamespaceSelector
+    - ingressPodSelector
+    - dnsNamespaceSelector
+    - dnsPodSelector
+derivedInputs:
+  namespace: exact sole validated Go StateHandle.resourceIdentity.namespace
+  repository_id: verified StateHandle.origin.repository.id
+  pr_number: verified StateHandle.prNumber
+  target_id: verified StateHandle.targetId
+  kubeconfig_path: trusted private existing-cluster credential setup, never source kubeconfig
+  isolation: closed protected previewPolicy.isolation projection; ingressNamespace uniquely resolved by trusted API selector read
+ownedResourceTypes:
+  - kubernetes_namespace_v1
+  - kubernetes_network_policy_v1
+  - kubernetes_pod_v1
+ownedResourceAddresses:
+  - kubernetes_namespace_v1.environment
+  - kubernetes_network_policy_v1.default_deny
+  - kubernetes_network_policy_v1.same_namespace
+  - kubernetes_network_policy_v1.dns
+  - kubernetes_network_policy_v1.ingress
+  - kubernetes_pod_v1.probe[*]
+replaceResourceAddresses:
+  - kubernetes_pod_v1.probe[*]
+applyDeleteResourceAddresses: []
+externalParents:
+  - Kubernetes cluster
+  - existing control namespace
+  - existing ingress namespace
+  - DNS namespace and DNS pods
+activationBlocked: true
+remaining:
+  - shared environment-generation UID binding and immediately-before-each-saved-apply PR/native/API/ownership checks under one verified fixed concurrency group
+  - ordered component and probe cleanup before namespace destroy; historical recovery/uncertainty guards
+  - real CNI paired connectivity and admission evidence, never inferred from mocked policy presence
+deleteSemantics: Selected Kubernetes 2.38.0 namespace Delete uses empty DeleteOptions; no atomic UID-conditional deletion guarantee. Normal pipeline single-writer boundary only; privileged out-of-band replacement after final read cannot be atomically excluded.

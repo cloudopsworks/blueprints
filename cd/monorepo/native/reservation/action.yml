@@ -1,0 +1,94 @@
+name: Reserve exact native state claims
+description: Independent stage, policy and current-attempt native proof precede durable create and exact ID readback
+inputs:
+  stage-artifact-id: {description: Exact current stage artifact ID, required: true}
+  stage-archive-digest: {description: Exact sha256-prefixed stage archive digest, required: true}
+  deployment-state-conf: {description: Protected organization backend YAML, required: true}
+  auth-bindings: {description: Protected organization auth YAML, required: true}
+  identities: {description: Protected organization identities YAML, required: true}
+outputs:
+  receipt-id: {description: Exact durable reservation ID; not forward success, value: '${{ steps.reserve.outputs.receipt-id }}'}
+runs:
+  using: composite
+  steps:
+    - id: prepare
+      uses: ./bp/cd/monorepo/native/preflight
+      with:
+        mode: data
+        stage-artifact-id: ${{ inputs.stage-artifact-id }}
+        stage-archive-digest: ${{ inputs.stage-archive-digest }}
+        deployment-state-conf: ${{ inputs.deployment-state-conf }}
+        auth-bindings: ${{ inputs.auth-bindings }}
+        identities: ${{ inputs.identities }}
+    - id: reserve
+      uses: actions/github-script@v9
+      env:
+        PREPARED: ${{ steps.prepare.outputs.prepared }}
+      with:
+        script: |
+          const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
+          const e=process.env,file=path.resolve(e.PREPARED || ''),temp=await fs.realpath(e.RUNNER_TEMP),stat=await fs.lstat(file);
+          if (!file.startsWith(temp+path.sep) || await fs.realpath(file)!==file || !stat.isFile() || stat.mode&0o077 || stat.size>4194304) throw new Error('reservation-private-input');
+          const prepared=JSON.parse(await fs.readFile(file,'utf8')),operation=prepared.operation,h=operation.stateHandle,proof=prepared.preflight;
+          const canonical=v=>JSON.stringify(v===null||typeof v!=='object'?v:Array.isArray(v)?v.map(x=>JSON.parse(canonical(x))):Object.fromEntries(Object.keys(v).sort().map(k=>[k,JSON.parse(canonical(v[k]))])));
+          async function validate(kind,record) {
+            const result=await exec.getExecOutput('tronador',['components','contracts','validate','--kind',kind],{silent:true,ignoreReturnCode:true,input:Buffer.from(JSON.stringify(record))});
+            if (result.exitCode || Buffer.byteLength(result.stdout)>4194304) throw new Error('reservation-contract');
+            const checked=JSON.parse(result.stdout);if (checked.valid!==true) throw new Error('reservation-contract');return checked;
+          }
+          await validate('OperationPlan',operation);
+          const checked=await validate('StateHandle',h),o=h.origin;
+          if (operation.operation!=='apply' || operation.stateHandleDigest!==checked.digest || proof.stateHandleDigest!==checked.digest || h.moduleId!=='aws-lambda' || h.scope!=='component' || h.ownership!=='managed' || h.resourceIdentity.kind!=='aws.lambda' || h.resourceIdentity.packageMode!=='zip' || o.repository.id!==e.GITHUB_REPOSITORY_ID || o.runId!==e.GITHUB_RUN_ID || o.runAttempt!==e.GITHUB_RUN_ATTEMPT) throw new Error('reservation-operation-binding');
+          const claims=['arn:aws:lambda:'+h.resourceIdentity.region+':'+h.providerIdentity+':function:'+h.resourceIdentity.functionName,'object:arn:aws:s3:::'+h.resourceIdentity.iac.sourceBucket+'/'+prepared.objectKey].sort();
+          if (JSON.stringify(proof.resourceClaims)!==JSON.stringify(claims) || proof.providerIdentity!==h.providerIdentity || proof.targetId!==h.targetId || proof.componentId!==h.componentId || JSON.stringify(proof.stage)!==JSON.stringify(prepared.sourceStage)) throw new Error('reservation-claims-binding');
+          const run=(await github.rest.actions.getWorkflowRunAttempt({...context.repo,run_id:o.runId,attempt_number:o.runAttempt})).data;
+          if (String(run.id)!==o.runId || String(run.run_attempt)!==o.runAttempt || String(run.repository?.id)!==e.GITHUB_REPOSITORY_ID || run.head_sha!==prepared.hostSha || prepared.sourceContext.sourceSha!==o.sourceSha) throw new Error('reservation-current-host');
+          const jobs=[];
+          for (let page=1;page<=100;page++) {
+            const data=(await github.rest.actions.listJobsForWorkflowRunAttempt({...context.repo,run_id:o.runId,attempt_number:o.runAttempt,per_page:100,page})).data;
+            if (!Array.isArray(data.jobs) || data.jobs.length>100) throw new Error('reservation-jobs');
+            jobs.push(...data.jobs);if (data.jobs.length<100) break;if (page===100) throw new Error('reservation-jobs-bound');
+          }
+          const selected=jobs.filter(j=>j.name==='Monorepo delivery slice / native-reservation / preflight');
+          if (selected.length!==1) throw new Error('reservation-preflight-job');
+          const job=selected[0];
+          if (!/^[1-9][0-9]*$/.test(String(job.id)) || String(job.run_id)!==o.runId || String(job.run_attempt)!==o.runAttempt || job.status!=='completed' || job.conclusion!=='success') throw new Error('reservation-preflight-attempt');
+          const redirect=await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs',{...context.repo,job_id:job.id,request:{redirect:'manual'}});
+          const url=new URL(redirect.headers.location);
+          if (redirect.status!==302 || url.protocol!=='https:' || url.username || url.password || url.hash) throw new Error('reservation-log-redirect');
+          const response=await fetch(url,{redirect:'error',credentials:'omit',signal:AbortSignal.timeout(60000)});
+          if (response.status!==200 || !response.body || Number(response.headers.get('content-length') || 0)>8388608) throw new Error('reservation-log-transfer');
+          const chunks=[];let size=0;
+          for await (const chunk of response.body) { size+=chunk.length;if (size>8388608) throw new Error('reservation-log-bound');chunks.push(chunk); }
+          const records=[];
+          for (const line of new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks)).split(/\r?\n/)) {
+            const text=line.replace(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z /,'');if (!text.startsWith('CLOUDOPSWORKS_PREFLIGHT_V1 ')) continue;
+            const raw=text.slice('CLOUDOPSWORKS_PREFLIGHT_V1 '.length),record=JSON.parse(raw);
+            if (JSON.stringify(record)!==raw) throw new Error('reservation-preflight-canonical');records.push(record);
+          }
+          if (records.length!==1 || canonical(records[0])!==canonical(proof)) throw new Error('reservation-preflight-proof');
+          async function collisions(except) {
+            for (let page=1;page<=100;page++) {
+              const entries=(await github.rest.repos.listDeployments({...context.repo,task:'cloudopsworks-state',per_page:100,page})).data;
+              if (!Array.isArray(entries) || entries.length>100) throw new Error('reservation-history-shape');
+              for (const entry of entries) {
+                if (String(entry.id)===except) continue;
+                const p=entry.payload;
+                if (entry.task!=='cloudopsworks-state' || !p || Object.keys(p).sort().join()!=='apiVersion,kind,resourceClaims,stateHandle,stateHandleDigest' || p.apiVersion!=='cloudopsworks.io/operations/v1' || p.kind!=='StateHandleReservation' || !Array.isArray(p.resourceClaims) || p.resourceClaims.some(c=>typeof c!=='string')) throw new Error('reservation-unknown-history');
+                const old=await validate('StateHandle',p.stateHandle);
+                if (old.digest!==p.stateHandleDigest || canonical(p.stateHandle.native)===canonical(h.native) || p.resourceClaims.some(c=>claims.includes(c))) throw new Error('reservation-existing-owner-or-collision');
+              }
+              if (entries.length<100) return;if (page===100) throw new Error('reservation-history-bound');
+            }
+          }
+          await collisions('');
+          const payload={apiVersion:'cloudopsworks.io/operations/v1',kind:'StateHandleReservation',stateHandle:h,stateHandleDigest:checked.digest,resourceClaims:claims};
+          const environment='cloudopsworks-state/'+crypto.createHash('sha256').update(canonical(h.native)).digest('hex');
+          const created=(await github.rest.repos.createDeployment({...context.repo,ref:o.sourceSha,task:'cloudopsworks-state',environment,auto_merge:false,required_contexts:[],production_environment:false,transient_environment:false,payload,description:'CloudOpsWorks frozen component state handle'})).data;
+          const id=String(created.id);
+          if (!/^[1-9][0-9]*$/.test(id) || !/^[1-9][0-9]*$/.test(String(created.creator?.id))) throw new Error('reservation-create-id');
+          const readback=(await github.rest.repos.getDeployment({...context.repo,deployment_id:id})).data;
+          if (String(readback.id)!==id || readback.creator?.id!==created.creator.id || readback.task!=='cloudopsworks-state' || readback.ref!==o.sourceSha || readback.environment!==environment || canonical(readback.payload)!==canonical(payload)) throw new Error('reservation-exact-readback');
+          await collisions(id);
+          const marker={repositoryId:e.GITHUB_REPOSITORY_ID,runId:o.runId,runAttempt:o.runAttempt,receiptId:id,stateHandleDigest:checked.digest,resourceClaims:claims,workflowRef:prepared.workflowRef,workflowSha:prepared.hostSha,sourceStage:prepared.sourceStage,sourceContext:prepared.sourceContext};
+          core.info('CLOUDOPSWORKS_STATE_V1 '+JSON.stringify(marker));core.setOutput('receipt-id',id);

@@ -1,0 +1,9 @@
+{
+  "kind": "actions-artifact",
+  "repositoryId": "123",
+  "runId": "100",
+  "runAttempt": "1",
+  "artifactId": "300",
+  "artifactName": "components-100-1-api",
+  "path": ".cloudopsworks/out/api/main.oci.tar"
+}

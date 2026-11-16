@@ -10,6 +10,10 @@ name: Rulesets for Protected Sources Paths
 author: cloudopsworks
 description: 'This action will create rulesets for protected sources paths in a repository, with the specified allow and exempt usergroups, using the GitHub GraphQL API'
 inputs:
+  component_mode:
+    description: Preserve existing protections; create only missing reviewed policy records
+    required: false
+    default: 'false'
   token:
     description: 'GitHub Token with repo and admin:org permissions'
     required: true
@@ -29,6 +33,7 @@ runs:
     - name: Rulesets for Protected Sources
       uses: actions/github-script@v9
       env:
+        COMPONENT_MODE: ${{ inputs.component_mode }}
         STEPS_PROTECTED_SOURCES_RESULT: ${{ inputs.protected_sources }}
         STEPS_REVIEWERS_LIST_RESULT: ${{ inputs.reviewers_list }}
         STEPS_OWNERS_LIST_RESULT: ${{ inputs.owners_list }}
@@ -150,6 +155,7 @@ runs:
           `;
 
           async function upsertRuleset(existingId, input) {
+            if (existingId && process.env.COMPONENT_MODE === 'true') { core.info('Retaining existing source protection'); return; }
             if (existingId) {
               return github.graphql(updateMutation, {input: {repositoryRulesetId: existingId, ...input}});
             }

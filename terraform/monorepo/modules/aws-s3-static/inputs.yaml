@@ -1,0 +1,35 @@
+schemaVersion: 1
+moduleId: aws-s3-static
+variables:
+  resource:
+    - kind
+    - provider
+    - region
+    - bucket
+    - prefix
+  configuration:
+    - kind
+  workload:
+    - kind
+  artifact:
+    - digest
+    - format
+    - path
+    - imageReference
+    - files
+  owner_digest: []
+ownedResourceTypes:
+  - aws_s3_object
+ownedResourceAddresses:
+  - aws_s3_object.files[*]
+externalParents:
+  - bucket
+  - website
+  - CDN
+replaceResourceAddresses: []
+applyDeleteResourceAddresses:
+  - aws_s3_object.files[*]
+activationBlocked: true
+remaining:
+  - global source/host authorization and execution integration
+  - credentialed readiness proof

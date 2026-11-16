@@ -1,0 +1,123 @@
+{
+  "mock_provider": {
+    "aws": {}
+  },
+  "variables": {
+    "resource": {
+      "kind": "aws.apigateway-rest",
+      "provider": "aws",
+      "region": "us-east-1",
+      "ownership": "managed",
+      "apiName": "component",
+      "apiVersion": "1.0",
+      "stage": "dev"
+    },
+    "configuration": {
+      "kind": "aws.apigateway-rest"
+    },
+    "workload": {
+      "kind": "api"
+    },
+    "artifact": {
+      "digest": "sha256:fdb91a0a3c5d14cd05b84c9f925c0c9c3c8c84cd7fae070d1ef24e35e1ac89cb",
+      "format": "yaml",
+      "path": "tests/fixtures/openapi.yaml",
+      "imageReference": null,
+      "files": []
+    },
+    "owner_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "run": {
+    "owned_mock_apply": {
+      "command": "apply",
+      "assert": [
+        {
+          "condition": "${aws_api_gateway_rest_api.component.body == file(var.artifact.path) && aws_api_gateway_deployment.component.triggers.artifact == var.artifact.digest && aws_api_gateway_stage.component.stage_name == var.resource.stage}",
+          "error_message": "Exact API bytes must deploy to owned stage with immutable trigger."
+        }
+      ]
+    },
+    "changed_bytes_digest_rejected": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "format": "yaml",
+          "path": "tests/fixtures/openapi.yaml",
+          "imageReference": null,
+          "files": []
+        }
+      },
+      "expect_failures": [
+        "aws_api_gateway_rest_api.component"
+      ]
+    },
+    "external_api_rejected": {
+      "command": "plan",
+      "variables": {
+        "resource": {
+          "kind": "aws.apigateway-rest",
+          "provider": "aws",
+          "region": "us-east-1",
+          "ownership": "external",
+          "apiName": "component",
+          "apiVersion": "1.0",
+          "stage": "dev",
+          "restApiId": "external-id"
+        }
+      },
+      "expect_failures": [
+        "var.resource"
+      ]
+    },
+    "existing_owned_id_preserves_verified_name_description": {
+      "command": "plan",
+      "variables": {
+        "resource": {
+          "kind": "aws.apigateway-rest",
+          "provider": "aws",
+          "region": "us-east-1",
+          "ownership": "managed",
+          "stage": "dev",
+          "restApiId": "verified-owned-api"
+        },
+        "resolved_api": {
+          "name": "original-api-name",
+          "description": "Original owned description"
+        }
+      },
+      "override_resource": [
+        {
+          "target": "aws_api_gateway_rest_api.component",
+          "values": {
+            "id": "verified-owned-api"
+          }
+        }
+      ],
+      "assert": [
+        {
+          "condition": "${aws_api_gateway_rest_api.component.name == \"original-api-name\" && aws_api_gateway_rest_api.component.description == \"Original owned description\"}",
+          "error_message": "Existing ID must preserve independently verified name/description."
+        }
+      ]
+    },
+    "native_json_openapi_exact_body": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:f649d7971e83f78a8160b131652ea546f3f6dacdbdb75cb57bfcce3730102f8c",
+          "format": "json",
+          "path": "tests/fixtures/openapi.json",
+          "imageReference": null,
+          "files": []
+        }
+      },
+      "assert": [
+        {
+          "condition": "${aws_api_gateway_rest_api.component.body == file(var.artifact.path) && aws_api_gateway_deployment.component.triggers.specification == filesha256(var.artifact.path)}",
+          "error_message": "JSON encoding must stay exact and alter deployment hash."
+        }
+      ]
+    }
+  }
+}

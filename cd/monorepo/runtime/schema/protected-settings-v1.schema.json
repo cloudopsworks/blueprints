@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "auth": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,47}$"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "provider": {
+                "const": "aws"
+              },
+              "roleArn": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              },
+              "region": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              }
+            },
+            "required": [
+              "provider",
+              "roleArn",
+              "region"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "provider": {
+                "const": "gcp"
+              },
+              "workloadIdentityProvider": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              },
+              "serviceAccount": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              },
+              "project": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              }
+            },
+            "required": [
+              "provider",
+              "workloadIdentityProvider",
+              "serviceAccount",
+              "project"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "provider": {
+                "const": "azure"
+              },
+              "clientId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              },
+              "tenantId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              },
+              "subscriptionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              },
+              "packageReadSas": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 65536
+              }
+            },
+            "required": [
+              "provider",
+              "clientId",
+              "tenantId",
+              "subscriptionId"
+            ]
+          }
+        ]
+      }
+    },
+    "identities": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,47}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 65536
+      }
+    },
+    "probe-secrets": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,47}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 65536
+      }
+    },
+    "registries": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,47}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "provider": {
+            "enum": [
+              "aws",
+              "gcp",
+              "azure"
+            ]
+          },
+          "repository": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          }
+        },
+        "required": [
+          "provider",
+          "repository"
+        ]
+      }
+    },
+    "host-keys": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]{0,47}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          },
+          "resourceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          },
+          "keyName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          },
+          "hostname": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          }
+        },
+        "required": [
+          "value",
+          "resourceId",
+          "keyName",
+          "hostname"
+        ]
+      }
+    }
+  }
+}

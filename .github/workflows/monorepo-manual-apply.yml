@@ -1,0 +1,286 @@
+name: Exact protected monorepo manual apply
+on:
+  workflow_call:
+    inputs:
+      operation: {type: string, required: true}
+      environment: {type: string, required: true}
+      target: {type: string, required: true}
+      component: {type: string, required: true}
+      qualifier: {type: string, default: ''}
+      lock-id: {type: string, default: ''}
+      confirmation: {type: string, default: ''}
+    secrets:
+      SONARQUBE_TOKEN: {required: false}
+      SNYK_TOKEN: {required: false}
+      SEMGREP_TOKEN: {required: false}
+      DEPENDENCYTRACK_TOKEN: {required: false}
+      DEPLOYMENT_STATE_CONF: {required: false}
+      CLOUDOPSWORKS_AUTH: {required: false}
+      CLOUDOPSWORKS_PROBE_SECRETS: {required: false}
+      CLOUDOPSWORKS_HOST_KEYS: {required: false}
+permissions: {}
+# One holder per nested call graph; same group as normal global preflight/apply.
+concurrency:
+  group: cloudopsworks-state-${{ github.repository_id }}
+  cancel-in-progress: false
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, deployments: read, pull-requests: read}
+    outputs:
+      source-run: ${{ steps.source.outputs.source-run }}
+      source-attempt: ${{ steps.source.outputs.source-attempt }}
+      stage-artifact-id: ${{ steps.source.outputs.stage-artifact-id }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATION: ${{ inputs.operation }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          TARGET: ${{ inputs.target }}
+          COMPONENT: ${{ inputs.component }}
+        run: python3 bp/cd/monorepo/runtime/operation_entry.py inspect --operation "$OPERATION" --environment "$ENVIRONMENT" --target "$TARGET" --component "$COMPONENT" --confirmation ''
+  scan-context:
+    if: inputs.operation == 'apply'
+    name: Inspect protected scan context before scanner credentials
+    needs: source
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      pull-requests: read
+    outputs:
+      environment: ${{ steps.context.outputs.environment }}
+      source-sha: ${{ steps.context.outputs.source-sha }}
+      matrix: ${{ steps.context.outputs.matrix }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ needs.source.outputs.source-run }}
+          SOURCE_RUN_ATTEMPT: ${{ needs.source.outputs.source-attempt }}
+          STAGE_ID: ${{ needs.source.outputs.stage-artifact-id }}
+        run: python3 bp/cd/monorepo/runtime/scan_entry.py inspect --stage-artifact-id "$STAGE_ID"
+  component-scan:
+    if: inputs.operation == 'apply'
+    name: monorepo-component-scan-${{ matrix.component }}
+    needs: [source, scan-context]
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.scan-context.outputs.matrix) }}
+    environment: ${{ needs.scan-context.outputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      pull-requests: read
+      packages: read
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: context
+        name: Fresh independent host and YAML policy verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ needs.source.outputs.source-run }}
+          SOURCE_RUN_ATTEMPT: ${{ needs.source.outputs.source-attempt }}
+          STAGE_ID: ${{ needs.source.outputs.stage-artifact-id }}
+          COMPONENT: ${{ matrix.component }}
+        run: python3 bp/cd/monorepo/runtime/scan_entry.py inspect --stage-artifact-id "$STAGE_ID" --component "$COMPONENT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.context.outputs.source-sha }}
+          path: source
+          persist-credentials: false
+      - uses: ./bp/ci/monorepo/toolchains
+        if: steps.context.outputs.source-tools == 'true'
+        with:
+          plan: scan-plan.json
+          component: ${{ matrix.component }}
+          runtime: bp/cd/monorepo/runtime
+          scan-component: 'true'
+      - uses: ./bp/ci/monorepo/scanners
+        with:
+          sonarqube: ${{ steps.context.outputs.sonarqube }}
+          dotnet: ${{ steps.context.outputs.dotnet }}
+          snyk: ${{ steps.context.outputs.snyk }}
+          semgrep: ${{ steps.context.outputs.semgrep }}
+          trivy: ${{ steps.context.outputs.trivy }}
+      - name: Complete current-policy scans and emit exact host barrier
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ needs.source.outputs.source-run }}
+          SOURCE_RUN_ATTEMPT: ${{ needs.source.outputs.source-attempt }}
+          STAGE_ID: ${{ needs.source.outputs.stage-artifact-id }}
+          COMPONENT: ${{ matrix.component }}
+          SONARQUBE_URL: ${{ vars.SONARQUBE_URL }}
+          DEPENDENCYTRACK_URL: ${{ vars.DEPENDENCYTRACK_URL }}
+          SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SEMGREP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}
+          DEPENDENCYTRACK_TOKEN: ${{ secrets.DEPENDENCYTRACK_TOKEN }}
+        run: python3 bp/cd/monorepo/runtime/scan_entry.py run --stage-artifact-id "$STAGE_ID" --source source --component "$COMPONENT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monorepo-scan-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.component }}
+          path: .lifecycle-diagnostics/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          overwrite: false
+
+  scan:
+    if: inputs.operation == 'apply'
+    name: monorepo-scan-barrier
+    needs: [source, scan-context, component-scan]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      pull-requests: read
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - name: Verify every exact completed worker and current required policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ needs.source.outputs.source-run }}
+          SOURCE_RUN_ATTEMPT: ${{ needs.source.outputs.source-attempt }}
+          STAGE_ID: ${{ needs.source.outputs.stage-artifact-id }}
+        run: python3 bp/cd/monorepo/runtime/scan_entry.py barrier --stage-artifact-id "$STAGE_ID"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monorepo-scan-barrier-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .lifecycle-diagnostics/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          overwrite: false
+
+  operation:
+    needs: [source, scan]
+    if: inputs.operation == 'apply' && needs.source.result == 'success' && needs.scan.result == 'success'
+    name: monorepo-operation-${{ inputs.target }}-${{ inputs.component }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: context
+        name: Select exact workload and frozen backend before either authentication
+        env:
+          OPERATION: ${{ inputs.operation }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          LOCK_ID: ${{ inputs.lock-id }}
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+          CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+          CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+          CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+          CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+          CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+          TARGET: ${{ inputs.target }}
+          COMPONENT: ${{ inputs.component }}
+        run: python3 bp/cd/monorepo/runtime/operation_entry.py configure --operation "$OPERATION" --environment "$ENVIRONMENT" --target "$TARGET" --component "$COMPONENT" --confirmation "$CONFIRMATION" --lock-id "$LOCK_ID"
+      - uses: ./bp/cd/monorepo/tools
+        with:
+          provider: ${{ steps.context.outputs.workload-provider }}
+          kubectl-version: ${{ vars.CLOUDOPSWORKS_KUBECTL_VERSION || 'v1.37.2' }}
+      - uses: ./bp/cd/monorepo/tools
+        if: steps.context.outputs.backend-provider != steps.context.outputs.workload-provider
+        with:
+          provider: ${{ steps.context.outputs.backend-provider }}
+      - uses: ./bp/cd/deploy/common/iac
+        with:
+          token: ${{ github.token }}
+          tofu_version: '1.11.4'
+          tg_version: '0.99.4'
+      - uses: ./bp/cd/monorepo/auth
+        id: workload
+        with:
+          provider: ${{ steps.context.outputs.workload-provider }}
+          auth-ref: ${{ steps.context.outputs.workload-ref }}
+          bindings: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+          install-tools: 'false'
+          context-name: workload
+      - uses: ./bp/cd/monorepo/auth
+        id: backend
+        if: steps.context.outputs.same-binding != 'true'
+        with:
+          provider: ${{ steps.context.outputs.backend-provider }}
+          auth-ref: ${{ steps.context.outputs.backend-ref }}
+          bindings: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+          install-tools: 'false'
+          context-name: backend
+      - name: Independently revalidate host, scans, pair, native ownership and exact operation
+        env:
+          OPERATION: ${{ inputs.operation }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          LOCK_ID: ${{ inputs.lock-id }}
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+          CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+          CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+          CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+          CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+          CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+          TARGET: ${{ inputs.target }}
+          COMPONENT: ${{ inputs.component }}
+          WORKLOAD_CONTEXT: ${{ steps.workload.outputs.context-path }}
+          BACKEND_CONTEXT: ${{ steps.backend.outputs.context-path }}
+        run: python3 bp/cd/monorepo/runtime/operation_entry.py run --operation "$OPERATION" --environment "$ENVIRONMENT" --target "$TARGET" --component "$COMPONENT" --confirmation "$CONFIRMATION" --lock-id "$LOCK_ID"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: monorepo-operation-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .lifecycle-diagnostics/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          overwrite: false

@@ -1,0 +1,136 @@
+name: Verified component Trivy scan
+description: Reuse the pinned Trivy tool on verified artifact data, with classified failures
+inputs:
+  directory:
+    description: Verified artifact data directory; never application checkout
+    required: true
+  component:
+    description: Validated component ID
+    required: true
+  source-sha:
+    description: Endorsed application source commit
+    required: true
+  profile:
+    description: Normalized scanner profile ID
+    default: default
+  required:
+    description: Normalized required policy
+    default: "true"
+  artifact-purpose:
+    description: Exact main or preview artifact purpose; no implicit substitution
+    required: true
+  component-result:
+    description: Verified ComponentResult data file; derives scanner payload digest
+    required: true
+  plan:
+    description: Exact independently endorsed BuildPlan file
+    required: true
+outputs:
+  result:
+    description: Validated ScannerResult file
+    value: ${{ steps.report.outputs.result }}
+  status:
+    description: Policy-normalized scan status
+    value: ${{ steps.report.outputs.status }}
+runs:
+  using: composite
+  steps:
+    - id: prepare
+      uses: actions/github-script@v9
+      env:
+        DIRECTORY: ${{ inputs.directory }}
+        COMPONENT_RESULT: ${{ inputs.component-result }}
+        COMPONENT: ${{ inputs.component }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        PLAN_PATH: ${{ inputs.plan }}
+        ARTIFACT_PURPOSE: ${{ inputs.artifact-purpose }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          const directory = await fs.realpath(env.DIRECTORY);
+          if (!(await fs.stat(directory)).isDirectory()) throw new Error('trivy-input');
+          for (const file of [env.COMPONENT_RESULT, env.PLAN_PATH]) if ((await fs.stat(file)).size > 4 * 1024 * 1024) throw new Error('trivy-record-bound');
+          const privateDirectory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'trivy-report-'));
+          await fs.chmod(privateDirectory, 0o700);
+          const planCheck = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(env.PLAN_PATH)});
+          if (planCheck.exitCode !== 0 || Buffer.byteLength(planCheck.stdout) > 4 * 1024 * 1024) throw new Error('trivy-plan-contract');
+          const linked = path.join(privateDirectory, 'linked.json');
+          await fs.writeFile(linked, JSON.stringify({plan: JSON.parse(planCheck.stdout).record}), {mode: 0o600, flag: 'wx'});
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {silent: true, ignoreReturnCode: true, input: await fs.readFile(env.COMPONENT_RESULT)});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('trivy-result-contract');
+          const record = JSON.parse(checked.stdout).record;
+          if (record.componentId !== env.COMPONENT || record.headSha !== env.SOURCE_SHA || record.status !== 'succeeded') throw new Error('trivy-result-link');
+          if (!['main', 'preview'].includes(env.ARTIFACT_PURPOSE)) throw new Error('trivy-artifact-purpose');
+          const artifact = record[env.ARTIFACT_PURPOSE + 'Artifact'];
+          if (!artifact || artifact.format !== 'oci' || artifact.location.kind !== 'local') throw new Error('trivy-unsupported-nonimage-artifact');
+          const relative = artifact.location.path;
+          if (!relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('trivy-image-path');
+          const input = path.join(directory, relative);
+          if (await fs.realpath(input) !== input || !(await fs.stat(input)).isFile()) throw new Error('trivy-image-file');
+          const descriptor = path.join(privateDirectory, 'descriptor.json');
+          await fs.writeFile(descriptor, JSON.stringify(artifact), {mode: 0o600, flag: 'wx'});
+          const verified = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', input], {silent: true, ignoreReturnCode: true});
+          if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 65536) throw new Error('trivy-image-integrity');
+          const evidence = JSON.parse(verified.stdout);
+          if (evidence.payloadVerified !== true || evidence.digest !== artifact.digest || !Array.isArray(evidence.imageConfigDigests) || evidence.imageConfigDigests.length !== 1 || !/^sha256:[0-9a-f]{64}$/.test(evidence.imageConfigDigests[0])) throw new Error('trivy-image-config-ambiguous');
+          const layout = path.join(privateDirectory, 'image');
+          await fs.mkdir(layout, {mode: 0o700});
+          const extracted = await exec.getExecOutput('tar', ['--extract', '--file', input, '--directory', layout, '--no-same-owner', '--no-same-permissions'], {silent: true, ignoreReturnCode: true});
+          if (extracted.exitCode !== 0) throw new Error('trivy-image-layout');
+          core.setOutput('input', layout);
+          core.setOutput('config-digest', evidence.imageConfigDigests[0]);
+          core.setOutput('digest', artifact.digest);
+          core.setOutput('report', path.join(privateDirectory, 'trivy.json'));
+    - id: scan
+      continue-on-error: true
+      uses: ./bp/ci/scan/trivy/native
+      with:
+        image-input: ${{ steps.prepare.outputs.input }}
+        output: ${{ steps.prepare.outputs.report }}
+    - id: report
+      if: always() && steps.prepare.outcome == 'success'
+      uses: actions/github-script@v9
+      env:
+        REPORT_PATH: ${{ steps.prepare.outputs.report }}
+        TOOL_OUTCOME: ${{ steps.scan.outcome }}
+        COMPONENT: ${{ inputs.component }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        ARTIFACT_DIGEST: ${{ steps.prepare.outputs.digest }}
+        PROFILE: ${{ inputs.profile }}
+        REQUIRED: ${{ inputs.required }}
+        IMAGE_INPUT: ${{ steps.prepare.outputs.input }}
+        IMAGE_CONFIG_DIGEST: ${{ steps.prepare.outputs.config-digest }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          if (!['true', 'false'].includes(env.REQUIRED)) throw new Error('trivy-policy');
+          let status = 'infrastructure-error', errorCode = 'trivy-tool-error';
+          if (env.TOOL_OUTCOME === 'success') {
+            try {
+              if ((await fs.stat(env.REPORT_PATH)).size > 16 * 1024 * 1024) throw new Error('report-bound');
+              const report = JSON.parse(await fs.readFile(env.REPORT_PATH, 'utf8'));
+              if (report.SchemaVersion !== 2 || report.ArtifactType !== 'container_image' || report.ArtifactName !== env.IMAGE_INPUT || !/^sha256:[0-9a-f]{64}$/.test(env.IMAGE_CONFIG_DIGEST || '') || report.Metadata?.ImageID !== env.IMAGE_CONFIG_DIGEST || report.Results !== undefined && !Array.isArray(report.Results)) throw new Error('report-shape');
+              let findings = 0;
+              for (const result of report.Results || []) {
+                if (typeof result !== 'object' || result === null || typeof result.Target !== 'string' || !result.Target || result.Vulnerabilities !== undefined && !Array.isArray(result.Vulnerabilities)) throw new Error('report-result');
+                for (const vulnerability of result.Vulnerabilities || []) {
+                  if (typeof vulnerability.VulnerabilityID !== 'string' || !['UNKNOWN', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(vulnerability.Severity)) throw new Error('report-vulnerability');
+                  if (['MEDIUM', 'HIGH', 'CRITICAL'].includes(vulnerability.Severity)) findings++;
+                }
+              }
+              status = !report.Results?.length ? 'unsupported-profile' : findings ? env.REQUIRED === 'true' ? 'required-gate-failure' : 'findings-advisory' : 'passed';
+              errorCode = status === 'unsupported-profile' ? 'trivy-no-recognized-target' : null;
+            } catch { errorCode = 'trivy-report-invalid'; }
+          }
+          const record = {apiVersion: 'cloudopsworks.io/operations/v1', kind: 'ScannerResult', scanner: 'trivy', profile: env.PROFILE, componentId: env.COMPONENT, sourceSha: env.SOURCE_SHA, status, required: env.REQUIRED === 'true', artifactDigest: env.ARTIFACT_DIGEST, correlationId: env.COMPONENT, errorCode};
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('trivy-result-contract');
+          const output = path.join(path.dirname(env.REPORT_PATH), 'scanner-result.json');
+          await fs.writeFile(output, JSON.stringify(JSON.parse(checked.stdout).record), {mode: 0o600, flag: 'wx'});
+          core.setOutput('result', output);
+          core.setOutput('status', status);
+          if (env.REQUIRED === 'true' && status !== 'passed') core.setFailed(status);

@@ -1,0 +1,165 @@
+name: Verified component filesystem Trivy scan
+description: Advisory reported-scope scan of selected-current source; caller installs pinned tools before source checkout without cloud credentials or OIDC
+inputs:
+  source-path: {description: Exact source Git worktree, required: true}
+  plan: {description: Independently endorsed BuildPlan file, required: true}
+  component-result: {description: Verified selected-current ComponentResult with local main payload, required: true}
+  component: {description: Selected component ID, required: true}
+  source-sha: {description: Endorsed immutable source commit, required: true}
+outputs:
+  result: {description: Validated advisory ScannerResult file, value: '${{ steps.report.outputs.result }}'}
+  status: {description: Reported-scope outcome, not full analyzer coverage, value: '${{ steps.report.outputs.status }}'}
+runs:
+  using: composite
+  steps:
+    - id: prepare
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        PLAN_PATH: ${{ inputs.plan }}
+        COMPONENT_RESULT: ${{ inputs.component-result }}
+        COMPONENT: ${{ inputs.component }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const env = process.env;
+          const root = await fs.realpath(env.SOURCE_PATH);
+          const safeFile = async (file, limit, read = true) => {
+            const stat = await fs.lstat(file);
+            if (!stat.isFile() || await fs.realpath(file) !== file || stat.size > limit) throw new Error('trivy-source-file');
+            return read ? fs.readFile(file) : undefined;
+          };
+          const directory = await fs.mkdtemp(path.join(await fs.realpath(env.RUNNER_TEMP), 'trivy-source-'));
+          await fs.chmod(directory, 0o700);
+          const options = {silent: true, ignoreReturnCode: true, env: {PATH: env.PATH, HOME: directory, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null'}};
+          const checkedPlan = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {...options, input: await safeFile(env.PLAN_PATH, 4194304)});
+          if (checkedPlan.exitCode !== 0 || Buffer.byteLength(checkedPlan.stdout) > 4194304) throw new Error('trivy-source-plan-contract');
+          const plan = JSON.parse(checkedPlan.stdout).record;
+          const component = plan.components.find(item => item.id === env.COMPONENT);
+          if (!component || plan.headSha !== env.SOURCE_SHA || !plan.buildSelection.some(item => item.componentId === component.id)) throw new Error('trivy-source-plan-link');
+          if (typeof component.path !== 'string' || path.isAbsolute(component.path) || component.path.includes('\\') || component.path !== '.' && component.path.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('trivy-source-path');
+          const source = path.join(root, component.path);
+          if (await fs.realpath(source) !== source || !(await fs.lstat(source)).isDirectory()) throw new Error('trivy-source-path');
+          const linked = path.join(directory, 'linked.json');
+          await fs.writeFile(linked, JSON.stringify({plan}), {mode: 0o600, flag: 'wx'});
+          const checkedResult = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {...options, input: await safeFile(env.COMPONENT_RESULT, 4194304)});
+          if (checkedResult.exitCode !== 0 || Buffer.byteLength(checkedResult.stdout) > 4194304) throw new Error('trivy-source-result-contract');
+          const result = JSON.parse(checkedResult.stdout).record;
+          if (result.componentId !== component.id || result.headSha !== plan.headSha || result.status !== 'succeeded') throw new Error('trivy-source-result-link');
+          const artifact = result.mainArtifact, relative = artifact?.location?.path;
+          if (artifact?.location?.kind !== 'local' || typeof relative !== 'string' || !relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('trivy-source-payload-path');
+          const payload = path.join(root, relative), descriptor = path.join(directory, 'artifact.json');
+          await safeFile(payload, 536870912, false);
+          await fs.writeFile(descriptor, JSON.stringify(artifact), {mode: 0o600, flag: 'wx'});
+          const verified = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', payload], options);
+          if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 65536) throw new Error('trivy-source-payload-integrity');
+          const evidence = JSON.parse(verified.stdout);
+          if (evidence.payloadVerified !== true || evidence.digest !== artifact.digest) throw new Error('trivy-source-payload-binding');
+          const head = await exec.getExecOutput('git', ['-C', root, 'rev-parse', 'HEAD'], options);
+          if (head.exitCode !== 0 || head.stdout.trim() !== plan.headSha) throw new Error('trivy-source-head');
+          let entries = 0;
+          const inspect = async file => {
+            if (++entries > 100000) throw new Error('trivy-source-scope-bound');
+            const stat = await fs.lstat(file), real = await fs.realpath(file);
+            if (real !== source && !real.startsWith(source + path.sep)) throw new Error('trivy-source-scope-escape');
+            if (stat.isSymbolicLink()) return;
+            if (stat.isDirectory()) for (const name of await fs.readdir(file)) await inspect(path.join(file, name));
+            else if (!stat.isFile()) throw new Error('trivy-source-scope-type');
+          };
+          await inspect(source);
+          const identity = {artifactDigest: artifact.digest, componentId: component.id, profile: component.buildProfile, scanner: 'trivy', sourceSha: plan.headSha};
+          const correlationId = 'scan-' + crypto.createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0, 32);
+          await fs.writeFile(path.join(directory, 'context.json'), JSON.stringify({...identity, source, correlationId}), {mode: 0o600, flag: 'wx'});
+          core.setOutput('directory', directory);
+          core.setOutput('source', source);
+          core.setOutput('report', path.join(directory, 'trivy.json'));
+    - id: scan
+      continue-on-error: true
+      uses: ./bp/ci/scan/trivy/native
+      with:
+        scan-type: fs
+        scan-ref: ${{ steps.prepare.outputs.source }}
+        image-input: ''
+        output: ${{ steps.prepare.outputs.report }}
+    - id: report
+      if: always() && steps.prepare.outcome == 'success'
+      uses: actions/github-script@v9
+      env:
+        DIRECTORY: ${{ steps.prepare.outputs.directory }}
+        TOOL_OUTCOME: ${{ steps.scan.outcome }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const directory = process.env.DIRECTORY, contextPath = path.join(directory, 'context.json');
+          if (!(await fs.lstat(contextPath)).isFile() || await fs.realpath(contextPath) !== contextPath || (await fs.stat(contextPath)).size > 65536) throw new Error('trivy-source-context');
+          const scan = JSON.parse(await fs.readFile(contextPath, 'utf8'));
+          let status = 'infrastructure-error', errorCode = 'trivy-source-tool-error';
+          if (process.env.TOOL_OUTCOME === 'success') {
+            try {
+              const file = path.join(directory, 'trivy.json'), stat = await fs.lstat(file);
+              // Consumption-time bound only: the pinned vendor does not cap report writes/stdout.
+              if (!stat.isFile() || await fs.realpath(file) !== file || stat.nlink !== 1 || stat.mode & 0o077 || stat.size < 2 || stat.size > 16777216) throw new Error('report-file');
+              const report = JSON.parse(await fs.readFile(file, 'utf8'));
+              if (report.SchemaVersion !== 2 || report.Trivy?.Version !== '0.69.3' || report.ArtifactType !== 'filesystem' || typeof report.ArtifactName !== 'string' || report.Results !== undefined && !Array.isArray(report.Results)) throw new Error('report-shape');
+              const synthetic = {Python: 'python-pkg', Conda: 'conda-pkg', Ruby: 'gemspec', 'Node.js': 'node-pkg', Java: 'jar', Kubernetes: 'kubernetes'};
+              const contained = async value => {
+                if (typeof value !== 'string' || !value || value.includes('\\') || !path.isAbsolute(value) && value.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('report-target');
+                const target = path.resolve(scan.source, value);
+                if (target !== scan.source && !target.startsWith(scan.source + path.sep)) throw new Error('report-scope');
+                const real = await fs.realpath(target);
+                if (real !== scan.source && !real.startsWith(scan.source + path.sep)) throw new Error('report-scope');
+                const stat = await fs.stat(real);
+                if (!stat.isFile() && !stat.isDirectory()) throw new Error('report-target-type');
+              };
+              let recognized = 0, findings = 0, unknown = false;
+              for (const result of report.Results || []) {
+                if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.Target !== 'string' || !result.Target) throw new Error('report-result');
+                if (!['lang-pkgs', 'os-pkgs', 'config', 'secret'].includes(result.Class)) { unknown = true; continue; }
+                const grouped = Object.hasOwn(synthetic, result.Target);
+                if (grouped && (result.Class !== 'lang-pkgs' || result.Type !== synthetic[result.Target] || !result.Packages?.length)) { unknown = true; continue; }
+                if (!grouped) {
+                  try { await contained(result.Target); }
+                  catch (error) { if (error.code === 'ENOENT') { unknown = true; continue; } throw error; }
+                }
+                let evidence = 0;
+                for (const field of ['Packages', 'Vulnerabilities', 'Misconfigurations', 'Secrets']) {
+                  if (result[field] !== undefined && !Array.isArray(result[field])) throw new Error('report-array');
+                  if (result[field]?.length && !({Packages: ['lang-pkgs', 'os-pkgs'], Vulnerabilities: ['lang-pkgs', 'os-pkgs'], Misconfigurations: ['config'], Secrets: ['secret']}[field]).includes(result.Class)) throw new Error('report-class');
+                  for (const item of result[field] || []) {
+                    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('report-item');
+                    if (field === 'Packages') {
+                      if (typeof item.Name !== 'string' || !item.Name || typeof item.Version !== 'string') throw new Error('report-package');
+                      // Lockfile target owns optional virtual package paths; grouped labels do not.
+                      if (grouped) {
+                        if (!item.FilePath) unknown = true;
+                        else try { await contained(item.FilePath); }
+                        catch (error) { if (error.code === 'ENOENT') unknown = true; else throw error; }
+                      }
+                    } else {
+                      const id = item[field === 'Vulnerabilities' ? 'VulnerabilityID' : field === 'Secrets' ? 'RuleID' : 'ID'];
+                      if (typeof id !== 'string' || !id || !['UNKNOWN', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(item.Severity)) throw new Error('report-finding');
+                      if (field === 'Misconfigurations' && !['FAIL', 'PASS', 'EXCEPTION'].includes(item.Status)) throw new Error('report-misconfiguration');
+                      if (field !== 'Misconfigurations' || item.Status === 'FAIL') findings++;
+                    }
+                    evidence++;
+                  }
+                }
+                if (evidence) recognized++; else unknown = true;
+              }
+              status = !recognized || unknown ? 'unsupported-profile' : findings ? 'findings-advisory' : 'passed';
+              errorCode = status === 'unsupported-profile' ? 'trivy-source-coverage-unconfirmed' : null;
+            } catch { errorCode = 'trivy-source-report-invalid'; }
+          }
+          const record = {apiVersion: 'cloudopsworks.io/operations/v1', kind: 'ScannerResult', scanner: 'trivy', profile: scan.profile, componentId: scan.componentId, sourceSha: scan.sourceSha, status, required: false, artifactDigest: scan.artifactDigest, correlationId: scan.correlationId, errorCode};
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {silent: true, ignoreReturnCode: true, input: Buffer.from(JSON.stringify(record))});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('trivy-source-scanner-contract');
+          const validated = JSON.parse(checked.stdout).record;
+          if (!validated || Object.keys(validated).length !== Object.keys(record).length || Object.keys(record).some(key => validated[key] !== record[key])) throw new Error('trivy-source-roundtrip');
+          const output = path.join(directory, 'scanner-result.json');
+          await fs.writeFile(output, JSON.stringify(record), {mode: 0o600, flag: 'wx'});
+          core.setOutput('result', output);
+          core.setOutput('status', status);

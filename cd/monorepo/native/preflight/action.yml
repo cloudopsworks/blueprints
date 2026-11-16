@@ -1,0 +1,195 @@
+name: Preflight one fresh managed Lambda ZIP binding
+description: Endorsed stage and current protected YAML precede native absence reads; no adoption or apply
+inputs:
+  stage-artifact-id: {description: Exact current stage artifact ID, required: true}
+  stage-archive-digest: {description: Exact sha256-prefixed stage archive digest, required: true}
+  mode: {description: Fixed route, data or native preflight phase, default: native}
+  deployment-state-conf: {description: Protected organization backend YAML; data/native only, default: ''}
+  auth-bindings: {description: Protected organization auth YAML; data/native only, default: ''}
+  identities: {description: Protected organization identity YAML; data/native only, default: ''}
+outputs:
+  eligible: {description: Exactly one eligible native binding exists, value: '${{ steps.prepare.outputs.eligible }}'}
+  protected-environment: {description: Independently Go-classified environment, value: '${{ steps.prepare.outputs.protected-environment }}'}
+  prepared: {description: Private validated operation and scoped preflight data, value: '${{ steps.prepare.outputs.prepared }}'}
+  marker: {description: Native current-attempt preflight marker, value: '${{ steps.prove.outputs.marker }}'}
+runs:
+  using: composite
+  steps:
+    - id: host
+      uses: ./bp/cd/tasks/repo/context
+    - id: stage
+      uses: ./bp/ci/monorepo/stage/endorsement
+      with:
+        mode: verify
+        caller-mode: ${{ steps.host.outputs.caller-mode }}
+        artifact-id: ${{ inputs.stage-artifact-id }}
+        archive-digest: ${{ inputs.stage-archive-digest }}
+        run-id: ${{ steps.host.outputs.run-id }}
+        run-attempt: ${{ steps.host.outputs.run-attempt }}
+    - id: source-context
+      if: steps.host.outputs.closure == 'true'
+      uses: ./bp/ci/monorepo/stage/source-context
+      with:
+        plan: ${{ steps.stage.outputs.plan }}
+        closure: ${{ steps.host.outputs.eligible }}
+        host-ref: ${{ steps.host.outputs.host-ref }}
+        base-ref: ${{ steps.host.outputs.base-ref }}
+        source-sha: ${{ steps.host.outputs.source-sha }}
+        pr-number: ${{ steps.host.outputs.pr-number }}
+    - id: policy-ref
+      uses: actions/github-script@v9
+      env:
+        CLOSURE: ${{ steps.host.outputs.closure || 'false' }}
+        BASE_REF: ${{ steps.host.outputs.base-ref }}
+      with:
+        script: |
+          const e=process.env;
+          if (!['true','false'].includes(e.CLOSURE) || e.CLOSURE==='true' && !e.BASE_REF) throw new Error('native-policy-context');
+          const repository=(await github.rest.repos.get({...context.repo})).data;
+          const branch=(await github.rest.repos.getBranch({...context.repo,branch:e.CLOSURE==='true'?e.BASE_REF:repository.default_branch})).data;
+          if (String(repository.id)!==process.env.GITHUB_REPOSITORY_ID || branch.protected!==true || !/^[0-9a-f]{40}$/.test(branch.commit?.sha || '')) throw new Error('native-current-protected-policy');
+          core.setOutput('sha',branch.commit.sha);
+    - id: policy
+      uses: ./bp/ci/monorepo/source
+      with:
+        source-sha: ${{ steps.policy-ref.outputs.sha }}
+    - id: prepare
+      uses: actions/github-script@v9
+      env:
+        PLAN: ${{ steps.stage.outputs.plan }}
+        MANIFEST: ${{ steps.stage.outputs.manifest }}
+        STAGE: ${{ steps.stage.outputs.binding }}
+        CONFIGURATION: ${{ steps.policy.outputs.configuration }}
+        POLICY_DIRECTORY: ${{ steps.policy.outputs.directory }}
+        SOURCE_SHA: ${{ steps.host.outputs.source-sha }}
+        BLUEPRINT_SHA: ${{ steps.host.outputs.blueprint-sha }}
+        PROJECTED_SOURCE: ${{ steps.source-context.outputs.source-context }}
+        HOST_REF: ${{ steps.host.outputs.host-ref }}
+        BASE_REF: ${{ steps.host.outputs.base-ref }}
+        PR_NUMBER: ${{ steps.host.outputs.pr-number }}
+        DEPLOYMENT_STATE_CONF: ${{ inputs.deployment-state-conf }}
+        AUTH_BINDINGS: ${{ inputs.auth-bindings }}
+        IDENTITIES: ${{ inputs.identities }}
+        MODE: ${{ inputs.mode }}
+      with:
+        script: |
+          const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
+          const e=process.env,temp=await fs.realpath(e.RUNNER_TEMP);
+          if (!['route','data','native'].includes(e.MODE)) throw new Error('native-inspect-mode');
+          async function read(file) {
+            const resolved=path.resolve(file || ''),stat=await fs.lstat(resolved);
+            if (!resolved.startsWith(temp+path.sep) || await fs.realpath(resolved)!==resolved || !stat.isFile() || stat.mode&0o077 || stat.size>4194304) throw new Error('native-private-data');
+            return JSON.parse(await fs.readFile(resolved,'utf8'));
+          }
+          async function call(args,input) {
+            const result=await exec.getExecOutput('tronador',['components',...args],{silent:true,ignoreReturnCode:true,...(input===undefined?{}:{input:Buffer.from(typeof input==='string'?input:JSON.stringify(input))})});
+            if (result.exitCode || Buffer.byteLength(result.stdout)>4194304) throw new Error('native-data-contract');
+            return JSON.parse(result.stdout);
+          }
+          const canonical=v=>JSON.stringify(v===null||typeof v!=='object'?v:Array.isArray(v)?v.map(x=>JSON.parse(canonical(x))):Object.fromEntries(Object.keys(v).sort().map(k=>[k,JSON.parse(canonical(v[k]))])));
+          const digest=v=>'sha256:'+crypto.createHash('sha256').update(canonical(v)).digest('hex');
+          const plan=await read(e.PLAN),manifest=await read(e.MANIFEST),configuration=await read(e.CONFIGURATION),stage=JSON.parse(e.STAGE);
+          const validated=await call(['contracts','validate','--kind','BuildPlan'],plan);
+          if (validated.valid!==true || plan.headSha!==e.SOURCE_SHA || manifest.headSha!==plan.headSha || plan.repository.id!==e.GITHUB_REPOSITORY_ID || stage.runId!==e.GITHUB_RUN_ID || stage.runAttempt!==e.GITHUB_RUN_ATTEMPT || stage.repositoryId!==e.GITHUB_REPOSITORY_ID || canonical(plan.components)!==canonical(configuration.components) || canonical(plan.targets)!==canonical(configuration.targets) || canonical(plan.previewPolicy)!==canonical(configuration.previewPolicy)) throw new Error('native-current-policy-binding');
+          if (!plan.components.some(c=>c.targetIds.length)) { core.setOutput('eligible','false'); return; }
+          const run=(await github.rest.actions.getWorkflowRunAttempt({...context.repo,run_id:e.GITHUB_RUN_ID,attempt_number:e.GITHUB_RUN_ATTEMPT})).data;
+          const closure=run.event==='pull_request_target';
+          if (String(run.id)!==e.GITHUB_RUN_ID || String(run.run_attempt)!==e.GITHUB_RUN_ATTEMPT || String(run.repository?.id)!==e.GITHUB_REPOSITORY_ID || !['workflow_dispatch','pull_request_target'].includes(run.event) || !run.triggering_actor?.login) throw new Error('native-current-host');
+          const ref='refs/heads/'+run.head_branch,sourceContext=closure?JSON.parse(e.PROJECTED_SOURCE):{event:'workflow_dispatch',ref,baseRef:'',sourceSha:plan.headSha,prNumber:null};
+          const baseRef=sourceContext.baseRef,event=sourceContext.event;
+          const lifecycle=await call(['lifecycle','--config-only','--workdir',e.POLICY_DIRECTORY,'--event',event,'--ref',sourceContext.ref,'--base-ref',baseRef,'--json']);
+          const bindings=plan.components.flatMap(component=>component.targetIds.map(id=>({component,target:plan.targets.find(target=>target.id===id)}))).filter(binding=>binding.target?.environment===lifecycle.environment);
+          if (!bindings.length || lifecycle.eligible!==true) { core.setOutput('eligible','false'); return; }
+          if (bindings.length!==1) throw new Error('native-exact-first-slice-scope');
+          const {component,target}=bindings[0];
+          if (target.kind!=='aws.lambda' || target.provider!=='aws' || target.ownership!=='managed' || target.packageMode!=='zip' || target.alias!==null || !/^[A-Za-z0-9_-]{1,64}$/.test(target.functionName || '') || !target.iac?.sourceBucket || component.package.kind!=='function' || component.package.mode!=='aws-zip' || !plan.buildSelection.some(x=>x.componentId===component.id)) throw new Error('native-managed-lambda-zip-only');
+          const entry=manifest.components.find(x=>x.componentId===component.id);
+          if (!entry || entry.mainArtifact?.kind!=='function' || entry.mainArtifact.format!=='zip') throw new Error('native-manifest-binding');
+          core.setOutput('eligible','true');core.setOutput('protected-environment',lifecycle.protectedEnvironment);
+          if (e.MODE==='route') return;
+          const backend=await call(['settings','--kind','backend','--json'],e.DEPLOYMENT_STATE_CONF || '');
+          const auth=await call(['settings','--kind','auth','--json'],e.AUTH_BINDINGS || ''),identities=await call(['settings','--kind','identities','--json'],e.IDENTITIES || '');
+          const backendRef=backend.authRef || target.authRef,backendBinding=auth[backendRef],workloadBinding=auth[target.authRef];
+          if (backend.kind!=='s3' || backend.workspace!=='default' || backend.useLockfile!==true || backend.dynamodbTable!=null) throw new Error('native-backend-first-slice');
+          for (const [binding,identity,region] of [[backendBinding,identities[backendRef],backend.region],[workloadBinding,identities[target.authRef],target.region]]) {
+            if (binding?.provider!=='aws' || !/^[0-9]{12}$/.test(identity || '') || !/^arn:aws:iam::[0-9]{12}:role\/[A-Za-z0-9+=,.@_/-]+$/.test(binding.roleArn || '') || binding.roleArn.split(':')[4]!==identity || binding.region!==region) throw new Error('native-protected-principal-binding');
+          }
+          const origin={repository:plan.repository,sourceSha:plan.headSha,runId:e.GITHUB_RUN_ID,runAttempt:e.GITHUB_RUN_ATTEMPT,blueprintSha:e.BLUEPRINT_SHA};
+          const contextInput={backend,origin,invocation:{...origin,actor:run.triggering_actor.login},releaseName:lifecycle.targetName || context.repo.repo,authRefs:[...new Set([target.authRef,backendRef])].sort(),prNumber:plan.prNumber,historicalHandle:null,lifecycle,providerIdentity:identities[target.authRef],backendIdentity:{provider:'aws',accountId:identities[backendRef]},plan};
+          const module=path.join(e.GITHUB_WORKSPACE,'bp/terraform/monorepo/modules/aws-lambda');
+          const operation=await call(['operations','plan','--module-root',module,'--operation','apply','--environment',lifecycle.environment,'--target',target.id,'--component',component.id,'--json'],contextInput);
+          const checked=await call(['contracts','validate','--kind','StateHandle','--module-root',module],operation.stateHandle);
+          if (checked.valid!==true || checked.digest!==operation.stateHandleDigest || checked.module?.activationBlocked!==false || canonical(checked.record)!==canonical(operation.stateHandle) || operation.stateHandle.protectedEnvironment!==lifecycle.protectedEnvironment) throw new Error('native-module-binding');
+          const objectKey=(target.iac.sourcePrefix || 'components').replace(/^\/+|\/+$/g,'')+'/'+entry.mainArtifact.digest.slice(7)+'/main.zip';
+          const claims=['arn:aws:lambda:'+target.region+':'+operation.stateHandle.providerIdentity+':function:'+target.functionName,'object:arn:aws:s3:::'+target.iac.sourceBucket+'/'+objectKey].sort();
+          const sourceStage={runId:stage.runId,runAttempt:stage.runAttempt,artifactId:stage.artifactId,archiveDigest:stage.archiveDigest};
+          const preflight={stage:sourceStage,policyDigest:digest(configuration),targetId:target.id,componentId:component.id,bindingDigest:digest({target,componentManifestEntry:entry}),providerIdentity:operation.stateHandle.providerIdentity,resourceClaims:claims,stateHandleDigest:operation.stateHandleDigest};
+          const directory=await fs.mkdtemp(path.join(temp,'native-preflight-'));await fs.chmod(directory,0o700);
+          const prepared=path.join(directory,'prepared.json');await fs.writeFile(prepared,JSON.stringify({operation,preflight,sourceStage,sourceContext,objectKey,hostSha:run.head_sha,workflowRef:plan.repository.fullName+'/'+run.path.split('@')[0]+'@'+ref,backendBinding,workloadBinding}),{mode:0o600,flag:'wx'});
+          core.setOutput('prepared',prepared);core.setOutput('eligible','true');core.setOutput('protected-environment',lifecycle.protectedEnvironment);
+          for (const [label,binding] of [['backend',backendBinding],['workload',workloadBinding]]) {core.setOutput(label+'-role',binding.roleArn);core.setOutput(label+'-region',binding.region);}
+    - id: backend-auth
+      if: inputs.mode == 'native' && steps.prepare.outputs.eligible == 'true'
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ steps.prepare.outputs.backend-role }}
+        aws-region: ${{ steps.prepare.outputs.backend-region }}
+        output-credentials: true
+        output-env-credentials: false
+        unset-current-credentials: true
+    - id: workload-auth
+      if: inputs.mode == 'native' && steps.prepare.outputs.eligible == 'true'
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ steps.prepare.outputs.workload-role }}
+        aws-region: ${{ steps.prepare.outputs.workload-region }}
+        output-credentials: true
+        output-env-credentials: false
+        unset-current-credentials: true
+    - id: prove
+      if: inputs.mode == 'native' && steps.prepare.outputs.eligible == 'true'
+      uses: actions/github-script@v9
+      env:
+        PREPARED: ${{ steps.prepare.outputs.prepared }}
+        BACKEND_ACCESS_KEY: ${{ steps.backend-auth.outputs.aws-access-key-id }}
+        BACKEND_SECRET_KEY: ${{ steps.backend-auth.outputs.aws-secret-access-key }}
+        BACKEND_SESSION_TOKEN: ${{ steps.backend-auth.outputs.aws-session-token }}
+        WORKLOAD_ACCESS_KEY: ${{ steps.workload-auth.outputs.aws-access-key-id }}
+        WORKLOAD_SECRET_KEY: ${{ steps.workload-auth.outputs.aws-secret-access-key }}
+        WORKLOAD_SESSION_TOKEN: ${{ steps.workload-auth.outputs.aws-session-token }}
+      with:
+        script: |
+          const fs=require('node:fs/promises'),path=require('node:path');
+          const e=process.env,p=JSON.parse(await fs.readFile(e.PREPARED,'utf8')),h=p.operation.stateHandle;
+          const version=await exec.getExecOutput('aws',['--version'],{env:{PATH:e.PATH},silent:true,ignoreReturnCode:true});
+          if (version.exitCode || !/^aws-cli\/2\.40\.1 /.test(version.stdout)) throw new Error('native-aws-version');
+          const directory=await fs.mkdtemp(path.join(await fs.realpath(e.RUNNER_TEMP),'native-absence-'));await fs.chmod(directory,0o700);
+          const contexts={};
+          for (const label of ['backend','workload']) {
+            const binding=p[label+'Binding'],prefix=label.toUpperCase(),home=path.join(directory,label);await fs.mkdir(home,{mode:0o700});
+            const empty=path.join(home,'empty');await fs.writeFile(empty,'',{mode:0o600,flag:'wx'});
+            const env={PATH:e.PATH,HOME:home,AWS_CONFIG_FILE:empty,AWS_SHARED_CREDENTIALS_FILE:empty,AWS_EC2_METADATA_DISABLED:'true',AWS_REGION:binding.region,AWS_DEFAULT_REGION:binding.region,AWS_ACCESS_KEY_ID:e[prefix+'_ACCESS_KEY'],AWS_SECRET_ACCESS_KEY:e[prefix+'_SECRET_KEY'],AWS_SESSION_TOKEN:e[prefix+'_SESSION_TOKEN'],AWS_PAGER:''};
+            if (![env.AWS_ACCESS_KEY_ID,env.AWS_SECRET_ACCESS_KEY,env.AWS_SESSION_TOKEN].every(v=>typeof v==='string' && v.length>0 && v.length<8192 && !/[\x00-\x20]/.test(v))) throw new Error('native-temporary-credentials');
+            contexts[label]=env;
+          }
+          async function aws(label,args) {
+            const result=await exec.getExecOutput('aws',[...args,'--region',contexts[label].AWS_REGION,'--no-cli-pager','--output','json'],{env:contexts[label],silent:true,ignoreReturnCode:true});
+            if (result.exitCode || Buffer.byteLength(result.stdout)>4194304) throw new Error('native-absence-read');
+            return JSON.parse(result.stdout);
+          }
+          for (const label of ['backend','workload']) {
+            const identity=await aws(label,['sts','get-caller-identity']),binding=p[label+'Binding'],account=binding.roleArn.split(':')[4],role=binding.roleArn.split('/').at(-1);
+            if (identity.Account!==account || !identity.Arn?.startsWith(`arn:aws:sts::${account}:assumed-role/${role}/`)) throw new Error('native-actual-principal');
+          }
+          const state=await aws('backend',['s3api','list-objects-v2','--bucket',h.backend.bucket,'--prefix',h.backend.key,'--expected-bucket-owner',h.backendIdentity.accountId,'--max-keys','2','--no-paginate']);
+          if (state.IsTruncated!==false || state.NextContinuationToken || state.KeyCount!==0 || state.Contents?.length) throw new Error('native-existing-state-or-lock');
+          const roleArn=p.operation.inputs.configuration.iac.roleArn;
+          const role=await aws('workload',['iam','get-role','--role-name',roleArn.split('/').at(-1)]);
+          if (role.Role?.Arn!==roleArn) throw new Error('native-external-role');
+          const bucket=await aws('workload',['s3api','get-bucket-location','--bucket',h.resourceIdentity.iac.sourceBucket,'--expected-bucket-owner',h.providerIdentity]);
+          if ((bucket.LocationConstraint || 'us-east-1')!==h.resourceIdentity.region) throw new Error('native-external-bucket');
+          const object=await aws('workload',['s3api','list-objects-v2','--bucket',h.resourceIdentity.iac.sourceBucket,'--prefix',p.objectKey,'--expected-bucket-owner',h.providerIdentity,'--max-keys','2','--no-paginate']);
+          if (object.IsTruncated!==false || object.NextContinuationToken || object.KeyCount!==0 || object.Contents?.length) throw new Error('native-existing-package-object');
+          const functions=await aws('workload',['lambda','list-functions','--no-paginate']);
+          if (!Array.isArray(functions.Functions) || functions.Functions.length>50 || functions.NextMarker || functions.Functions.some(f=>f.FunctionName===h.resourceIdentity.functionName)) throw new Error('native-existing-or-incomplete-function-inventory');
+          core.info('CLOUDOPSWORKS_PREFLIGHT_V1 '+JSON.stringify(p.preflight));core.setOutput('marker',JSON.stringify(p.preflight));

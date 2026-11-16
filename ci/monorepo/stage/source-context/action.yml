@@ -1,0 +1,47 @@
+name: Project exact post-tag source context
+description: Closure-only existing source context after exact frozen-tag readback; host and actual base remain separate
+inputs:
+  plan: {description: Independently endorsed BuildPlan, required: true}
+  closure: {description: Independently verified eligible closure, required: true}
+  host-ref: {description: Captured actual host ref, required: true}
+  base-ref: {description: Original protected PR base ref, required: true}
+  source-sha: {description: Independently verified application merge SHA, required: true}
+  pr-number: {description: Actual triggering PR number, required: true}
+outputs:
+  source-context: {description: Existing post-tag SourceContext JSON, value: '${{ steps.project.outputs.source-context }}'}
+  host-ref: {description: Unchanged host ref, value: '${{ steps.project.outputs.host-ref }}'}
+  base-ref: {description: Retained original actual PR base, value: '${{ steps.project.outputs.base-ref }}'}
+runs:
+  using: composite
+  steps:
+    - id: project
+      uses: actions/github-script@v9
+      env:
+        PLAN_PATH: ${{ inputs.plan }}
+        CLOSURE: ${{ inputs.closure }}
+        HOST_REF: ${{ inputs.host-ref }}
+        BASE_REF: ${{ inputs.base-ref }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const env = process.env;
+          if (!['true', 'false'].includes(env.CLOSURE)) throw new Error('source-context-closure');
+          if (env.CLOSURE === 'false') return;
+          if (!env.HOST_REF?.startsWith('refs/heads/') || !env.BASE_REF || !/^[1-9][0-9]*$/.test(env.PR_NUMBER || '') || !/^[0-9a-f]{40}$/.test(env.SOURCE_SHA || '')) throw new Error('source-context-input');
+          if ((await fs.stat(env.PLAN_PATH)).size > 4 * 1024 * 1024) throw new Error('source-context-plan-bound');
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: await fs.readFile(env.PLAN_PATH)});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('source-context-plan');
+          const plan = JSON.parse(checked.stdout).record;
+          if (plan.headSha !== env.SOURCE_SHA || plan.event !== 'release' || String(plan.prNumber) !== env.PR_NUMBER) throw new Error('source-context-link');
+          const tag = 'v' + plan.version;
+          let object = (await github.rest.git.getRef({...context.repo, ref: 'tags/' + tag})).data.object;
+          for (let depth = 0; object?.type === 'tag' && depth < 5; depth++) {
+            if (!/^[0-9a-f]{40}$/.test(object.sha || '')) throw new Error('source-context-tag-object');
+            object = (await github.rest.git.getTag({...context.repo, tag_sha: object.sha})).data.object;
+          }
+          if (object?.type !== 'commit' || object.sha !== plan.headSha) throw new Error('source-context-tag-target');
+          core.setOutput('source-context', JSON.stringify({event: 'push', ref: 'refs/tags/' + tag, baseRef: '', sourceSha: plan.headSha, prNumber: plan.prNumber}));
+          core.setOutput('host-ref', env.HOST_REF);
+          core.setOutput('base-ref', env.BASE_REF);

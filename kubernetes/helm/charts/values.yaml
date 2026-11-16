@@ -298,3 +298,13 @@ keda:
 # Extra Objects to be added to the deployment, e.g. for custom resources or additional services, expressed as YAML lists.
 #  Each object should be a valid Kubernetes resource definition.
 extraObjects: []
+# Explicit v5.11 opt-in; existing chart behavior remains the default.
+monorepo:
+  enabled: false
+  preview: false
+  image: ""
+  port: 3000
+  healthPath: /ready
+  replicas: 1
+  host: ""
+  ingressClass: ""

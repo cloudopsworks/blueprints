@@ -1,0 +1,10 @@
+# Operator documentation example for org/team DEPLOYMENT_STATE_CONF; not application-repository configuration.
+# Inactive operator example; no token/client/tenant secret is authored here.
+azurerm:
+  storage_account_name: REPLACE_EXISTING_STORAGE_ACCOUNT
+  container_name: REPLACE_EXISTING_STATE_CONTAINER
+  resource_group_name: REPLACE_EXISTING_RESOURCE_GROUP
+  auth_ref: backend-azure
+  use_oidc: true
+  use_azuread_auth: true
+  use_msi: false

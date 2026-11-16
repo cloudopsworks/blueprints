@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "moduleId": "gcp-cloudrun",
+  "variables": {
+    "resource": [
+      "kind",
+      "project",
+      "region",
+      "service"
+    ],
+    "configuration": [
+      "kind",
+      "serviceAccount"
+    ],
+    "workload": [
+      "kind",
+      "port",
+      "healthPath"
+    ],
+    "artifact": [
+      "digest",
+      "format",
+      "path",
+      "imageReference",
+      "files"
+    ],
+    "owner_digest": []
+  },
+  "ownedResourceTypes": [
+    "google_cloud_run_v2_service"
+  ],
+  "ownedResourceAddresses": [
+    "google_cloud_run_v2_service.component"
+  ],
+  "externalParents": [
+    "GCP project",
+    "runtime service account",
+    "Artifact Registry image"
+  ],
+  "activationBlocked": true,
+  "remaining": [
+    "global trusted execution and selected source authorization integration",
+    "credentialed readiness and lifecycle proof"
+  ],
+  "replaceResourceAddresses": [],
+  "applyDeleteResourceAddresses": []
+}

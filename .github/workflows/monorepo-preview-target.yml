@@ -1,0 +1,425 @@
+name: One protected Kubernetes preview target
+on:
+  workflow_call:
+    inputs:
+      target: {type: string, required: true}
+      pr: {type: number, required: true}
+      environment: {type: string, required: true}
+    secrets:
+      SONARQUBE_TOKEN: {required: false}
+      SNYK_TOKEN: {required: false}
+      SEMGREP_TOKEN: {required: false}
+      DEPENDENCYTRACK_TOKEN: {required: false}
+      DEPLOYMENT_STATE_CONF: {required: false}
+      CLOUDOPSWORKS_AUTH: {required: false}
+      CLOUDOPSWORKS_PROBE_SECRETS: {required: false}
+      CLOUDOPSWORKS_HOST_KEYS: {required: false}
+permissions: {}
+# The parent reusable-CALL job holds the sole PR/target group for this ENTIRE
+# graph. No nested runner re-acquires the group; plans/state/credentials stay local.
+env:
+  GH_TOKEN: ${{ github.token }}
+  PREVIEW_PR: ${{ inputs.pr }}
+  TARGET: ${{ inputs.target }}
+  ENVIRONMENT: ${{ inputs.environment }}
+jobs:
+  admit:
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, deployments: read, pull-requests: read}
+    outputs:
+      phase: ${{ steps.admit.outputs.phase }}
+      components: ${{ steps.admit.outputs.components }}
+      cleanup: ${{ steps.admit.outputs.cleanup }}
+      retire: ${{ steps.admit.outputs.retire }}
+      has-components: ${{ steps.admit.outputs.has-components }}
+      has-cleanup: ${{ steps.admit.outputs.has-cleanup }}
+      has-retire: ${{ steps.admit.outputs.has-retire }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: admit
+        name: Fresh host/current-PR convergence BEFORE stale head, artifacts or scans
+        run: python3 bp/cd/monorepo/runtime/preview_entry.py admit --target "$TARGET" --environment "$ENVIRONMENT"
+  scan-context:
+    needs: admit
+    if: needs.admit.outputs.phase == 'open'
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, deployments: read, pull-requests: read}
+    outputs:
+      matrix: ${{ steps.inspect.outputs.matrix }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: inspect
+        run: python3 bp/cd/monorepo/runtime/preview_entry.py scan-inspect --target "$TARGET" --environment "$ENVIRONMENT"
+  component-scan:
+    name: monorepo-component-scan-${{ matrix.component }}
+    needs: [admit, scan-context]
+    if: needs.admit.outputs.phase == 'open'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.scan-context.outputs.matrix) }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, deployments: read, pull-requests: read, packages: read}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: inspect
+        env:
+          COMPONENT: ${{ matrix.component }}
+        run: python3 bp/cd/monorepo/runtime/preview_entry.py scan-inspect --target "$TARGET" --environment "$ENVIRONMENT" --component "$COMPONENT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.inspect.outputs.source-sha }}
+          path: source
+          persist-credentials: false
+      - uses: ./bp/ci/monorepo/scanners
+        with:
+          sonarqube: ${{ steps.inspect.outputs.sonarqube }}
+          snyk: ${{ steps.inspect.outputs.snyk }}
+          semgrep: ${{ steps.inspect.outputs.semgrep }}
+          trivy: ${{ steps.inspect.outputs.trivy }}
+          dotnet: ${{ steps.inspect.outputs.dotnet }}
+      - name: Run current applicable scanners without deployment credentials
+        env:
+          COMPONENT: ${{ matrix.component }}
+          SONARQUBE_URL: ${{ vars.SONARQUBE_URL }}
+          SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SEMGREP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}
+          DEPENDENCYTRACK_URL: ${{ vars.DEPENDENCYTRACK_URL }}
+          DEPENDENCYTRACK_TOKEN: ${{ secrets.DEPENDENCYTRACK_TOKEN }}
+        run: python3 bp/cd/monorepo/runtime/preview_entry.py scan-run --target "$TARGET" --environment "$ENVIRONMENT" --component "$COMPONENT"
+  scan:
+    name: monorepo-scan-barrier
+    needs: [admit, component-scan]
+    if: needs.admit.outputs.phase == 'open'
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, actions: read, deployments: read, pull-requests: read}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - run: python3 bp/cd/monorepo/runtime/preview_entry.py scan-barrier --target "$TARGET" --environment "$ENVIRONMENT"
+  root:
+    name: monorepo-preview-root-${{ inputs.target }}
+    needs: [admit, scan]
+    if: needs.admit.outputs.phase == 'open'
+    outputs:
+      failure-cleanup: ${{ steps.phase.outputs.failure-cleanup }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    env:
+      DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+      CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+      CLOUDOPSWORKS_KUBECTL_VERSION: ${{ vars.CLOUDOPSWORKS_KUBECTL_VERSION }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: phase
+        uses: ./bp/cd/monorepo/preview-phase
+        with:
+          phase: root
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+  retire:
+    name: monorepo-preview-cleanup-${{ inputs.target }}-${{ matrix.component }}
+    needs: [admit, root]
+    if: needs.admit.outputs.phase == 'open' && needs.admit.outputs.has-retire == 'true'
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.admit.outputs.retire) }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    env:
+      DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+      CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+      CLOUDOPSWORKS_KUBECTL_VERSION: ${{ vars.CLOUDOPSWORKS_KUBECTL_VERSION }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: phase
+        uses: ./bp/cd/monorepo/preview-phase
+        with:
+          phase: cleanup
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+          component: ${{ matrix.component }}
+          handle: ${{ matrix.handle }}
+  component:
+    name: monorepo-preview-component-${{ inputs.target }}-${{ matrix.component }}
+    needs: [admit, root, retire]
+    if: always() && needs.admit.outputs.phase == 'open' && needs.root.result == 'success' && (needs.retire.result == 'success' || needs.retire.result == 'skipped') && needs.admit.outputs.has-components == 'true'
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.admit.outputs.components) }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    env:
+      DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+      CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+      CLOUDOPSWORKS_KUBECTL_VERSION: ${{ vars.CLOUDOPSWORKS_KUBECTL_VERSION }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: phase
+        uses: ./bp/cd/monorepo/preview-phase
+        with:
+          phase: component
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+          component: ${{ matrix.component }}
+          handle: ${{ matrix.handle }}
+  readiness:
+    name: monorepo-preview-readiness-${{ inputs.target }}
+    needs: [admit, root, retire, component]
+    if: always() && needs.admit.outputs.phase == 'open' && needs.root.result == 'success' && (needs.retire.result == 'success' || needs.retire.result == 'skipped') && (needs.component.result == 'success' || needs.component.result == 'skipped')
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    env:
+      DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+      CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+      CLOUDOPSWORKS_KUBECTL_VERSION: ${{ vars.CLOUDOPSWORKS_KUBECTL_VERSION }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: phase
+        uses: ./bp/cd/monorepo/preview-phase
+        with:
+          phase: readiness
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+  cleanup:
+    name: monorepo-preview-cleanup-${{ inputs.target }}-${{ matrix.component }}
+    needs: [admit, root, component, readiness]
+    if: always() && needs.admit.result == 'success' && needs.admit.outputs.has-cleanup == 'true' && (needs.admit.outputs.phase == 'closed' || needs.root.outputs.failure-cleanup == 'true')
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.admit.outputs.cleanup) }}
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    env:
+      DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+      CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+      CLOUDOPSWORKS_KUBECTL_VERSION: ${{ vars.CLOUDOPSWORKS_KUBECTL_VERSION }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: phase
+        uses: ./bp/cd/monorepo/preview-phase
+        with:
+          phase: cleanup
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+          component: ${{ matrix.component }}
+          handle: ${{ matrix.handle }}
+          failure-isolation: ${{ needs.admit.outputs.phase == 'open' && needs.root.outputs.failure-cleanup == 'true' }}
+  destroy:
+    name: monorepo-preview-destroy-${{ inputs.target }}
+    needs: [admit, root, cleanup]
+    if: always() && needs.admit.result == 'success' && (needs.cleanup.result == 'success' || (needs.admit.outputs.has-cleanup == 'false' && needs.cleanup.result == 'skipped')) && (needs.admit.outputs.phase == 'closed' || needs.root.outputs.failure-cleanup == 'true')
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    env:
+      DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+      CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+      CLOUDOPSWORKS_KUBECTL_VERSION: ${{ vars.CLOUDOPSWORKS_KUBECTL_VERSION }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: phase
+        uses: ./bp/cd/monorepo/preview-phase
+        with:
+          phase: destroy
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+          failure-isolation: ${{ needs.admit.outputs.phase == 'open' && needs.root.outputs.failure-cleanup == 'true' }}
+  absence:
+    name: monorepo-preview-absence-${{ inputs.target }}
+    needs: [admit, destroy]
+    if: always() && needs.admit.outputs.phase == 'closed' && needs.destroy.result == 'success'
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    env:
+      DEPLOYMENT_STATE_CONF: ${{ vars.DEPLOYMENT_STATE_CONF || secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_IDENTITIES: ${{ vars.CLOUDOPSWORKS_IDENTITIES }}
+      CLOUDOPSWORKS_REGISTRIES: ${{ vars.CLOUDOPSWORKS_REGISTRIES }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+      CLOUDOPSWORKS_KUBECTL_VERSION: ${{ vars.CLOUDOPSWORKS_KUBECTL_VERSION }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: phase
+        uses: ./bp/cd/monorepo/preview-phase
+        with:
+          phase: absence
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+  required:
+    if: always()
+    needs: [admit, root, retire, component, readiness, cleanup, destroy, absence]
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Require actual ordered lifecycle result, not skipped aggregate green
+        env:
+          JOBS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          j=json.loads(os.environ['JOBS'])
+          assert j['admit']['result']=='success'
+          if j['admit']['outputs']['phase']=='closed':
+              assert j['destroy']['result']==j['absence']['result']=='success'
+          elif j['admit']['outputs']['phase']=='reopened':
+              assert all(j[k]['result']=='skipped' for k in ('root','component','cleanup','destroy'))
+          else:
+              assert j['root']['result']==j['readiness']['result']=='success'
+              assert j['component']['result'] in ('success','skipped')
+              assert j['retire']['result'] in ('success','skipped')
+          PY

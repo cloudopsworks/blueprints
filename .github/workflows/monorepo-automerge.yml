@@ -1,0 +1,41 @@
+name: Monorepo automerge
+on:
+  workflow_call:
+    secrets:
+      BOT_TOKEN:
+        required: true
+permissions: {}
+concurrency:
+  group: monorepo-automerge-${{ github.repository }}-${{ github.event.issue.number || github.event.client_payload.number || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  automerge:
+    name: Monorepo automerge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          persist_credentials: 'false'
+          check_module_version: 'false'
+          blueprint_ref: v5.11.0
+      - uses: cloudopsworks/install-tronador-cli@v1
+        with:
+          version: v0.6.0
+      - name: Revalidate current-head approval and native no-bypass protections
+        id: approval
+        env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: python3 bp/cd/monorepo/runtime/gitops.py automerge
+      - uses: cloudopsworks/automerge-action@v0.17.0
+        if: ${{ steps.approval.outputs.authorized == 'true' }}
+        env:
+          PULL_REQUEST: ${{ steps.approval.outputs.pull_request }}
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+          MERGE_COMMIT_MESSAGE: pull-request-title
+          MERGE_LABELS: approved,!do-not-merge
+          UPDATE_LABELS: approved

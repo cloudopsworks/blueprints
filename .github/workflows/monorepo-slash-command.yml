@@ -1,0 +1,29 @@
+name: Monorepo slash-command
+on:
+  workflow_call:
+    secrets:
+      BOT_TOKEN:
+        required: true
+permissions: {}
+concurrency:
+  group: monorepo-slash-command-${{ github.repository }}-${{ github.event.issue.number || github.event.client_payload.number || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  gitops:
+    name: Monorepo slash-command
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          persist_credentials: 'false'
+          check_module_version: 'false'
+          blueprint_ref: v5.11.0
+      - uses: ./bp/cd/gitops/command
+        with:
+          component_mode: 'true'
+          token: ${{ secrets.BOT_TOKEN }}

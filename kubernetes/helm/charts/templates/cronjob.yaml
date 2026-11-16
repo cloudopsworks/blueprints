@@ -1,3 +1,4 @@
+{{- if not .Values.monorepo.enabled }}
 {{- if not .Values.job.enabled }}
 {{- if not .Values.daemonset.enabled }}
 {{- if not .Values.keda.job.enabled }}
@@ -117,6 +118,7 @@ spec:
           {{- if .Values.injectedVolumes }}
             {{- toYaml .Values.injectedVolumes | nindent 12 }}
           {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

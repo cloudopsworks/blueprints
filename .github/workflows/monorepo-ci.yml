@@ -1,0 +1,285 @@
+name: Monorepo CI
+on:
+  workflow_call:
+    inputs:
+      head-sha: {type: string, required: true}
+      base-sha: {type: string, default: ''}
+      version: {type: string, required: true}
+      event: {type: string, default: pull-request}
+      max-parallel: {type: number, default: 32}
+      all: {type: boolean, default: false}
+    outputs:
+      version: {value: '${{ jobs.plan.outputs.version }}'}
+      plan-artifact-id: {value: '${{ jobs.plan.outputs.plan-artifact-id }}'}
+      plan-artifact-digest: {value: '${{ jobs.plan.outputs.plan-artifact-digest }}'}
+permissions: {}
+jobs:
+  baseline:
+    name: monorepo-ci-baseline
+    permissions:
+      contents: read
+      actions: read
+      deployments: read
+      pull-requests: read
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      head: ${{ steps.identity.outputs.head }}
+      pr-number: ${{ steps.identity.outputs.pr-number }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          checkout_source: 'false'
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - id: identity
+        uses: actions/github-script@v9
+        env:
+          HEAD_SHA: ${{ inputs.head-sha }}
+          PLAN_EVENT: ${{ inputs.event }}
+        with:
+          script: |
+            const env = process.env;
+            let head, number = 0, event;
+            if (context.eventName === 'pull_request') {
+              const captured = context.payload.pull_request;
+              if (!Number.isSafeInteger(captured?.number) || captured.number < 1 || String(captured.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID) throw new Error('ci-pr-host');
+              const current = (await github.rest.pulls.get({...context.repo, pull_number: captured.number})).data;
+              if (current.number !== captured.number || String(current.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID || current.head?.sha !== captured.head?.sha || String(current.head?.repo?.id) !== String(captured.head?.repo?.id)) throw new Error('ci-pr-source');
+              head = captured.head.sha;
+              number = captured.number;
+              event = 'pull-request';
+            } else if (context.eventName === 'pull_request_target') {
+              const captured = context.payload.pull_request;
+              if (context.payload.action !== 'closed' || captured?.state !== 'closed' || captured.merged !== true || !Number.isSafeInteger(captured.number) || captured.number < 1) throw new Error('ci-closure-host');
+              const current = (await github.rest.pulls.get({...context.repo, pull_number: captured.number})).data;
+              if (current.number !== captured.number || current.state !== 'closed' || current.merged !== true || current.merge_commit_sha !== captured.merge_commit_sha || !/^[0-9a-f]{40}$/.test(current.merge_commit_sha || '') || current.base?.ref !== captured.base?.ref || String(current.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID || String(captured.base?.repo?.id) !== env.GITHUB_REPOSITORY_ID || current.head?.sha !== captured.head?.sha || String(current.head?.repo?.id) !== String(captured.head?.repo?.id) || !/^[0-9a-f]{40}$/.test(captured.base.sha || '')) throw new Error('ci-closure-source');
+              const base = (await github.rest.repos.getBranch({...context.repo, branch: current.base.ref})).data;
+              if (base.protected !== true || !/^[0-9a-f]{40}$/.test(base.commit?.sha || '')) throw new Error('ci-closure-base');
+              for (const [from, to] of [[captured.base.sha, current.merge_commit_sha], [current.merge_commit_sha, base.commit.sha]]) {
+                const relation = (await github.rest.repos.compareCommitsWithBasehead({...context.repo, basehead: from + '...' + to})).data;
+                if (!['ahead', 'identical'].includes(relation.status) || relation.base_commit?.sha !== from || relation.merge_base_commit?.sha !== from) throw new Error('ci-closure-lineage');
+              }
+              head = current.merge_commit_sha;
+              number = captured.number;
+              event = 'push';
+            } else if (['push', 'create', 'workflow_dispatch'].includes(context.eventName)) {
+              head = env.GITHUB_SHA;
+              event = context.eventName === 'workflow_dispatch' ? 'manual' : 'push';
+            } else throw new Error('ci-event');
+            if (!/^[0-9a-f]{40}$/.test(head || '') || head !== env.HEAD_SHA || event !== env.PLAN_EVENT) throw new Error('ci-source-identity');
+            core.setOutput('head', head);
+            core.setOutput('pr-number', String(number));
+      - uses: ./bp/ci/monorepo/source
+        id: configuration
+        with:
+          source-sha: ${{ steps.identity.outputs.head }}
+      - uses: ./bp/ci/monorepo/plan/baseline
+        id: baseline
+        with:
+          mode: normal
+          head-sha: ${{ steps.identity.outputs.head }}
+          blueprint-sha: ''
+          configuration: ${{ steps.configuration.outputs.configuration }}
+          pr-number: ${{ steps.identity.outputs.pr-number }}
+          automation-id: ${{ vars.CLOUDOPSWORKS_AUTOMATION_ID }}
+      - uses: actions/upload-artifact@v4
+        id: upload
+        with:
+          name: monorepo-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.baseline.outputs.baseline }}
+          if-no-files-found: error
+          overwrite: false
+  plan:
+    name: monorepo-ci-plan
+    needs: baseline
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-24.04
+    outputs:
+      plan-artifact-id: ${{ steps.plan-upload.outputs.artifact-id }}
+      plan-artifact-digest: ${{ steps.plan-upload.outputs.artifact-digest }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      noop: ${{ steps.plan.outputs.noop }}
+      version: ${{ steps.plan.outputs.version }}
+      max-parallel: ${{ steps.plan.outputs.max-parallel }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          source_path: .
+          source_ref: ${{ needs.baseline.outputs.head }}
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ needs.baseline.outputs.artifact-id }}
+          path: ${{ runner.temp }}/monorepo-baseline-${{ github.run_id }}-${{ github.run_attempt }}
+          merge-multiple: true
+      - id: baseline
+        uses: actions/github-script@v9
+        env:
+          HEAD_SHA: ${{ needs.baseline.outputs.head }}
+          BASELINE_PATH: ${{ runner.temp }}/monorepo-baseline-${{ github.run_id }}-${{ github.run_attempt }}/baseline.json
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const path = require('node:path');
+            const crypto = require('node:crypto');
+            const env = process.env;
+            const checkout = await exec.getExecOutput('git', ['rev-parse', 'HEAD'], {silent: true, ignoreReturnCode: true});
+            if (checkout.exitCode !== 0 || checkout.stdout.trim() !== env.HEAD_SHA) throw new Error('ci-plan-checkout');
+            const root = await fs.realpath(env.RUNNER_TEMP), file = env.BASELINE_PATH;
+            if (!path.isAbsolute(file) || Buffer.byteLength(file) > 4096 || file.includes('\0') || !file.startsWith(root + path.sep)) throw new Error('ci-baseline-file');
+            let current = root;
+            for (const part of path.relative(root, file).split(path.sep)) {
+              if (!part || part === '.' || part === '..') throw new Error('ci-baseline-file');
+              current = path.join(current, part);
+              const stat = await fs.lstat(current);
+              if (stat.isSymbolicLink() || (current === file ? !stat.isFile() : !stat.isDirectory())) throw new Error('ci-baseline-file');
+            }
+            const handle = await fs.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+            let bytes;
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.size > 65536) throw new Error('ci-baseline-file');
+              const buffer = Buffer.alloc(65537), {bytesRead} = await handle.read(buffer, 0, buffer.length, 0);
+              if (bytesRead > 65536 || bytesRead !== stat.size) throw new Error('ci-baseline-file');
+              bytes = buffer.subarray(0, bytesRead);
+            } finally { await handle.close(); }
+            const raw = new TextDecoder('utf-8', {fatal: true}).decode(bytes), record = JSON.parse(raw);
+            const fields = ['repositoryId', 'runId', 'runAttempt', 'headSha', 'found', 'baseSha', 'reason', 'stage'];
+            const reasons = ['normal-stage-unavailable', 'preview-automation-unavailable', 'preview-receipt-absent', 'preview-receipt-unusable', 'preview-targets-disagree', 'preview-receipt-inaccessible', 'stage-artifact-unavailable', 'original-artifact-unavailable'];
+            // Historical admission remains closed: no successful route can enter this planner yet.
+            if (!record || !Buffer.from(JSON.stringify(record), 'utf8').equals(bytes) || Object.keys(record).sort().join() !== fields.sort().join() || record.repositoryId !== env.GITHUB_REPOSITORY_ID || record.runId !== env.GITHUB_RUN_ID || record.runAttempt !== env.GITHUB_RUN_ATTEMPT || record.headSha !== env.HEAD_SHA || record.found !== false || record.baseSha !== '' || record.stage !== null || !reasons.includes(record.reason)) throw new Error('ci-baseline-binding');
+            const directory = await fs.mkdtemp(path.join(root, 'monorepo-consumed-baseline-'));
+            await fs.chmod(directory, 0o700);
+            const receipt = path.join(directory, 'baseline.json');
+            await fs.writeFile(receipt, bytes, {mode: 0o600, flag: 'wx'});
+            core.setOutput('receipt', receipt);
+            core.setOutput('receipt-digest', 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex'));
+            core.setOutput('base-sha', record.baseSha);
+      - uses: ./bp/ci/monorepo/plan
+        id: plan
+        with:
+          source-path: .
+          head-sha: ${{ needs.baseline.outputs.head }}
+          base-sha: ${{ steps.baseline.outputs.base-sha }}
+          version: ${{ inputs.version }}
+          event: ${{ inputs.event }}
+          pr-number: ${{ needs.baseline.outputs.pr-number }}
+          all: ${{ inputs.all }}
+          max-parallel: ${{ inputs.max-parallel }}
+      - id: plan-binding
+        uses: ./bp/ci/monorepo/plan/binding
+        with:
+          mode: prepare
+          plan: ${{ steps.plan.outputs.plan }}
+          expected-repository-id: ${{ github.repository_id }}
+          expected-repository: ${{ github.repository }}
+          expected-run-id: ${{ github.run_id }}
+          expected-run-attempt: ${{ github.run_attempt }}
+          expected-head-sha: ${{ needs.baseline.outputs.head }}
+          consumed-receipt: ${{ steps.baseline.outputs.receipt }}
+          consumed-digest: ${{ steps.baseline.outputs.receipt-digest }}
+      - uses: actions/upload-artifact@v4
+        id: plan-upload
+        with:
+          name: monorepo-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.plan-binding.outputs.directory }}
+          if-no-files-found: error
+          overwrite: false
+      - id: plan-endorsement
+        uses: ./bp/ci/monorepo/plan/endorsement
+        with:
+          mode: emit
+          caller-mode: ${{ github.event_name == 'pull_request' && 'normal-pr' || github.event_name == 'pull_request_target' && 'normal-closure' || 'normal-main' }}
+          artifact-id: ${{ steps.plan-upload.outputs.artifact-id }}
+          archive-digest: ${{ steps.plan-upload.outputs.artifact-digest }}
+          run-id: ${{ github.run_id }}
+          run-attempt: ${{ github.run_attempt }}
+          computed-plan: ${{ steps.plan.outputs.plan }}
+      - id: plan-binding-readback
+        uses: ./bp/ci/monorepo/plan/binding
+        with:
+          mode: verify
+          verification-role: writer
+          plan: ${{ steps.plan-endorsement.outputs.plan }}
+          expected-repository-id: ${{ github.repository_id }}
+          expected-repository: ${{ github.repository }}
+          expected-run-id: ${{ github.run_id }}
+          expected-run-attempt: ${{ github.run_attempt }}
+          expected-head-sha: ${{ needs.baseline.outputs.head }}
+          consumed-receipt: ${{ steps.baseline.outputs.receipt }}
+          consumed-digest: ${{ steps.baseline.outputs.receipt-digest }}
+  build:
+    name: monorepo-ci-build (${{ matrix.componentId }})
+    permissions:
+      contents: read
+    needs: [baseline, plan]
+    if: needs.plan.outputs.noop == 'false'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max-parallel) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: cloudopsworks/blueprints/cd/checkout@v5.11.0
+        with:
+          source_path: .
+          source_ref: ${{ needs.baseline.outputs.head }}
+          blueprint_path: bp
+          blueprint_ref: v5.11.0
+          persist_credentials: 'false'
+          check_module_version: 'false'
+      - uses: ./bp/ci/monorepo/cli
+      - uses: actions/download-artifact@v7
+        with:
+          artifact-ids: ${{ needs.plan.outputs.plan-artifact-id }}
+          path: ${{ runner.temp }}/monorepo-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          merge-multiple: true
+      - uses: ./bp/ci/monorepo/toolchains
+        with:
+          runtime: ''
+          plan: ${{ runner.temp }}/monorepo-plan-${{ github.run_id }}-${{ github.run_attempt }}/plan.json
+          component: ${{ matrix.componentId }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: ./bp/ci/monorepo/build
+        id: build
+        with:
+          source-path: .
+          plan: ${{ runner.temp }}/monorepo-plan-${{ github.run_id }}-${{ github.run_attempt }}/plan.json
+          component: ${{ matrix.componentId }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: components-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.componentId }}
+          path: ${{ steps.build.outputs.bundle }}
+          include-hidden-files: true
+          if-no-files-found: error
+          overwrite: false
+  required:
+    name: monorepo-ci-required
+    if: always()
+    needs: [baseline, plan, build]
+    permissions: {}
+    runs-on: ubuntu-24.04
+    steps:
+      - id: required
+        uses: actions/github-script@v9
+        env:
+          PHASES: ${{ toJSON(needs) }}
+        with:
+          script: |
+            const jobs = JSON.parse(process.env.PHASES);
+            const outcomes = Object.fromEntries(Object.entries(jobs).map(([name, job]) => [name, job.result]));
+            await core.summary.addHeading('Monorepo CI').addCodeBlock(JSON.stringify(outcomes), 'json').write();
+            if (jobs.baseline?.result !== 'success' || jobs.plan?.result !== 'success') throw new Error('ci-required-plan');
+            const noop = jobs.plan.outputs?.noop;
+            if (!['true', 'false'].includes(noop) || jobs.build?.result !== (noop === 'true' ? 'skipped' : 'success')) throw new Error('ci-required-build');

@@ -1,0 +1,58 @@
+{
+  "apiIdentity": {
+    "restApiId": "abc123"
+  },
+  "apiVersion": "cloudopsworks.io/operations/v1",
+  "authRefs": [
+    "aws-prod"
+  ],
+  "backend": {
+    "bucket": "state-example",
+    "dynamodbTable": null,
+    "key": "deployments/release/prod/example/monorepo/prod-run/api/aws-apigateway-rest/abc123/terraform.tfstate",
+    "kind": "s3",
+    "region": "us-east-1",
+    "useLockfile": true,
+    "workspace": "default",
+    "workspaceKeyPrefix": "env:"
+  },
+  "componentId": "api",
+  "effectiveEnvironment": "release/prod",
+  "environment": "prod",
+  "kind": "StateHandle",
+  "moduleId": "aws-apigateway-rest",
+  "native": {
+    "dynamodbLockId": null,
+    "leaseMetadataKey": null,
+    "lockAddress": "s3://state-example/deployments/release/prod/example/monorepo/prod-run/api/aws-apigateway-rest/abc123/terraform.tfstate.tflock",
+    "stateAddress": "s3://state-example/deployments/release/prod/example/monorepo/prod-run/api/aws-apigateway-rest/abc123/terraform.tfstate"
+  },
+  "origin": {
+    "blueprintSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "moduleRevision": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "providerLockDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "repository": {
+      "fullName": "example/mixed-app",
+      "id": "12345"
+    },
+    "runAttempt": "1",
+    "runId": "100",
+    "sourceSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "ownership": "external",
+  "prNumber": null,
+  "protectedEnvironment": "release/prod",
+  "providerIdentity": "123456789012",
+  "qualifier": null,
+  "releaseName": "example",
+  "resourceIdentity": {
+    "kind": "aws.apigateway-rest",
+    "ownership": "external",
+    "provider": "aws",
+    "region": "us-east-1",
+    "restApiId": "abc123",
+    "stage": "prod"
+  },
+  "scope": "component",
+  "targetId": "prod-run"
+}

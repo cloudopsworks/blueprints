@@ -1,0 +1,104 @@
+name: Bind consumed baseline to endorsed plan data
+description: Local private byte and native-plan linkage only; preceding independent proof and subsequent history admission remain required
+inputs:
+  mode: {description: Closed prepare or verify operation, required: true}
+  verification-role: {description: Explicit writer or reader for verify; empty for prepare, default: ''}
+  plan: {description: Actual computed plan or independently endorsed readback plan, required: true}
+  consumed-receipt: {description: Private receipt consumed before CLI; prepare and writer verification only, default: ''}
+  consumed-digest: {description: Raw receipt SHA256 captured before CLI; prepare and writer verification only, default: ''}
+  expected-repository-id: {description: Repository identity from fixed current or completed original verification, required: true}
+  expected-repository: {description: Repository full name from fixed current or completed original verification, required: true}
+  expected-run-id: {description: Plan owner run from fixed current or completed original verification, required: true}
+  expected-run-attempt: {description: Plan owner attempt from fixed current or completed original verification, required: true}
+  expected-head-sha: {description: Plan source from fixed current or completed original verification, required: true}
+outputs:
+  directory: {description: Complete private archive directory after local checks, value: '${{ steps.bind.outputs.directory }}'}
+  receipt: {description: Private locally bound receipt; not history authority, value: '${{ steps.bind.outputs.receipt }}'}
+  receipt-digest: {description: SHA256 of unchanged canonical receipt bytes, value: '${{ steps.bind.outputs.receipt-digest }}'}
+  stage: {description: Retained exact D routing only; empty forbids discovery, value: '${{ steps.bind.outputs.stage }}'}
+  base-sha: {description: Exact consumed selector input; empty means materialization, value: '${{ steps.bind.outputs.base-sha }}'}
+  plan-digest: {description: Native typed digest; not uploader or source authority, value: '${{ steps.bind.outputs.plan-digest }}'}
+runs:
+  using: composite
+  steps:
+    - id: bind
+      uses: actions/github-script@v9
+      env:
+        MODE: ${{ inputs.mode }}
+        VERIFICATION_ROLE: ${{ inputs.verification-role }}
+        PLAN: ${{ inputs.plan }}
+        CONSUMED_RECEIPT: ${{ inputs.consumed-receipt }}
+        CONSUMED_DIGEST: ${{ inputs.consumed-digest }}
+        EXPECTED_REPOSITORY_ID: ${{ inputs.expected-repository-id }}
+        EXPECTED_REPOSITORY: ${{ inputs.expected-repository }}
+        EXPECTED_RUN_ID: ${{ inputs.expected-run-id }}
+        EXPECTED_RUN_ATTEMPT: ${{ inputs.expected-run-attempt }}
+        EXPECTED_HEAD_SHA: ${{ inputs.expected-head-sha }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const env = process.env;
+          const numeric = value => typeof value === 'string' && /^[1-9][0-9]*$/.test(value);
+          const digest = value => typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value);
+          const hash = bytes => 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex');
+          const preparing = env.MODE === 'prepare', writer = preparing || env.VERIFICATION_ROLE === 'writer';
+          if (!['prepare', 'verify'].includes(env.MODE) || (preparing ? !!env.VERIFICATION_ROLE : !['writer', 'reader'].includes(env.VERIFICATION_ROLE))) throw new Error('binding-inputs');
+          if (writer ? !env.CONSUMED_RECEIPT || !digest(env.CONSUMED_DIGEST) : !!env.CONSUMED_RECEIPT || !!env.CONSUMED_DIGEST) throw new Error('binding-inputs');
+          if (![env.EXPECTED_REPOSITORY_ID, env.EXPECTED_RUN_ID, env.EXPECTED_RUN_ATTEMPT].every(numeric) || !/^[0-9a-f]{40}$/.test(env.EXPECTED_HEAD_SHA || '') || env.EXPECTED_REPOSITORY_ID !== env.GITHUB_REPOSITORY_ID || env.EXPECTED_REPOSITORY !== env.GITHUB_REPOSITORY) throw new Error('binding-identity');
+          if (writer && (env.EXPECTED_RUN_ID !== env.GITHUB_RUN_ID || env.EXPECTED_RUN_ATTEMPT !== env.GITHUB_RUN_ATTEMPT)) throw new Error('binding-writer-attempt');
+          const root = await fs.realpath(env.RUNNER_TEMP);
+          async function readPrivate(file, limit) {
+            if (typeof file !== 'string' || !path.isAbsolute(file) || Buffer.byteLength(file) > 4096 || file.includes('\0') || !file.startsWith(root + path.sep)) throw new Error('binding-file-path');
+            let current = root;
+            for (const part of path.relative(root, file).split(path.sep)) {
+              if (!part || part === '.' || part === '..') throw new Error('binding-file-path');
+              current = path.join(current, part);
+              const stat = await fs.lstat(current);
+              if (stat.isSymbolicLink() || (current === file ? !stat.isFile() : !stat.isDirectory()) || stat.mode & 0o077) throw new Error('binding-file-mode');
+            }
+            const handle = await fs.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+            try {
+              const stat = await handle.stat();
+              if (!stat.isFile() || stat.mode & 0o077) throw new Error('binding-file-mode');
+              if (stat.size > limit) throw new Error('binding-file-bound');
+              const bytes = Buffer.alloc(limit + 1), {bytesRead} = await handle.read(bytes, 0, limit + 1, 0);
+              if (bytesRead > limit || bytesRead !== stat.size) throw new Error('binding-file-bound');
+              return bytes.subarray(0, bytesRead);
+            } finally { await handle.close(); }
+          }
+          const planBytes = await readPrivate(env.PLAN, 4 * 1024 * 1024);
+          const companion = path.join(path.dirname(env.PLAN), 'baseline.json');
+          const receiptBytes = await readPrivate(preparing ? env.CONSUMED_RECEIPT : companion, 65536);
+          const raw = new TextDecoder('utf-8', {fatal: true}).decode(receiptBytes);
+          const receipt = JSON.parse(raw);
+          const fields = ['repositoryId', 'runId', 'runAttempt', 'headSha', 'found', 'baseSha', 'reason', 'stage'];
+          if (!receipt || !Buffer.from(JSON.stringify(receipt), 'utf8').equals(receiptBytes) || Object.keys(receipt).sort().join() !== fields.sort().join() || receipt.repositoryId !== env.EXPECTED_REPOSITORY_ID || receipt.runId !== env.EXPECTED_RUN_ID || receipt.runAttempt !== env.EXPECTED_RUN_ATTEMPT || receipt.headSha !== env.EXPECTED_HEAD_SHA || typeof receipt.found !== 'boolean') throw new Error('binding-receipt');
+          const unavailable = ['normal-stage-unavailable', 'preview-automation-unavailable', 'preview-receipt-absent', 'preview-receipt-unusable', 'preview-targets-disagree', 'preview-receipt-inaccessible', 'stage-artifact-unavailable', 'original-artifact-unavailable'];
+          if (receipt.found ? receipt.reason !== 'normal-stage-available' : !unavailable.includes(receipt.reason)) throw new Error('binding-reason');
+          if (receipt.found) {
+            if (!/^[0-9a-f]{40}$/.test(receipt.baseSha || '') || !receipt.stage || Object.keys(receipt.stage).sort().join() !== 'archiveDigest,artifactId,runAttempt,runId' || ![receipt.stage.runId, receipt.stage.runAttempt, receipt.stage.artifactId].every(numeric) || !digest(receipt.stage.archiveDigest)) throw new Error('binding-stage');
+          } else if (receipt.baseSha !== '' || receipt.stage !== null) throw new Error('binding-stage');
+          const receiptDigest = hash(receiptBytes);
+          if (writer) {
+            const consumed = await readPrivate(env.CONSUMED_RECEIPT, 65536);
+            if (receiptDigest !== env.CONSUMED_DIGEST || hash(consumed) !== env.CONSUMED_DIGEST || !consumed.equals(receiptBytes)) throw new Error('binding-consumed-bytes');
+          }
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {silent: true, ignoreReturnCode: true, input: planBytes});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4 * 1024 * 1024) throw new Error('binding-native-plan');
+          const typed = JSON.parse(checked.stdout), plan = typed.record;
+          if (!digest(typed.digest) || plan.repository.id !== receipt.repositoryId || plan.repository.fullName !== env.EXPECTED_REPOSITORY || plan.headSha !== receipt.headSha) throw new Error('binding-native-identity');
+          if (!Array.isArray(plan.components) || !plan.components.length || plan.components.length > 256 || !Array.isArray(plan.buildSelection)) throw new Error('binding-native-components');
+          if (receipt.found ? plan.baseSha !== receipt.baseSha : plan.baseSha !== receipt.headSha || plan.buildSelection.length !== plan.components.length || new Set(plan.buildSelection.map(item => item.componentId)).size !== plan.components.length || plan.components.some(component => !plan.buildSelection.some(item => item.componentId === component.id))) throw new Error('binding-native-base');
+          let directory = path.dirname(env.PLAN), output = companion;
+          if (preparing) {
+            directory = await fs.mkdtemp(path.join(root, 'monorepo-plan-binding-'));
+            await fs.chmod(directory, 0o700);
+            output = path.join(directory, 'baseline.json');
+            try {
+              await fs.writeFile(path.join(directory, 'plan.json'), planBytes, {mode: 0o600, flag: 'wx'});
+              await fs.writeFile(output, receiptBytes, {mode: 0o600, flag: 'wx'});
+            } catch (error) { await fs.rm(directory, {recursive: true, force: true}); throw error; }
+          } else if (JSON.stringify((await fs.readdir(directory)).sort()) !== '["baseline.json","plan.json"]') throw new Error('binding-file-set');
+          for (const [key, value] of Object.entries({directory, receipt: output, 'receipt-digest': receiptDigest, stage: receipt.stage ? JSON.stringify(receipt.stage) : '', 'base-sha': receipt.baseSha, 'plan-digest': typed.digest})) core.setOutput(key, value);

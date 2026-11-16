@@ -1,0 +1,97 @@
+name: Native Trivy image JSON scan
+description: Shared pinned image scan with explicit controlled filesystem opt-in; callers own report policy
+inputs:
+  scan-type:
+    description: Existing image behavior or explicit filesystem scan with preinstalled pinned tool
+    default: image
+  scan-ref:
+    description: Verified component directory for filesystem opt-in only
+    default: ''
+  image-input:
+    description: Verified OCI directory or legacy Docker image archive
+    required: true
+  output:
+    description: JSON report output path
+    required: true
+  token:
+    description: Optional GitHub token used by the existing Trivy action
+    default: ''
+runs:
+  using: composite
+  steps:
+    - id: filesystem
+      if: inputs.scan-type != 'image'
+      uses: actions/github-script@v9
+      env:
+        SCAN_TYPE: ${{ inputs.scan-type }}
+        SCAN_REF: ${{ inputs.scan-ref }}
+        REPORT_PATH: ${{ inputs.output }}
+      with:
+        script: |
+          const fs = require('node:fs/promises');
+          const path = require('node:path');
+          const env = process.env;
+          if (Object.keys(env).some(name => /^(TRIVY_|AWS_|AZURE_|GOOGLE_|GCLOUD_|CLOUDSDK_|ARM_|TF_|TERRAGRUNT_|ACTIONS_ID_TOKEN_|CLOUDOPSWORKS_)/.test(name) || ['BASH_ENV', 'ENV', 'LD_PRELOAD', 'LD_LIBRARY_PATH'].includes(name))) throw new Error('trivy-source-environment');
+          if (env.SCAN_TYPE !== 'fs') throw new Error('trivy-source-scan-type');
+          const workspace = await fs.realpath(env.GITHUB_WORKSPACE);
+          if (await fs.realpath(process.cwd()) !== workspace) throw new Error('trivy-source-workspace');
+          await fs.lstat(path.join(workspace, 'trivy_envs.txt')).then(() => { throw new Error('trivy-source-reserved-helper'); }, error => { if (error.code !== 'ENOENT') throw error; });
+          const source = await fs.realpath(env.SCAN_REF), directory = path.dirname(env.REPORT_PATH);
+          const temporary = await fs.realpath(env.RUNNER_TEMP), stat = await fs.lstat(directory);
+          if (source !== env.SCAN_REF || !(await fs.lstat(source)).isDirectory() || await fs.realpath(directory) !== directory || !directory.startsWith(temporary + path.sep) || directory === source || directory.startsWith(source + path.sep) || !stat.isDirectory() || stat.mode & 0o077 || path.basename(env.REPORT_PATH) !== 'trivy.json') throw new Error('trivy-source-private-path');
+          // Setup is deliberately image-only: upstream setup checks out/removes workspace/trivy.
+          // Filesystem callers install shared pinned scanner tools BEFORE application checkout.
+          for (const name of ['home', 'cache', 'tmp']) await fs.mkdir(path.join(directory, name), {mode: 0o700});
+          for (const name of ['trivy.yaml', 'secret.yaml', 'ignore.yaml']) await fs.writeFile(path.join(directory, name), '{}\n', {mode: 0o600, flag: 'wx'});
+          const version = await exec.getExecOutput('trivy', ['--version'], {silent: true, ignoreReturnCode: true, env: {PATH: env.PATH, HOME: directory, TRIVY_CONFIG: path.join(directory, 'trivy.yaml')}});
+          if (version.exitCode !== 0 || Buffer.byteLength(version.stdout) > 65536 || !/^Version: 0\.69\.3(?:\r?\n|$)/.test(version.stdout)) throw new Error('trivy-source-version');
+          // Vendor truncation retains this private mode. This is not a write-size quota.
+          await fs.writeFile(env.REPORT_PATH, '', {mode: 0o600, flag: 'wx'});
+          for (const name of ['home', 'cache', 'tmp']) core.setOutput(name, path.join(directory, name));
+          core.setOutput('config', path.join(directory, 'trivy.yaml'));
+          core.setOutput('secret', path.join(directory, 'secret.yaml'));
+          core.setOutput('ignore', path.join(directory, 'ignore.yaml'));
+    - uses: aquasecurity/setup-trivy@v0.3.1
+      if: inputs.scan-type == 'image'
+      with:
+        cache: true
+        version: v0.69.3
+    - uses: aquasecurity/trivy-action@v0.36.0
+      if: inputs.scan-type == 'image'
+      with:
+        input: ${{ inputs.image-input }}
+        scan-type: image
+        format: json
+        output: ${{ inputs.output }}
+        skip-setup-trivy: true
+        ignore-unfixed: true
+        severity: CRITICAL,HIGH,MEDIUM
+        github-pat: ${{ inputs.token }}
+        scanners: vuln
+        exit-code: '0'
+    - uses: aquasecurity/trivy-action@v0.36.0
+      if: inputs.scan-type == 'fs'
+      env:
+        TRIVY_CMD: trivy
+        TRIVY_CONFIG: ${{ steps.filesystem.outputs.config }}
+        TRIVY_IGNOREFILE: ${{ steps.filesystem.outputs.ignore }}
+        TRIVY_SECRET_CONFIG: ${{ steps.filesystem.outputs.secret }}
+        TRIVY_CACHE_DIR: ${{ steps.filesystem.outputs.cache }}
+        HOME: ${{ steps.filesystem.outputs.home }}
+        TMPDIR: ${{ steps.filesystem.outputs.tmp }}
+        GITHUB_TOKEN: ''
+        GH_TOKEN: ''
+      with:
+        scan-type: fs
+        scan-ref: ${{ inputs.scan-ref }}
+        trivy-config: ${{ steps.filesystem.outputs.config }}
+        format: json
+        output: ${{ inputs.output }}
+        skip-setup-trivy: true
+        cache: false
+        ignore-unfixed: true
+        severity: CRITICAL,HIGH,MEDIUM
+        github-pat: ''
+        scanners: vuln,misconfig,secret
+        list-all-pkgs: true
+        exit-code: '0'

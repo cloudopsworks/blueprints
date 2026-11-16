@@ -1,0 +1,151 @@
+name: Verified existing component BOM processing observation
+description: Selected-current typed DependencyTrack result using existing bounded uploader; never a vulnerability-clean verdict
+inputs:
+  source-path: {description: Independently admitted exact source worktree, required: true}
+  plan: {description: Endorsed selected-current BuildPlan file, required: true}
+  component-result: {description: Linked successful ComponentResult with local payload, required: true}
+  component: {description: Selected component ID, required: true}
+  source-sha: {description: Original endorsed source commit, required: true}
+  trusted: {description: Caller-established upload trust; not standalone authorization, required: true}
+  token: {description: Scoped DependencyTrack API key, required: false}
+  server: {description: Trusted HTTPS DependencyTrack origin, required: true}
+  project-name: {description: Stable component-specific DependencyTrack project name, required: true}
+  version: {description: Original shared repository version, required: true}
+outputs:
+  result: {description: Validated ScannerResult file; processed is not clean or ingestion confirmation, value: '${{ steps.report.outputs.result }}'}
+  status: {description: Typed non-required processing observation, value: '${{ steps.report.outputs.status }}'}
+runs:
+  using: composite
+  steps:
+    - id: prepare
+      uses: actions/github-script@v9
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        PLAN_PATH: ${{ inputs.plan }}
+        COMPONENT_RESULT: ${{ inputs.component-result }}
+        COMPONENT: ${{ inputs.component }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        VERSION: ${{ inputs.version }}
+        TRUSTED: ${{ inputs.trusted }}
+        CREDENTIAL_PRESENT: ${{ inputs.token != '' }}
+        DTRACK_URL: ${{ inputs.server }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path'), crypto = require('node:crypto'), env = process.env;
+          for (const key of ['TRUSTED', 'CREDENTIAL_PRESENT']) if (!['true', 'false'].includes(env[key])) throw new Error('dtrack-trust');
+          const server = new URL(env.DTRACK_URL);
+          if (server.protocol !== 'https:' || server.username || server.password || server.search || server.hash || server.pathname !== '/') throw new Error('dtrack-server');
+          for (const value of [env.PROJECT_NAME, env.VERSION]) if (!value || value !== value.trim() || Buffer.byteLength(value) > 512 || /[\x00-\x1f\x7f]/.test(value)) throw new Error('dtrack-project');
+          const root = await fs.realpath(env.SOURCE_PATH), temporary = await fs.realpath(env.RUNNER_TEMP);
+          const safeFile = async (file, maximum, read = true) => {
+            const stat = await fs.lstat(file);
+            if (!stat.isFile() || await fs.realpath(file) !== file || stat.size > maximum) throw new Error('dtrack-file');
+            return read ? fs.readFile(file) : undefined;
+          };
+          const directory = await fs.mkdtemp(path.join(temporary, 'dtrack-source-'));
+          await fs.chmod(directory, 0o700);
+          const options = {silent: true, ignoreReturnCode: true, env: {PATH: env.PATH, HOME: directory, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null'}};
+          const checkedPlan = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'BuildPlan'], {...options, input: await safeFile(env.PLAN_PATH, 4194304)});
+          if (checkedPlan.exitCode !== 0 || Buffer.byteLength(checkedPlan.stdout) > 4194304) throw new Error('dtrack-plan-contract');
+          const plan = JSON.parse(checkedPlan.stdout).record, component = plan.components.find(item => item.id === env.COMPONENT);
+          if (!component || plan.headSha !== env.SOURCE_SHA || plan.version !== env.VERSION || !plan.buildSelection.some(item => item.componentId === component.id)) throw new Error('dtrack-plan-link');
+          if (typeof component.path !== 'string' || component.path.includes('\\') || path.isAbsolute(component.path) || component.path !== '.' && component.path.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('dtrack-component-path');
+          const source = path.join(root, component.path);
+          if (await fs.realpath(source) !== source || !(await fs.lstat(source)).isDirectory()) throw new Error('dtrack-source');
+          const linked = path.join(directory, 'linked.json'), planPath = path.join(directory, 'plan.json');
+          await fs.writeFile(linked, JSON.stringify({plan}), {mode: 0o600, flag: 'wx'});
+          await fs.writeFile(planPath, JSON.stringify(plan), {mode: 0o600, flag: 'wx'});
+          const checkedResult = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ComponentResult', '--linked-context', linked], {...options, input: await safeFile(env.COMPONENT_RESULT, 4194304)});
+          if (checkedResult.exitCode !== 0 || Buffer.byteLength(checkedResult.stdout) > 4194304) throw new Error('dtrack-result-contract');
+          const result = JSON.parse(checkedResult.stdout).record, artifact = result.mainArtifact, relative = artifact?.location?.path;
+          if (result.componentId !== component.id || result.headSha !== plan.headSha || result.status !== 'succeeded') throw new Error('dtrack-result-link');
+          if (artifact?.location?.kind !== 'local' || typeof relative !== 'string' || !relative.startsWith('.cloudopsworks/out/') || relative.includes('\\') || relative.split('/').some(part => ['', '.', '..'].includes(part))) throw new Error('dtrack-payload-path');
+          const payload = path.join(root, relative), descriptor = path.join(directory, 'artifact.json');
+          await safeFile(payload, 536870912, false);
+          await fs.writeFile(descriptor, JSON.stringify(artifact), {mode: 0o600, flag: 'wx'});
+          const verified = await exec.getExecOutput('tronador', ['components', 'artifacts', 'verify', '--mode', 'payload', '--descriptor', descriptor, '--payload', payload], options);
+          if (verified.exitCode !== 0 || Buffer.byteLength(verified.stdout) > 65536) throw new Error('dtrack-payload-integrity');
+          const evidence = JSON.parse(verified.stdout);
+          if (evidence.payloadVerified !== true || evidence.digest !== artifact.digest) throw new Error('dtrack-payload-binding');
+          let decision = env.TRUSTED !== 'true' ? 'dtrack-untrusted-source' : env.CREDENTIAL_PRESENT !== 'true' ? 'dtrack-missing-credential' : 'ready';
+          let bomDigest = null, bom = '';
+          if (decision === 'ready') {
+            const candidates = [];
+            for (const relative of ['bom.json', 'bom.xml', 'target/bom.json', 'target/bom.xml']) {
+              let file = source, present = true;
+              for (const part of relative.split('/')) {
+                file = path.join(file, part);
+                try { if ((await fs.lstat(file)).isSymbolicLink() || await fs.realpath(file) !== file) throw new Error('dtrack-bom-path'); }
+                catch (error) { if (error.code !== 'ENOENT') throw error; present = false; break; }
+              }
+              if (present) candidates.push(file);
+            }
+            if (candidates.length !== 1) decision = 'dtrack-bom-unavailable';
+            else {
+              if (!(await fs.lstat(candidates[0])).isFile()) throw new Error('dtrack-bom-file');
+              const handle = await fs.open(candidates[0], require('node:fs').constants.O_RDONLY | require('node:fs').constants.O_NOFOLLOW | require('node:fs').constants.O_NONBLOCK);
+              let bytes;
+              try {
+                const stat = await handle.stat(), maximum = 8388608;
+                if (!stat.isFile() || stat.size < 1 || stat.size > maximum) throw new Error('dtrack-bom-size');
+                const buffer = Buffer.alloc(maximum + 1); let length = 0, read;
+                do { read = (await handle.read(buffer, length, buffer.length - length, length)).bytesRead; length += read; } while (read && length < buffer.length);
+                if (length !== stat.size || length > maximum || (await handle.stat()).size !== length) throw new Error('dtrack-bom-size');
+                bytes = buffer.subarray(0, length);
+              } finally { await handle.close(); }
+              bomDigest = 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex');
+              bom = 'bom' + path.extname(candidates[0]);
+              await fs.writeFile(path.join(directory, bom), bytes, {mode: 0o400, flag: 'wx'});
+            }
+          }
+          const head = await exec.getExecOutput('git', ['-C', root, 'rev-parse', 'HEAD'], options);
+          if (head.exitCode !== 0 || head.stdout.trim() !== plan.headSha) throw new Error('dtrack-source-sha');
+          const identity = {artifactDigest: artifact.digest, componentId: component.id, profile: component.buildProfile, scanner: 'dependency-track', sourceSha: plan.headSha};
+          const correlationId = 'scan-' + crypto.createHash('sha256').update(JSON.stringify({...identity, bomDigest})).digest('hex').slice(0, 32);
+          await fs.writeFile(path.join(directory, 'context.json'), JSON.stringify({...identity, root, decision, bomDigest, correlationId}), {mode: 0o600, flag: 'wx'});
+          for (const [key, value] of Object.entries({directory, decision, bom, version: plan.version})) core.setOutput(key, value);
+    - id: upload
+      continue-on-error: true
+      if: steps.prepare.outputs.decision == 'ready'
+      uses: ./bp/ci/nodejs/scan/dtrack
+      with:
+        component-mode: 'true'
+        source_path: ${{ steps.prepare.outputs.directory }}
+        bom-path: ${{ steps.prepare.outputs.bom }}
+        dtrack_url: ${{ inputs.server }}
+        dtrack_token: ${{ inputs.token }}
+        dtrack_project_key: ${{ inputs.project-name }}
+        semver: ${{ steps.prepare.outputs.version }}
+        token: ''
+    - id: report
+      if: always() && steps.prepare.outcome == 'success'
+      uses: actions/github-script@v9
+      env:
+        DIRECTORY: ${{ steps.prepare.outputs.directory }}
+        UPLOAD_OUTCOME: ${{ steps.upload.outcome }}
+        UPLOADED: ${{ steps.upload.outputs.uploaded }}
+        UPLOAD_STATUS: ${{ steps.upload.outputs.status }}
+        BOM_DIGEST: ${{ steps.upload.outputs.bom-digest }}
+      with:
+        script: |
+          const fs = require('node:fs/promises'), path = require('node:path'), env = process.env;
+          const directory = env.DIRECTORY, file = path.join(directory, 'context.json');
+          if (await fs.realpath(directory) !== directory || !(await fs.lstat(directory)).isDirectory() || await fs.realpath(file) !== file || !(await fs.lstat(file)).isFile() || (await fs.lstat(file)).size > 65536) throw new Error('dtrack-context');
+          const scan = JSON.parse(await fs.readFile(file, 'utf8'));
+          const options = {silent: true, ignoreReturnCode: true, env: {PATH: env.PATH, HOME: directory, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null'}};
+          const head = await exec.getExecOutput('git', ['-C', scan.root, 'rev-parse', 'HEAD'], options);
+          let status = 'infrastructure-error', errorCode = 'dtrack-processing-unavailable';
+          if (head.exitCode !== 0 || head.stdout.trim() !== scan.sourceSha) errorCode = 'dtrack-source-sha';
+          else if (scan.decision === 'dtrack-untrusted-source') { status = 'unavailable-untrusted-context'; errorCode = scan.decision; }
+          else if (scan.decision === 'dtrack-missing-credential') errorCode = scan.decision;
+          else if (scan.decision === 'dtrack-bom-unavailable') { status = 'unsupported-profile'; errorCode = scan.decision; }
+          else if (scan.decision === 'ready' && env.UPLOAD_OUTCOME === 'success' && env.UPLOADED === 'true' && env.UPLOAD_STATUS === 'processed' && /^sha256:[a-f0-9]{64}$/.test(scan.bomDigest || '') && env.BOM_DIGEST === scan.bomDigest) { status = 'processed'; errorCode = null; }
+          const record = {apiVersion: 'cloudopsworks.io/operations/v1', kind: 'ScannerResult', scanner: 'dependency-track', profile: scan.profile, componentId: scan.componentId, sourceSha: scan.sourceSha, status, required: false, artifactDigest: scan.artifactDigest, correlationId: scan.correlationId, errorCode};
+          const checked = await exec.getExecOutput('tronador', ['components', 'contracts', 'validate', '--kind', 'ScannerResult'], {...options, input: Buffer.from(JSON.stringify(record))});
+          if (checked.exitCode !== 0 || Buffer.byteLength(checked.stdout) > 4194304) throw new Error('dtrack-scanner-contract');
+          const validated = JSON.parse(checked.stdout).record;
+          if (!validated || Object.keys(validated).length !== Object.keys(record).length || Object.keys(record).some(key => validated[key] !== record[key])) throw new Error('dtrack-scanner-roundtrip');
+          const output = path.join(directory, 'scanner-result.json');
+          await fs.writeFile(output, JSON.stringify(record), {mode: 0o600, flag: 'wx'});
+          core.setOutput('result', output); core.setOutput('status', status);

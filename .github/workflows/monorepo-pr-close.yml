@@ -1,0 +1,58 @@
+name: Monorepo pull-request closure
+on:
+  workflow_call:
+    secrets:
+      SONARQUBE_TOKEN: {required: false}
+      SNYK_TOKEN: {required: false}
+      SEMGREP_TOKEN: {required: false}
+      DEPENDENCYTRACK_TOKEN: {required: false}
+      DEPLOYMENT_STATE_CONF: {required: false}
+      CLOUDOPSWORKS_AUTH: {required: false}
+      CLOUDOPSWORKS_PROBE_SECRETS: {required: false}
+      CLOUDOPSWORKS_HOST_KEYS: {required: false}
+permissions: {}
+# Cleanup is independent of merge/version eligibility and expired CI artifacts.
+# No outer repository-wide group may cancel another PR's pending cleanup.
+jobs:
+  preview:
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed'
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/monorepo-preview.yml
+    secrets:
+      SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SEMGREP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}
+      DEPENDENCYTRACK_TOKEN: ${{ secrets.DEPENDENCYTRACK_TOKEN }}
+      DEPLOYMENT_STATE_CONF: ${{ secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}
+  lifecycle:
+    name: lifecycle
+    needs: preview
+    if: github.event.pull_request.merged == true
+    permissions:
+      contents: write
+      actions: read
+      deployments: write
+      pull-requests: read
+      packages: write
+      id-token: write
+    # This fixed continuation independently re-reads API merge/tag lineage.
+    # A tag pushed by github.token is NOT assumed to schedule another workflow.
+    uses: ./.github/workflows/monorepo-closure.yml
+    secrets:
+      SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      SEMGREP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}
+      DEPENDENCYTRACK_TOKEN: ${{ secrets.DEPENDENCYTRACK_TOKEN }}
+      DEPLOYMENT_STATE_CONF: ${{ secrets.DEPLOYMENT_STATE_CONF }}
+      CLOUDOPSWORKS_AUTH: ${{ secrets.CLOUDOPSWORKS_AUTH }}
+      CLOUDOPSWORKS_PROBE_SECRETS: ${{ secrets.CLOUDOPSWORKS_PROBE_SECRETS }}
+      CLOUDOPSWORKS_HOST_KEYS: ${{ secrets.CLOUDOPSWORKS_HOST_KEYS }}

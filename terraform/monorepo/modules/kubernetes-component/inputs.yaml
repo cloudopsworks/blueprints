@@ -1,0 +1,40 @@
+schemaVersion: 1
+moduleId: kubernetes-component
+variables:
+  resource:
+    - kind
+    - namespace
+  configuration:
+    - kind
+  workload:
+    - kind
+    - port
+    - healthPath
+  artifact:
+    - digest
+    - format
+    - imageReference
+  owner_digest: []
+  release_name: []
+  chart_path: []
+  kubeconfig_path: []
+  readiness_seconds: []
+  preview_options: []
+acceptedModuleIds:
+  - aws-eks
+  - gcp-gke
+  - azure-aks
+ownedResourceTypes:
+  - helm_release
+ownedResourceAddresses:
+  - helm_release.component
+externalParents:
+  - Kubernetes cluster
+  - normal namespace
+  - registry
+replaceResourceAddresses: []
+applyDeleteResourceAddresses: []
+activationBlocked: true
+remaining:
+  - canonical protected host/config authorization and read-only Kubernetes readiness integration
+  - credentialed cluster activation

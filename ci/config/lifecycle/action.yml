@@ -1,0 +1,75 @@
+name: Shared lifecycle classifier
+description: One exact Tronador classifier for legacy deployments and schema-v2 YAML
+inputs:
+  mode:
+    description: Explicit schema-v2 or legacy compatibility mode
+    required: false
+    default: schema-v2
+  source_path:
+    description: Validated data-only source configuration root in schema-v2 mode
+    required: false
+    default: source
+  deployments:
+    description: Already extracted machine deployment map; legacy mode only
+    required: false
+    default: ''
+outputs:
+  lifecycle:
+    value: ${{ steps.classify.outputs.lifecycle }}
+  workspace:
+    value: ${{ steps.classify.outputs.workspace }}
+  workspace_upper:
+    value: ${{ steps.classify.outputs.workspace_upper }}
+  isEnabled:
+    value: ${{ steps.classify.outputs.isEnabled }}
+  isRelease:
+    value: ${{ steps.classify.outputs.isRelease }}
+  isPreRelease:
+    value: ${{ steps.classify.outputs.isPreRelease }}
+  hasQualifier:
+    value: ${{ steps.classify.outputs.hasQualifier }}
+  targetName:
+    value: ${{ steps.classify.outputs.targetName }}
+  deploymentName:
+    value: ${{ steps.classify.outputs.deploymentName }}
+  protectedEnvironment:
+    value: ${{ steps.classify.outputs.protectedEnvironment }}
+runs:
+  using: composite
+  steps:
+    - uses: cloudopsworks/install-tronador-cli@v1
+      with:
+        version: v0.6.0
+    - name: Classify actual host lifecycle
+      id: classify
+      uses: actions/github-script@v9
+      env:
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUT_DEPLOYMENTS: ${{ inputs.deployments }}
+        HOST_EVENT: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && 'pull_request_closed' || github.event_name }}
+        HOST_REF: ${{ github.event_name == 'pull_request' && format('refs/heads/{0}', github.head_ref) || github.ref }}
+        HOST_BASE_REF: ${{ github.base_ref }}
+      with:
+        script: |
+          const env = process.env;
+          if (!['schema-v2', 'legacy'].includes(env.INPUT_MODE) || !['create', 'push', 'workflow_dispatch', 'pull_request', 'pull_request_closed'].includes(env.HOST_EVENT)) throw new Error('lifecycle-input');
+          const args = ['components', 'lifecycle', '--event', env.HOST_EVENT, '--ref', env.HOST_REF || '', '--base-ref', env.HOST_BASE_REF || '', '--json'];
+          const options = {silent: true, ignoreReturnCode: true};
+          if (env.INPUT_MODE === 'legacy') {
+            if (Buffer.byteLength(env.INPUT_DEPLOYMENTS || '') > 4 * 1024 * 1024) throw new Error('lifecycle-input-bound');
+            args.push('--deployments-stdin', '--compat', 'legacy');
+            options.input = Buffer.from(env.INPUT_DEPLOYMENTS || '');
+          } else args.push('--workdir', env.INPUT_SOURCE_PATH);
+          const output = await exec.getExecOutput('tronador', args, options);
+          if (output.exitCode !== 0 || Buffer.byteLength(output.stdout) > 65536) throw new Error('lifecycle-classification');
+          const result = JSON.parse(output.stdout);
+          const expected = ['eligible', 'reason', 'refClass', 'environment', 'protectedEnvironment', 'deploymentEnabled', 'isRelease', 'isPreRelease', 'hasQualifier', 'targetName', 'deploymentName'];
+          if (Object.keys(result).sort().join() !== expected.sort().join() || typeof result.eligible !== 'boolean' || typeof result.environment !== 'string') throw new Error('lifecycle-output');
+          if (env.INPUT_MODE === 'legacy' && !result.eligible && result.reason !== 'deployment-disabled') throw new Error('lifecycle-ineligible');
+          const outputs = {lifecycle: JSON.stringify(result), workspace: result.environment, workspace_upper: result.environment.toUpperCase(), isEnabled: result.deploymentEnabled};
+          for (const key of ['isRelease', 'isPreRelease', 'hasQualifier', 'targetName', 'deploymentName', 'protectedEnvironment']) outputs[key] = result[key];
+          for (const [key, value] of Object.entries(outputs)) {
+            if (!['boolean', 'string'].includes(typeof value) || /[\r\n]/.test(String(value))) throw new Error('lifecycle-output-value');
+            core.setOutput(key, String(value));
+          }

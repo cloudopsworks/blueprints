@@ -1,0 +1,128 @@
+{
+  "mock_provider": {
+    "aws": {
+      "mock_data": {
+        "aws_s3_bucket": {
+          "defaults": {
+            "id": "existing-website"
+          }
+        }
+      }
+    }
+  },
+  "variables": {
+    "resource": {
+      "kind": "aws.s3-static",
+      "provider": "aws",
+      "region": "us-east-1",
+      "bucket": "existing-website",
+      "prefix": "components/web"
+    },
+    "configuration": {
+      "kind": "aws.s3-static"
+    },
+    "workload": {
+      "kind": "static"
+    },
+    "artifact": {
+      "digest": "sha256:d6de5ebffc0f3790651cd4b572371d0b1b4bbdd46776d0b9d7ce64e738a805b5",
+      "format": "zip",
+      "path": "tests/fixtures/index.html",
+      "imageReference": null,
+      "files": [
+        {
+          "path": "tests/fixtures/index.html",
+          "key": "index.html",
+          "contentType": "text/html"
+        }
+      ]
+    },
+    "owner_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "run": {
+    "owned_mock_apply": {
+      "command": "apply",
+      "assert": [
+        {
+          "condition": "${aws_s3_object.files[\"index.html\"].key == \"components/web/index.html\" && aws_s3_object.files[\"index.html\"].content_type == \"text/html\" && aws_s3_object.files[\"index.html\"].source_hash == filesha256(var.artifact.files[0].path)}",
+          "error_message": "Own only exact prefixed object bytes and MIME."
+        }
+      ]
+    },
+    "key_escape_rejected": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:d6de5ebffc0f3790651cd4b572371d0b1b4bbdd46776d0b9d7ce64e738a805b5",
+          "format": "zip",
+          "path": "tests/fixtures/index.html",
+          "imageReference": null,
+          "files": [
+            {
+              "path": "tests/fixtures/index.html",
+              "key": "../escape",
+              "contentType": "text/html"
+            }
+          ]
+        }
+      },
+      "expect_failures": [
+        "aws_s3_object.files"
+      ]
+    },
+    "empty_parent_prefix_rejected": {
+      "command": "plan",
+      "variables": {
+        "resource": {
+          "kind": "aws.s3-static",
+          "provider": "aws",
+          "region": "us-east-1",
+          "bucket": "existing-website",
+          "prefix": ""
+        }
+      },
+      "expect_failures": [
+        "var.resource"
+      ]
+    },
+    "changed_extracted_tar_bytes_hash": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "format": "tar.gz",
+          "path": "tests/fixtures/index.html",
+          "imageReference": null,
+          "files": [
+            {
+              "path": "tests/fixtures/updated.html",
+              "key": "index.html",
+              "contentType": "text/html"
+            }
+          ]
+        }
+      },
+      "assert": [
+        {
+          "condition": "${aws_s3_object.files[\"index.html\"].source_hash == filesha256(\"tests/fixtures/updated.html\") && aws_s3_object.files[\"index.html\"].source_hash != filesha256(\"tests/fixtures/index.html\")}",
+          "error_message": "Changed bytes at stable object key require native update hash."
+        }
+      ]
+    },
+    "empty_extraction_rejected": {
+      "command": "plan",
+      "variables": {
+        "artifact": {
+          "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "format": "tar.gz",
+          "path": "tests/fixtures/index.html",
+          "imageReference": null,
+          "files": []
+        }
+      },
+      "expect_failures": [
+        "var.artifact"
+      ]
+    }
+  }
+}

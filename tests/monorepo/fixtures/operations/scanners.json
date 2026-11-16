@@ -1,0 +1,13 @@
+{
+  "sonarqubeEnabled": false,
+  "sonarqubeFailOnQualityGate": false,
+  "dependencyTrackEnabled": false,
+  "snykEnabled": false,
+  "semgrepEnabled": false,
+  "trivyEnabled": false,
+  "sonarqubeQualityGateEnabled": true,
+  "dependencyTrackProjectType": "Application",
+  "checkovEnabled": true,
+  "secretScanEnabled": true,
+  "terraformSemgrepEnabled": true
+}
