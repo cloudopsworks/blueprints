@@ -1,0 +1,133 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Config for Monorepos Sources
+author: cloudopsworks
+description: |
+  Configuration for Monorepos sources Requires ./bp/ci/config always be preloaded
+  Catalog which modules has configured from inputs-global.yaml and which modules has changes in the current commit. 
+  This will be used to generate a matrix for the build and test jobs.
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  build_all:
+    description: 'The build all flag will process all modules regardless of changes'
+    required: true
+    default: 'false'
+  environment:
+    description: 'The environment to use for the build'
+    required: true
+  has_preview:
+    description: 'The preview flag will process only for preview builds'
+    required: false
+    default: 'false'
+
+outputs:
+  matrix_strategy:
+    description: 'The matrix execution'
+    value: ${{ steps.components_list.outputs.components }}
+  configs:
+    description: 'The components configuration'
+    value: ${{ inputs.build_all != 'true' && steps.detect_changes.outputs.changed_components || steps.components_list.outputs.configs }}
+  semver:
+    description: 'The semver version'
+    value: ${{ steps.semver.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    # Get from global inputs the component list: and output a matrix for the build and test jobs
+    # Basic schema of configuration in inputs-global.yaml is:
+    # components:
+    #   - name: "component1"
+    #     language: "java"
+    #   - name: "component2"
+    #     language: "node"
+    # output is a json formatted array of components names and component configuration in JSON format
+    #  outputs.components: ["component1","component2"]
+    #  ouputs.configs: {"component1":{"name":"component1","language":"java", "path":"./javacomp1"},"component2":{"name":"component2","language":"node","cloud_type:"lambda"}}
+    - name: Get Component list from inputs-global.yaml
+      id: components_list
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        COMP=$(yq e -I=0 -o=json "[.components[].name]" "./.cloudopsworks/vars/inputs-global.yaml")
+        echo "components=$COMP" >> $GITHUB_OUTPUTS
+        CONFIG=$(yq -o=json -I=0 '.components[] as $c ireduce ({}; .[$c.name] = $c)' "./.cloudopsworks/vars/inputs-global.yaml")
+        echo "configs=$CONFIG" >> $GITHUB_OUTPUTS
+
+    # Catalog which modules has changes in the current commit. This will filter the matrix for the build and test jobs.
+    # If build_all is true, then all modules will be processed regardless of changes.
+    # steps.composite.
+    # configs JSON = {"component1":{"name":"component1","language":"java", "path":"./javacomp1"},"component2":{"name":"component2","language":"node","cloud_type:"lambda"}}
+    # if path present the path is authoritative if not name of component is used as path from source_path
+    - name: Detect changes in each component
+      id: detect_changes
+      uses: actions/github-script@v9
+      if: ${{ inputs.build_all != 'true' }}
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        STEPS_COMPONENTS_LIST_OUTPUTS_CONFIGS: ${{ steps.components_list.outputs.configs }}
+      with:
+        result-encoding: json
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          const { execSync } = require('child_process');
+
+          const sourcePath = process.env.INPUTS_SOURCE_PATH;
+
+          // Load the components configuration from the previous step
+          const configs = JSON.parse(process.env.STEPS_COMPONENTS_LIST_OUTPUTS_CONFIGS);
+          const components = Object.keys(configs);
+
+          // Get the list of changed files in the current commit
+          const changedFiles = execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf-8' })
+            .split('\n')
+            .filter(file => file.trim() !== '');
+
+          console.log('Changed files:', changedFiles);
+
+          // Determine which components have changes
+          let changedComponents = [];
+          for (const component of components) {
+            const componentPath = path.join(sourcePath, configs[component].path || component);
+            if (changedFiles.some(file => file.startsWith(componentPath))) {
+              changedComponents.push(component);
+            }
+          }
+
+          console.log('Changed components:', changedComponents);
+
+          core.setOutput('changed_components', JSON.stringify(changedComponents));
+
+    # Versioning SET
+    # Fix: Removal of PLAIN_PARAM because of reportedly issues with lambda deployments, after first commit.
+    - name: Version SET
+      working-directory: ${{ inputs.source_path }}
+      shell: bash
+      run: |
+        echo "::group::MonoRepo Version SET"
+        tronador project version --allow-network
+        echo "::endgroup::"
+      env:
+        GITHUB_ACTOR: ${{ inputs.bot_user }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+
+    - name: Version Capture
+      working-directory: ${{ inputs.source_path }}
+      id: semver
+      shell: bash
+      run: |
+        echo "result=$(cat VERSION)" >> $GITHUB_OUTPUT

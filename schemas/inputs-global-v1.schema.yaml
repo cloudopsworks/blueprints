@@ -1,0 +1,621 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://cloudops.works/contracts/monorepo-inputs-global-v2.schema.yaml
+title: CloudOps Works monorepo global inputs
+description: Schema for .cloudopsworks/vars/inputs-global.yaml in monorepo templates. Values here may be overridden by environment-specific .cloudopsworks/vars/inputs-<environment>.yaml files.
+type: object
+additionalProperties: false
+required:
+  - repository_owner
+  - components
+properties:
+  organization_name:
+    $ref: '#/$defs/NonEmptyString'
+    description: 'Name of the organization that owns the repository. Required.'
+  organization_unit:
+    $ref: '#/$defs/NonEmptyString'
+    description: 'Name of the organization unit, e.g. a department or team, that owns the repository. Required.'
+  environment_name:
+    $ref: '#/$defs/NonEmptyString'
+    description: 'Name of the environment, should be the same as the repository name. Required.'
+  repository_owner:
+    $ref: '#/$defs/NonEmptyString'
+    description: 'Owner (GitHub organization or user) of the repository. Required.'
+  components:
+    type: array
+    minItems: 1
+    maxItems: 256
+    description: 'Monorepo components. Each name must be unique: the pipeline keys component configs by name, so a later duplicate silently replaces an earlier one.'
+    items:
+      $ref: '#/$defs/Component'
+  pages:
+    type: object
+    additionalProperties: false
+    description: GitHub Pages publishing (Jekyll only). Disabled by default.
+    properties:
+      enabled:
+        type: boolean
+        default: false
+      docs_path:
+        $ref: '#/$defs/RelativePath'
+        default: docs
+      pages_path:
+        $ref: '#/$defs/RelativePath'
+        default: docs-pages
+  snyk:
+    $ref: '#/$defs/Toggle'
+    description: Snyk scanning. Disabled by default.
+  semgrep:
+    $ref: '#/$defs/Toggle'
+    description: Semgrep scanning. Disabled by default.
+  trivy:
+    $ref: '#/$defs/Toggle'
+    description: Trivy Docker image scanning. Disabled by default.
+  sonarqube:
+    type: object
+    additionalProperties: false
+    description: Global SonarQube switch. Language-specific paths are set per component.
+    properties:
+      enabled:
+        type: boolean
+        default: false
+      fail_on_quality_gate:
+        type: boolean
+      quality_gate_enabled:
+        type: boolean
+        default: true
+      branch_disabled:
+        type: boolean
+        description: Set true only when using SonarQube Community edition.
+  jira:
+    type: object
+    additionalProperties: false
+    description: JIRA release-management integration. JIRA_INTEGRATION_ENABLED at organization level enables or disables it globally.
+    properties:
+      enabled:
+        type: boolean
+        default: true
+      project_id:
+        type:
+          - string
+          - integer
+        description: Defaults to the organization's JIRA_INTEGRATION_PROJECT_ID.
+      project_key:
+        type: string
+        description: Defaults to the organization's JIRA_INTEGRATION_PROJECT_KEY.
+  dependency_track:
+    $ref: '#/$defs/DependencyTrack'
+  dependencyTrack:
+    $ref: '#/$defs/DependencyTrack'
+    deprecated: true
+    description: 'DEPRECATED: use dependency_track.'
+  docker_inline:
+    type: string
+    description: Dockerfile content merged into every component's Dockerfile; combined with component docker_inline unless the component sets docker_inline_override.
+  docker_args:
+    type: string
+    description: KEY=value lines passed as Docker build args to every component; combined with component docker_args unless the component sets docker_args_override.
+  custom_usergroup:
+    type: string
+    description: Global user/group creation command for images such as Busybox or RedHat UBI; component custom_usergroup takes precedence.
+  api_files_dir:
+    $ref: '#/$defs/RelativePath'
+    deprecated: true
+    description: 'DEPRECATED: use apis.files_dir (global) or components[].apis.files_dir.'
+  apis:
+    type: object
+    additionalProperties: false
+    properties:
+      files_dir:
+        $ref: '#/$defs/RelativePath'
+        default: apifiles
+        description: Default API definitions directory; components may override with apis.files_dir.
+  preview:
+    type: object
+    additionalProperties: false
+    description: Per-PR preview environments.
+    properties:
+      enabled:
+        type: boolean
+        default: false
+      kubernetes:
+        type: boolean
+      domain:
+        type: string
+        format: hostname
+      azure:
+        type: object
+        additionalProperties: false
+        properties:
+          resource_group:
+            $ref: '#/$defs/NonEmptyString'
+      gcp:
+        type: object
+        additionalProperties: false
+        properties:
+          project_id:
+            $ref: '#/$defs/NonEmptyString'
+  observability:
+    $ref: '#/$defs/Observability'
+  cloud:
+    enum:
+      - aws
+      - azure
+      - gcp
+    description: Target cloud for CD. Constrains the allowed components[].cloud_type values.
+  cloud_type:
+    enum:
+      - beanstalk
+      - eks
+      - lambda
+      - s3
+      - aks
+      - webapp
+      - function
+      - gke
+      - appengine
+      - cloudrun
+      - kubernetes
+      - by_component
+    default: by_component
+    description: Deployment type. Monorepos default to by_component, where each component's cloud_type is used.
+  runner_set:
+    $ref: '#/$defs/NonEmptyString'
+    description: Runner used for deployment, usually a hosted runner set (e.g. arc-runner-set).
+allOf:
+  - if:
+      required:
+        - cloud
+      properties:
+        cloud:
+          const: aws
+    then:
+      properties:
+        components:
+          items:
+            properties:
+              cloud_type:
+                enum:
+                  - beanstalk
+                  - eks
+                  - lambda
+                  - s3
+                  - kubernetes
+                  - none
+  - if:
+      required:
+        - cloud
+      properties:
+        cloud:
+          const: azure
+    then:
+      properties:
+        components:
+          items:
+            properties:
+              cloud_type:
+                enum:
+                  - aks
+                  - webapp
+                  - function
+                  - kubernetes
+                  - none
+  - if:
+      required:
+        - cloud
+      properties:
+        cloud:
+          const: gcp
+    then:
+      properties:
+        components:
+          items:
+            properties:
+              cloud_type:
+                enum:
+                  - gke
+                  - appengine
+                  - cloudrun
+                  - kubernetes
+                  - none
+$defs:
+  NonEmptyString:
+    type: string
+    minLength: 1
+  MultilineText:
+    type: string
+  RelativePath:
+    type: string
+    minLength: 1
+    maxLength: 512
+    pattern: ^(?!/)(?!.*(?:^|/)\.\.(?:/|$))[^\u0000-\u001f]+$
+    description: Repository-relative path; no leading '/' and no '..' segments.
+  Version:
+    type:
+      - string
+      - number
+    description: 'Toolchain version. Quote it (e.g. "3.10"): unquoted YAML numbers lose trailing zeros, so 3.10 is read as 3.1.'
+  BoolOrBoolString:
+    oneOf:
+      - type: boolean
+      - enum:
+          - "true"
+          - "false"
+  Toggle:
+    type: object
+    additionalProperties: false
+    properties:
+      enabled:
+        type: boolean
+        default: false
+  DependencyTrackType:
+    enum:
+      - Library
+      - Application
+      - Container
+      - Framework
+      - Device
+      - Firmware
+      - File
+      - Operating System
+  DependencyTrack:
+    type: object
+    additionalProperties: false
+    description: DependencyTrack SBOM upload. Enabled by default.
+    properties:
+      enabled:
+        type: boolean
+        default: true
+      type:
+        $ref: '#/$defs/DependencyTrackType'
+        default: Application
+  ComponentSonarqube:
+    type: object
+    additionalProperties: false
+    description: Language-specific SonarQube paths. Values are comma-separated globs; dotnet values may use the {dotnet.project_path} placeholder.
+    properties:
+      sources_path:
+        type: string
+      binaries_path:
+        type: string
+      libraries_path:
+        type: string
+      tests_path:
+        type: string
+      tests_binaries:
+        type: string
+      tests_inclusions:
+        type: string
+      tests_libraries:
+        type: string
+      exclusions:
+        type: string
+      extra_exclusions:
+        type:
+          - string
+          - "null"
+  ComponentApis:
+    type: object
+    additionalProperties: false
+    description: API Gateway deployment. Configuration lives under .cloudopsworks/vars/apigw/<component_name>/.
+    properties:
+      enabled:
+        type: boolean
+        default: false
+      files_dir:
+        $ref: '#/$defs/RelativePath'
+        default: apifiles
+  Component:
+    type: object
+    required:
+      - name
+      - language
+    properties:
+      name:
+        type: string
+        pattern: ^[a-z][a-z0-9-]{0,47}$
+        description: Unique component id (lowercase, digits, '-'; max 48 chars, matching the monorepo-v1 contract). Also the default path.
+      path:
+        $ref: '#/$defs/RelativePath'
+        description: Component directory relative to the repository root. Defaults to name.
+      language:
+        enum:
+          - node
+          - java
+          - golang
+          - python
+          - dotnet
+      version:
+        $ref: '#/$defs/Version'
+      dist:
+        $ref: '#/$defs/NonEmptyString'
+      image_variant:
+        $ref: '#/$defs/NonEmptyString'
+        default: alpine
+      dependency_track_type:
+        $ref: '#/$defs/DependencyTrackType'
+        default: Application
+      is_library:
+        type: boolean
+        default: false
+        description: Library components are not deployed; their cloud_type is always none.
+      sonarqube:
+        $ref: '#/$defs/ComponentSonarqube'
+      docker_inline_override:
+        type: boolean
+        default: false
+        description: true replaces the global docker_inline instead of combining with it.
+      docker_inline:
+        $ref: '#/$defs/MultilineText'
+      docker_args_override:
+        type: boolean
+        default: false
+        description: true replaces the global docker_args instead of combining with them.
+      docker_args:
+        $ref: '#/$defs/MultilineText'
+      custom_run_command:
+        $ref: '#/$defs/NonEmptyString'
+        description: Startup command placed in the generated Dockerfile.
+      custom_usergroup:
+        $ref: '#/$defs/MultilineText'
+      apis:
+        $ref: '#/$defs/ComponentApis'
+      cloud_type:
+        enum:
+          - beanstalk
+          - eks
+          - lambda
+          - s3
+          - aks
+          - webapp
+          - function
+          - gke
+          - appengine
+          - cloudrun
+          - kubernetes
+          - none
+        description: Deployment target for this component; must belong to the root cloud.
+    allOf:
+      - if:
+          required:
+            - is_library
+          properties:
+            is_library:
+              const: true
+        then:
+          properties:
+            cloud_type:
+              const: none
+        else:
+          required:
+            - cloud_type
+      - if:
+          properties:
+            language:
+              const: node
+        then:
+          properties:
+            version:
+              $ref: '#/$defs/Version'
+              default: 24
+            dist:
+              $ref: '#/$defs/NonEmptyString'
+              default: adopt
+            frontend:
+              type: boolean
+              default: false
+              description: true deploys only the build directory, into an nginx Dockerfile or an S3 / cloud bucket.
+            npm:
+              type: object
+              additionalProperties: false
+              properties:
+                registry:
+                  type: string
+                  format: uri
+                  default: https://npm.pkg.github.com
+                strategy:
+                  enum:
+                    - all
+                    - upgrade
+                  default: all
+                access:
+                  enum:
+                    - restricted
+                    - public
+                  default: restricted
+            node_extra_env:
+              $ref: '#/$defs/MultilineText'
+            custom_install_command:
+              $ref: '#/$defs/NonEmptyString'
+            custom_build_command:
+              $ref: '#/$defs/NonEmptyString'
+            node_build_dir:
+              $ref: '#/$defs/NonEmptyString'
+              default: ./build
+      - if:
+          properties:
+            language:
+              const: java
+        then:
+          properties:
+            maven_options:
+              type: string
+              description: Extra Maven CLI options, e.g. -T 1C -Dmaven.wagon.http.retryHandler.count=3.
+      - if:
+          properties:
+            language:
+              const: golang
+        then:
+          properties:
+            main_file:
+              $ref: '#/$defs/NonEmptyString'
+              default: .
+            package_name:
+              $ref: '#/$defs/NonEmptyString'
+              description: Defaults to the go.mod module name or the repository name.
+            arch:
+              $ref: '#/$defs/NonEmptyString'
+            disable_cgo:
+              type: boolean
+              description: true builds pure Go (CGO_ENABLED=0).
+            build_options:
+              type: string
+      - if:
+          properties:
+            language:
+              const: python
+        then:
+          properties:
+            dist:
+              enum:
+                - pip
+                - pipenv
+                - poetry
+            ruff:
+              type: boolean
+              default: false
+            mypy:
+              type: boolean
+              default: false
+            tests:
+              enum:
+                - pytest
+                - unittest
+                - pyunit
+                - nose
+              default: pytest
+            with_dependencies:
+              type: boolean
+              default: false
+            install_extra_args:
+              type: string
+            python_extra_env:
+              $ref: '#/$defs/MultilineText'
+      - if:
+          properties:
+            language:
+              const: dotnet
+        then:
+          properties:
+            dist:
+              enum:
+                - aspnet
+                - runtime
+                - sdk
+            project_path:
+              $ref: '#/$defs/RelativePath'
+            configuration:
+              $ref: '#/$defs/NonEmptyString'
+              examples:
+                - Release
+                - Debug
+            tests:
+              type: object
+              additionalProperties: false
+              properties:
+                project_path:
+                  $ref: '#/$defs/RelativePath'
+                  description: Defaults to <project_path>.Tests.
+                integration_project_path:
+                  $ref: '#/$defs/RelativePath'
+                  description: Defaults to <project_path>.Tests.Integration.
+            build_options:
+              type: string
+            test_options:
+              type: string
+            publish_options:
+              type: string
+    unevaluatedProperties: false
+  Observability:
+    type: object
+    additionalProperties: false
+    properties:
+      enabled:
+        type: boolean
+        default: false
+      agent:
+        enum:
+          - xray
+          - newrelic
+          - datadog
+          - dynatrace
+        default: xray
+      config:
+        type: object
+        description: Agent settings. Known X-Ray and Datadog keys are typed; other agents' keys pass through.
+        properties:
+          configFilePath:
+            type: string
+          configFileName:
+            type: string
+          contextMissingStrategy:
+            enum:
+              - LOG_ERROR
+              - RUNTIME_ERROR
+              - IGNORE_ERROR
+          tracingEnabled:
+            $ref: '#/$defs/BoolOrBoolString'
+          samplingStrategy:
+            enum:
+              - CENTRAL
+              - LOCAL
+              - NONE
+              - ALL
+          traceIdInjectionPrefix:
+            type: string
+          samplingRulesManifest:
+            type: string
+          awsServiceHandlerManifest:
+            type: string
+          awsSdkVersion:
+            enum:
+              - 1
+              - 2
+              - "1"
+              - "2"
+          maxStackTraceLength:
+            type: integer
+            minimum: 0
+          streamingThreshold:
+            type: integer
+            minimum: 0
+          traceIdInjection:
+            $ref: '#/$defs/BoolOrBoolString'
+          pluginsEnabled:
+            $ref: '#/$defs/BoolOrBoolString'
+          collectSqlQueries:
+            $ref: '#/$defs/BoolOrBoolString'
+          contextPropagation:
+            $ref: '#/$defs/BoolOrBoolString'
+          tags:
+            type: string
+            description: Comma-separated key=value pairs.
+          logs_enabled:
+            $ref: '#/$defs/BoolOrBoolString'
+          logs_config_container_collect_all:
+            $ref: '#/$defs/BoolOrBoolString'
+          container_exclude_logs:
+            type: string
+          trace_debug:
+            $ref: '#/$defs/BoolOrBoolString'
+          logs_injection:
+            $ref: '#/$defs/BoolOrBoolString'
+          profiling_enabled:
+            $ref: '#/$defs/BoolOrBoolString'
+          trace_sample_rate:
+            type: number
+            minimum: 0
+            maximum: 1
+          trace_sampling_rules:
+            type: string
+          apm_non_local_traffic:
+            $ref: '#/$defs/BoolOrBoolString'
+          apm_enabled:
+            $ref: '#/$defs/BoolOrBoolString'
+          dogstatsd_non_local_traffic:
+            $ref: '#/$defs/BoolOrBoolString'
+          http_client_error_statuses:
+            type: string
+            pattern: ^[1-5][0-9]{2}(,[1-5][0-9]{2})*$
+          http_server_error_statuses:
+            type: string
+            pattern: ^[1-5][0-9]{2}(,[1-5][0-9]{2})*$
