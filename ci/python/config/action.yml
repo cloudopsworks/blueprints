@@ -32,67 +32,67 @@ outputs:
     value: ${{ steps.python_extra_env.outputs.result }}
 
 runs:
-    using: 'composite'
-    steps:
-      - name: Check tools and install
-        shell: bash
-        run: |
-          echo "::group::Check Tools"
-          sudo apt-get update
-          which make || sudo apt-get install -y make
-          which gh || sudo apt-get install -y gh
-          echo "::endgroup::"
+  using: 'composite'
+  steps:
+    - name: Check tools and install
+      shell: bash
+      run: |
+        echo "::group::Check Tools"
+        sudo apt-get update
+        which make || sudo apt-get install -y make
+        which gh || sudo apt-get install -y gh
+        echo "::endgroup::"
 
-      # get from global inputs extra env vars from : python_extra_env entry
-      - name: Get Optional Env Vars
-        id: python_extra_env_global
-        shell: bash
-        env:
-          INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-        run: |
-          RET=$(yq e -I=0 ".python_extra_env // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml" | tr '\n' ' ' | sed 's/.$//')
-          {
-            echo "result<<EOF"
-            echo "${RET}"
-            echo "EOF"
-          } >> "${GITHUB_OUTPUT}"
+    # get from global inputs extra env vars from : python_extra_env entry
+    - name: Get Optional Env Vars
+      id: python_extra_env_global
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".python_extra_env // \"\"" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml" | tr '\n' ' ' | sed 's/.$//')
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
-      # get from  inputs extra env vars from preview config: python_extra_env entry
-      - name: Get Optional Env Vars - ${{ inputs.environment }}
-        if: ${{ inputs.has_preview == 'true' }}
-        id: python_extra_env_preview
-        shell: bash
-        env:
-          STEPS_PYTHON_EXTRA_ENV_GLOBAL_RESULT: ${{ steps.python_extra_env_global.outputs.result }}
-          INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-        run: |
-          RET=$(yq e -I=0 ".python_extra_env // strenv(STEPS_PYTHON_EXTRA_ENV_GLOBAL_RESULT)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/preview/inputs.yaml" | tr '\n' ' ' | sed 's/.$//')
-          {
-            echo "result<<EOF"
-            echo "${RET}"
-            echo "EOF"
-          } >> "${GITHUB_OUTPUT}"
+    # get from  inputs extra env vars from preview config: python_extra_env entry
+    - name: Get Optional Env Vars - ${{ inputs.environment }}
+      if: ${{ inputs.has_preview == 'true' }}
+      id: python_extra_env_preview
+      shell: bash
+      env:
+        STEPS_PYTHON_EXTRA_ENV_GLOBAL_RESULT: ${{ steps.python_extra_env_global.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        RET=$(yq e -I=0 ".python_extra_env // strenv(STEPS_PYTHON_EXTRA_ENV_GLOBAL_RESULT)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/preview/inputs.yaml" | tr '\n' ' ' | sed 's/.$//')
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
-      # get from inputs extra env vars from specific build environment: python_extra_env entry
-      - name: Get Optional Env Vars - ${{ inputs.environment }}
-        if: ${{ inputs.has_preview != 'true' }}
-        id: python_extra_env_env
-        shell: bash
-        env:
-          STEPS_PYTHON_EXTRA_ENV_GLOBAL_RESULT: ${{ steps.python_extra_env_global.outputs.result }}
-          INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-          INPUTS_ENVIRONMENT: ${{ inputs.environment }}
-        run: |
-          RET=$(yq e -I=0 ".python_extra_env // strenv(STEPS_PYTHON_EXTRA_ENV_GLOBAL_RESULT)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml" | tr '\n' ' ' | sed 's/.$//')
-          {
-            echo "result<<EOF"
-            echo "${RET}"
-            echo "EOF"
-          } >> "${GITHUB_OUTPUT}"
+    # get from inputs extra env vars from specific build environment: python_extra_env entry
+    - name: Get Optional Env Vars - ${{ inputs.environment }}
+      if: ${{ inputs.has_preview != 'true' }}
+      id: python_extra_env_env
+      shell: bash
+      env:
+        STEPS_PYTHON_EXTRA_ENV_GLOBAL_RESULT: ${{ steps.python_extra_env_global.outputs.result }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        INPUTS_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        RET=$(yq e -I=0 ".python_extra_env // strenv(STEPS_PYTHON_EXTRA_ENV_GLOBAL_RESULT)" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-${INPUTS_ENVIRONMENT}.yaml" | tr '\n' ' ' | sed 's/.$//')
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
 
-      - name: Set Optional python_extra_env from properly calulated origin
-        id: python_extra_env
-        shell: bash
-        env:
-          EXPR_STEPS_PYTHON_EXTRA_ENV_PREVIEW_OUTPUTS_RESULT_ST: ${{ steps.python_extra_env_preview.outputs.result != '' && steps.python_extra_env_preview.outputs.result || steps.python_extra_env_env.outputs.result }}
-        run: printf 'result=%s\n' "${EXPR_STEPS_PYTHON_EXTRA_ENV_PREVIEW_OUTPUTS_RESULT_ST}" >> "${GITHUB_OUTPUT}"
+    - name: Set Optional python_extra_env from properly calulated origin
+      id: python_extra_env
+      shell: bash
+      env:
+        EXPR_STEPS_PYTHON_EXTRA_ENV_PREVIEW_OUTPUTS_RESULT_ST: ${{ steps.python_extra_env_preview.outputs.result != '' && steps.python_extra_env_preview.outputs.result || steps.python_extra_env_env.outputs.result }}
+      run: printf 'result=%s\n' "${EXPR_STEPS_PYTHON_EXTRA_ENV_PREVIEW_OUTPUTS_RESULT_ST}" >> "${GITHUB_OUTPUT}"
