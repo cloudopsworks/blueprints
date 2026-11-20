@@ -159,45 +159,6 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
-    # Get pipeline conf
-    - name: Get pipeline zip packaging globs
-      id: zip_globs_line
-      shell: bash
-      working-directory: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".zipGlobs[]" "./.cloudopsworks/cloudopsworks-ci.yaml" | tr '\n' ' ')
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
-    # Get pipeline conf
-    - name: Get pipeline zip packaging exclude globs
-      id: exclude_globs
-      shell: bash
-      working-directory: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".excludeGlobs[] | \"!\" + ." "./.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
-    # Get pipeline conf
-    - name: Get pipeline zip packaging exclude globs
-      id: raw_exclude_globs
-      shell: bash
-      working-directory: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".excludeGlobs[]" "./.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
     # Get Package Name from package.json
     - name: Get package Name
       id: package_name

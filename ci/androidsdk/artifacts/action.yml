@@ -49,38 +49,21 @@ runs:
         ret=$(echo "${INPUTS_ANDROID_SDK}_${INPUTS_ANDROID_DESTINATION}" | tr ' ,:=/' '-')
         echo "result=$ret" >> $GITHUB_OUTPUT
 
-    # Get pipeline conf
-    - name: Get pipeline zip packaging globs
-      id: zip_globs
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        GLOBS=$(SOURCE_PATH="${INPUTS_SOURCE_PATH}" yq e ".zipGlobs[] | strenv(SOURCE_PATH) + \"/\" + ." .cloudopsworks/cloudopsworks-ci.yaml)
-        echo "result<<EOF" >> $GITHUB_OUTPUT
-        echo "$GLOBS" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-
-    # Get pipeline conf exclude globs
-    - name: Get pipeline zip packaging exclude globs
-      id: exclude_globs
-      working-directory: ${{ inputs.source_path }}
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        GLOBS=$(SOURCE_PATH="${INPUTS_SOURCE_PATH}" yq e ".excludeGlobs[] | \"!\" + strenv(SOURCE_PATH) + \"/\" + ." .cloudopsworks/cloudopsworks-ci.yaml)
-        echo "result<<EOF" >> $GITHUB_OUTPUT
-        echo "$GLOBS" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+    # Get Globs from configuration:
+    - name: Get Globs
+      id: globs
+      uses: cloudopsworks/blueprints/common/artifacts/glob@5.10
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        language: androidsdk
         
     - name: Normalized Android configuration
       id: normalized_configuration
       shell: bash
       env:
         INPUTS_ANDROID_CONFIGURATION: ${{ inputs.android_configuration }}
-        STEPS_ZIP_GLOBS_RESULT: ${{ steps.zip_globs.outputs.result }}
+        STEPS_ZIP_GLOBS_RESULT: ${{ steps.globs.outputs.includes }}
       run: |
         ret=$(echo "${INPUTS_ANDROID_CONFIGURATION}" | tr '[:upper:]' '[:lower:]')
         val=$(echo "${STEPS_ZIP_GLOBS_RESULT}" | sed -e "s|{android_configuration}|$ret|g")
@@ -95,7 +78,7 @@ runs:
         name: ${{ inputs.artifacts_name }}_${{ steps.android_normalized.outputs.result }}
         path: |
           ${{ steps.normalized_configuration.outputs.result }}
-          ${{ steps.exclude_globs.outputs.result }}
+          ${{ steps.globs.outputs.excludes }}
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
@@ -110,7 +93,7 @@ runs:
           ${{ inputs.source_path }}/**
           !${{ inputs.source_path }}/build/**
           !${{ inputs.source_path }}/app/build/**
-          ${{ steps.exclude_globs.outputs.result }}
+          ${{ steps.globs.outputs.excludes }}
         retention-days: 1
         include-hidden-files: true
         compression-level: '3' #mid-fast
