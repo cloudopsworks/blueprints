@@ -34,6 +34,18 @@ outputs:
   jira_project_id:
     description: 'The Jira project ID value'
     value: ${{ steps.jira_project_id.outputs.result }}
+  tests_enabled:
+    description: 'The module tests enabled flag, true or false'
+    value: ${{ steps.tests.outputs.enabled }}
+  tests_engine:
+    description: 'The IaC engine that runs the module tests, tofu or terraform'
+    value: ${{ steps.tests.outputs.engine }}
+  tests_version:
+    description: 'The IaC engine version or constraint used for the module tests'
+    value: ${{ steps.tests.outputs.version }}
+  tests_directory:
+    description: 'The module tests directory, relative to the module root'
+    value: ${{ steps.tests.outputs.directory }}
 
 runs:
   using: 'composite'
@@ -126,4 +138,40 @@ runs:
           echo "result<<EOF"
           echo "${RET}"
           echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
+    # Get the module tests configuration:
+    #   tests.enabled (default true), tests.engine (default tofu),
+    #   tests.version (default latest), tests.directory (default tests)
+    - name: Get Module Tests Config
+      id: tests
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+      run: |
+        set -euo pipefail
+        cfg="./${INPUTS_SOURCE_PATH}/.cloudopsworks/inputs.yaml"
+        # yq's `//` operator also replaces an explicit `false`, so null is handled by hand.
+        read_cfg() {
+          local val="null"
+          [[ -f "$cfg" ]] && val="$(yq e "$1" "$cfg")"
+          if [[ -z "$val" || "$val" == "null" ]]; then echo "$2"; else echo "$val"; fi
+        }
+        enabled="$(read_cfg '.tests.enabled' 'true')"
+        engine="$(read_cfg '.tests.engine' 'tofu')"
+        version="$(read_cfg '.tests.version' 'latest')"
+        directory="$(read_cfg '.tests.directory' 'tests')"
+        case "$engine" in
+          tofu|terraform) ;;
+          *) echo "::error::tests.engine must be 'tofu' or 'terraform', got '$engine'"; exit 1 ;;
+        esac
+        if [[ "$directory" == /* || "$directory" == *..* ]]; then
+          echo "::error::tests.directory must be a relative path inside the module, got '$directory'"
+          exit 1
+        fi
+        {
+          echo "enabled=$enabled"
+          echo "engine=$engine"
+          echo "version=$version"
+          echo "directory=$directory"
         } >> "${GITHUB_OUTPUT}"

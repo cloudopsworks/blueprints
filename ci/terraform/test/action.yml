@@ -1,0 +1,127 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Run Terraform Module Tests
+author: cloudopsworks
+description: Runs native Terraform/OpenTofu tests (*.tftest.hcl, *.tftest.json, *.tofutest.hcl) found in the module tests directory and writes the results to the job summary. Skips when the module is an uninitialized template or has no test files.
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  engine:
+    description: 'The IaC engine to run the tests with, tofu or terraform'
+    required: false
+    default: 'tofu'
+  version:
+    description: 'The engine version or version constraint to install'
+    required: false
+    default: 'latest'
+  test_directory:
+    description: 'The tests directory, relative to the module root'
+    required: false
+    default: 'tests'
+
+outputs:
+  executed:
+    description: 'Whether tests were executed, true or false'
+    value: ${{ steps.detect.outputs.run }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Detect Module Tests
+      id: detect
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      env:
+        ENGINE: ${{ inputs.engine }}
+        TEST_DIR: ${{ inputs.test_directory }}
+      run: |
+        set -euo pipefail
+        case "$ENGINE" in
+          tofu|terraform) ;;
+          *) echo "::error::engine must be 'tofu' or 'terraform', got '$ENGINE'"; exit 1 ;;
+        esac
+        if [[ "$TEST_DIR" == /* || "$TEST_DIR" == *..* ]]; then
+          echo "::error::test_directory must be a relative path inside the module, got '$TEST_DIR'"
+          exit 1
+        fi
+
+        run="false"
+        reason=""
+        if [[ ! -f versions.tf ]]; then
+          reason="No versions.tf at the module root: repository is an uninitialized template."
+        elif [[ ! -d "$TEST_DIR" ]] || [[ -z "$(find "$TEST_DIR" -type f \( -name '*.tftest.hcl' -o -name '*.tftest.json' -o -name '*.tofutest.hcl' \) -print -quit)" ]]; then
+          reason="No test files (*.tftest.hcl, *.tftest.json, *.tofutest.hcl) found under ./$TEST_DIR."
+        else
+          run="true"
+        fi
+        echo "run=$run" >> "$GITHUB_OUTPUT"
+
+        if [[ "$run" != "true" ]]; then
+          echo "::notice::$reason Skipping module tests."
+          printf '### Module Tests\n\nSkipped: %s\n' "$reason" >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Setup OpenTofu
+      if: ${{ steps.detect.outputs.run == 'true' && inputs.engine == 'tofu' }}
+      uses: opentofu/setup-opentofu@v2
+      with:
+        tofu_version: ${{ inputs.version }}
+        tofu_wrapper: false
+
+    - name: Setup Terraform
+      if: ${{ steps.detect.outputs.run == 'true' && inputs.engine == 'terraform' }}
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.version }}
+        terraform_wrapper: false
+
+    - name: Init
+      if: ${{ steps.detect.outputs.run == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      env:
+        ENGINE: ${{ inputs.engine }}
+        TEST_DIR: ${{ inputs.test_directory }}
+        TF_IN_AUTOMATION: 'true'
+        TF_INPUT: '0'
+      run: |
+        set -euo pipefail
+        # Module dependencies are pinned as git submodules.
+        if [[ -f .gitmodules ]]; then
+          git submodule update --init --recursive
+        fi
+        "$ENGINE" version
+        "$ENGINE" init -backend=false -input=false -no-color -test-directory="$TEST_DIR"
+
+    - name: Run Tests
+      if: ${{ steps.detect.outputs.run == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.source_path }}
+      env:
+        ENGINE: ${{ inputs.engine }}
+        TEST_DIR: ${{ inputs.test_directory }}
+        TF_IN_AUTOMATION: 'true'
+        TF_INPUT: '0'
+      run: |
+        set -uo pipefail
+        log="${RUNNER_TEMP}/module-tests.log"
+        "$ENGINE" test -no-color -verbose -test-directory="$TEST_DIR" 2>&1 | tee "$log"
+        status=${PIPESTATUS[0]}
+        {
+          echo "### Module Tests (\`$ENGINE test\` on ./$TEST_DIR)"
+          echo ""
+          if [[ "$status" -eq 0 ]]; then echo "Result: passed"; else echo "Result: **failed** (exit code $status)"; fi
+          echo ""
+          echo '```'
+          grep -E '\.(tftest|tofutest)\.(hcl|json)\.\.\.|^  run "|^(Success|Failure)!' "$log" | tail -n 200 || true
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+        exit "$status"
