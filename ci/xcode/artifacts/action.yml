@@ -53,7 +53,7 @@ runs:
     # Get Globs from configuration:
     - name: Get Globs
       id: globs
-      uses: cloudopsworks/blueprints/common/artifacts/glob@5.10
+      uses: cloudopsworks/blueprints/ci/common/artifacts/glob@v5.10
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}

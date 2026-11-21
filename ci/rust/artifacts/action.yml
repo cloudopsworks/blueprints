@@ -33,13 +33,13 @@ runs:
     # Get Globs from configuration:
     - name: Get Globs
       id: globs
-      uses: cloudopsworks/blueprints/common/artifacts/glob@5.10
+      uses: cloudopsworks/blueprints/ci/common/artifacts/glob@v5.10
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
         language: rust
 
-    # Beware steps.globs.outputs.includes can be multiline then find should support multi-path
+    # steps.globs.outputs.includes is multiline: run find once per glob
     - name: Copy Release to bin
       shell: bash
       env:
@@ -47,7 +47,10 @@ runs:
         STEPS_ZIP_GLOBS_RESULT: ${{ steps.globs.outputs.includes }}
       run: |
         mkdir -p "${INPUTS_SOURCE_PATH}/bin/"
-        find . -path "./${STEPS_ZIP_GLOBS_RESULT}" -type f -maxdepth 4 -exec cp -pv {} "${INPUTS_SOURCE_PATH}/bin/" \;
+        while IFS= read -r GLOB; do
+          [ -z "${GLOB}" ] && continue
+          find . -path "./${GLOB}" -type f -maxdepth 4 -exec cp -pv {} "${INPUTS_SOURCE_PATH}/bin/" \;
+        done <<< "${STEPS_ZIP_GLOBS_RESULT}"
 
     # Perform of upload of artfiacts for Rust
     - name: Upload Artifacts to workflow

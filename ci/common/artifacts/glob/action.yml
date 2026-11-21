@@ -46,7 +46,7 @@ runs:
       run: |
         SYSTEM_GLOBS=$(yq e ".zipGlobs[] | strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${BLUEPRINT_PATH}/artifacts/config/${LANGUAGE}.yaml")
         USER_GLOBS=$(yq e ".zipGlobs[] | strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
-        RET=$(echo -e "${SYSTEM_GLOBS}\n${USER_GLOBS}" | sort -u)
+        RET=$(printf '%s\n' "${SYSTEM_GLOBS}" "${USER_GLOBS}" | sed '/^$/d' | sort -u)
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -67,7 +67,7 @@ runs:
       run: |
         SYSTEM_GLOBS=$(yq e ".excludeGlobs[] | \"!\" + strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${BLUEPRINT_PATH}/artifacts/config/${LANGUAGE}.yaml")
         USER_GLOBS=$(yq e ".excludeGlobs[] | \"!\" + strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
-        RET=$(echo -e "${SYSTEM_GLOBS}\n${USER_GLOBS}" | sort -u)
+        RET=$(printf '%s\n' "${SYSTEM_GLOBS}" "${USER_GLOBS}" | sed '/^$/d' | sort -u)
         {
           echo "result<<EOF"
           echo "${RET}"

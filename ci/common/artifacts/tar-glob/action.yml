@@ -49,7 +49,7 @@ runs:
       run: |
         SYSTEM_GLOBS=$(yq e ".zipGlobs[]" "./${BLUEPRINT_PATH}/artifacts/config/${LANGUAGE}.yaml")
         USER_GLOBS=$(yq e ".zipGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
-        RET=$(echo -e "${SYSTEM_GLOBS}\n${USER_GLOBS}" | sort -u | tr '\n' ' ')
+        RET=$(printf '%s\n' "${SYSTEM_GLOBS}" "${USER_GLOBS}" | sed '/^$/d' | sort -u | tr '\n' ' ')
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -70,7 +70,7 @@ runs:
       run: |
         SYSTEM_GLOBS=$(yq e ".excludeGlobs[]" "./${BLUEPRINT_PATH}/artifacts/config/${LANGUAGE}.yaml")
         USER_GLOBS=$(yq e ".excludeGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
-        RET=$(echo -e "${SYSTEM_GLOBS}\n${USER_GLOBS}" | sort -u)
+        RET=$(printf '%s\n' "${SYSTEM_GLOBS}" "${USER_GLOBS}" | sed '/^$/d' | sort -u)
         {
           echo "result<<EOF"
           echo "${RET}"
@@ -81,7 +81,7 @@ runs:
       id: temp_exclude_file
       shell: bash
       run: |
-        TMP_FILE=$(mktemp -t exclude_glob)
+        TMP_FILE=$(mktemp -t exclude_glob.XXXXXX)
         echo "${{ steps.raw_exclude_globs.outputs.result }}" > $TMP_FILE
         {
           echo "result<<EOF"

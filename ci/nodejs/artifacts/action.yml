@@ -33,7 +33,7 @@ runs:
     # Get Globs from configuration:
     - name: Get Globs
       id: globs
-      uses: cloudopsworks/blueprints/common/artifacts/glob@5.10
+      uses: cloudopsworks/blueprints/ci/common/artifacts/glob@v5.10
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
@@ -42,7 +42,7 @@ runs:
     # Get Globs for TAR from configuration:
     - name: Get Tar Globs
       id: tar_glob
-      uses: cloudopsworks/blueprints/common/artifacts/tar-glob@5.10
+      uses: cloudopsworks/blueprints/ci/common/artifacts/tar-glob@v5.10
       with:
         source_path: ${{ inputs.source_path }}
         blueprint_path: ${{ inputs.blueprint_path }}
@@ -102,7 +102,7 @@ runs:
         STEPS_ZIP_GLOBS_LINE_RESULT: ${{ steps.tar_glob.outputs.includes }}
       run: |
         TMP_DIR=$(mktemp -d)
-        TMP_EXCLUDE_FILE=$(mktemp -t exclude_target)
+        TMP_EXCLUDE_FILE=$(mktemp -t exclude_target.XXXXXX)
         echo "node_modules*" > ${TMP_EXCLUDE_FILE}
         echo ".git*" >> ${TMP_EXCLUDE_FILE}
         echo "tronador*" >> ${TMP_EXCLUDE_FILE}
