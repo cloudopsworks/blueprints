@@ -1,0 +1,30 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+# Default configuration for Xcode artifacts
+zipGlobs:
+  - "build/build_artifacts/*.ipa"
+excludeGlobs:
+  - .dockerignore
+  - .git*
+  - .git/
+  - .helmignore
+  - .tronador
+  - CODEOWNERS
+  - Dockerfile
+  - Makefile
+  - OWNER*
+  - README.md
+  - apifiles/*
+  - charts/*
+  - cloudopsworks-ci*
+  - gulpfile*
+  - jenkins*
+  - skafold*
+  - target/*
+  - tronador/*

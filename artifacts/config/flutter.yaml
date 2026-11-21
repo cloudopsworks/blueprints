@@ -1,0 +1,34 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+# Default configuration for Flutter artifacts
+zipGlobs:
+  - "build/app/outputs/bundle/**/*.aab"
+  - "build/app/outputs/flutter-apk/*.apk"
+  - "build/ios/ipa/*.ipa"
+  - "build/ios/smoke/*.zip"
+excludeGlobs:
+  - .dockerignore
+  - .git*
+  - .git/
+  - .gradle/*
+  - .helmignore
+  - .tronador
+  - CODEOWNERS
+  - Dockerfile
+  - Makefile
+  - OWNER*
+  - README.md
+  - apifiles/*
+  - charts/*
+  - cloudopsworks-ci*
+  - gulpfile*
+  - jenkins*
+  - skafold*
+  - target/*
+  - tronador/*

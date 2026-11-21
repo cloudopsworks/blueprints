@@ -1,0 +1,75 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+name: Artifacts Glob Retrieval
+description: Retrieve artifacts from a glob pattern and upload them to the pipeline artifacts.
+inputs:
+  source_path:
+    description: 'The path to the source code'
+    required: false
+    default: 'source'
+  blueprint_path:
+    description: 'The path to the blueprint'
+    required: false
+    default: 'bp'
+  language:
+    description: 'The language of the artifacts to retrieve'
+    required: true
+
+outputs:
+  includes:
+    description: 'The list of files to include in the artifact'
+    value: ${{ steps.zip_globs.outputs.result }}
+  excludes:
+    description: 'The list of files to exclude from the artifact'
+    value: ${{ steps.exclude_globs.outputs.result }}
+
+runs:
+  using: "composite"
+  steps:
+    # Get pipeline conf (zipGlobs) from two places and dedup entries, first from the <blueprint-path>/artifacts/config/<language>.yaml
+    #  and then from the <source-path>/.cloudopsworks/vars/inputs-global.yaml
+    #  deduplication is done by using sort -u
+    # Use of <source-path>/.cloudopsworks/cloudopsworks-ci.yaml has been deprecated
+    - name: Get pipeline zip packaging globs
+      id: zip_globs
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        LANGUAGE: ${{ inputs.language }}
+      run: |
+        SYSTEM_GLOBS=$(yq e ".zipGlobs[] | strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${BLUEPRINT_PATH}/artifacts/config/${LANGUAGE}.yaml")
+        USER_GLOBS=$(yq e ".zipGlobs[] | strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(printf '%s\n' "${SYSTEM_GLOBS}" "${USER_GLOBS}" | sed '/^$/d' | sort -u)
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
+    # Get pipeline conf (excludeGlobs) from two places and dedup entries, first from the <blueprint-path>/artifacts/config/<language>.yaml
+    #  and then from the <source-path>/.cloudopsworks/vars/inputs-global.yaml
+    #  deduplication is done by using sort -u
+    # Use of <source-path>/.cloudopsworks/cloudopsworks-ci.yaml has been deprecated
+    - name: Get pipeline zip packaging exclude globs
+      id: exclude_globs
+      shell: bash
+      env:
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        BLUEPRINT_PATH: ${{ inputs.blueprint_path }}
+        LANGUAGE: ${{ inputs.language }}
+      run: |
+        SYSTEM_GLOBS=$(yq e ".excludeGlobs[] | \"!\" + strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${BLUEPRINT_PATH}/artifacts/config/${LANGUAGE}.yaml")
+        USER_GLOBS=$(yq e ".excludeGlobs[] | \"!\" + strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/vars/inputs-global.yaml")
+        RET=$(printf '%s\n' "${SYSTEM_GLOBS}" "${USER_GLOBS}" | sed '/^$/d' | sort -u)
+        {
+          echo "result<<EOF"
+          echo "${RET}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"

@@ -182,48 +182,6 @@ runs:
           echo "EOF"
         } >> "${GITHUB_OUTPUT}"
 
-    # Get pipeline conf
-    - name: Get pipeline zip packaging globs
-      id: zip_globs_line
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".zipGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml" | tr '\n' ' ')
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
-    # Get pipeline conf
-    - name: Get pipeline zip packaging exclude globs
-      id: exclude_globs
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".excludeGlobs[] | \"!\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
-    # Get pipeline conf
-    - name: Get pipeline zip packaging exclude globs
-      id: raw_exclude_globs
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".excludeGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
     # Get Package Name from pyproject.toml
     - name: Get package Name
       id: package_name

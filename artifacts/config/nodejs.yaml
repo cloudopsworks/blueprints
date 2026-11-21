@@ -1,0 +1,36 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+# Default configuration for Node.js artifacts
+zipGlobs:
+  - ./**
+  - .env
+  - node_modules/**
+excludeGlobs:
+  - .cloudopsworks/*
+  - .dockerignore
+  - .git*
+  - .git/
+  - .helmignore
+  - .nyc_output/*
+  - .tronador
+  - CODEOWNERS
+  - Dockerfile
+  - Makefile
+  - OWNER*
+  - README.md
+  - apifiles/*
+  - bom.xml
+  - charts/*
+  - cloudopsworks-ci*
+  - coverage/*
+  - gulpfile*
+  - jenkins*
+  - skafold*
+  - target/*
+  - tronador/*

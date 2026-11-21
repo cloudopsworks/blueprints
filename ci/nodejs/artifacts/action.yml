@@ -30,61 +30,23 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # Get pipeline conf
-    - name: Get pipeline zip packaging globs
-      id: zip_globs
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".zipGlobs[] | strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
+    # Get Globs from configuration:
+    - name: Get Globs
+      id: globs
+      uses: cloudopsworks/blueprints/ci/common/artifacts/glob@v5.10
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        language: nodejs
 
-    # Get pipeline conf exclude globs
-    - name: Get pipeline zip packaging exclude globs
-      id: exclude_globs
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".excludeGlobs[] | \"!\" + strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
-    # Get pipeline conf for TAR
-    - name: Get pipeline zip packaging globs for TAR
-      id: zip_globs_line
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".zipGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml" | tr '\n' ' ')
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
-    # Get pipeline conf exclude globs (RAW) for TAR
-    - name: Get pipeline zip packaging exclude globs (RAW)
-      id: raw_exclude_globs
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".excludeGlobs[]" "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
+    # Get Globs for TAR from configuration:
+    - name: Get Tar Globs
+      id: tar_glob
+      uses: cloudopsworks/blueprints/ci/common/artifacts/tar-glob@v5.10
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        language: nodejs
 
     # TODO: make this passed by param
     # get from global inputs the setting if it is frontend target
@@ -117,19 +79,18 @@ runs:
         } >> "${GITHUB_OUTPUT}"
 
     # The problem with NodeJS are the symlinks, so we need first to create a TAR file
-    # with including the zip_globs and excluding the exclude_globs with -X option
+    # with including the steps.tar_globs.outputs.includes and excluding the steps.tar_globs.outputs.excludes with -X option
     # -X options needs an input file so we need to create a temporary file
     - name: Create TAR file
       id: tar_file
       working-directory: ${{ inputs.source_path }}
       shell: bash
       env:
-        STEPS_RAW_EXCLUDE_GLOBS_RESULT: ${{ steps.raw_exclude_globs.outputs.result }}
-        STEPS_ZIP_GLOBS_LINE_RESULT: ${{ steps.zip_globs_line.outputs.result }}
+        STEPS_TEMP_EXCLUDE_FILE: ${{ steps.tar_glob.outputs.temp_exclude_file }}
+        STEPS_ZIP_GLOBS_LINE_RESULT: ${{ steps.tar_glob.outputs.includes }}
       run: |
         TMP_DIR=$(mktemp -d)
-        echo "${STEPS_RAW_EXCLUDE_GLOBS_RESULT}" > /tmp/exclude_globs.txt
-        tar -cf $TMP_DIR/node_artifacts.tar --exclude-from=/tmp/exclude_globs.txt --ignore-failed-read --exclude-vcs ${STEPS_ZIP_GLOBS_LINE_RESULT}
+        tar -cf $TMP_DIR/node_artifacts.tar --exclude-from=${STEPS_TEMP_EXCLUDE_FILE} --ignore-failed-read --exclude-vcs ${STEPS_ZIP_GLOBS_LINE_RESULT}
         echo "artifact=$TMP_DIR/node_artifacts.tar" >> $GITHUB_OUTPUT
 
     # Create tarball for target
@@ -138,16 +99,17 @@ runs:
       working-directory: ${{ inputs.source_path }}
       shell: bash
       env:
-        STEPS_ZIP_GLOBS_LINE_RESULT: ${{ steps.zip_globs_line.outputs.result }}
+        STEPS_ZIP_GLOBS_LINE_RESULT: ${{ steps.tar_glob.outputs.includes }}
       run: |
         TMP_DIR=$(mktemp -d)
-        echo "node_modules*" > /tmp/exclude_globs_target.txt
-        echo ".git*" >> /tmp/exclude_globs_target.txt
-        echo "tronador*" >> /tmp/exclude_globs_target.txt
-        echo ".tronador" >> /tmp/exclude_globs_target.txt
-        echo ".nyc*" >> /tmp/exclude_globs_target.txt
-        echo "apifiles*" >> /tmp/exclude_globs_target.txt
-        tar -cf $TMP_DIR/node_artifacts_target.tar --ignore-failed-read --hard-dereference --exclude-from=/tmp/exclude_globs_target.txt --exclude-vcs ${STEPS_ZIP_GLOBS_LINE_RESULT} "coverage/*" test-results.xml "*.sarif" bom.xml trivy-report.json
+        TMP_EXCLUDE_FILE=$(mktemp -t exclude_target.XXXXXX)
+        echo "node_modules*" > ${TMP_EXCLUDE_FILE}
+        echo ".git*" >> ${TMP_EXCLUDE_FILE}
+        echo "tronador*" >> ${TMP_EXCLUDE_FILE}
+        echo ".tronador" >> ${TMP_EXCLUDE_FILE}
+        echo ".nyc*" >> ${TMP_EXCLUDE_FILE}
+        echo "apifiles*" >> ${TMP_EXCLUDE_FILE}
+        tar -cf $TMP_DIR/node_artifacts_target.tar --ignore-failed-read --hard-dereference --exclude-from=${TMP_EXCLUDE_FILE} --exclude-vcs ${STEPS_ZIP_GLOBS_LINE_RESULT} "coverage/*" test-results.xml "*.sarif" bom.xml trivy-report.json
         echo "artifact=$TMP_DIR/node_artifacts_target.tar" >> $GITHUB_OUTPUT
 
     # Perform of upload of artfiacts only if not front_end
@@ -182,7 +144,7 @@ runs:
         path: |
           ${{ inputs.source_path }}/**
           !${{ inputs.source_path }}/${{ steps.node_build_dir.outputs.result }}/**
-          ${{ steps.exclude_globs.outputs.result }}
+          ${{ steps.globs.outputs.excludes }}
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast

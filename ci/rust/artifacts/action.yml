@@ -30,39 +30,27 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # Get pipeline conf
-    - name: Get pipeline zip packaging globs
-      id: zip_globs
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".zipGlobs[] | strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-    - name: Get pipeline zip packaging exclude globs
-      id: exclude_globs
-      shell: bash
-      env:
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-      run: |
-        RET=$(yq e ".excludeGlobs[] | \"!\" + strenv(INPUTS_SOURCE_PATH) + \"/\" + ." "./${INPUTS_SOURCE_PATH}/.cloudopsworks/cloudopsworks-ci.yaml")
-        {
-          echo "result<<EOF"
-          echo "${RET}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
+    # Get Globs from configuration:
+    - name: Get Globs
+      id: globs
+      uses: cloudopsworks/blueprints/ci/common/artifacts/glob@v5.10
+      with:
+        source_path: ${{ inputs.source_path }}
+        blueprint_path: ${{ inputs.blueprint_path }}
+        language: rust
+
+    # steps.globs.outputs.includes is multiline: run find once per glob
     - name: Copy Release to bin
       shell: bash
       env:
         INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
-        STEPS_ZIP_GLOBS_RESULT: ${{ steps.zip_globs.outputs.result }}
+        STEPS_ZIP_GLOBS_RESULT: ${{ steps.globs.outputs.includes }}
       run: |
         mkdir -p "${INPUTS_SOURCE_PATH}/bin/"
-        find . -path "./${STEPS_ZIP_GLOBS_RESULT}" -type f -maxdepth 4 -exec cp -pv {} "${INPUTS_SOURCE_PATH}/bin/" \;
+        while IFS= read -r GLOB; do
+          [ -z "${GLOB}" ] && continue
+          find . -path "./${GLOB}" -type f -maxdepth 4 -exec cp -pv {} "${INPUTS_SOURCE_PATH}/bin/" \;
+        done <<< "${STEPS_ZIP_GLOBS_RESULT}"
 
     # Perform of upload of artfiacts for Rust
     - name: Upload Artifacts to workflow
@@ -73,8 +61,8 @@ runs:
           ${{ inputs.source_path }}/bin/**
           !${{ inputs.source_path }}/*.d
           !${{ inputs.source_path }}/*.rlib
-          ${{ steps.zip_globs.outputs.result }}
-          ${{ steps.exclude_globs.outputs.result }}
+          ${{ steps.globs.outputs.includes }}
+          ${{ steps.globs.outputs.excludes }}
         retention-days: 1
         include-hidden-files: true
         compression-level: '1' #fast
@@ -89,7 +77,7 @@ runs:
           ${{ inputs.source_path }}/**
           !${{ inputs.source_path }}/target/**
           !${{ inputs.source_path }}/test-results/**
-          ${{ steps.exclude_globs.outputs.result }}
+          ${{ steps.globs.outputs.excludes }}
         retention-days: 1
         include-hidden-files: true
         compression-level: '3' #mid-fast
@@ -102,7 +90,7 @@ runs:
         path: |
           ${{ inputs.source_path }}/test-results/**
           ${{ inputs.source_path }}/target/**
-          ${{ steps.exclude_globs.outputs.result }}
+          ${{ steps.globs.outputs.excludes }}
         retention-days: 1
         include-hidden-files: true
         compression-level: '3' #mid-fast

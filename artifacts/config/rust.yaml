@@ -1,0 +1,24 @@
+zipGlobs:
+  - target/release/*
+excludeGlobs:
+  - .dockerignore
+  - .git*
+  - .git/
+  - .helmignore
+  - .tronador
+  - CODEOWNERS
+  - Dockerfile
+  - Makefile
+  - OWNER*
+  - README.md
+  - apifiles/*
+  - charts/*
+  - cloudopsworks-ci*
+  - jenkins*
+  - skafold*
+  - target/release/*.d
+  - target/release/*.rlib
+  - target/release/build/*
+  - target/release/deps/*
+  - test-results/*
+  - tronador/*

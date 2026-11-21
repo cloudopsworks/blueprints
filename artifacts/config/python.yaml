@@ -1,0 +1,45 @@
+##
+# (c) 2021-2026
+#     Cloud Ops Works LLC - https://cloudops.works/
+#     Find us on:
+#       GitHub: https://github.com/cloudopsworks
+#       WebSite: https://cloudops.works
+#     Distributed Under Apache v2.0 License
+#
+# Default configuration for Python artifacts
+zipGlobs:
+  - "*.py"
+  - "*.pyc"
+  - "*.pyo"
+  - "app/**/*"
+  - "pyproject.toml"
+  - "requirements.txt"
+excludeGlobs:
+  - .Python
+  - .coverage
+  - .dockerignore
+  - .env
+  - .git*
+  - .git/
+  - .helmignore
+  - .tronador
+  - .venv
+  - CODEOWNERS
+  - Dockerfile
+  - ENV
+  - Makefile
+  - OWNER*
+  - README.md
+  - apifiles/*
+  - bom.xml
+  - charts/*
+  - cloudopsworks-ci*
+  - coverage.xml
+  - env/
+  - htmlcov/*
+  - jenkins*
+  - poetry.lock
+  - target/*
+  - test-results.xml
+  - tronador/*
+  - venv/
