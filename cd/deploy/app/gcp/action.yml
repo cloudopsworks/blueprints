@@ -309,7 +309,8 @@ runs:
       shell: bash
       run: |
         echo "::group::TF Summarize of JSON file"
-        tf-summarize -md tfplan.json
+        echo "### Terraform Plan Summary 📖" >> $GITHUB_STEP_SUMMARY
+        tf-summarize -md tfplan.json | tee -a $GITHUB_STEP_SUMMARY
         echo "::endgroup::"
 
     - name: Save Plan Artifacts

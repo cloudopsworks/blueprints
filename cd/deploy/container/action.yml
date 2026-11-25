@@ -192,14 +192,14 @@ runs:
         INPUTS_PROJECT_KEY: ${{ inputs.project_key }}
       run: |
         echo "::group::Push Docker image from tar using Crane"
-        #skopeo copy --all docker-archive:docker-image.tar "${STEPS_TAGS_RESULT}"
+        echo "### Pushing Docker images Summary 📦" >> $GITHUB_STEP_SUMMARY
         TAG=$(head -1 docker-tags.list)
         crane push docker-image.tar "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG"
-        echo "::notice::Pushed Docker image to ${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG"
+        echo "Pushed Docker image to ${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG" >> $GITHUB_STEP_SUMMARY
         for atag in $(cat docker-tags.list); do
           if [ "$atag" != "$TAG" ]; then
             crane tag "${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$TAG" $atag
-            echo "::notice::Tagged Docker image to ${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$atag"
+            echo "Tagged Docker image to ${STEPS_DOCKER_REGISTRY_RESULT}/${INPUTS_PROJECT_OWNER}/${INPUTS_PROJECT_KEY}:$atag" >> $GITHUB_STEP_SUMMARY
           fi
         done
         echo "::endgroup::"

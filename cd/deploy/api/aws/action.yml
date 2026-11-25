@@ -308,9 +308,11 @@ runs:
         LIST_PLAN: ${{ steps.plan_json.outputs.result }}
       run: |
         echo "::group::TF Summarize of JSON file"
+        echo "### Terraform Plan Summary 📖" >> $GITHUB_STEP_SUMMARY
         for item in ${LIST_PLAN} ; do
+          echo "#### Summary for ${item}" >> $GITHUB_STEP_SUMMARY
           echo "Summarizing plan file: ${item}.json"
-          tf-summarize -md ${item}.json
+          tf-summarize -md ${item}.json | tee -a $GITHUB_STEP_SUMMARY
         done
         echo "::endgroup::"
 
