@@ -38,9 +38,9 @@ runs:
       uses: aquasecurity/setup-trivy@v0.3.1
       with:
         cache: true
-        version: v0.69.3
+        version: v0.76.2
 
-    - name: Run Trivy vulnerability scanner - sarif output
+    - name: Run Trivy vulnerability scanner - JSON output
       uses: aquasecurity/trivy-action@v0.36.0
       with:
         input: '${{ inputs.source_path }}/docker-image.tar'
@@ -53,7 +53,7 @@ runs:
         github-pat: ${{ inputs.token }}
         scanners: 'vuln'
 
-    - name: Run Trivy vulnerability scanner - sarif output
+    - name: Run Trivy vulnerability scanner - SARIF output
       uses: aquasecurity/trivy-action@v0.36.0
       with:
         input: '${{ inputs.source_path }}/docker-image.tar'
