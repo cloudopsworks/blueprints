@@ -3480,10 +3480,12 @@ Build Python sources and save artifacts, requires ci/config/action.yml
 - Get pipeline zip packaging exclude globs
 - Get package Name
 - Setup Python
+- Install uv
 - Install Basic Python Tools
 - Version SET
 - Version Capture
 - Generate Python Environment
+- Resolve Python tool specs
 - Build PIP
 - Build PYPENV
 - Build Poetry
@@ -3496,6 +3498,11 @@ Build Python sources and save artifacts, requires ci/config/action.yml
 - Install CycloneDX
 - SBOM Generation for Dtrack
 - Build Dependency files if they are required
+
+QA and packaging tools run through [uv](https://docs.astral.sh/uv/) so the application virtual environment stays clean:
+- ruff, cyclonedx-bom, pipenv and poetry run in isolated environments via `uvx`.
+- pytest, coverage, nose and mypy run through a constrained `uv` overlay on top of the application venv. The overlay only adds a tool that the app venv does not already provide; a tool declared by the application always wins.
+- Versions are pinned by the blueprint (with per-Python-version floors) and exposed to the sub-actions through the optional `pytest_spec`, `coverage_spec` and `nose_spec` inputs.
 
 ---
 
@@ -3577,6 +3584,8 @@ Build Python sources with pip install
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
 | `bot_user` | The bot user to use for the build | true | `` |
 | `token` | The github token to use for the build | true | `` |
+| `nose_spec` | Pinned nose requirement used when the app does not provide nose | false | `pynose==1.5.5` |
+| `coverage_spec` | Pinned coverage requirement used when the app does not provide coverage | false | `coverage==7.17.5` |
 
 #### What it performs
 - Run Python Tests
@@ -3599,6 +3608,8 @@ Build Python sources with pip install
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
 | `bot_user` | The bot user to use for the build | true | `` |
 | `token` | The github token to use for the build | true | `` |
+| `pytest_spec` | Pinned pytest requirement used when the app does not provide pytest | false | `pytest==9.2.0` |
+| `coverage_spec` | Pinned coverage requirement used when the app does not provide coverage | false | `coverage==7.17.5` |
 
 #### What it performs
 - Run Python Tests
@@ -3621,6 +3632,7 @@ Build Python sources with pip install
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
 | `bot_user` | The bot user to use for the build | true | `` |
 | `token` | The github token to use for the build | true | `` |
+| `coverage_spec` | Pinned coverage requirement used when the app does not provide coverage | false | `coverage==7.17.5` |
 
 #### What it performs
 - Run Python Tests

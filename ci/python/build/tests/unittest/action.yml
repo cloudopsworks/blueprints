@@ -25,6 +25,10 @@ inputs:
     description: 'The requirements file'
     required: false
     default: './requirements.txt'
+  coverage_spec:
+    description: 'Pinned requirement spec for coverage (used only when the app does not provide it)'
+    required: false
+    default: 'coverage==7.17.5'
   bot_user:
     description: 'The bot user to use for the build'
     required: true
@@ -41,12 +45,25 @@ runs:
       run: |
         echo "::group::Python Tests"
         source .venv/bin/activate
-        coverage run --source=. -m unittest discover -s ./__tests__
-        coverage report --omit "__tests__/*"
-        coverage lcov --omit "__tests__/*"
-        coverage xml --omit "__tests__/*"
-        coverage html --omit "__tests__/*"
+        VENV_PY="$PWD/.venv/bin/python"
+        OVERLAY="${RUNNER_TEMP}/cw-overlay-tests.txt"
+        bash "${GITHUB_ACTION_PATH}/../../scripts/uv-overlay.sh" "$VENV_PY" "$OVERLAY" \
+          coverage="${COVERAGE_SPEC}"
+        run() {
+          if [ -s "$OVERLAY" ]; then
+            uv run --no-project --python "$VENV_PY" --with-requirements "$OVERLAY" -- "$@"
+          else
+            uv run --no-project --python "$VENV_PY" -- "$@"
+          fi
+        }
+        run python -m coverage run --source=. -m unittest discover -s ./__tests__
+        run python -m coverage report --omit "__tests__/*"
+        run python -m coverage lcov --omit "__tests__/*"
+        run python -m coverage xml --omit "__tests__/*"
+        run python -m coverage html --omit "__tests__/*"
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
+        COVERAGE_SPEC: ${{ inputs.coverage_spec }}
+        UV_PYTHON_DOWNLOADS: never
