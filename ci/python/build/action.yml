@@ -315,6 +315,8 @@ runs:
         blueprint_path: ${{ inputs.blueprint_path }}
         python_requirements_file: ${{ inputs.python_requirements_file }}
         python_extra_env: ${{ inputs.python_extra_env }}
+        poetry_spec: ${{ steps.python_tools.outputs.poetry }}
+        poetry_export_spec: ${{ steps.python_tools.outputs.poetry_export }}
 
     - name: Python Tests - Pytest
       if: steps.python_tests.outputs.result == 'pytest'
