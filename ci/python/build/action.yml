@@ -306,6 +306,7 @@ runs:
         blueprint_path: ${{ inputs.blueprint_path }}
         python_requirements_file: ${{ inputs.python_requirements_file }}
         python_extra_env: ${{ inputs.python_extra_env }}
+        pipenv_spec: ${{ steps.python_tools.outputs.pipenv }}
 
     - name: Build Poetry
       if: steps.python_dist.outputs.result == 'poetry'

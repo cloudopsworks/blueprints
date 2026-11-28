@@ -25,26 +25,36 @@ inputs:
     description: 'The requirements file'
     required: false
     default: './requirements.txt'
+  pipenv_spec:
+    description: 'The pipenv requirement spec to run with uvx'
+    required: false
+    default: 'pipenv==2026.12.1'
 
 runs:
   using: 'composite'
   steps:
-    # Install pipenv
-    - name: Install pipenv
-      shell: bash
-      run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
-
     - name: Install Dependencies (PipEnv)
       working-directory: ${{ inputs.source_path }}
-      if: steps.python_dist.outputs.result == 'pipenv'
       shell: bash
       run: |
         echo "::group::Pipenv Install"
         source .venv/bin/activate
-        echo "Installing dependencies"
-        bash -c "${INPUTS_PYTHON_EXTRA_ENV} pipenv install"
+        VENV_PY="${PWD}/.venv/bin/python"
+        if [ ! -f Pipfile ]; then
+          echo "::warning::No Pipfile found in ${INPUTS_SOURCE_PATH}, skipping pipenv install"
+        elif [ -f Pipfile.lock ]; then
+          echo "Installing dependencies from Pipfile.lock"
+          bash -c "${INPUTS_PYTHON_EXTRA_ENV} uvx --python \"${VENV_PY}\" --from \"${PIPENV_SPEC}\" pipenv sync --dev"
+        else
+          echo "::warning::No Pipfile.lock found, installing from Pipfile (build is not reproducible)"
+          bash -c "${INPUTS_PYTHON_EXTRA_ENV} uvx --python \"${VENV_PY}\" --from \"${PIPENV_SPEC}\" pipenv install --dev"
+        fi
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
         INPUTS_PYTHON_EXTRA_ENV: ${{ inputs.python_extra_env }}
+        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
+        PIPENV_SPEC: ${{ inputs.pipenv_spec }}
+        PIPENV_VERBOSITY: '-1'
+        UV_PYTHON_DOWNLOADS: never

@@ -3502,7 +3502,7 @@ Build Python sources and save artifacts, requires ci/config/action.yml
 QA and packaging tools run through [uv](https://docs.astral.sh/uv/) so the application virtual environment stays clean:
 - ruff, cyclonedx-bom, pipenv and poetry run in isolated environments via `uvx`.
 - pytest, coverage, nose and mypy run through a constrained `uv` overlay on top of the application venv. The overlay only adds a tool that the app venv does not already provide; a tool declared by the application always wins.
-- Versions are pinned by the blueprint (with per-Python-version floors) and exposed to the sub-actions through the optional `pytest_spec`, `coverage_spec`, `nose_spec`, `poetry_spec` and `poetry_export_spec` inputs.
+- Versions are pinned by the blueprint (with per-Python-version floors) and exposed to the sub-actions through the optional `pytest_spec`, `coverage_spec`, `nose_spec`, `poetry_spec`, `poetry_export_spec` and `pipenv_spec` inputs.
 
 ---
 
@@ -3540,6 +3540,7 @@ Build Python sources with pipenv
 | `blueprint_path` | The path to the blueprint | false | `bp` |
 | `python_extra_env` | The extra environment variables | true | `` |
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
+| `pipenv_spec` | Pinned pipenv requirement run through uvx | false | `pipenv==2026.12.1` |
 
 #### What it performs
 - Install pipenv
