@@ -3543,7 +3543,7 @@ Build Python sources with pipenv
 | `pipenv_spec` | Pinned pipenv requirement run through uvx | false | `pipenv==2026.12.1` |
 
 #### What it performs
-- Install pipenv
+- Run pinned pipenv via uvx (installs into the project `.venv`)
 - Install Dependencies (PipEnv)
 
 ---
