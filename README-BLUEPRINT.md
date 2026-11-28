@@ -3480,10 +3480,12 @@ Build Python sources and save artifacts, requires ci/config/action.yml
 - Get pipeline zip packaging exclude globs
 - Get package Name
 - Setup Python
+- Install uv
 - Install Basic Python Tools
 - Version SET
 - Version Capture
 - Generate Python Environment
+- Resolve Python tool specs
 - Build PIP
 - Build PYPENV
 - Build Poetry
@@ -3496,6 +3498,11 @@ Build Python sources and save artifacts, requires ci/config/action.yml
 - Install CycloneDX
 - SBOM Generation for Dtrack
 - Build Dependency files if they are required
+
+QA and packaging tools run through [uv](https://docs.astral.sh/uv/) so the application virtual environment stays clean:
+- ruff, cyclonedx-bom, pipenv and poetry run in isolated environments via `uvx`.
+- pytest, coverage, nose and mypy run through a constrained `uv` overlay on top of the application venv. The overlay only adds a tool that the app venv does not already provide; a tool declared by the application always wins.
+- Versions are pinned by the blueprint (with per-Python-version floors) and exposed to the sub-actions through the optional `pytest_spec`, `coverage_spec`, `nose_spec`, `poetry_spec`, `poetry_export_spec` and `pipenv_spec` inputs.
 
 ---
 
@@ -3533,9 +3540,10 @@ Build Python sources with pipenv
 | `blueprint_path` | The path to the blueprint | false | `bp` |
 | `python_extra_env` | The extra environment variables | true | `` |
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
+| `pipenv_spec` | Pinned pipenv requirement run through uvx | false | `pipenv==2026.12.1` |
 
 #### What it performs
-- Install pipenv
+- Run pinned pipenv via uvx (installs into the project `.venv`)
 - Install Dependencies (PipEnv)
 
 ---
@@ -3554,9 +3562,11 @@ Build Python sources with poetry
 | `blueprint_path` | The path to the blueprint | false | `bp` |
 | `python_extra_env` | The extra environment variables | true | `` |
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
+| `poetry_spec` | Pinned poetry requirement run through uvx | false | `poetry==2.5.2` |
+| `poetry_export_spec` | Pinned poetry-plugin-export requirement run through uvx | false | `poetry-plugin-export==1.10.2` |
 
 #### What it performs
-- Install poetry
+- Run pinned poetry and poetry-plugin-export via uvx (installs into the project `.venv`)
 - Install Dependencies (Poetry)
 
 ---
@@ -3577,6 +3587,8 @@ Build Python sources with pip install
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
 | `bot_user` | The bot user to use for the build | true | `` |
 | `token` | The github token to use for the build | true | `` |
+| `nose_spec` | Pinned nose requirement used when the app does not provide nose | false | `pynose==1.5.5` |
+| `coverage_spec` | Pinned coverage requirement used when the app does not provide coverage | false | `coverage==7.17.5` |
 
 #### What it performs
 - Run Python Tests
@@ -3599,6 +3611,8 @@ Build Python sources with pip install
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
 | `bot_user` | The bot user to use for the build | true | `` |
 | `token` | The github token to use for the build | true | `` |
+| `pytest_spec` | Pinned pytest requirement used when the app does not provide pytest | false | `pytest==9.2.0` |
+| `coverage_spec` | Pinned coverage requirement used when the app does not provide coverage | false | `coverage==7.17.5` |
 
 #### What it performs
 - Run Python Tests
@@ -3621,6 +3635,7 @@ Build Python sources with pip install
 | `python_requirements_file` | The requirements file | false | `./requirements.txt` |
 | `bot_user` | The bot user to use for the build | true | `` |
 | `token` | The github token to use for the build | true | `` |
+| `coverage_spec` | Pinned coverage requirement used when the app does not provide coverage | false | `coverage==7.17.5` |
 
 #### What it performs
 - Run Python Tests

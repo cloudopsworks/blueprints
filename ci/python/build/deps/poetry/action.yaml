@@ -25,29 +25,35 @@ inputs:
     description: 'The requirements file'
     required: false
     default: './requirements.txt'
+  poetry_spec:
+    description: 'The poetry requirement spec to run with uvx'
+    required: false
+    default: 'poetry==2.5.2'
+  poetry_export_spec:
+    description: 'The poetry export plugin requirement spec'
+    required: false
+    default: 'poetry-plugin-export==1.10.2'
 
 runs:
   using: 'composite'
   steps:
-    # Install poetry
-    - name: Install poetry
-      shell: bash
-      run: pipx install poetry
-
     - name: Install Dependencies (Poetry)
       working-directory: ${{ inputs.source_path }}
       shell: bash
       run: |
         echo "::group::Poetry Install"
         source .venv/bin/activate
+        VENV_PY="${PWD}/.venv/bin/python"
         echo "Installing dependencies"
-        bash -c "${INPUTS_PYTHON_EXTRA_ENV} poetry install"
+        bash -c "${INPUTS_PYTHON_EXTRA_ENV} uvx --python \"${VENV_PY}\" --from \"${POETRY_SPEC}\" --with \"${POETRY_EXPORT_SPEC}\" poetry install"
         echo "Exporting requirements"
-        poetry export --with dev --without-hashes --format=requirements.txt > ${INPUTS_SOURCE_PATH}/${INPUTS_PYTHON_REQUIREMENTS_FILE}
+        bash -c "${INPUTS_PYTHON_EXTRA_ENV} uvx --python \"${VENV_PY}\" --from \"${POETRY_SPEC}\" --with \"${POETRY_EXPORT_SPEC}\" poetry export --without-hashes --format=requirements.txt --output \"${INPUTS_PYTHON_REQUIREMENTS_FILE}\""
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
         GITHUB_TOKEN: ${{ inputs.token }}
         INPUTS_PYTHON_EXTRA_ENV: ${{ inputs.python_extra_env }}
-        INPUTS_SOURCE_PATH: ${{ inputs.source_path }}
         INPUTS_PYTHON_REQUIREMENTS_FILE: ${{ inputs.python_requirements_file }}
+        POETRY_SPEC: ${{ inputs.poetry_spec }}
+        POETRY_EXPORT_SPEC: ${{ inputs.poetry_export_spec }}
+        UV_PYTHON_DOWNLOADS: never
