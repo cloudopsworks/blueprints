@@ -3566,7 +3566,7 @@ Build Python sources with poetry
 | `poetry_export_spec` | Pinned poetry-plugin-export requirement run through uvx | false | `poetry-plugin-export==1.10.2` |
 
 #### What it performs
-- Install poetry
+- Run pinned poetry and poetry-plugin-export via uvx (installs into the project `.venv`)
 - Install Dependencies (Poetry)
 
 ---
