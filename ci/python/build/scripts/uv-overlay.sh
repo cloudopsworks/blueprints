@@ -36,11 +36,12 @@ if [ ${#PINS[@]} -eq 0 ]; then
   exit 0
 fi
 C="$(mktemp)"; ERR="$(mktemp)"
+trap 'rm -f "$C" "$ERR"' EXIT
 "$VENV_PY" -I - > "$C" <<'PY'
 import importlib.metadata as m, re
 seen = set()
 for d in m.distributions():
-    n = re.sub(r"[-_.]+", "-", (d.metadata["Name"] or "").strip()).lower()
+    n = re.sub(r"[-_.]+", "-", (d.metadata.get("Name") or "").strip()).lower()
     if n and n not in seen:
         seen.add(n); print(f"{n}=={d.version}")
 PY
@@ -48,7 +49,8 @@ compile() { printf '%s\n' "$@" | uv pip compile -q --no-header --no-annotate -p 
 if compile "${PINS[@]}"; then
   echo "Tool overlay (pinned, app versions kept): ${PINS[*]}"
 elif compile "${FLOORS[@]}"; then
-  echo "::warning::Blueprint tool pins conflict with installed app packages; using compatible versions (${FLOORS[*]})"
+  echo "::warning::Could not resolve pinned tool overlay against installed app packages; using same-major compatible versions (${FLOORS[*]})"
+  tail -n 4 "$ERR" || true
 else
   echo "::warning::Could not resolve constrained tool overlay (see error below); using unconstrained pins, which may shadow app packages"
   cat "$ERR"
@@ -56,4 +58,3 @@ else
 fi
 echo "--- Resolved tool overlay ($OUT) ---"
 cat "$OUT"
-rm -f "$C" "$ERR"

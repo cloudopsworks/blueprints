@@ -270,7 +270,7 @@ runs:
           if [ "$PYV" -ge "$4" ]; then
             echo "$1=$2==$3" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::$2 $3 requires Python >= ${4:0:1}.${4:1}; using latest compatible $2"
+            echo "::notice::$2 $3 requires Python >= ${4:0:1}.$((10#${4:1})); using latest compatible $2"
             echo "$1=$2" >> "$GITHUB_OUTPUT"
           fi
         }
@@ -384,7 +384,7 @@ runs:
         rc=0
         "${RUFF[@]}" check --output-file ruff_report.json --output-format json || rc=$?
         echo "::debug::Start Ruff Report"
-        cat ruff_report.json
+        cat ruff_report.json; echo
         echo "::debug::End Ruff Report"
         echo "::endgroup::"
         exit $rc

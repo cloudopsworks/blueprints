@@ -62,10 +62,10 @@ runs:
           fi
         }
         run python -m coverage run --source=. -m nose -w ./__tests__
-        run python -m coverage report --omit "__tests__/*"
-        run python -m coverage lcov --omit "__tests__/*"
-        run python -m coverage xml --omit "__tests__/*"
-        run python -m coverage html --omit "__tests__/*"
+        run python -m coverage report --omit "__tests__/*,.venv/*"
+        run python -m coverage lcov --omit "__tests__/*,.venv/*"
+        run python -m coverage xml --omit "__tests__/*,.venv/*"
+        run python -m coverage html --omit "__tests__/*,.venv/*"
         echo "::endgroup::"
       env:
         GITHUB_ACTOR: ${{ inputs.bot_user }}
